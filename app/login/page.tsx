@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
+import Image from 'next/image';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
@@ -55,8 +57,22 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="mb-12 text-center">
-          <h1 className="text-5xl font-bold text-white mb-2">VINNY LOPES</h1>
-          <p className="text-2xl tracking-widest text-coach-gold">COACH</p>
+          {!logoFailed ? (
+            <Image
+              src="/logo.png"
+              alt="Coach Logo"
+              width={200}
+              height={80}
+              priority
+              onError={() => setLogoFailed(true)}
+              className="h-20 w-auto mx-auto mb-4"
+            />
+          ) : (
+            <div>
+              <h1 className="text-5xl font-bold text-white mb-2">VINNY LOPES</h1>
+              <p className="text-2xl tracking-widest text-coach-gold">COACH</p>
+            </div>
+          )}
         </div>
 
         {/* Form Container */}

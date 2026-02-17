@@ -58,7 +58,7 @@ export default function Sidebar() {
       <button
         aria-label="Abrir menu"
         onClick={() => setOpen(true)}
-        className="fixed top-5 left-5 z-[70] w-10 h-10 rounded-full flex items-center justify-center bg-black/60 border border-white/10 hover:bg-black/80 transition-colors"
+        className="fixed top-5 left-5 z-50 w-10 h-10 rounded-full flex items-center justify-center bg-black/60 border border-white/10 hover:bg-black/80 transition-colors lg:hidden"
       >
         <svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect y="1" width="20" height="2" rx="1" fill="#D4AF37" />
@@ -69,7 +69,7 @@ export default function Sidebar() {
 
       {/* Drawer Overlay */}
       <div
-        className={`fixed inset-0 z-[60] transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} lg:hidden`}
         aria-hidden={!open}
         onClick={() => setOpen(false)}
       >
@@ -77,7 +77,7 @@ export default function Sidebar() {
       </div>
 
       {/* Drawer Menu */}
-      <aside className={`fixed left-0 top-0 h-full w-[80%] max-w-xs bg-coach-black text-white z-[65] transform transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed left-0 top-0 h-full w-[80%] max-w-xs bg-coach-black text-white z-50 transform transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         {/* Close button (X icon) */}
         <button
           onClick={() => setOpen(false)}

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Menu,
   X,
@@ -11,6 +12,7 @@ import {
   Camera,
   Users,
   Trophy,
+  User,
 } from "lucide-react";
 
 const menuItems = [
@@ -20,16 +22,18 @@ const menuItems = [
   { name: "FOTOS", href: "/aluno/fotos", icon: Camera },
   { name: "PARCEIROS", href: "/aluno/parceiros", icon: Users },
   { name: "RANKING", href: "/aluno/ranking", icon: Trophy },
+  { name: "PERFIL", href: "/aluno/perfil", icon: User },
 ];
 
 export default function ResponsiveNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   return (
     <>
       {/* Mobile Header (hidden on desktop) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-coach-black/98 backdrop-blur-md border-b border-white/10 py-3 px-4">
-        <div className="flex items-center justify-between">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-coach-black/98 backdrop-blur-md border-b border-white/10 px-4">
+        <div className="flex items-center justify-between h-full">
           <button
             aria-label="Abrir menu"
             onClick={() => setMobileMenuOpen(true)}
@@ -37,9 +41,21 @@ export default function ResponsiveNav() {
           >
             <Menu size={20} className="text-coach-gold" />
           </button>
-          <h1 className="text-xs font-bold tracking-[0.15em] uppercase text-white/90">
-            VINNY COACH
-          </h1>
+          {!logoFailed ? (
+            <Image
+              src="/logo.png"
+              alt="Coach Logo"
+              width={140}
+              height={40}
+              priority
+              onError={() => setLogoFailed(true)}
+              className="h-10 w-auto"
+            />
+          ) : (
+            <h1 className="text-xs font-bold tracking-[0.15em] uppercase text-white/90">
+              VINNY COACH
+            </h1>
+          )}
           <div className="w-10" />
         </div>
       </header>
@@ -48,12 +64,26 @@ export default function ResponsiveNav() {
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 bg-coach-black/95 border-r border-white/10 flex-col z-40">
         {/* Sidebar Header */}
         <div className="p-6 border-b border-white/10">
-          <h1 className="text-sm font-bold tracking-[0.15em] uppercase text-white">
-            VINNY LOPES
-          </h1>
-          <p className="text-xs tracking-[0.1em] uppercase text-gray-400 mt-1">
-            COACH
-          </p>
+          {!logoFailed ? (
+            <Image
+              src="/logo.png"
+              alt="Coach Logo"
+              width={180}
+              height={50}
+              priority
+              onError={() => setLogoFailed(true)}
+              className="h-12 w-auto"
+            />
+          ) : (
+            <div>
+              <h1 className="text-sm font-bold tracking-[0.15em] uppercase text-white">
+                VINNY LOPES
+              </h1>
+              <p className="text-xs tracking-[0.1em] uppercase text-gray-400 mt-1">
+                COACH
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Menu */}
@@ -84,7 +114,7 @@ export default function ResponsiveNav() {
 
       {/* Mobile Drawer Overlay */}
       <div
-        className={`lg:hidden fixed inset-0 z-30 transition-opacity duration-300 ${
+        className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-300 ${
           mobileMenuOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
@@ -97,7 +127,7 @@ export default function ResponsiveNav() {
 
       {/* Mobile Drawer */}
       <aside
-        className={`lg:hidden fixed left-0 top-0 h-screen w-80 bg-coach-black/99 border-r border-white/10 z-35 transform transition-transform duration-300 ease-out ${
+        className={`lg:hidden fixed left-0 top-0 h-screen w-80 bg-coach-black/99 border-r border-white/10 z-50 transform transition-transform duration-300 ease-out ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
