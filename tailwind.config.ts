@@ -14,6 +14,9 @@ const config: Config = {
         'coach-gold': '#D4AF37',
         'coach-gold-dark': '#BC962B',
       },
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial'],
+      },
     },
   },
   plugins: [],

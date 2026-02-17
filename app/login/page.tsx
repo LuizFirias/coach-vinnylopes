@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, ChangeEvent } from 'react';
+import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
@@ -27,27 +27,25 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     setSuccess(null);
-
     try {
-      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
+      const vercelHost = process.env.NEXT_PUBLIC_VERCEL_URL;
+      const redirectTo = vercelHost ? `https://${vercelHost}` : typeof window !== 'undefined' ? window.location.origin : undefined;
+
+      const { data, error: authError } = await supabaseClient.auth.signInWithOtp({
         email,
-        password,
+        options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
       });
 
       if (authError) {
-        setError(authError.message || 'Erro ao fazer login');
+        setError(authError.message || 'Erro ao enviar link de acesso');
         setLoading(false);
         return;
       }
 
-      if (data.user) {
-        setSuccess('Login realizado com sucesso! Redirecionando...');
-        setTimeout(() => {
-          router.push('/');
-        }, 1500);
-      }
+      setSuccess('Verifique seu e-mail para acessar sua consultoria');
+      setLoading(false);
     } catch (err) {
-      setError('Erro na autenticação. Tente novamente.');
+      setError('Erro ao processar solicitação. Tente novamente.');
       setLoading(false);
     }
   };
@@ -82,8 +80,8 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* Email Input */}
-            <div>
+            {/* Email Input (glass) */}
+            <div className="card-glass p-3">
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                 Email
               </label>
@@ -93,36 +91,19 @@ export default function LoginPage() {
                 value={email}
                 onChange={handleEmailChange}
                 placeholder="seu@email.com"
-                className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition"
+                className="w-full px-4 py-3 bg-transparent border-0 rounded text-white placeholder-gray-400 focus:outline-none"
                 required
                 disabled={loading}
               />
             </div>
 
-            {/* Password Input */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                Senha
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={handlePasswordChange}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition"
-                required
-                disabled={loading}
-              />
-            </div>
-
-            {/* Login Button */}
+            {/* Magic Link Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 mt-8 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+              className="w-full py-3 mt-2 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Enviando...' : 'Enviar Link de Acesso'}
             </button>
           </form>
 

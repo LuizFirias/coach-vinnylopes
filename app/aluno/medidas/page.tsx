@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 interface Medicao {
   id: string;
@@ -189,6 +189,29 @@ export default function MedidasPage() {
       dataCompleta: med.data_medicao,
     }));
 
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const ticksToShow = isMobile ? 4 : 8;
+  const tickInterval = dadosGrafico.length > 0 ? Math.max(0, Math.floor(dadosGrafico.length / ticksToShow)) : 0;
+
+  function CustomTooltip({ active, payload, label }: any) {
+    if (!active || !payload || !payload.length) return null;
+    const peso = payload[0]?.value;
+    return (
+      <div style={{ background: '#0b0b0b', border: '1px solid #D4AF37', padding: 8, borderRadius: 8, color: '#fff', fontSize: 13 }}>
+        <div style={{ fontWeight: 700, color: '#D4AF37', marginBottom: 4 }}>{label}</div>
+        <div>{peso?.toFixed ? `${peso.toFixed(1)} kg` : `${peso} kg`}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-coach-black p-8">
       <div className="max-w-4xl mx-auto">
@@ -228,7 +251,7 @@ export default function MedidasPage() {
         {!loading && !error && (
           <>
             {/* Form Container */}
-            <div className="backdrop-blur bg-coach-gray/80 border border-coach-gold/20 rounded-lg p-8 mb-12 shadow-2xl">
+            <div className="card-glass mb-12">
               <h2 className="text-2xl font-semibold text-white mb-8">Registrar Medições</h2>
 
               <form onSubmit={handleSubmit} className="space-y-8">
@@ -434,41 +457,49 @@ export default function MedidasPage() {
 
             {/* Gráfico - Aparece apenas se houver mais de uma medição */}
             {medicoes.length > 1 && (
-              <div className="bg-coach-gray border border-coach-gold/20 rounded-lg p-8 shadow-2xl">
+              <div className="card-glass">
                 <h2 className="text-2xl font-semibold text-white mb-8">Evolução do Peso</h2>
                 <div className="w-full h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dadosGrafico} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <AreaChart data={dadosGrafico} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="gradPeso" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.18} />
+                          <stop offset="60%" stopColor="#D4AF37" stopOpacity={0.06} />
+                          <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff" strokeOpacity={0.03} />
+
                       <XAxis
                         dataKey="data"
-                        stroke="#888"
-                        style={{ fontSize: '12px' }}
+                        stroke="#BDBDBD"
+                        tick={{ fontSize: isMobile ? 10 : 12, fill: '#BDBDBD' }}
+                        interval={tickInterval}
+                        minTickGap={8}
                       />
+
                       <YAxis
-                        stroke="#888"
-                        style={{ fontSize: '12px' }}
-                        domain={['dataMin - 2', 'dataMax + 2']}
+                        stroke="#BDBDBD"
+                        tick={{ fontSize: isMobile ? 10 : 12, fill: '#BDBDBD' }}
+                        domain={["dataMin - 2", "dataMax + 2"]}
+                        allowDataOverflow={false}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#1E1E1E',
-                          border: '1px solid #D4AF37',
-                          borderRadius: '8px',
-                          color: '#fff',
-                        }}
-                        formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Peso']}
-                      />
-                      <Line
+
+                      <Tooltip content={<CustomTooltip />} wrapperStyle={{ outline: 'none' }} />
+
+                      <Area
                         type="monotone"
                         dataKey="peso"
                         stroke="#D4AF37"
-                        strokeWidth={3}
-                        dot={{ fill: '#D4AF37', r: 5 }}
-                        activeDot={{ r: 7 }}
-                        isAnimationActive
+                        strokeWidth={2}
+                        fill="url(#gradPeso)"
+                        dot={{ fill: '#D4AF37', r: isMobile ? 3 : 4 }}
+                        activeDot={{ r: isMobile ? 5 : 6 }}
+                        isAnimationActive={true}
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
@@ -476,7 +507,7 @@ export default function MedidasPage() {
 
             {/* Última Medição Info */}
             {medicoes.length > 0 && (
-              <div className="mt-8 p-6 bg-coach-gray border border-coach-gold/20 rounded-lg">
+              <div className="mt-8 card-glass">
                 <p className="text-gray-300">
                   <span className="text-coach-gold font-semibold">Última medição:</span>{' '}
                   {formatarData(medicoes[0].data_medicao)} • Peso: {medicoes[0].peso} kg

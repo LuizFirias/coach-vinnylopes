@@ -1,5 +1,5 @@
 import './globals.css';
-import Sidebar from './components/sidebar';
+import ResponsiveNav from './components/responsive-nav';
 
 export default function RootLayout({
   children,
@@ -8,9 +8,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-br">
-      <body className="bg-coach-black text-white flex">
-        <Sidebar />
-        <main className="flex-1 h-screen overflow-y-auto">
+      <body className="bg-coach-black text-white overflow-x-hidden">
+        <ResponsiveNav />
+        {/* Main content with lg:ml-64 for desktop sidebar */}
+        <main className="lg:ml-64 lg:pt-0 pt-16">
           {children}
         </main>
       </body>

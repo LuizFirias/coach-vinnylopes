@@ -140,7 +140,7 @@ export default function ParceirosPage() {
             {parceiros.map((parceiro) => (
               <div
                 key={parceiro.id}
-                className="group bg-coach-gray rounded-lg overflow-hidden border border-coach-gold/10 hover:border-coach-gold/40 transition-all duration-300 hover:shadow-lg hover:shadow-coach-gold/10"
+                className="group card-glass overflow-hidden transition-all duration-300 hover:shadow-lg"
               >
                 {/* Logo Section */}
                 <div className="relative h-48 bg-coach-black flex items-center justify-center overflow-hidden">
@@ -161,7 +161,7 @@ export default function ParceirosPage() {
                 </div>
 
                 {/* Content Section */}
-                <div className="p-6">
+                  <div className="p-6">
                   {/* Nome da Marca */}
                   <h3 className="text-xl font-bold text-white mb-2">
                     {parceiro.nome_marca}
@@ -173,9 +173,7 @@ export default function ParceirosPage() {
                   </p>
 
                   {/* Cupom em Destaque */}
-                  <div className="mb-6 p-4 bg-coach-black rounded border border-coach-gold/30 cursor-pointer hover:border-coach-gold/60 transition"
-                    onClick={() => handleCopiarCupom(parceiro.cupom)}
-                  >
+                  <div className="mb-6 p-4 card-glass cursor-pointer" onClick={() => handleCopiarCupom(parceiro.cupom)}>
                     <p className="text-xs text-gray-500 mb-1 uppercase tracking-widest">
                       Cupom de Desconto
                     </p>
@@ -217,7 +215,7 @@ export default function ParceirosPage() {
 
         {/* Info Box */}
         {!loading && !error && parceiros.length > 0 && (
-          <div className="mt-12 p-6 bg-coach-gray border border-coach-gold/20 rounded-lg text-center">
+          <div className="mt-12 card-glass text-center">
             <p className="text-gray-300">
               <span className="text-coach-gold font-semibold">💝 Aproveite!</span>
               {' '}Todos esses parceiros oferecem descontos exclusivos para alunos Coach Vinny

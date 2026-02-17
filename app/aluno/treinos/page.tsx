@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 
 interface Treino {
   id: string;
@@ -75,8 +76,9 @@ export default function AlunoTreinosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-coach-black p-8">
-      <div className="max-w-6xl mx-auto">
+    <SubscriptionGuard>
+      <div className="min-h-screen bg-coach-black p-8">
+        <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-white mb-2">Meus Treinos</h1>
@@ -125,7 +127,7 @@ export default function AlunoTreinosPage() {
         {!loading && !error && treinos.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {treinos.map((treino) => (
-              <div key={treino.id} className="group bg-coach-gray rounded-lg overflow-hidden border border-coach-gold/20 hover:border-coach-gold/50 transition-all duration-300 hover:shadow-lg hover:shadow-coach-gold/10">
+              <div key={treino.id} className="group card-glass overflow-hidden transition-all duration-300 hover:shadow-lg">
                 {/* Card Header */}
                 <div className="p-6 border-b border-coach-gold/20">
                   <div className="flex items-start gap-3 mb-4">
@@ -166,14 +168,15 @@ export default function AlunoTreinosPage() {
 
         {/* Stats Footer */}
         {!loading && !error && treinos.length > 0 && (
-          <div className="mt-12 p-6 bg-coach-gray rounded-lg border border-coach-gold/20">
+          <div className="mt-12 card-glass">
             <p className="text-center text-gray-300">
               <span className="text-coach-gold font-semibold text-lg">{treinos.length}</span>
               <span className="ml-2">{treinos.length === 1 ? 'treino foi' : 'treinos foram'} compartilhados com você</span>
             </p>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </SubscriptionGuard>
   );
 }

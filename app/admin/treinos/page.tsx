@@ -154,7 +154,7 @@ export default function TreinosPage() {
         </div>
 
         {/* Form Container */}
-        <div className="bg-coach-gray rounded-lg p-8 border border-gray-800">
+        <div className="card-glass">
           {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
@@ -242,7 +242,7 @@ export default function TreinosPage() {
 
                 {/* File Preview */}
                 {filePreview && (
-                  <div className="mt-4 p-4 bg-coach-black rounded border border-coach-gold/50">
+                  <div className="mt-4 card-glass">
                     <p className="text-gray-300 text-sm">
                       <span className="text-coach-gold font-semibold">Arquivo selecionado:</span> {filePreview}
                     </p>
@@ -284,7 +284,7 @@ export default function TreinosPage() {
         </div>
 
         {/* Info Box */}
-        <div className="mt-8 p-4 bg-coach-gray border border-gray-800 rounded">
+        <div className="mt-8 card-glass">
           <h3 className="text-coach-gold font-semibold mb-2">ℹ Informações</h3>
           <ul className="text-gray-400 text-sm space-y-1">
             <li>• Apenas arquivos PDF são aceitos</li>

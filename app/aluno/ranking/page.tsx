@@ -25,37 +25,7 @@ export default function RankingPage() {
           .from('profiles')
           .select('id, nome, frequencia_treino, avatar_url')
           .eq('type', 'aluno')
-          .order('frequencia_treino', { ascending: false })
-
-            {/* Motivational Banner */}
-            <div className="mb-6 p-6 bg-coach-gray/40 border border-coach-gold/10 rounded-lg">
-              <p className="text-center text-gray-200">
-                <span className="text-coach-gold font-semibold">Mantenha o foco.</span>
-                {' '}Os alunos mais assíduos aparecem aqui — inspire-se e suba no ranking!
-              </p>
-            </div>
-
-            {/* Current user position */}
-            {userProfile && userPosition != null && (
-              <div className="mb-6 p-4 bg-coach-gray/30 border border-coach-gold/20 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-white overflow-hidden">
-                      {userProfile.avatar_url ? (
-                        <img src={userProfile.avatar_url} alt={userProfile.nome} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-sm">{userProfile.nome?.slice(0,1) || 'A'}</span>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-white font-semibold">Você — {userProfile.nome}</div>
-                      <div className="text-sm text-gray-400">Posição atual: <span className="text-coach-gold font-semibold">#{userPosition}</span></div>
-                    </div>
-                  </div>
-                  <div className="text-coach-gold font-semibold">{userProfile.frequencia_treino ?? 0} treinos</div>
-                </div>
-              </div>
-            )}
+          .order('frequencia_treino', { ascending: false });
         // current user
         const { data: authData } = await supabaseClient.auth.getUser();
         const user = authData?.user;
@@ -115,7 +85,7 @@ export default function RankingPage() {
         </div>
 
         {/* Motivational Banner */}
-        <div className="mb-8 p-6 bg-coach-gray/40 border border-coach-gold/10 rounded-lg">
+        <div className="mb-8 card-glass">
           <p className="text-center text-gray-200">
             <span className="text-coach-gold font-semibold">Mantenha o foco.</span>
             {' '}Os alunos mais assíduos aparecem aqui — inspire-se e suba no ranking!
@@ -134,7 +104,7 @@ export default function RankingPage() {
             {error}
           </div>
         ) : profiles.length === 0 ? (
-          <div className="p-8 bg-coach-gray rounded-lg border border-coach-gold/10 text-center">
+          <div className="p-8 card-glass text-center">
             <p className="text-gray-300">Nenhum aluno encontrado no ranking ainda.</p>
           </div>
         ) : (
@@ -144,8 +114,8 @@ export default function RankingPage() {
               {profiles.slice(0, 3).map((p, idx) => (
                 <div
                   key={p.id}
-                  className={`p-4 rounded-lg flex items-center gap-4 border ${
-                    idx === 0 ? 'border-coach-gold/80 bg-gradient-to-b from-coach-gold/10 to-transparent' : idx === 1 ? 'border-coach-gold/40 bg-coach-gray' : 'border-coach-gold/20 bg-coach-gray'
+                  className={`flex items-center gap-4 ${
+                    idx === 0 ? 'card-glass border-coach-gold/80 bg-gradient-to-b from-coach-gold/10 to-transparent' : 'card-glass'
                   }`}
                 >
                   <div className="text-3xl">{medalForPosition(idx + 1)}</div>

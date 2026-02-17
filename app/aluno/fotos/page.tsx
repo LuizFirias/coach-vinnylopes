@@ -213,9 +213,9 @@ export default function FotosPage() {
   };
 
   const emojiTipo = {
-    frente: '📱',
-    lado: '🔄',
-    costas: '🔙',
+    frente: '',
+    lado: '',
+    costas: '',
   };
 
   return (
@@ -229,10 +229,9 @@ export default function FotosPage() {
 
         {/* Notification Banner - 15 dias */}
         {mostrarNotificacao && (
-          <div className="mb-8 p-6 bg-linear-to-r from-coach-gold/20 to-coach-gold-dark/20 border border-coach-gold/50 rounded-lg shadow-lg">
+          <div className="mb-8 card-glass">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <span className="text-4xl">⏰</span>
                 <div>
                   <h3 className="text-xl font-semibold text-coach-gold mb-1">
                     Hora da avaliação!
@@ -248,7 +247,7 @@ export default function FotosPage() {
                 rel="noopener noreferrer"
                 className="px-6 py-3 bg-linear-to-r from-coach-gold to-coach-gold-dark text-black font-semibold rounded hover:from-coach-gold-dark hover:to-coach-gold transition whitespace-nowrap"
               >
-                💬 Chamar no WhatsApp
+                Chamar no WhatsApp
               </a>
             </div>
           </div>
@@ -256,7 +255,7 @@ export default function FotosPage() {
 
         {/* Contador de Dias */}
         {diasAteProxima !== null && diasAteProxima <= DIAS_NOTIFICACAO && !mostrarNotificacao && (
-          <div className="mb-8 p-4 bg-coach-gray border border-coach-gold/20 rounded-lg">
+          <div className="mb-8 card-glass">
             <p className="text-gray-300">
               <span className="text-coach-gold font-semibold">{diasAteProxima}</span>
               <span className="ml-2">dias até a próxima avaliação</span>
@@ -274,7 +273,7 @@ export default function FotosPage() {
         {/* Success Message */}
         {success && (
           <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded-lg text-green-400">
-            ✓ {success}
+            {success}
           </div>
         )}
 
@@ -295,7 +294,7 @@ export default function FotosPage() {
               {(['frente', 'lado', 'costas'] as const).map((tipo) => (
                 <div
                   key={tipo}
-                  className="backdrop-blur bg-coach-gray/30 border border-coach-gold/10 rounded-lg p-8 hover:border-coach-gold/30 transition"
+                  className="card-glass hover:border-coach-gold/30 transition"
                 >
                   <div className="mb-6">
                     <span className="text-5xl block mb-3">{emojiTipo[tipo]}</span>
@@ -360,9 +359,9 @@ export default function FotosPage() {
 
                 <div className="space-y-8">
                   {fotosPorData.map((grupo) => (
-                    <div key={grupo.data} className="backdrop-blur bg-coach-gray/30 border border-coach-gold/10 rounded-lg p-6">
+                    <div key={grupo.data} className="card-glass">
                       <h3 className="text-lg font-semibold text-coach-gold mb-6">
-                        📅 {grupo.data}
+                        {grupo.data}
                       </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

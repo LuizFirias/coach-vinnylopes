@@ -197,7 +197,7 @@ export default function NovoParceiroPage() {
         )}
 
         {/* Form Container */}
-        <div className="bg-coach-gray rounded-lg p-8 border border-gray-800">
+        <div className="card-glass">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Nome da Marca */}
             <div>
@@ -402,7 +402,7 @@ export default function NovoParceiroPage() {
         </div>
 
         {/* Info Box */}
-        <div className="mt-8 p-4 bg-coach-gray border border-coach-gold/20 rounded-lg">
+        <div className="mt-8 card-glass">
           <p className="text-gray-300 text-sm">
             <span className="text-coach-gold font-semibold">ℹ Dica:</span> Marque como "Verificado" para exibir
             um selo na página de alunos!
