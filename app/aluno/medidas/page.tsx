@@ -258,10 +258,7 @@ export default function MedidasPage() {
                 {/* Peso */}
                 <div>
                   <label htmlFor="peso" className="block text-sm font-medium text-gray-300 mb-2">
-                    <span className="flex items-center gap-2">
-                      <span>⚖️</span>
-                      Peso (kg)
-                    </span>
+                    Peso (kg)
                   </label>
                   <input
                     id="peso"
@@ -282,10 +279,7 @@ export default function MedidasPage() {
                   {/* Tórax */}
                   <div>
                     <label htmlFor="torax" className="block text-sm font-medium text-gray-300 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span>💪</span>
-                        Tórax (cm)
-                      </span>
+                      Tórax (cm)
                     </label>
                     <input
                       id="torax"
@@ -304,10 +298,7 @@ export default function MedidasPage() {
                   {/* Cintura */}
                   <div>
                     <label htmlFor="cintura" className="block text-sm font-medium text-gray-300 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span>📏</span>
-                        Cintura (cm)
-                      </span>
+                      Cintura (cm)
                     </label>
                     <input
                       id="cintura"
@@ -326,10 +317,7 @@ export default function MedidasPage() {
                   {/* Braço Esquerdo */}
                   <div>
                     <label htmlFor="braco_esq" className="block text-sm font-medium text-gray-300 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span>🦾</span>
-                        Braço Esq. (cm)
-                      </span>
+                      Braço Esq. (cm)
                     </label>
                     <input
                       id="braco_esq"
@@ -348,10 +336,7 @@ export default function MedidasPage() {
                   {/* Braço Direito */}
                   <div>
                     <label htmlFor="braco_dir" className="block text-sm font-medium text-gray-300 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span>💪</span>
-                        Braço Dir. (cm)
-                      </span>
+                      Braço Dir. (cm)
                     </label>
                     <input
                       id="braco_dir"
@@ -370,10 +355,7 @@ export default function MedidasPage() {
                   {/* Coxa Esquerda */}
                   <div>
                     <label htmlFor="coxa_esq" className="block text-sm font-medium text-gray-300 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span>🦵</span>
-                        Coxa Esq. (cm)
-                      </span>
+                      Coxa Esq. (cm)
                     </label>
                     <input
                       id="coxa_esq"
@@ -392,10 +374,7 @@ export default function MedidasPage() {
                   {/* Coxa Direita */}
                   <div>
                     <label htmlFor="coxa_dir" className="block text-sm font-medium text-gray-300 mb-2">
-                      <span className="flex items-center gap-2">
-                        <span>🦵</span>
-                        Coxa Dir. (cm)
-                      </span>
+                      Coxa Dir. (cm)
                     </label>
                     <input
                       id="coxa_dir"

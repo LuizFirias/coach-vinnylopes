@@ -200,14 +200,14 @@ export default function DashboardPage() {
         {/* Top cards grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div className="card-glass p-4">
-            <h3 className="text-xs uppercase tracking-[0.1em] text-gray-400 mb-3 font-semibold">Último Treino</h3>
+            <h3 className="text-xs uppercase tracking-widest text-gray-400 mb-3 font-semibold">Último Treino</h3>
             <p className="text-sm sm:text-base text-white/90 truncate">
               {lastTreino || "Nenhum treino"}
             </p>
           </div>
 
           <div className="card-glass p-4">
-            <h3 className="text-xs uppercase tracking-[0.1em] text-gray-400 mb-3 font-semibold">Evolução</h3>
+            <h3 className="text-xs uppercase tracking-widest text-gray-400 mb-3 font-semibold">Evolução</h3>
             <p className="text-sm sm:text-base text-white/90 font-medium">
               {pesoAtual != null ? `${pesoAtual} kg` : "—"}
             </p>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="card-glass p-4">
-            <h3 className="text-xs uppercase tracking-[0.1em] text-gray-400 mb-3 font-semibold">Ranking</h3>
+            <h3 className="text-xs uppercase tracking-widest text-gray-400 mb-3 font-semibold">Ranking</h3>
             <p className="text-sm sm:text-base text-white/90 font-medium">
               {rankingPos != null ? `#${rankingPos}` : "—"}
             </p>
@@ -232,7 +232,7 @@ export default function DashboardPage() {
         {/* Chart */}
         {dadosGrafico.length > 1 && (
           <div className="card-glass p-4 sm:p-6">
-            <h2 className="text-sm sm:text-base font-semibold text-white mb-4 uppercase tracking-[0.1em]">
+            <h2 className="text-sm sm:text-base font-semibold text-white mb-4 uppercase tracking-widest">
               Evolução do Peso
             </h2>
             <div style={{ width: "100%", height: 240 }}>

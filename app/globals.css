@@ -37,12 +37,12 @@ html, body {
   }
 
   .btn-glass {
-    @apply bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold uppercase tracking-[0.1em] hover:bg-white/20 hover:border-white/40 transition-all duration-200;
+    @apply bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold uppercase tracking-widest hover:bg-white/20 hover:border-white/40 transition-all duration-200;
     color: #D4AF37;
   }
 
   .btn-gradient {
-    @apply bg-gradient-to-r rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold uppercase tracking-[0.1em] hover:shadow-lg transition-all duration-200;
+    @apply bg-linear-to-r rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold uppercase tracking-widest hover:shadow-lg transition-all duration-200;
     background: linear-gradient(to right, #D4AF37, #BC962B);
     color: #121212;
     box-shadow: 0 0 0 0px rgba(0, 0, 0, 0);

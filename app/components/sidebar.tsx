@@ -11,6 +11,7 @@ const menuItems = [
   { name: 'FOTOS', href: '/aluno/fotos' },
   { name: 'PARCEIROS', href: '/aluno/parceiros' },
   { name: 'RANKING', href: '/aluno/ranking' },
+  { name: 'PERFIL', href: '/aluno/perfil' },
 ];
 
 const coachMenuItems = [

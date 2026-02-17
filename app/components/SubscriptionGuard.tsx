@@ -74,7 +74,7 @@ export default function SubscriptionGuard({ children }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-[200px] flex items-center justify-center">
+      <div className="min-h-50 flex items-center justify-center">
         <div className="text-gray-400">Carregando...</div>
       </div>
     );

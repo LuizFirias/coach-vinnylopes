@@ -35,27 +35,28 @@ export default function ResponsiveNav() {
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-coach-black/98 backdrop-blur-md border-b border-white/10 px-4">
         <div className="flex items-center justify-between h-full">
           <button
-            aria-label="Abrir menu"
             onClick={() => setMobileMenuOpen(true)}
             className="w-10 h-10 rounded-lg flex items-center justify-center bg-black/40 border border-white/20 hover:bg-white/5 transition-colors"
           >
             <Menu size={20} className="text-coach-gold" />
           </button>
-          {!logoFailed ? (
-            <Image
-              src="/logo.png"
-              alt="Coach Logo"
-              width={140}
-              height={40}
-              priority
-              onError={() => setLogoFailed(true)}
-              className="h-10 w-auto"
-            />
-          ) : (
-            <h1 className="text-xs font-bold tracking-[0.15em] uppercase text-white/90">
-              VINNY COACH
-            </h1>
-          )}
+          <div className="flex-1 flex justify-center">
+            {!logoFailed ? (
+              <Image
+                src="/logo.png"
+                alt="Coach Logo"
+                width={140}
+                height={40}
+                priority
+                onError={() => setLogoFailed(true)}
+                className="h-10 w-auto"
+              />
+            ) : (
+              <h1 className="text-xs font-bold tracking-[0.15em] uppercase text-white/90 text-center">
+                VINNY LOPES COACH
+              </h1>
+            )}
+          </div>
           <div className="w-10" />
         </div>
       </header>
@@ -79,7 +80,7 @@ export default function ResponsiveNav() {
               <h1 className="text-sm font-bold tracking-[0.15em] uppercase text-white">
                 VINNY LOPES
               </h1>
-              <p className="text-xs tracking-[0.1em] uppercase text-gray-400 mt-1">
+              <p className="text-xs tracking-widest uppercase text-gray-400 mt-1">
                 COACH
               </p>
             </div>
@@ -139,7 +140,6 @@ export default function ResponsiveNav() {
           <button
             onClick={() => setMobileMenuOpen(false)}
             className="w-8 h-8 flex items-center justify-center text-coach-gold hover:text-coach-gold/60 hover:bg-white/5 rounded-lg transition-all"
-            aria-label="Fechar menu"
           >
             <X size={20} />
           </button>

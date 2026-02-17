@@ -4,6 +4,7 @@ import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import { AlertCircle, LogIn } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,7 +12,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [logoFailed, setLogoFailed] = useState(false);
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -28,32 +28,30 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
-    try {
-      const vercelHost = process.env.NEXT_PUBLIC_VERCEL_URL;
-      const redirectTo = vercelHost ? `https://${vercelHost}` : typeof window !== 'undefined' ? window.location.origin : undefined;
 
-      const { data, error: authError } = await supabaseClient.auth.signInWithOtp({
+    try {
+      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
         email,
-        options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
+        password,
       });
 
       if (authError) {
-        setError(authError.message || 'Erro ao enviar link de acesso');
+        setError('Credenciais inválidas');
         setLoading(false);
         return;
       }
 
-      setSuccess('Verifique seu e-mail para acessar sua consultoria');
-      setLoading(false);
+      if (data.session) {
+        router.push('/aluno/treinos');
+      }
     } catch (err) {
-      setError('Erro ao processar solicitação. Tente novamente.');
+      setError('Credenciais inválidas');
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-coach-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-linear-to-br from-coach-black via-coach-black/95 to-coach-black/90 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="mb-12 text-center">
@@ -65,41 +63,39 @@ export default function LoginPage() {
               height={80}
               priority
               onError={() => setLogoFailed(true)}
-              className="h-20 w-auto mx-auto mb-4"
+              className="h-20 w-auto mx-auto mb-6"
             />
           ) : (
             <div>
-              <h1 className="text-5xl font-bold text-white mb-2">VINNY LOPES</h1>
-              <p className="text-2xl tracking-widest text-coach-gold">COACH</p>
+              <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2 tracking-tight">VINNY LOPES</h1>
+              <p className="text-lg sm:text-2xl tracking-[0.08em] text-coach-gold font-semibold">COACH</p>
             </div>
           )}
+          <p className="text-gray-400 text-sm tracking-widest mt-6 uppercase">Plataforma Premium de Coaching</p>
         </div>
 
-        {/* Form Container */}
-        <div className="bg-coach-gray rounded-lg p-8 border border-gray-800">
-          <h2 className="text-2xl font-semibold text-white mb-8 text-center">
+        {/* Form Container - Glass Effect */}
+        <div className="bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl hover:border-white/30 transition-all duration-300">
+          <h2 className="text-2xl font-bold text-white mb-2 text-center tracking-tight">
             Entrar na Plataforma
           </h2>
+          <p className="text-gray-400 text-sm text-center mb-8 tracking-wide">
+            Acesse sua consultoria exclusiva
+          </p>
 
-          {/* Error Message */}
+          {/* Error Message - Discrete Red Alert */}
           {error && (
-            <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
-              {error}
+            <div className="mb-6 bg-red-500/10 backdrop-blur-sm border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-red-500/90 text-sm font-medium">{error}</p>
             </div>
           )}
 
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded text-green-400 text-sm">
-              {success}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            {/* Email Input (glass) */}
-            <div className="card-glass p-3">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                Email
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Email Input */}
+            <div>
+              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.08em] text-gray-300 mb-2">
+                E-mail
               </label>
               <input
                 id="email"
@@ -107,27 +103,50 @@ export default function LoginPage() {
                 value={email}
                 onChange={handleEmailChange}
                 placeholder="seu@email.com"
-                className="w-full px-4 py-3 bg-transparent border-0 rounded text-white placeholder-gray-400 focus:outline-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:bg-white/10 transition-all duration-200"
                 required
                 disabled={loading}
               />
             </div>
 
-            {/* Magic Link Button */}
+            {/* Password Input */}
+            <div>
+              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-[0.08em] text-gray-300 mb-2">
+                Senha
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={handlePasswordChange}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:bg-white/10 transition-all duration-200"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            {/* Login Button - Golden Gradient */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 mt-2 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+              className="w-full py-3 mt-6 font-semibold text-sm uppercase tracking-[0.08em] text-black rounded-lg bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold disabled:from-coach-gold/50 disabled:to-coach-gold-dark/50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-coach-gold/30 flex items-center justify-center gap-2 group"
             >
-              {loading ? 'Enviando...' : 'Enviar Link de Acesso'}
+              <LogIn className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-disabled:opacity-50" />
+              {loading ? 'Entrando...' : 'ENTRAR'}
             </button>
           </form>
 
           {/* Footer Text */}
-          <p className="text-center text-gray-400 text-sm mt-6">
-            Plataforma Premium de Coaching
+          <p className="text-center text-gray-500 text-xs tracking-widest mt-8 uppercase">
+            © 2026 Coach Vinny - Sistema Exclusivo
           </p>
         </div>
+
+        {/* Support Info */}
+        <p className="text-center text-gray-600 text-xs mt-8 tracking-wide">
+          Para acesso, entre em contato com o coach
+        </p>
       </div>
     </div>
   );

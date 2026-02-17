@@ -10,8 +10,8 @@ export default function RootLayout({
     <html lang="pt-br">
       <body className="bg-coach-black text-white overflow-x-hidden">
         <ResponsiveNav />
-        {/* Main content with lg:ml-64 for desktop sidebar */}
-        <main className="lg:ml-64 lg:pt-0 pt-16">
+        {/* Main content with lg:ml-64 for desktop sidebar, pt-16 for mobile header */}
+        <main className="pt-16 lg:pt-0 lg:ml-64">
           {children}
         </main>
       </body>

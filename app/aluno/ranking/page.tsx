@@ -24,7 +24,7 @@ export default function RankingPage() {
         const { data: topData, error: topError } = await supabaseClient
           .from('profiles')
           .select('id, nome, frequencia_treino, avatar_url')
-          .eq('type', 'aluno')
+          .eq('role', 'aluno')
           .order('frequencia_treino', { ascending: false });
         // current user
         const { data: authData } = await supabaseClient.auth.getUser();
@@ -47,7 +47,7 @@ export default function RankingPage() {
             const { count, error: countError } = await supabaseClient
               .from('profiles')
               .select('id', { count: 'exact' })
-              .eq('type', 'aluno')
+              .eq('role', 'aluno')
               .gt('frequencia_treino', userFreq);
 
             if (!countError) {
@@ -70,10 +70,10 @@ export default function RankingPage() {
   }, []);
 
   const medalForPosition = (pos: number) => {
-    if (pos === 1) return '🥇';
-    if (pos === 2) return '🥈';
-    if (pos === 3) return '🥉';
-    return `${pos}`;
+    if (pos === 1) return '1º';
+    if (pos === 2) return '2º';
+    if (pos === 3) return '3º';
+    return `${pos}º`;
   };
 
   return (
@@ -115,7 +115,7 @@ export default function RankingPage() {
                 <div
                   key={p.id}
                   className={`flex items-center gap-4 ${
-                    idx === 0 ? 'card-glass border-coach-gold/80 bg-gradient-to-b from-coach-gold/10 to-transparent' : 'card-glass'
+                    idx === 0 ? 'card-glass border-coach-gold/80 bg-linear-to-b from-coach-gold/10 to-transparent' : 'card-glass'
                   }`}
                 >
                   <div className="text-3xl">{medalForPosition(idx + 1)}</div>

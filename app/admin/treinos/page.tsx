@@ -24,8 +24,9 @@ export default function TreinosPage() {
     const fetchAlunos = async () => {
       try {
         const { data, error: fetchError } = await supabaseClient
-          .from('alunos')
+          .from('profiles')
           .select('id, nome, email')
+          .eq('role', 'aluno')
           .order('nome', { ascending: true });
 
         if (fetchError) {
