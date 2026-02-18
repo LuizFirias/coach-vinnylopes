@@ -57,11 +57,13 @@ export default function DashboardPage() {
         // Get profile info
         const { data: profile } = await supabaseClient
           .from("profiles")
-          .select("nome, data_expiracao, status_pagamento")
+          .select("full_name, data_expiracao, status_pagamento")
           .eq("id", userId)
           .single();
 
-        if (profile?.nome) setName(profile.nome);
+        const displayName = profile?.full_name || user.email?.split("@")[0] || "Aluno";
+        setName(displayName);
+
         setStatusPagamento(profile?.status_pagamento || "pendente");
 
         // Check if subscription is active
@@ -103,9 +105,9 @@ export default function DashboardPage() {
         // Ranking position
         const { data: allProfiles } = await supabaseClient
           .from("profiles")
-          .select("id, frequencia_treino")
-          .eq("type", "aluno")
-          .order("frequencia_treino", { ascending: false });
+          .select("id, ultimo_checkin")
+          .eq("role", "aluno")
+          .order("ultimo_checkin", { ascending: false, nullsFirst: false });
 
         if (allProfiles) {
           const idx = (allProfiles as any[]).findIndex((p) => p.id === userId);

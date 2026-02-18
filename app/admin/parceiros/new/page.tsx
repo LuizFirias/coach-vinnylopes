@@ -10,266 +10,231 @@ interface FormData {
   cupom: string;
   link_site: string;
   verificado: boolean;
-}
+"use client";
+
+import { useMemo, useState, useEffect } from "react";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 export default function NovoParceiroPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState<FormData>({
-    nome_marca: '',
-    descricao: '',
-    cupom: '',
-    link_site: '',
-    verificado: false,
-  });
-
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [nomeProduto, setNomeProduto] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [cupom, setCupom] = useState("");
+  const [linkDesconto, setLinkDesconto] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
+  const imagePreviews = useMemo(
+    () => imageFiles.map((file) => URL.createObjectURL(file)),
+    [imageFiles]
+  );
 
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: checked,
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviews]);
+
+  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 5) {
+      setError("Selecione no maximo 5 imagens");
+      return;
     }
-  };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validar tipo de arquivo
-      if (!file.type.startsWith('image/')) {
-        setError('Por favor, selecione uma imagem válida');
-        setLogoFile(null);
-        setLogoPreview('');
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) {
+        setError("Envie apenas imagens");
         return;
       }
-
-      // Validar tamanho (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        setError('Logo muito grande. Máximo 5MB');
-        setLogoFile(null);
-        setLogoPreview('');
+        setError("Cada imagem deve ter no maximo 5MB");
         return;
       }
-
-      setLogoFile(file);
-
-      // Preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      setError(null);
     }
+
+    setError(null);
+    setImageFiles(files);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    // Validações
-    if (!formData.nome_marca.trim()) {
-      setError('Nome da marca é obrigatório');
+    if (!nomeProduto.trim() || !descricao.trim() || !cupom.trim() || !linkDesconto.trim()) {
+      setError("Preencha todos os campos");
       return;
     }
-    if (!formData.descricao.trim()) {
-      setError('Descrição é obrigatória');
-      return;
-    }
-    if (!formData.cupom.trim()) {
-      setError('Cupom é obrigatório');
-      return;
-    }
-    if (!formData.link_site.trim()) {
-      setError('Link do site é obrigatório');
-      return;
-    }
-    if (!logoFile) {
-      setError('Logo é obrigatória');
+
+    if (imageFiles.length === 0) {
+      setError("Envie pelo menos 1 imagem");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 1. Upload da logo
-      const fileName = `${Date.now()}_${logoFile.name}`;
+      const uploadedUrls: string[] = [];
+      for (const file of imageFiles) {
+        const fileName = `${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabaseClient.storage
+          .from("parceiros-logos")
+          .upload(fileName, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
 
-      const { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from('parceiros-logos')
-        .upload(fileName, logoFile, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+        if (uploadError) {
+          throw uploadError;
+        }
 
-      if (uploadError) {
-        setError('Erro ao fazer upload da logo: ' + uploadError.message);
-        setLoading(false);
-        return;
+        const { data: publicUrlData } = supabaseClient
+          .storage
+          .from("parceiros-logos")
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(publicUrlData.publicUrl);
       }
 
-      // 2. Obter URL pública
-      const { data: publicUrlData } = supabaseClient
-        .storage
-        .from('parceiros-logos')
-        .getPublicUrl(fileName);
+      const logoUrl = uploadedUrls[0] || null;
 
-      const urlLogo = publicUrlData.publicUrl;
-
-      // 3. Salvar na tabela
       const { error: dbError } = await supabaseClient
-        .from('parceiros')
+        .from("parceiros")
         .insert({
-          nome_marca: formData.nome_marca,
-          descricao: formData.descricao,
-          cupom: formData.cupom,
-          link_site: formData.link_site,
-          url_logo: urlLogo,
-          verificado: formData.verificado,
+          nome_marca: nomeProduto.trim(),
+          descricao: descricao.trim(),
+          cupom: cupom.trim(),
+          link_desconto: linkDesconto.trim(),
+          logo_url: logoUrl,
+          imagens: uploadedUrls,
         });
 
       if (dbError) {
-        setError('Erro ao salvar parceiro: ' + dbError.message);
-        setLoading(false);
-        return;
+        throw dbError;
       }
 
-      setSuccess('Parceiro cadastrado com sucesso!');
+      setSuccess("Parceiro cadastrado com sucesso!");
+      setNomeProduto("");
+      setDescricao("");
+      setCupom("");
+      setLinkDesconto("");
+      setImageFiles([]);
 
-      // Limpar formulário
-      setFormData({
-        nome_marca: '',
-        descricao: '',
-        cupom: '',
-        link_site: '',
-        verificado: false,
-      });
-      setLogoFile(null);
-      setLogoPreview('');
-
-      // Redirecionar após 2 segundos
       setTimeout(() => {
-        router.push('/admin/parceiros');
+        router.push("/admin/parceiros");
       }, 2000);
-    } catch (err) {
-      setError('Erro ao processar a solicitação');
+    } catch (err: any) {
+      setError(err?.message || "Erro ao processar a solicitacao");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-coach-black p-8">
+    <div className="min-h-screen bg-coach-black p-8 pt-8">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-white mb-2">Novo Parceiro</h1>
-          <p className="text-gray-400">Cadastrar uma nova marca ou serviço parceiro</p>
+          <p className="text-gray-400">Cadastrar uma nova marca ou produto parceiro</p>
         </div>
 
-        {/* Error State */}
         {error && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400">
             {error}
           </div>
         )}
 
-        {/* Success Message */}
         {success && (
           <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded-lg text-green-400">
             ✓ {success}
           </div>
         )}
 
-        {/* Form Container */}
         <div className="card-glass">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Nome da Marca */}
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="nome_marca" className="block text-sm font-medium text-gray-300 mb-2">
-                Nome da Marca *
-              </label>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Nome do Produto</label>
               <input
-                id="nome_marca"
                 type="text"
-                name="nome_marca"
-                value={formData.nome_marca}
-                onChange={handleInputChange}
-                placeholder="Nike, Adidas, etc."
+                value={nomeProduto}
+                onChange={(e) => setNomeProduto(e.target.value)}
+                placeholder="Nome do produto"
                 disabled={loading}
-                className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                 required
               />
             </div>
 
-            {/* Descrição */}
             <div>
-              <label htmlFor="descricao" className="block text-sm font-medium text-gray-300 mb-2">
-                Descrição *
-              </label>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Descrição</label>
               <textarea
-                id="descricao"
-                name="descricao"
-                value={formData.descricao}
-                onChange={handleInputChange}
-                placeholder="Breve descrição do serviço/produto..."
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Breve descricao do produto"
                 disabled={loading}
                 rows={3}
-                className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50 resize-none"
+                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50 resize-none"
                 required
               />
             </div>
 
-            {/* Cupom */}
             <div>
-              <label htmlFor="cupom" className="block text-sm font-medium text-gray-300 mb-2">
-                Código do Cupom *
-              </label>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Código do Cupom</label>
               <input
-                id="cupom"
                 type="text"
-                name="cupom"
-                value={formData.cupom}
-                onChange={handleInputChange}
-                placeholder="COACHVINNY20"
+                value={cupom}
+                onChange={(e) => setCupom(e.target.value)}
+                placeholder="COACH10"
                 disabled={loading}
-                className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                 required
               />
             </div>
 
-            {/* Link do Site */}
             <div>
-              <label htmlFor="link_site" className="block text-sm font-medium text-gray-300 mb-2">
-                Link do Site *
-              </label>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Link de Desconto</label>
               <input
-                id="link_site"
-                type="text"
-                name="link_site"
-                value={formData.link_site}
-                onChange={handleInputChange}
-                placeholder="https://exemplo.com"
+                type="url"
+                value={linkDesconto}
+                onChange={(e) => setLinkDesconto(e.target.value)}
+                placeholder="https://loja.com"
                 disabled={loading}
-                className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                 required
               />
             </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Imagens (até 5)</label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImagesChange}
+                className="w-full text-sm text-gray-300"
+                disabled={loading}
+              />
+              {imagePreviews.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {imagePreviews.map((src) => (
+                    <div key={src} className="h-16 rounded bg-black/40 overflow-hidden">
+                      <img src={src} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50"
+            >
+              {loading ? "Salvando..." : "Cadastrar Parceiro"}
+            </button>
 
             {/* Logo Upload */}
             <div>

@@ -15,8 +15,10 @@ const menuItems = [
 ];
 
 const coachMenuItems = [
-  { name: 'Dashboard de Alunos', href: '/admin/dashboard' },
-  { name: 'Configurar Parceiros', href: '/admin/parceiros/new' },
+  { name: 'ALUNOS', href: '/admin/alunos' },
+  { name: 'RELATORIOS', href: '/admin/relatorios' },
+  { name: 'PARCEIROS', href: '/admin/parceiros' },
+  { name: 'RANKING', href: '/admin/ranking' },
 ];
 
 export default function Sidebar() {
@@ -91,7 +93,7 @@ export default function Sidebar() {
         </button>
 
         {/* Menu content */}
-        <nav className="p-6 pt-16 flex flex-col gap-6">
+        <nav className="p-6 pt-16 flex flex-col gap-6 overflow-y-auto h-screen">
           {menuItems.map((m) => (
             <Link
               key={m.href}

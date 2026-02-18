@@ -1,204 +1,379 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { Clock, Play, Check, Video } from "lucide-react";
 
-interface Exercise {
+interface Serie {
+  ordem: number;
+  anterior: string;
+  peso_atual: number;
+  reps: number;
+  completado: boolean;
+}
+
+interface Exercicio {
   id: string;
   nome: string;
+  descanso: string;
+  video_url?: string;
+  series: Serie[];
 }
 
-interface Registro {
+interface FichaTreino {
   id: string;
-  exercise_id: string;
-  series: number;
-  reps: number;
-  carga: number;
-  created_at: string;
+  nome_rotina: string;
+  exercicios: Exercicio[];
 }
 
-export default function FichaTreinoPage() {
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [inputs, setInputs] = useState<Record<string, { series: string; reps: string; carga: string }>>({});
-  const [lastCarga, setLastCarga] = useState<Record<string, number | null>>({});
+export default function FichaTreinoAlunoPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fichaId = searchParams?.get("id");
+
+  const [ficha, setFicha] = useState<FichaTreino | null>(null);
   const [loading, setLoading] = useState(true);
-  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
-  const [msg, setMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [videoModal, setVideoModal] = useState<string | null>(null);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (!user) {
-          setMsg("Usuário não autenticado");
-          setLoading(false);
-          return;
-        }
+    loadFicha();
+  }, [fichaId]);
 
-        // tentar carregar exercícios da tabela 'exercicios', senão usar fallback
-        const { data: exData } = await supabaseClient.from("exercicios").select("id, nome").order("nome", { ascending: true });
-
-        let exList: Exercise[] = [];
-        if (exData && exData.length > 0) {
-          exList = exData as Exercise[];
-        } else {
-          // fallback examples
-          exList = [
-            { id: "ex-squat", nome: "Agachamento" },
-            { id: "ex-bench", nome: "Supino" },
-            { id: "ex-deadlift", nome: "Levantamento Terra" },
-            { id: "ex-row", nome: "Remada" },
-          ];
-        }
-
-        setExercises(exList);
-
-        // init inputs
-        const inputInit: Record<string, { series: string; reps: string; carga: string }> = {};
-        exList.forEach((ex) => (inputInit[ex.id] = { series: "", reps: "", carga: "" }));
-        setInputs(inputInit);
-
-        // carregar último registro de cada exercício para o usuário
-        const exIds = exList.map((e) => e.id);
-        const { data: registros } = await supabaseClient
-          .from("registros_treino")
-          .select("id, exercise_id, carga, created_at")
-          .eq("user_id", user.id)
-          .in("exercise_id", exIds)
-          .order("created_at", { ascending: false });
-
-        const lastMap: Record<string, number | null> = {};
-        exIds.forEach((id) => (lastMap[id] = null));
-        if (registros && registros.length > 0) {
-          for (const r of registros as Registro[]) {
-            if (lastMap[r.exercise_id] == null) lastMap[r.exercise_id] = r.carga;
-          }
-        }
-        setLastCarga(lastMap);
-      } catch (err: any) {
-        setMsg(err?.message || String(err));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, []);
-
-  const handleChange = (exerciseId: string, field: 'series' | 'reps' | 'carga', value: string) => {
-    setInputs((prev) => ({ ...prev, [exerciseId]: { ...prev[exerciseId], [field]: value } }));
-  };
-
-  const handleSave = async (exerciseId: string) => {
-    const vals = inputs[exerciseId];
-    if (!vals) return;
-    const series = Number(vals.series);
-    const reps = Number(vals.reps);
-    const carga = Number(vals.carga);
-
-    if (!series || !reps || !carga) {
-      setMsg('Preencha Séries, Reps e Carga corretamente.');
-      setTimeout(() => setMsg(null), 3000);
+  const loadFicha = async () => {
+    if (!fichaId) {
+      setLoading(false);
       return;
     }
 
-    setSavingIds((s) => new Set(s).add(exerciseId));
     try {
       const { data: authData } = await supabaseClient.auth.getUser();
-      const user = authData?.user;
-      if (!user) throw new Error('Usuário não autenticado');
+      const userId = authData?.user?.id;
+      if (!userId) {
+        router.push("/login");
+        return;
+      }
 
-      const { error } = await supabaseClient.from('registros_treino').insert({
-        user_id: user.id,
-        exercise_id: exerciseId,
-        series,
-        reps,
-        carga,
-        created_at: new Date().toISOString(),
+      // Buscar ficha do aluno
+      const { data: fichaData, error: fichaError } = await supabaseClient
+        .from("fichas_treino")
+        .select("*")
+        .eq("id", fichaId)
+        .eq("aluno_id", userId)
+        .eq("ativo", true)
+        .single();
+
+      if (fichaError || !fichaData) {
+        console.error("Erro ao carregar ficha:", fichaError);
+        setLoading(false);
+        return;
+      }
+
+      // Buscar último treino para preencher coluna ANTERIOR
+      const { data: historicoData } = await supabaseClient
+        .from("historico_treinos")
+        .select("dados_sessao")
+        .eq("ficha_id", fichaId)
+        .eq("aluno_id", userId)
+        .order("data_conclusao", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const configuracao = fichaData.configuracao as any;
+      const historico = historicoData?.dados_sessao as any;
+
+      // Construir ficha com dados anteriores
+      const exerciciosComHistorico = (configuracao.exercicios || []).map((ex: any) => {
+        const historicoEx = historico?.exercicios?.find((h: any) => h.id === ex.id);
+        
+        return {
+          ...ex,
+          series: (ex.series || []).map((serie: any, idx: number) => {
+            const seriePrev = historicoEx?.series?.[idx];
+            const anterior = seriePrev 
+              ? `${seriePrev.peso_atual || 0}kg x ${seriePrev.reps || 0}`
+              : "—";
+            
+            return {
+              ordem: serie.ordem || idx + 1,
+              anterior,
+              peso_atual: serie.peso_atual || 0,
+              reps: serie.reps || 0,
+              completado: false,
+            };
+          }),
+        };
+      });
+
+      setFicha({
+        id: fichaData.id,
+        nome_rotina: fichaData.nome_rotina,
+        exercicios: exerciciosComHistorico,
+      });
+    } catch (err) {
+      console.error("Erro ao carregar ficha:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckSerie = (exercicioId: string, serieOrdem: number) => {
+    setFicha((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercicios: prev.exercicios.map((ex) => {
+          if (ex.id !== exercicioId) return ex;
+          return {
+            ...ex,
+            series: ex.series.map((s) => {
+              if (s.ordem !== serieOrdem) return s;
+              return { ...s, completado: !s.completado };
+            }),
+          };
+        }),
+      };
+    });
+  };
+
+  const handleUpdateSerie = (exercicioId: string, serieOrdem: number, field: "peso_atual" | "reps", value: number) => {
+    setFicha((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercicios: prev.exercicios.map((ex) => {
+          if (ex.id !== exercicioId) return ex;
+          return {
+            ...ex,
+            series: ex.series.map((s) => {
+              if (s.ordem !== serieOrdem) return s;
+              return { ...s, [field]: value };
+            }),
+          };
+        }),
+      };
+    });
+  };
+
+  const handleFinalizarTreino = async () => {
+    if (!ficha) return;
+    
+    setSaving(true);
+    try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const userId = authData?.user?.id;
+      if (!userId) return;
+
+      const dadosSessao = {
+        nome_rotina: ficha.nome_rotina,
+        exercicios: ficha.exercicios,
+        data_sessao: new Date().toISOString(),
+      };
+
+      const { error } = await supabaseClient.from("historico_treinos").insert({
+        ficha_id: ficha.id,
+        aluno_id: userId,
+        dados_sessao: dadosSessao,
+        data_conclusao: new Date().toISOString(),
       });
 
       if (error) throw error;
 
-      // atualizar lastCarga local
-      setLastCarga((prev) => ({ ...prev, [exerciseId]: carga }));
-      setMsg('Série salva com sucesso');
-      setTimeout(() => setMsg(null), 2500);
-      // limpar inputs para aquele exercício
-      setInputs((p) => ({ ...p, [exerciseId]: { series: '', reps: '', carga: '' } }));
-    } catch (err: any) {
-      setMsg(err?.message || String(err));
+      alert("Treino finalizado com sucesso! 💪");
+      router.push("/aluno/treinos");
+    } catch (err) {
+      console.error("Erro ao salvar histórico:", err);
+      alert("Erro ao finalizar treino");
     } finally {
-      setSavingIds((s) => {
-        const next = new Set(s);
-        next.delete(exerciseId);
-        return next;
-      });
+      setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-gray-400 text-lg">Carregando ficha...</div>
+      </div>
+    );
+  }
+
+  if (!ficha) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-400 text-lg mb-4">Nenhuma ficha encontrada</div>
+          <button
+            onClick={() => router.push("/aluno/treinos")}
+            className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-coach-black p-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Ficha de Treino</h1>
-          <p className="text-gray-400">Registre suas séries e acompanhe a última carga usada.</p>
-        </header>
+    <div className="min-h-screen bg-[#0a0a0a] py-8 px-4">
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">{ficha.nome_rotina}</h1>
+          <p className="text-gray-400">Preencha os pesos e repetições. Marque cada série ao completar.</p>
+        </div>
 
-        {msg && <div className="mb-4 card-glass">{msg}</div>}
+        {/* Botão Iniciar Rotina */}
+        <button
+          onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
+          className="w-full mb-6 py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          <Play className="w-5 h-5" />
+          INICIAR ROTINA
+        </button>
 
-        {loading ? (
-          <div className="py-12 text-center text-gray-400">Carregando exercícios...</div>
-        ) : (
-          <div className="space-y-4">
-            {exercises.map((ex) => (
-              <div key={ex.id} className="card-glass flex flex-col md:flex-row md:items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-white font-semibold">{ex.nome}</h3>
-                    <div className="text-sm text-gray-300">Última carga: <span className="text-coach-gold font-semibold">{lastCarga[ex.id] ?? '—'}</span></div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-3 gap-3 max-w-sm">
-                    <input
-                      type="number"
-                      placeholder="Séries"
-                      value={inputs[ex.id]?.series || ''}
-                      onChange={(e) => handleChange(ex.id, 'series', e.target.value)}
-                      className="px-3 py-2 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Reps"
-                      value={inputs[ex.id]?.reps || ''}
-                      onChange={(e) => handleChange(ex.id, 'reps', e.target.value)}
-                      className="px-3 py-2 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Carga (kg)"
-                      value={inputs[ex.id]?.carga || ''}
-                      onChange={(e) => handleChange(ex.id, 'carga', e.target.value)}
-                      className="px-3 py-2 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold"
-                    />
-                  </div>
+        {/* Lista de Exercícios */}
+        <div className="space-y-6">
+          {ficha.exercicios.map((exercicio) => (
+            <div
+              key={exercicio.id}
+              className="bg-zinc-900 border border-yellow-500/10 rounded-xl p-6 shadow-lg"
+            >
+              {/* Cabeçalho do Card */}
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 bg-linear-to-br from-yellow-600 to-yellow-800 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="text-2xl">💪</span>
                 </div>
-
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={() => handleSave(ex.id)}
-                    disabled={savingIds.has(ex.id)}
-                    className="mt-3 md:mt-0 px-6 py-2 bg-linear-to-r from-coach-gold to-coach-gold-dark text-black font-semibold rounded disabled:opacity-60"
-                  >
-                    {savingIds.has(ex.id) ? 'Salvando...' : 'Salvar Série'}
-                  </button>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-1">{exercicio.nome}</h3>
+                  <div className="flex items-center gap-2 text-gray-400 text-sm">
+                    <Clock className="w-4 h-4" />
+                    <span>Descanso: {exercicio.descanso}</span>
+                  </div>
+                  {exercicio.video_url && (
+                    <button
+                      onClick={() => setVideoModal(exercicio.video_url || null)}
+                      className="mt-2 flex items-center gap-1 text-yellow-500 hover:text-yellow-400 text-sm"
+                    >
+                      <Video className="w-4 h-4" />
+                      Ver vídeo explicativo
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* Tabela de Séries */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Série</th>
+                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Anterior</th>
+                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">KG</th>
+                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Reps</th>
+                      <th className="text-center py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Check</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {exercicio.series.map((serie) => (
+                      <tr
+                        key={serie.ordem}
+                        className={`border-b border-gray-800/50 transition ${
+                          serie.completado ? "opacity-50 bg-yellow-500/5" : ""
+                        }`}
+                      >
+                        <td className="py-3 px-3 text-white font-semibold">{serie.ordem}ª</td>
+                        <td className="py-3 px-3 text-gray-400 text-sm">{serie.anterior}</td>
+                        <td className="py-3 px-3">
+                          <input
+                            type="number"
+                            value={serie.peso_atual || ""}
+                            onChange={(e) =>
+                              handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", Number(e.target.value))
+                            }
+                            className="w-20 px-2 py-1 bg-zinc-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-yellow-500"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="py-3 px-3">
+                          <input
+                            type="number"
+                            value={serie.reps || ""}
+                            onChange={(e) =>
+                              handleUpdateSerie(exercicio.id, serie.ordem, "reps", Number(e.target.value))
+                            }
+                            className="w-20 px-2 py-1 bg-zinc-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-yellow-500"
+                            placeholder="0"
+                          />
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
+                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition ${
+                              serie.completado
+                                ? "bg-yellow-500 border-yellow-500"
+                                : "border-gray-600 hover:border-yellow-500"
+                            }`}
+                          >
+                            {serie.completado && <Check className="w-4 h-4 text-black font-bold" />}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Botão Finalizar Treino */}
+        <div className="mt-8 flex gap-4">
+          <button
+            onClick={() => router.push("/aluno/treinos")}
+            className="flex-1 py-4 bg-white/[0.03] border border-white/10 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-xl hover:bg-white/[0.05] transition-all duration-300"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleFinalizarTreino}
+            disabled={saving}
+            className="flex-1 py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "FINALIZAR TREINO"}
+          </button>
+        </div>
       </div>
+
+      {/* Modal de Vídeo */}
+      {videoModal && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setVideoModal(null)}
+        >
+          <div
+            className="bg-zinc-900 rounded-xl p-6 max-w-3xl w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-white font-bold text-lg">Vídeo Explicativo</h3>
+              <button
+                onClick={() => setVideoModal(null)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="aspect-video bg-black rounded-lg">
+              <iframe
+                src={videoModal}
+                className="w-full h-full rounded-lg"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

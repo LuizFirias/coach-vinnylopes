@@ -219,7 +219,7 @@ export default function FotosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-coach-black p-8">
+    <div className="min-h-screen bg-coach-black p-8 pt-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -245,7 +245,7 @@ export default function FotosPage() {
                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=Olá%20Coach!%20Estou%20enviando%20minhas%20fotos%20de%20evolução.`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 bg-linear-to-r from-coach-gold to-coach-gold-dark text-black font-semibold rounded hover:from-coach-gold-dark hover:to-coach-gold transition whitespace-nowrap"
+                className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] whitespace-nowrap"
               >
                 Chamar no WhatsApp
               </a>
@@ -320,7 +320,7 @@ export default function FotosPage() {
                         input?.click();
                       }}
                       disabled={uploadingTypes.has(tipo)}
-                      className="w-full py-4 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                      className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {uploadingTypes.has(tipo) ? (
                         <>
@@ -383,7 +383,7 @@ export default function FotosPage() {
                                 href={foto.url_foto}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-6 py-2 bg-linear-to-r from-coach-gold to-coach-gold-dark text-black font-semibold rounded transition"
+                                className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] transition-all duration-300"
                               >
                                 Visualizar
                               </a>

@@ -1,15 +1,18 @@
-'use client';
+"use client";
 
-import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
-import Image from 'next/image';
-import { supabaseClient } from '@/lib/supabaseClient';
-import { useRouter } from 'next/navigation';
-import { AlertCircle, LogIn } from 'lucide-react';
+import React, { useState, FormEvent, ChangeEvent } from "react";
+import Image from "next/image";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, LogIn, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const searchParams = useSearchParams();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -36,117 +39,171 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        setError('Credenciais inválidas');
+        setError("Credenciais inválidas");
         setLoading(false);
         return;
       }
 
-      if (data.session) {
-        router.push('/aluno/treinos');
+      if (data?.session && data.user) {
+        const { data: profileData, error: profileError } = await supabaseClient
+          .from("profiles")
+          .select("id, role")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError || !profileData) {
+          setError("Usuário não encontrado no sistema. Entre em contato com o coach.");
+          await supabaseClient.auth.signOut();
+          setLoading(false);
+          return;
+        }
+
+        try {
+          await fetch("/api/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              access_token: data.session.access_token,
+              expires_at: data.session.expires_at,
+            }),
+          });
+        } catch (err) {
+          console.warn("Could not set session cookie", err);
+        }
+
+        const from = searchParams?.get("from");
+        const role = profileData?.role || "aluno";
+        const defaultRoute = role === "coach" ? "/admin/alunos" : "/aluno/treinos";
+        const allowAdmin = role === "coach";
+
+        if (from) {
+          const isAlunoRoute = from.startsWith("/aluno");
+          const isAdminRoute = from.startsWith("/admin");
+          if ((isAlunoRoute && !allowAdmin) || (isAdminRoute && allowAdmin)) {
+            router.push(from);
+            return;
+          }
+        }
+
+        router.push(defaultRoute);
       }
     } catch (err) {
-      setError('Credenciais inválidas');
+      setError("Credenciais inválidas");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-coach-black via-coach-black/95 to-coach-black/90 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="mb-12 text-center">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-4">
+      <div className="w-full max-w-md flex flex-col items-center">
+        
+        {/* Bloco da Logo - Aproximação Máxima */}
+        <div className="animate-in fade-in slide-in-from-bottom-6 duration-1000 flex flex-col items-center text-center z-10 -mb-12">
           {!logoFailed ? (
             <Image
               src="/logo.png"
               alt="Coach Logo"
-              width={200}
-              height={80}
+              width={260}
+              height={260}
               priority
               onError={() => setLogoFailed(true)}
-              className="h-20 w-auto mx-auto mb-6"
+              style={{ height: "auto" }}
+              className="w-52 sm:w-60 object-contain"
             />
           ) : (
-            <div>
-              <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2 tracking-tight">VINNY LOPES</h1>
-              <p className="text-lg sm:text-2xl tracking-[0.08em] text-coach-gold font-semibold">COACH</p>
+            <div className="mb-2">
+              <h1 className="text-4xl font-bold text-white tracking-tight uppercase">Vinny Lopes</h1>
+              <p className="text-lg tracking-[0.2em] text-[#D4AF37] font-semibold uppercase">Coach</p>
             </div>
           )}
-          <p className="text-gray-400 text-sm tracking-widest mt-6 uppercase">Plataforma Premium de Coaching</p>
+          <p className="text-gray-300 text-[9px] font-medium tracking-[0.45em] uppercase mt-1">
+            Plataforma Premium de Coaching
+          </p>
         </div>
 
-        {/* Form Container - Glass Effect */}
-        <div className="bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl hover:border-white/30 transition-all duration-300">
-          <h2 className="text-2xl font-bold text-white mb-2 text-center tracking-tight">
-            Entrar na Plataforma
-          </h2>
-          <p className="text-gray-400 text-sm text-center mb-8 tracking-wide">
-            Acesse sua consultoria exclusiva
-          </p>
+        {/* Card de Login */}
+        <div className="w-full bg-black/60 backdrop-blur-3xl border-[0.5px] border-yellow-500/20 rounded-3xl p-8 sm:p-10 shadow-2xl animate-in fade-in slide-in-from-bottom-10 duration-1000">
+          <div className="text-center mb-8 pt-4">
+            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Entrar na Plataforma</h2>
+            <p className="text-gray-400 text-xs tracking-wide">Acesse sua consultoria exclusiva</p>
+          </div>
 
-          {/* Error Message - Discrete Red Alert */}
           {error && (
-            <div className="mb-6 bg-red-500/10 backdrop-blur-sm border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <p className="text-red-500/90 text-sm font-medium">{error}</p>
+            <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-red-400 text-[11px] font-medium">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.08em] text-gray-300 mb-2">
-                E-mail
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 ml-1">
+                E-mail de acesso
               </label>
               <input
-                id="email"
                 type="email"
                 value={email}
                 onChange={handleEmailChange}
                 placeholder="seu@email.com"
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:bg-white/10 transition-all duration-200"
+                className="w-full px-5 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 transition-all duration-300"
                 required
                 disabled={loading}
               />
             </div>
 
-            {/* Password Input */}
-            <div>
-              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-[0.08em] text-gray-300 mb-2">
-                Senha
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 ml-1">
+                Sua senha
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={handlePasswordChange}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:bg-white/10 transition-all duration-200"
-                required
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={handlePasswordChange}
+                  placeholder="••••••••"
+                  className="w-full px-5 py-4 bg-white/[0.05] border border-white/10 rounded-2xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 transition-all duration-300"
+                  required
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
-            {/* Login Button - Golden Gradient */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 mt-6 font-semibold text-sm uppercase tracking-[0.08em] text-black rounded-lg bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold disabled:from-coach-gold/50 disabled:to-coach-gold-dark/50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-coach-gold/30 flex items-center justify-center gap-2 group"
+              className="w-full py-5 mt-4 text-[11px] font-black uppercase tracking-[0.25em] text-black rounded-2xl bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] hover:shadow-[0_15px_35px_rgba(212,175,55,0.25)] transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl"
             >
-              <LogIn className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-disabled:opacity-50" />
-              {loading ? 'Entrando...' : 'ENTRAR'}
+              {loading ? (
+                <span className="opacity-80">Verificando...</span>
+              ) : (
+                <>
+                  <LogIn size={15} strokeWidth={3} />
+                  <span>Acessar Agora</span>
+                </>
+              )}
             </button>
           </form>
 
-          {/* Footer Text */}
-          <p className="text-center text-gray-500 text-xs tracking-widest mt-8 uppercase">
-            © 2026 Coach Vinny - Sistema Exclusivo
-          </p>
+          <div className="mt-10 pt-6 border-t border-white/5 text-center">
+            <p className="text-[9px] text-gray-400 tracking-[0.3em] uppercase">
+              Private Coaching System — 2026
+            </p>
+          </div>
         </div>
 
-        {/* Support Info */}
-        <p className="text-center text-gray-600 text-xs mt-8 tracking-wide">
-          Para acesso, entre em contato com o coach
-        </p>
+        <button 
+          onClick={() => window.open('https://wa.me/5511999999999', '_blank')}
+          className="mt-8 text-gray-500 text-[10px] tracking-[0.2em] uppercase hover:text-white transition-all duration-300"
+        >
+          Solicitar suporte técnico
+        </button>
       </div>
     </div>
   );

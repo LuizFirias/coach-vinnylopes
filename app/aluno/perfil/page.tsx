@@ -31,24 +31,18 @@ export default function PerfilPage() {
 
         const userEmail = authData.user.email || '';
 
-        // Buscar nome do perfil
-        const { data: profileData, error: profileError } = await supabaseClient
+        const { data: profileData } = await supabaseClient
           .from('profiles')
-          .select('nome')
+          .select('full_name')
           .eq('id', authData.user.id)
           .single();
 
-        if (!profileError && profileData) {
-          setUserData({
-            name: profileData.nome || 'Usuário',
-            email: userEmail,
-          });
-        } else {
-          setUserData({
-            name: 'Usuário',
-            email: userEmail,
-          });
-        }
+        const displayName = profileData?.full_name || userEmail.split('@')[0] || 'Usuário';
+
+        setUserData({
+          name: displayName,
+          email: userEmail,
+        });
       } catch (err) {
         setError('Erro ao carregar dados do perfil');
         console.error(err);
@@ -64,6 +58,12 @@ export default function PerfilPage() {
     setSigningOut(true);
     try {
       await supabaseClient.auth.signOut();
+      // Clear server session cookie
+      try {
+        await fetch('/api/session', { method: 'DELETE' });
+      } catch (err) {
+        console.warn('Failed clearing server session cookie', err);
+      }
       router.push('/login');
     } catch (err) {
       setError('Erro ao fazer logout');
@@ -188,7 +188,7 @@ export default function PerfilPage() {
             {/* Footer Info */}
             <div className="mt-12 text-center">
               <p className="text-xs text-gray-600 tracking-widest uppercase">
-                © 2026 Coach Vinny - Premium Training System
+                © Coach Vinny - Premium Training System
               </p>
             </div>
           </div>

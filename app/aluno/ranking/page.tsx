@@ -5,8 +5,9 @@ import { supabaseClient } from '@/lib/supabaseClient';
 
 interface Profile {
   id: string;
-  nome: string;
-  frequencia_treino: number;
+  full_name?: string | null;
+  email?: string | null;
+  ultimo_checkin?: string | null;
   avatar_url?: string | null;
 }
 
@@ -23,9 +24,9 @@ export default function RankingPage() {
         // top 10 alunos
         const { data: topData, error: topError } = await supabaseClient
           .from('profiles')
-          .select('id, nome, frequencia_treino, avatar_url')
+          .select('id, full_name, email, ultimo_checkin, avatar_url')
           .eq('role', 'aluno')
-          .order('frequencia_treino', { ascending: false });
+          .order('ultimo_checkin', { ascending: false, nullsFirst: false });
         // current user
         const { data: authData } = await supabaseClient.auth.getUser();
         const user = authData?.user;
@@ -35,23 +36,23 @@ export default function RankingPage() {
         if (user) {
           const { data: meData, error: meError } = await supabaseClient
             .from('profiles')
-            .select('id, nome, frequencia_treino, avatar_url')
+            .select('id, full_name, email, ultimo_checkin, avatar_url')
             .eq('id', user.id)
             .single();
 
           if (!meError && meData) {
             currentProfile = meData as Profile;
 
-            // count how many have greater frequencia_treino
-            const userFreq = currentProfile.frequencia_treino ?? 0;
-            const { count, error: countError } = await supabaseClient
-              .from('profiles')
-              .select('id', { count: 'exact' })
-              .eq('role', 'aluno')
-              .gt('frequencia_treino', userFreq);
+            if (currentProfile.ultimo_checkin) {
+              const { count, error: countError } = await supabaseClient
+                .from('profiles')
+                .select('id', { count: 'exact' })
+                .eq('role', 'aluno')
+                .gt('ultimo_checkin', currentProfile.ultimo_checkin);
 
-            if (!countError) {
-              position = (count || 0) + 1;
+              if (!countError) {
+                position = (count || 0) + 1;
+              }
             }
           }
         }
@@ -77,7 +78,7 @@ export default function RankingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-coach-black p-8">
+    <div className="min-h-screen bg-coach-black p-8 pt-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Ranking dos Alunos</h1>
@@ -112,25 +113,31 @@ export default function RankingPage() {
             {/* Top 3 em destaque */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {profiles.slice(0, 3).map((p, idx) => (
+                
                 <div
                   key={p.id}
                   className={`flex items-center gap-4 ${
                     idx === 0 ? 'card-glass border-coach-gold/80 bg-linear-to-b from-coach-gold/10 to-transparent' : 'card-glass'
                   }`}
                 >
+                  
                   <div className="text-3xl">{medalForPosition(idx + 1)}</div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center text-white overflow-hidden">
                         {p.avatar_url ? (
-                          <img src={p.avatar_url} alt={p.nome} className="w-full h-full object-cover" />
+                          <img src={p.avatar_url} alt={(p.full_name || p.email || 'Aluno')} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-sm">{p.nome?.slice(0,1) || 'A'}</span>
+                          <span className="text-sm">{(p.full_name || p.email?.split('@')[0] || 'A').slice(0,1)}</span>
                         )}
                       </div>
                       <div>
-                        <div className="text-white font-semibold">{p.nome}</div>
-                        <div className="text-sm text-gray-400">Treinos: <span className="text-coach-gold font-semibold">{p.frequencia_treino ?? 0}</span></div>
+                        <div className="text-white font-semibold">{p.full_name || p.email?.split('@')[0] || 'Aluno'}</div>
+                        <div className="text-sm text-gray-400">
+                          Ultimo check-in: <span className="text-coach-gold font-semibold">
+                            {p.ultimo_checkin ? new Date(p.ultimo_checkin).toLocaleDateString('pt-BR') : '—'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -146,19 +153,21 @@ export default function RankingPage() {
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-white overflow-hidden">
                         {p.avatar_url ? (
-                          <img src={p.avatar_url} alt={p.nome} className="w-full h-full object-cover" />
+                          <img src={p.avatar_url} alt={(p.full_name || p.email || 'Aluno')} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-sm">{p.nome?.slice(0,1) || 'A'}</span>
+                          <span className="text-sm">{(p.full_name || p.email?.split('@')[0] || 'A').slice(0,1)}</span>
                         )}
                       </div>
                       <div>
-                        <div className="text-white font-medium">{p.nome}</div>
+                        <div className="text-white font-medium">{p.full_name || p.email?.split('@')[0] || 'Aluno'}</div>
                         <div className="text-xs text-gray-400">Posição: {index + 1}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-coach-gold font-semibold text-lg">{p.frequencia_treino ?? 0}</div>
-                      <div className="text-xs text-gray-400">treinos</div>
+                      <div className="text-coach-gold font-semibold text-sm">
+                        {p.ultimo_checkin ? new Date(p.ultimo_checkin).toLocaleDateString('pt-BR') : '—'}
+                      </div>
+                      <div className="text-xs text-gray-400">ultimo check-in</div>
                     </div>
                   </li>
                 ))}

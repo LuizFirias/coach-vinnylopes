@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 
 interface Aluno {
   id: string;
-  nome: string;
+  full_name?: string | null;
   email: string;
 }
 
 export default function TreinosPage() {
+  const router = useRouter();
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [selectedAlunoId, setSelectedAlunoId] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -25,9 +27,9 @@ export default function TreinosPage() {
       try {
         const { data, error: fetchError } = await supabaseClient
           .from('profiles')
-          .select('id, nome, email')
+          .select('id, full_name, email')
           .eq('role', 'aluno')
-          .order('nome', { ascending: true });
+          .order('full_name', { ascending: true });
 
         if (fetchError) {
           setError('Erro ao carregar alunos: ' + fetchError.message);
@@ -131,7 +133,10 @@ export default function TreinosPage() {
       }
 
       // Sucesso!
-      setSuccess(`Treino enviado com sucesso para ${alunos.find(a => a.id === selectedAlunoId)?.nome}!`);
+      const alunoLabel = alunos.find(a => a.id === selectedAlunoId)?.full_name
+        || alunos.find(a => a.id === selectedAlunoId)?.email
+        || 'aluno';
+      setSuccess(`Treino enviado com sucesso para ${alunoLabel}!`);
       setSelectedFile(null);
       setFilePreview('');
       setSelectedAlunoId('');
@@ -146,12 +151,27 @@ export default function TreinosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-coach-black p-8">
+    <div className="min-h-screen bg-coach-black p-8 pt-8">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">Gerenciar Treinos</h1>
-          <p className="text-gray-400">Envie arquivos PDF de treinos para seus alunos</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">Gerenciar Treinos</h1>
+              <p className="text-gray-400">Envie PDFs ou crie fichas digitais para seus alunos</p>
+            </div>
+          </div>
+          
+          {/* Botão Nova Ficha Digital */}
+          <button
+            onClick={() => router.push('/admin/treinos/nova-ficha')}
+            className="w-full mt-4 py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            CRIAR FICHA DIGITAL PREMIUM
+          </button>
         </div>
 
         {/* Form Container */}
@@ -178,7 +198,7 @@ export default function TreinosPage() {
             <form onSubmit={handleUpload} className="space-y-8">
               {/* Select Aluno */}
               <div>
-                <label htmlFor="aluno" className="block text-sm font-medium text-gray-300 mb-3">
+                <label htmlFor="aluno" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-3">
                   Selecione o Aluno
                 </label>
                 <select
@@ -186,12 +206,12 @@ export default function TreinosPage() {
                   value={selectedAlunoId}
                   onChange={(e) => setSelectedAlunoId(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50 cursor-pointer"
+                  className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50 cursor-pointer"
                 >
                   <option value="">-- Escolha um aluno --</option>
                   {alunos.map((aluno) => (
                     <option key={aluno.id} value={aluno.id}>
-                      {aluno.nome} ({aluno.email})
+                        {aluno.full_name || aluno.email}
                     </option>
                   ))}
                 </select>
@@ -222,7 +242,7 @@ export default function TreinosPage() {
                 <div className="flex gap-3">
                   <label
                     htmlFor="file-input"
-                    className="flex-1 px-6 py-4 bg-linear-to-r from-coach-gold to-coach-gold-dark text-black font-semibold rounded cursor-pointer hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    className="flex-1 px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
                   >
                     <svg
                       className="w-5 h-5"
@@ -266,7 +286,7 @@ export default function TreinosPage() {
               <button
                 type="submit"
                 disabled={loading || !selectedAlunoId || !selectedFile || alunos.length === 0}
-                className="w-full py-4 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

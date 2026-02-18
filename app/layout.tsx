@@ -1,5 +1,6 @@
 import './globals.css';
 import ResponsiveNav from './components/responsive-nav';
+import MainWrapper from './components/MainWrapper';
 
 export default function RootLayout({
   children,
@@ -10,10 +11,10 @@ export default function RootLayout({
     <html lang="pt-br">
       <body className="bg-coach-black text-white overflow-x-hidden">
         <ResponsiveNav />
-        {/* Main content with lg:ml-64 for desktop sidebar, pt-16 for mobile header */}
-        <main className="pt-16 lg:pt-0 lg:ml-64">
+        {/* Main content wrapper handles internal padding and sidebar offset */}
+        <MainWrapper>
           {children}
-        </main>
+        </MainWrapper>
       </body>
     </html>
   );

@@ -5,7 +5,7 @@ import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 export default function PlanoAlimentarPage() {
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-coach-black p-8">
+      <div className="min-h-screen bg-coach-black p-8 pt-8">
         <div className="max-w-4xl mx-auto">
           <header className="mb-8">
             <h1 className="text-3xl font-bold text-white">Plano Alimentar</h1>

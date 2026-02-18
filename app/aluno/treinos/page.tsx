@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 
@@ -11,8 +12,16 @@ interface Treino {
   data_upload: string;
 }
 
+interface FichaTreino {
+  id: string;
+  nome_rotina: string;
+  criado_em: string;
+}
+
 export default function AlunoTreinosPage() {
+  const router = useRouter();
   const [treinos, setTreinos] = useState<Treino[]>([]);
+  const [fichas, setFichas] = useState<FichaTreino[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
@@ -32,7 +41,18 @@ export default function AlunoTreinosPage() {
         const userId = authData.user.id;
         setUserName(authData.user.email?.split('@')[0] || 'Aluno');
 
-        // Buscar treinos do aluno
+        const { data: profileData } = await supabaseClient
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+        if (profileData?.role === 'coach') {
+          router.push('/admin/alunos');
+          return;
+        }
+
+        // Buscar treinos PDF do aluno
         const { data: treinosData, error: treinosError } = await supabaseClient
           .from('treinos_alunos')
           .select('id, nome_arquivo, url_pdf, data_upload')
@@ -46,6 +66,16 @@ export default function AlunoTreinosPage() {
         }
 
         setTreinos(treinosData || []);
+
+        // Buscar fichas de treino digitais
+        const { data: fichasData } = await supabaseClient
+          .from('fichas_treino')
+          .select('id, nome_rotina, criado_em')
+          .eq('aluno_id', userId)
+          .eq('ativo', true)
+          .order('criado_em', { ascending: false });
+
+        setFichas(fichasData || []);
         setLoading(false);
       } catch (err) {
         setError('Erro ao conectar com o servidor');
@@ -77,13 +107,64 @@ export default function AlunoTreinosPage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-coach-black p-8">
+      <div className="min-h-screen bg-coach-black p-8 pt-8">
         <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-white mb-2">Meus Treinos</h1>
-          <p className="text-gray-400">Visualize e baixe seus treinos personalizados</p>
+          <p className="text-gray-400">Visualize suas fichas digitais e treinos em PDF</p>
         </div>
+
+        {/* Fichas de Treino Digitais */}
+        {!loading && fichas.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <span className="text-3xl">💪</span>
+              Fichas de Treino Digitais
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {fichas.map((ficha) => (
+                <div 
+                  key={ficha.id} 
+                  className="bg-linear-to-br from-zinc-900 to-zinc-800 border-2 border-yellow-500/20 rounded-xl p-6 hover:border-yellow-500/40 transition cursor-pointer group"
+                  onClick={() => router.push(`/aluno/treinos/ficha?id=${ficha.id}`)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-2">{ficha.nome_rotina}</h3>
+                      <p className="text-sm text-gray-400">{formatarData(ficha.criado_em)}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-linear-to-br from-yellow-600 to-yellow-800 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      </svg>
+                    </div>
+                  </div>
+                  <button 
+                    className="w-full py-3 bg-linear-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black font-bold rounded-lg group-hover:opacity-90 transition"
+                  >
+                    ABRIR FICHA
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        {!loading && fichas.length > 0 && treinos.length > 0 && (
+          <div className="mb-12 border-t border-gray-800"></div>
+        )}
+
+        {/* Header Treinos PDF */}
+        {!loading && treinos.length > 0 && (
+          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <svg className="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Treinos em PDF
+          </h2>
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -116,7 +197,7 @@ export default function AlunoTreinosPage() {
               <p className="text-gray-400 mb-8">
                 Seu coach em breve compartilhará seus treinos personalizados aqui. Fique atento!
               </p>
-              <div className="inline-block px-6 py-3 bg-linear-to-r from-coach-gold to-coach-gold-dark text-black font-semibold rounded">
+              <div className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] inline-flex items-center justify-center gap-2">
                 ⭐ Bem-vindo à Plataforma Coach Vinny
               </div>
             </div>
@@ -153,7 +234,7 @@ export default function AlunoTreinosPage() {
                 <div className="p-4">
                   <button
                     onClick={() => handleVisualizarPDF(treino.url_pdf)}
-                    className="w-full py-3 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4m-4-4l-4 4m0 0l-4-4m4 4V3" />

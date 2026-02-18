@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 
 interface Parceiro {
@@ -8,9 +8,9 @@ interface Parceiro {
   nome_marca: string;
   descricao: string;
   cupom: string;
-  link_site: string;
-  url_logo: string;
-  verificado: boolean;
+  link_desconto: string;
+  logo_url?: string | null;
+  imagens?: string[] | null;
 }
 
 export default function ParceirosPage() {
@@ -18,13 +18,34 @@ export default function ParceirosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedCupom, setCopiedCupom] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [nomeProduto, setNomeProduto] = useState('');
+  const [descricaoForm, setDescricaoForm] = useState('');
+  const [cupomForm, setCupomForm] = useState('');
+  const [linkDesconto, setLinkDesconto] = useState('');
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchParceiros = async () => {
       try {
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const user = authData?.user;
+        if (user) {
+          const { data: profileData } = await supabaseClient
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          setUserRole(profileData?.role || null);
+        }
+
         const { data, error: fetchError } = await supabaseClient
           .from('parceiros')
-          .select('*')
+          .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
+          .order('ordem', { ascending: true })
           .order('nome_marca', { ascending: true });
 
         if (fetchError) {
@@ -44,6 +65,113 @@ export default function ParceirosPage() {
     fetchParceiros();
   }, []);
 
+  const imagePreviews = useMemo(
+    () => imageFiles.map((file) => URL.createObjectURL(file)),
+    [imageFiles]
+  );
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviews]);
+
+  const resetForm = () => {
+    setNomeProduto('');
+    setDescricaoForm('');
+    setCupomForm('');
+    setLinkDesconto('');
+    setImageFiles([]);
+    setFormError(null);
+  };
+
+  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 5) {
+      setFormError('Selecione no maximo 5 imagens');
+      return;
+    }
+
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        setFormError('Envie apenas imagens');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setFormError('Cada imagem deve ter no maximo 5MB');
+        return;
+      }
+    }
+
+    setFormError(null);
+    setImageFiles(files);
+  };
+
+  const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!nomeProduto.trim() || !descricaoForm.trim() || !cupomForm.trim() || !linkDesconto.trim()) {
+      setFormError('Preencha todos os campos');
+      return;
+    }
+
+    if (imageFiles.length === 0) {
+      setFormError('Envie pelo menos 1 imagem');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of imageFiles) {
+        const fileName = `${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabaseClient.storage
+          .from('parceiros-logos')
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrl } = supabaseClient.storage
+          .from('parceiros-logos')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(publicUrl.publicUrl);
+      }
+
+      const logoUrl = uploadedUrls[0] || null;
+
+      const { error: insertError } = await supabaseClient
+        .from('parceiros')
+        .insert({
+          nome_marca: nomeProduto.trim(),
+          descricao: descricaoForm.trim(),
+          cupom: cupomForm.trim(),
+          link_desconto: linkDesconto.trim(),
+          logo_url: logoUrl,
+          imagens: uploadedUrls,
+        });
+
+      if (insertError) throw insertError;
+
+      resetForm();
+      setModalOpen(false);
+
+      const { data, error: fetchError } = await supabaseClient
+        .from('parceiros')
+        .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
+        .order('ordem', { ascending: true })
+        .order('nome_marca', { ascending: true });
+
+      if (fetchError) throw fetchError;
+      setParceiros((data as Parceiro[]) || []);
+    } catch (err: any) {
+      setFormError(err?.message || 'Erro ao cadastrar parceiro');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCopiarCupom = (cupom: string) => {
     navigator.clipboard.writeText(cupom);
     setCopiedCupom(cupom);
@@ -60,8 +188,14 @@ export default function ParceirosPage() {
     window.open(url, '_blank');
   };
 
+  const handleScroll = (id: string, direction: number) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollBy({ left: el.clientWidth * direction, behavior: 'smooth' });
+  };
+
   return (
-    <div className="min-h-screen bg-coach-black p-8">
+    <div className="min-h-screen bg-coach-black p-8 pt-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-12">
@@ -70,6 +204,17 @@ export default function ParceirosPage() {
             Descontos especiais para alunos Coach Vinny
           </p>
         </div>
+
+        {userRole === 'coach' && (
+          <div className="mb-8">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
+            >
+              Adicionar Novo Parceiro
+            </button>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -137,26 +282,57 @@ export default function ParceirosPage() {
         {/* Parceiros Grid */}
         {!loading && !error && parceiros.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {parceiros.map((parceiro) => (
+            {parceiros.map((parceiro) => {
+              const images = (parceiro.imagens && parceiro.imagens.length > 0)
+                ? parceiro.imagens
+                : (parceiro.logo_url ? [parceiro.logo_url] : []);
+              const carouselId = `carousel-${parceiro.id}`;
+
+              return (
               <div
                 key={parceiro.id}
                 className="group card-glass overflow-hidden transition-all duration-300 hover:shadow-lg"
               >
-                {/* Logo Section */}
-                <div className="relative h-48 bg-coach-black flex items-center justify-center overflow-hidden">
-                  {parceiro.url_logo && (
-                    <img
-                      src={parceiro.url_logo}
-                      alt={parceiro.nome_marca}
-                      className="max-w-full max-h-full object-contain grayscale group-hover:grayscale-0 transition-all duration-500 p-4"
-                    />
-                  )}
+                {/* Carousel Section */}
+                <div className="relative h-52 bg-coach-black overflow-hidden">
+                  <div
+                    id={carouselId}
+                    className="flex h-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
+                  >
+                    {images.length > 0 ? (
+                      images.map((src, idx) => (
+                        <div key={`${parceiro.id}-${idx}`} className="min-w-full h-52 snap-center">
+                          <img
+                            src={src}
+                            alt={parceiro.nome_marca}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="min-w-full h-52 flex items-center justify-center text-gray-500">
+                        Sem imagens
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Selo de Verificado */}
-                  {parceiro.verificado && (
-                    <div className="absolute top-4 right-4 flex items-center gap-1 bg-linear-to-r from-coach-gold to-coach-gold-dark px-3 py-1 rounded-full text-black text-xs font-semibold">
-                      ✓ VERIFICADO
-                    </div>
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => handleScroll(carouselId, -1)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 text-white"
+                        aria-label="Imagem anterior"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        onClick={() => handleScroll(carouselId, 1)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 text-white"
+                        aria-label="Proxima imagem"
+                      >
+                        ›
+                      </button>
+                    </>
                   )}
                 </div>
 
@@ -181,19 +357,7 @@ export default function ParceirosPage() {
                       <p className="text-lg font-bold text-coach-gold">
                         {parceiro.cupom}
                       </p>
-                      <svg
-                        className="w-5 h-5 text-coach-gold"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                        />
-                      </svg>
+                      <span className="text-xs text-gray-300">Copiar</span>
                     </div>
                     {copiedCupom === parceiro.cupom && (
                       <p className="text-xs text-green-400 mt-2">✓ Copiado!</p>
@@ -202,14 +366,15 @@ export default function ParceirosPage() {
 
                   {/* Botão IR PARA O SITE */}
                   <button
-                    onClick={() => handleIrParaSite(parceiro.link_site)}
-                    className="w-full py-3 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 shadow-lg hover:shadow-xl"
+                    onClick={() => handleIrParaSite(parceiro.link_desconto)}
+                    className="w-full py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
                   >
-                    IR PARA O SITE
+                    Ir para Loja
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 
@@ -223,6 +388,120 @@ export default function ParceirosPage() {
           </div>
         )}
       </div>
+
+      {modalOpen && userRole === 'coach' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setModalOpen(false)} />
+          <div className="relative w-full max-w-2xl card-glass">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">Novo Parceiro</h2>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                Fechar
+              </button>
+            </div>
+
+            {formError && (
+              <div className="mb-4 p-3 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreate} className="space-y-5">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Nome do Produto</label>
+                <input
+                  type="text"
+                  value={nomeProduto}
+                  onChange={(e) => setNomeProduto(e.target.value)}
+                  className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
+                  placeholder="Nome do produto"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Descrição</label>
+                <textarea
+                  rows={3}
+                  value={descricaoForm}
+                  onChange={(e) => setDescricaoForm(e.target.value)}
+                  className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 resize-none"
+                  placeholder="Descricao do produto"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Código do Cupom</label>
+                  <input
+                    type="text"
+                    value={cupomForm}
+                    onChange={(e) => setCupomForm(e.target.value)}
+                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
+                    placeholder="COACH10"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Link de Desconto</label>
+                  <input
+                    type="url"
+                    value={linkDesconto}
+                    onChange={(e) => setLinkDesconto(e.target.value)}
+                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
+                    placeholder="https://loja.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Imagens (ate 5)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImagesChange}
+                  className="w-full text-sm text-gray-300"
+                />
+                {imagePreviews.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {imagePreviews.map((src) => (
+                      <div key={src} className="h-16 rounded bg-black/40 overflow-hidden">
+                        <img src={src} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalOpen(false);
+                    resetForm();
+                  }}
+                  className="px-6 py-4 bg-white/[0.03] border border-white/10 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-xl hover:bg-white/[0.05] transition-all duration-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Salvar Parceiro'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

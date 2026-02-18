@@ -213,7 +213,7 @@ export default function MedidasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-coach-black p-8">
+    <div className="min-h-screen bg-coach-black p-8 pt-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-12">
@@ -257,7 +257,7 @@ export default function MedidasPage() {
               <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Peso */}
                 <div>
-                  <label htmlFor="peso" className="block text-sm font-medium text-gray-300 mb-2">
+                  <label htmlFor="peso" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                     Peso (kg)
                   </label>
                   <input
@@ -269,7 +269,7 @@ export default function MedidasPage() {
                     onChange={handleInputChange}
                     placeholder="70.5"
                     disabled={submitting}
-                    className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                     required
                   />
                 </div>
@@ -278,7 +278,7 @@ export default function MedidasPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Tórax */}
                   <div>
-                    <label htmlFor="torax" className="block text-sm font-medium text-gray-300 mb-2">
+                    <label htmlFor="torax" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                       Tórax (cm)
                     </label>
                     <input
@@ -290,14 +290,14 @@ export default function MedidasPage() {
                       onChange={handleInputChange}
                       placeholder="95.0"
                       disabled={submitting}
-                      className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                       required
                     />
                   </div>
 
                   {/* Cintura */}
                   <div>
-                    <label htmlFor="cintura" className="block text-sm font-medium text-gray-300 mb-2">
+                    <label htmlFor="cintura" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                       Cintura (cm)
                     </label>
                     <input
@@ -309,14 +309,14 @@ export default function MedidasPage() {
                       onChange={handleInputChange}
                       placeholder="80.0"
                       disabled={submitting}
-                      className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                       required
                     />
                   </div>
 
                   {/* Braço Esquerdo */}
                   <div>
-                    <label htmlFor="braco_esq" className="block text-sm font-medium text-gray-300 mb-2">
+                    <label htmlFor="braco_esq" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                       Braço Esq. (cm)
                     </label>
                     <input
@@ -328,14 +328,14 @@ export default function MedidasPage() {
                       onChange={handleInputChange}
                       placeholder="32.0"
                       disabled={submitting}
-                      className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                       required
                     />
                   </div>
 
                   {/* Braço Direito */}
                   <div>
-                    <label htmlFor="braco_dir" className="block text-sm font-medium text-gray-300 mb-2">
+                    <label htmlFor="braco_dir" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                       Braço Dir. (cm)
                     </label>
                     <input
@@ -347,14 +347,14 @@ export default function MedidasPage() {
                       onChange={handleInputChange}
                       placeholder="32.5"
                       disabled={submitting}
-                      className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                       required
                     />
                   </div>
 
                   {/* Coxa Esquerda */}
                   <div>
-                    <label htmlFor="coxa_esq" className="block text-sm font-medium text-gray-300 mb-2">
+                    <label htmlFor="coxa_esq" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                       Coxa Esq. (cm)
                     </label>
                     <input
@@ -366,14 +366,14 @@ export default function MedidasPage() {
                       onChange={handleInputChange}
                       placeholder="55.0"
                       disabled={submitting}
-                      className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                       required
                     />
                   </div>
 
                   {/* Coxa Direita */}
                   <div>
-                    <label htmlFor="coxa_dir" className="block text-sm font-medium text-gray-300 mb-2">
+                    <label htmlFor="coxa_dir" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                       Coxa Dir. (cm)
                     </label>
                     <input
@@ -385,7 +385,7 @@ export default function MedidasPage() {
                       onChange={handleInputChange}
                       placeholder="55.5"
                       disabled={submitting}
-                      className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                       required
                     />
                   </div>
@@ -393,7 +393,7 @@ export default function MedidasPage() {
 
                 {/* Panturrilha */}
                 <div>
-                  <label htmlFor="panturrilha" className="block text-sm font-medium text-gray-300 mb-2">
+                  <label htmlFor="panturrilha" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
                     <span className="flex items-center gap-2">
                       <span>🦶</span>
                       Panturrilha (cm)
@@ -408,7 +408,7 @@ export default function MedidasPage() {
                     onChange={handleInputChange}
                     placeholder="38.0"
                     disabled={submitting}
-                    className="w-full px-4 py-3 bg-coach-black border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-coach-gold focus:ring-1 focus:ring-coach-gold transition disabled:opacity-50"
+                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
                     required
                   />
                 </div>
@@ -417,7 +417,7 @@ export default function MedidasPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-4 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                  className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <span className="flex items-center justify-center gap-2">

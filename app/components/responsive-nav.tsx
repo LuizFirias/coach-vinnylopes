@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { usePathname } from 'next/navigation';
 import Link from "next/link";
 import Image from "next/image";
+import { supabaseClient } from "@/lib/supabaseClient";
 import {
   Menu,
   X,
@@ -12,6 +14,8 @@ import {
   Camera,
   Users,
   Trophy,
+  BarChart3,
+  Handshake,
   User,
 } from "lucide-react";
 
@@ -25,14 +29,52 @@ const menuItems = [
   { name: "PERFIL", href: "/aluno/perfil", icon: User },
 ];
 
+const coachMenuItems = [
+  { name: "ALUNOS", href: "/admin/alunos", icon: Users },
+  { name: "RELATORIOS", href: "/admin/relatorios", icon: BarChart3 },
+  { name: "PARCEIROS", href: "/admin/parceiros", icon: Handshake },
+  { name: "RANKING", href: "/admin/ranking", icon: Trophy },
+];
+
 export default function ResponsiveNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const user = authData?.user;
+        if (!user) return;
+
+        const { data: profileData, error } = await supabaseClient
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (!error && profileData?.role) {
+          setUserRole(profileData.role);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar role do usuario:', err);
+      }
+    };
+
+    fetchRole();
+  }, []);
+
+  const effectiveMenuItems = userRole === 'coach' ? coachMenuItems : menuItems;
+
+  // Hide the nav entirely on the login page
+  if (pathname === '/login') return null;
 
   return (
     <>
       {/* Mobile Header (hidden on desktop) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-coach-black/98 backdrop-blur-md border-b border-white/10 px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-black backdrop-blur-md border-b border-white/10 px-4">
         <div className="flex items-center justify-between h-full">
           <button
             onClick={() => setMobileMenuOpen(true)}
@@ -40,19 +82,20 @@ export default function ResponsiveNav() {
           >
             <Menu size={20} className="text-coach-gold" />
           </button>
-          <div className="flex-1 flex justify-center">
+          <div className="flex-1 flex justify-center items-center max-h-10">
             {!logoFailed ? (
-              <Image
-                src="/logo.png"
-                alt="Coach Logo"
-                width={140}
-                height={40}
-                priority
-                onError={() => setLogoFailed(true)}
-                className="h-10 w-auto"
-              />
+                <Image
+                  src="/logo.png"
+                  alt="Coach Logo"
+                  width={140}
+                  height={40}
+                  priority
+                  onError={() => setLogoFailed(true)}
+                  style={{ height: 'auto' }}
+                  className="w-28 sm:w-32 h-10 object-contain"
+                />
             ) : (
-              <h1 className="text-xs font-bold tracking-[0.15em] uppercase text-white/90 text-center">
+              <h1 className="text-[11px] leading-none font-bold tracking-widest uppercase text-white/90 text-center z-50">
                 VINNY LOPES COACH
               </h1>
             )}
@@ -69,11 +112,12 @@ export default function ResponsiveNav() {
             <Image
               src="/logo.png"
               alt="Coach Logo"
-              width={180}
-              height={50}
+              width={220}
+              height={70}
               priority
               onError={() => setLogoFailed(true)}
-              className="h-12 w-auto"
+              style={{ height: 'auto' }}
+              className="w-52 mx-auto"
             />
           ) : (
             <div>
@@ -89,7 +133,7 @@ export default function ResponsiveNav() {
 
         {/* Sidebar Menu */}
         <nav className="flex-1 px-4 py-8 flex flex-col gap-2">
-          {menuItems.map((item) => {
+          {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
@@ -109,7 +153,7 @@ export default function ResponsiveNav() {
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-white/10">
-          <p className="text-xs text-gray-500 text-center">© 2026 Coach</p>
+          <p className="text-xs text-gray-500 text-center">© Coach Vinny Lopes</p>
         </div>
       </aside>
 
@@ -128,12 +172,12 @@ export default function ResponsiveNav() {
 
       {/* Mobile Drawer */}
       <aside
-        className={`lg:hidden fixed left-0 top-0 h-screen w-80 bg-coach-black/99 border-r border-white/10 z-50 transform transition-transform duration-300 ease-out ${
+        className={`lg:hidden fixed left-0 top-0 h-screen w-80 bg-coach-black/99 border-r border-white/10 z-50 transform transition-transform duration-300 ease-out flex flex-col ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Drawer Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
+        <div className="flex justify-between items-center px-6 py-4 border-b border-white/10 flex-shrink-0">
           <h2 className="text-xs font-bold tracking-[0.15em] uppercase text-white/80">
             MENU
           </h2>
@@ -145,9 +189,34 @@ export default function ResponsiveNav() {
           </button>
         </div>
 
+        {/* Drawer Logo */}
+        <div className="px-6 py-4 border-b border-white/10 flex-shrink-0 max-h-[100px] flex items-center justify-center">
+          {!logoFailed ? (
+            <Image
+              src="/logo.png"
+              alt="Coach Logo"
+              width={180}
+              height={60}
+              priority
+              onError={() => setLogoFailed(true)}
+              style={{ height: 'auto' }}
+              className="w-44 max-h-[100px] object-contain"
+            />
+          ) : (
+            <div className="text-center">
+              <h1 className="text-sm font-bold tracking-[0.15em] uppercase text-white">
+                VINNY LOPES
+              </h1>
+              <p className="text-xs tracking-widest uppercase text-gray-400 mt-1">
+                COACH
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Drawer Menu */}
-        <nav className="px-4 py-6 flex flex-col gap-4">
-          {menuItems.map((item) => {
+        <nav className="flex-1 px-4 py-6 flex flex-col gap-4 overflow-y-auto h-screen">
+          {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
