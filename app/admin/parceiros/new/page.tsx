@@ -1,20 +1,9 @@
-'use client';
-
-import { useState } from 'react';
-import { supabaseClient } from '@/lib/supabaseClient';
-import { useRouter } from 'next/navigation';
-
-interface FormData {
-  nome_marca: string;
-  descricao: string;
-  cupom: string;
-  link_site: string;
-  verificado: boolean;
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Plus, Check, AlertCircle, ShoppingBag, Globe, Tag, Image as ImageIcon } from "lucide-react";
 
 export default function NovoParceiroPage() {
   const router = useRouter();
@@ -41,7 +30,7 @@ export default function NovoParceiroPage() {
   const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 5) {
-      setError("Selecione no maximo 5 imagens");
+      setError("Selecione no máximo 5 imagens");
       return;
     }
 
@@ -51,7 +40,7 @@ export default function NovoParceiroPage() {
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setError("Cada imagem deve ter no maximo 5MB");
+        setError("Cada imagem deve ter no máximo 5MB");
         return;
       }
     }
@@ -70,7 +59,7 @@ export default function NovoParceiroPage() {
     }
 
     if (imageFiles.length === 0) {
-      setError("Envie pelo menos 1 imagem");
+      setError("Envie pelo menos 1 imagem (logo ou banner)");
       return;
     }
 
@@ -127,251 +116,155 @@ export default function NovoParceiroPage() {
         router.push("/admin/parceiros");
       }, 2000);
     } catch (err: any) {
-      setError(err?.message || "Erro ao processar a solicitacao");
+      setError(err?.message || "Erro ao processar a solicitação");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-coach-black p-8 pt-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">Novo Parceiro</h1>
-          <p className="text-gray-400">Cadastrar uma nova marca ou produto parceiro</p>
+    <div className="min-h-screen bg-iron-black p-4 md:p-6 lg:p-12 lg:pl-28">
+      <div className="max-w-3xl mx-auto">
+        
+        <header className="mb-8 md:mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4 md:gap-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-3 text-zinc-500 hover:text-white transition-colors group px-4 py-2 bg-iron-gray rounded-xl border border-white/5 w-fit"
+          >
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Painel Anterior</span>
+          </button>
+        </header>
+
+        <div className="mb-8 md:mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-iron-gray rounded-full shadow-sm mb-4 md:mb-6 border border-white/5">
+              <ShoppingBag className="w-4 h-4 text-iron-red" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Expansão de Benefícios</span>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3 uppercase">Novo <span className="text-iron-red">Parceiro</span></h1>
+            <p className="text-zinc-500 text-sm font-medium">Cadastre novas marcas e cupons exclusivos para seus atletas.</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400">
+          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-iron-red/10 border border-iron-red/20 text-iron-red rounded-xl text-xs font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
+            <AlertCircle className="w-5 h-5 shrink-0" />
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded-lg text-green-400">
-            ✓ {success}
+          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 rounded-xl text-xs font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
+            <Check className="w-5 h-5 shrink-0" />
+            {success}
           </div>
         )}
 
-        <div className="card-glass">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-iron-gray rounded-3xl p-6 md:p-10 lg:p-14 relative overflow-hidden shadow-2xl border border-white/5 group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-iron-red/5 rounded-bl-[120px] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+          
+          <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8 relative">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Nome do Produto</label>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Marca / Produto</label>
               <input
                 type="text"
                 value={nomeProduto}
                 onChange={(e) => setNomeProduto(e.target.value)}
-                placeholder="Nome do produto"
+                placeholder="Ex: Integral Médica"
                 disabled={loading}
-                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
+                className="w-full px-5 md:px-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Descrição</label>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Descrição da Oferta</label>
               <textarea
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
-                placeholder="Breve descricao do produto"
+                placeholder="Descreva as vantagens para os alunos..."
                 disabled={loading}
                 rows={3}
-                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50 resize-none"
+                className="w-full px-5 md:px-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800 resize-none"
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Código do Cupom</label>
-              <input
-                type="text"
-                value={cupom}
-                onChange={(e) => setCupom(e.target.value)}
-                placeholder="COACH10"
-                disabled={loading}
-                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Link de Desconto</label>
-              <input
-                type="url"
-                value={linkDesconto}
-                onChange={(e) => setLinkDesconto(e.target.value)}
-                placeholder="https://loja.com"
-                disabled={loading}
-                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Imagens (até 5)</label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImagesChange}
-                className="w-full text-sm text-gray-300"
-                disabled={loading}
-              />
-              {imagePreviews.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {imagePreviews.map((src) => (
-                    <div key={src} className="h-16 rounded bg-black/40 overflow-hidden">
-                      <img src={src} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Código do Cupom</label>
+                <div className="relative group">
+                  <Tag className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
+                  <input
+                    type="text"
+                    value={cupom}
+                    onChange={(e) => setCupom(e.target.value)}
+                    placeholder="COACHVINNY15"
+                    disabled={loading}
+                    className="w-full pl-12 md:pl-14 pr-5 md:pr-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
+                    required
+                  />
                 </div>
-              )}
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Link da Loja</label>
+                <div className="relative group">
+                  <Globe className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
+                  <input
+                    type="url"
+                    value={linkDesconto}
+                    onChange={(e) => setLinkDesconto(e.target.value)}
+                    placeholder="https://..."
+                    disabled={loading}
+                    className="w-full pl-12 md:pl-14 pr-5 md:pr-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-4 ml-2">Galeria de Imagens (Máx 5)</label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="aspect-square rounded-2xl overflow-hidden border border-white/10 shadow-lg relative group/img">
+                    <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                       <ImageIcon className="text-white w-6 h-6" />
+                    </div>
+                  </div>
+                ))}
+                {imageFiles.length < 5 && (
+                  <label className="aspect-square rounded-2xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center cursor-pointer hover:border-iron-red/30 hover:bg-white/5 transition-all group/add">
+                    <Plus className="text-zinc-700 group-hover:text-iron-red transition-colors" size={24} />
+                    <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mt-2 group-hover:text-white">Adicionar</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImagesChange}
+                      className="hidden"
+                      disabled={loading}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-5 md:py-6 bg-iron-red text-white text-xs font-black uppercase tracking-[0.4em] rounded-2xl shadow-neon-red hover:bg-red-600 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-4"
             >
-              {loading ? "Salvando..." : "Cadastrar Parceiro"}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  REGISTRANDO...
+                </>
+              ) : (
+                "PUBLICAR PARCEIRO"
+              )}
             </button>
-
-            {/* Logo Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Logo da Marca *
-              </label>
-
-              <div className="space-y-4">
-                {/* Upload Input */}
-                <div>
-                  <input
-                    id="logo-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                    disabled={loading}
-                    className="hidden"
-                  />
-
-                  <label
-                    htmlFor="logo-input"
-                    className="flex items-center justify-center w-full px-6 py-8 border-2 border-dashed border-coach-gold/30 rounded cursor-pointer hover:border-coach-gold/60 transition bg-coach-black/30"
-                  >
-                    <div className="text-center">
-                      <svg
-                        className="w-8 h-8 mx-auto mb-2 text-coach-gold"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                      </svg>
-                      <p className="text-gray-300">Clique ou arraste a logo</p>
-                      <p className="text-xs text-gray-500 mt-1">PNG, JPG até 5MB</p>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Logo Preview */}
-                {logoPreview && (
-                  <div className="relative">
-                    <img
-                      src={logoPreview}
-                      alt="Logo preview"
-                      className="w-full max-w-64 h-48 object-contain bg-coach-black rounded border border-coach-gold/30 p-4"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLogoFile(null);
-                        setLogoPreview('');
-                      }}
-                      disabled={loading}
-                      className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 rounded text-white transition"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Checkbox Verificado */}
-            <div className="flex items-center gap-3">
-              <input
-                id="verificado"
-                type="checkbox"
-                name="verificado"
-                checked={formData.verificado}
-                onChange={handleInputChange}
-                disabled={loading}
-                className="w-5 h-5 border border-gray-700 rounded text-coach-gold focus:ring-coach-gold cursor-pointer"
-              />
-              <label htmlFor="verificado" className="text-sm text-gray-300 cursor-pointer">
-                Marcar como Parceiro Verificado
-              </label>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 py-4 font-semibold text-black rounded bg-linear-to-r from-coach-gold to-coach-gold-dark hover:from-coach-gold-dark hover:to-coach-gold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="w-5 h-5 animate-spin"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Cadastrando...
-                  </span>
-                ) : (
-                  'Cadastrar Parceiro'
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => router.back()}
-                disabled={loading}
-                className="px-6 py-4 font-semibold text-white rounded border border-gray-700 hover:border-gray-600 transition disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-            </div>
           </form>
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-8 card-glass">
-          <p className="text-gray-300 text-sm">
-            <span className="text-coach-gold font-semibold">ℹ Dica:</span> Marque como "Verificado" para exibir
-            um selo na página de alunos!
-          </p>
         </div>
       </div>
     </div>

@@ -87,18 +87,16 @@ export default function NovoAlunoPage() {
 
   if (checkingRole) {
     return (
-      <div className="min-h-screen bg-coach-black p-8 pt-8">
-        <div className="max-w-2xl mx-auto card-glass text-gray-300 text-center">
-          Validando acesso...
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
       </div>
     );
   }
 
   if (!isCoach) {
     return (
-      <div className="min-h-screen bg-coach-black p-8 pt-8">
-        <div className="max-w-2xl mx-auto card-glass text-gray-300 text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 md:p-8">
+        <div className="max-w-2xl w-full bg-white p-8 md:p-12 rounded-2xl shadow-xl text-slate-400 text-center font-black uppercase tracking-widest">
           Acesso restrito para coach.
         </div>
       </div>
@@ -106,55 +104,67 @@ export default function NovoAlunoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-coach-black p-8 pt-8">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8 pt-16 md:pt-24">
       <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Cadastrar Novo Aluno</h1>
-          <p className="text-gray-400">Envie um convite seguro via Supabase.</p>
+        <div className="mb-8 md:mb-12">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-[0.2em] uppercase mb-4">
+            NOVO ALUNO
+            <span className="block text-brand-purple text-lg tracking-[0.3em] mt-2">Convite e Acesso</span>
+          </h1>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
+          <div className="mb-6 p-6 bg-red-50 border border-red-100 rounded-[30px] text-red-600 text-xs font-black uppercase tracking-widest animate-pulse flex items-center gap-4">
+            <span className="text-xl">!</span>
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-6 bg-green-900/20 border border-green-500/30 rounded-2xl">
-            <div className="text-green-400 font-semibold mb-3">{success}</div>
+          <div className="mb-6 md:mb-8 p-6 md:p-8 bg-green-50 border border-green-100 rounded-2xl shadow-sm">
+            <div className="text-green-600 font-black uppercase tracking-widest text-xs mb-6 flex items-center gap-4">
+              <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✓</span>
+              {success}
+            </div>
             {temporaryPassword && (
-              <div className="mt-4 p-4 bg-white/[0.03] border border-yellow-500/30 rounded-xl">
-                <div className="text-xs uppercase tracking-wider text-gray-400 mb-2">Senha Temporária:</div>
-                <div className="text-2xl font-bold text-yellow-500 tracking-wide font-mono">{temporaryPassword}</div>
-                <div className="text-xs text-gray-500 mt-2">⚠️ Forneça esta senha ao aluno para o primeiro acesso</div>
+              <div className="p-6 md:p-8 bg-white border border-green-100 rounded-2xl shadow-inner text-center">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-black mb-4">Senha Temporária para Acesso</div>
+                <div className="text-3xl md:text-4xl font-black text-slate-900 tracking-[0.1em] font-mono bg-slate-50 py-4 md:py-6 px-4 rounded-2xl select-all border border-slate-100">
+                  {temporaryPassword}
+                </div>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-4 md:mt-6 bg-slate-50 inline-block px-4 py-2 rounded-full">
+                  ⚠️ Copie e forneça ao aluno
+                </p>
               </div>
             )}
           </div>
         )}
 
-        <div className="card-glass">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white p-6 md:p-10 lg:p-12 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-purple/5 rounded-bl-[100px] transition-all group-hover:scale-110"></div>
+          
+          <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8 relative">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Nome completo</label>
+              <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 mb-2 md:mb-3">Nome completo do Atleta</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nome do aluno"
-                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
+                placeholder="Ex: João Silva"
+                className="w-full px-4 md:px-6 py-4 md:py-5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-300 font-bold focus:outline-none focus:border-brand-purple/30 focus:bg-white transition-all duration-300"
                 disabled={loading}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">E-mail</label>
+              <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 mb-2 md:mb-3">Endereço de E-mail</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="aluno@email.com"
-                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
+                className="w-full px-4 md:px-6 py-4 md:py-5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-300 font-bold focus:outline-none focus:border-brand-purple/30 focus:bg-white transition-all duration-300"
                 disabled={loading}
                 required
               />
@@ -163,9 +173,16 @@ export default function NovoAlunoPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-5 md:py-6 bg-brand-purple text-white text-[11px] font-black uppercase tracking-[0.4em] rounded-2xl shadow-lg shadow-brand-purple/20 hover:shadow-xl hover:shadow-brand-purple/30 hover:-translate-y-1 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-4"
             >
-              {loading ? "Enviando convite..." : "Enviar convite"}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  ENVIANDO CONVITE...
+                </>
+              ) : (
+                "GERAR ACESSO DO ALUNO"
+              )}
             </button>
           </form>
         </div>

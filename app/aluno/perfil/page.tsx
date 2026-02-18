@@ -3,196 +3,322 @@
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
-import { LogOut, Mail, Settings, AlertCircle, User } from 'lucide-react';
+import Image from 'next/image';
+import { 
+  User, 
+  Mail, 
+  Camera, 
+  LogOut, 
+  Save, 
+  Loader2, 
+  CheckCircle2, 
+  AlertCircle, 
+  ArrowLeft,
+  UserCircle,
+  ChevronRight
+} from 'lucide-react';
+import Link from 'next/link';
 
-interface UserProfile {
-  name: string;
-  email: string;
-}
-
-export default function PerfilPage() {
+export default function AlunoPerfil() {
   const router = useRouter();
-  const [userData, setUserData] = useState<UserProfile | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchProfile = async () => {
       try {
         const { data: authData, error: authError } = await supabaseClient.auth.getUser();
 
         if (authError || !authData.user) {
-          setError('Você precisa estar logado');
-          setLoading(false);
           router.push('/login');
           return;
         }
 
-        const userEmail = authData.user.email || '';
+        const user = authData.user;
+        setUserId(user.id);
+        setEmail(user.email || '');
 
-        const { data: profileData } = await supabaseClient
+        const { data: profileData, error: profileError } = await supabaseClient
           .from('profiles')
-          .select('full_name')
-          .eq('id', authData.user.id)
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
           .single();
 
-        const displayName = profileData?.full_name || userEmail.split('@')[0] || 'Usuário';
+        if (!profileError && profileData) {
+          setFullName(profileData.full_name || '');
+          setAvatarUrl(prev => profileData.avatar_url);
+        }
 
-        setUserData({
-          name: displayName,
-          email: userEmail,
-        });
+        setLoading(false);
       } catch (err) {
-        setError('Erro ao carregar dados do perfil');
-        console.error(err);
-      } finally {
+        console.error('Erro ao carregar perfil:', err);
         setLoading(false);
       }
     };
 
-    fetchUserData();
+    fetchProfile();
   }, [router]);
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdating(true);
+    setMessage(null);
+
+    try {
+      const { error } = await supabaseClient
+        .from('profiles')
+        .update({
+          full_name: fullName.trim(),
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Erro ao atualizar perfil' });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Por favor, selecione uma imagem válida' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Imagem muito grande. Máximo 5MB' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setMessage(null);
+
+    try {
+      const fileName = `avatar_${userId}_${Date.now()}_${file.name}`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabaseClient.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      const avatarUrl = publicUrlData.publicUrl;
+
+      const { error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(avatarUrl);
+      setMessage({ type: 'success', text: 'Foto atualizada com sucesso!' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Erro ao fazer upload' });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleSignOut = async () => {
-    setSigningOut(true);
     try {
       await supabaseClient.auth.signOut();
-      // Clear server session cookie
-      try {
-        await fetch('/api/session', { method: 'DELETE' });
-      } catch (err) {
-        console.warn('Failed clearing server session cookie', err);
-      }
+      await fetch('/api/session', { method: 'DELETE' });
       router.push('/login');
     } catch (err) {
-      setError('Erro ao fazer logout');
-      console.error(err);
-      setSigningOut(false);
+      console.error('Erro ao fazer logout:', err);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-coach-black via-coach-black/95 to-coach-black/90 flex items-center justify-center pt-16 lg:pt-0 px-4">
-        <div className="bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-8 text-center">
-          <div className="w-8 h-8 border-2 border-white/30 border-t-coach-gold rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400 text-sm">Carregando perfil...</p>
-        </div>
+      <div className="min-h-screen bg-iron-black flex items-center justify-center p-6 gap-4">
+        <Loader2 className="w-12 h-12 text-iron-red animate-spin" />
+        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Carregando perfil...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-coach-black via-coach-black/95 to-coach-black/90 px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-iron-black p-4 md:p-6 lg:p-10 lg:pl-28 font-sans">
+      <div className="max-w-4xl mx-auto">
+        
         {/* Header */}
-        <div className="mb-8 sm:mb-12">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-coach-gold/20 border border-coach-gold/40 flex items-center justify-center">
-              <User className="w-6 h-6 text-coach-gold" />
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-[0.02em] text-white">
-              Meu Perfil
-            </h1>
-          </div>
-          <p className="text-gray-400 text-sm sm:text-base tracking-wide ml-13">
-            Gerencie suas informações de conta
-          </p>
+        <div className="mb-8 md:mb-12">
+          <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-iron-red font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+            <ArrowLeft size={12} /> Voltar ao Painel
+          </Link>
+          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
+            Configurações de <span className="text-gradient-red">Perfil</span>
+          </h1>
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="mb-6 bg-red-500/10 backdrop-blur-md border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-red-500/90 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Main Cards Container */}
-        {userData && (
-          <div className="space-y-6">
-            {/* Email Card */}
-            <div className="bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-6 sm:p-8 hover:bg-white/8 hover:border-white/40 transition-all duration-300 group">
-              <div className="flex items-start gap-4">
-                <div className="shrink-0">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-coach-gold/10 border border-coach-gold/30 group-hover:bg-coach-gold/20 transition-colors">
-                    <Mail className="w-6 h-6 text-coach-gold" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
+          
+          {/* Avatar Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-iron-gray rounded-2xl md:rounded-[40px] shadow-2xl p-6 md:p-10 border border-white/5 flex flex-col items-center">
+               <div className="relative group mb-6 md:mb-8">
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-[40px] md:rounded-[50px] overflow-hidden bg-white/5 border-4 md:border-8 border-iron-gray shadow-2xl shadow-black group-hover:scale-[1.02] transition-transform duration-500">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-4xl md:text-5xl font-black text-iron-red bg-iron-red/5">
+                        {fullName ? fullName.charAt(0).toUpperCase() : <User size={40} />}
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-                    E-mail
-                  </h2>
-                  <p className="text-base sm:text-lg text-white break-all font-medium">
-                    {userData.email}
-                  </p>
-                </div>
-              </div>
-            </div>
+                  
+                  <label
+                    htmlFor="avatar-upload"
+                    className="absolute -bottom-2 -right-2 w-12 h-12 md:w-14 md:h-14 bg-iron-red text-white rounded-2xl md:rounded-3xl flex items-center justify-center cursor-pointer hover:bg-red-600 transition-all shadow-neon-red border-4 border-iron-gray group-active:scale-90"
+                  >
+                    {uploadingAvatar ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <Camera size={20} />
+                    )}
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={uploadingAvatar}
+                    className="hidden"
+                  />
+               </div>
 
-            {/* Account Settings Card */}
-            <div className="bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-6 sm:p-8 hover:bg-white/8 hover:border-white/40 transition-all duration-300 group">
-              <div className="flex items-start gap-4">
-                <div className="shrink-0">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-coach-gold/10 border border-coach-gold/30 group-hover:bg-coach-gold/20 transition-colors">
-                    <Settings className="w-6 h-6 text-coach-gold" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-                    Configurações de Conta
-                  </h2>
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-300 leading-relaxed">
-                      Gerencie suas preferências e configurações de segurança da sua conta.
-                    </p>
-                    <ul className="text-xs text-gray-400 space-y-2 mt-4 pl-2">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-coach-gold/60"></span>
-                        Notificações e Alertas
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-coach-gold/60"></span>
-                        Privacidade e Dados
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-coach-gold/60"></span>
-                        Segurança e Autenticação
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-coach-gold/60"></span>
-                        Preferências de Atividade
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
+               <h2 className="text-lg md:text-xl font-black text-white mb-1 text-center truncate w-full">{fullName || "Usuário"}</h2>
+               <p className="text-[10px] font-black text-iron-gold uppercase tracking-[0.2em] mb-8 md:mb-10">Membro Premium</p>
 
-            {/* Sign Out Button */}
-            <div className="pt-4">
-              <button
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className="w-full bg-linear-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-red-600/50 disabled:to-red-700/50 disabled:cursor-not-allowed rounded-xl px-6 py-4 text-sm font-semibold uppercase tracking-[0.08em] text-white transition-all duration-300 flex items-center justify-center gap-2 group shadow-lg hover:shadow-red-600/20"
-              >
-                <LogOut className="w-5 h-5 transition-transform group-hover:translate-x-1 group-disabled:group-hover:translate-x-0" />
-                {signingOut ? 'Saindo...' : 'SAIR DA CONTA'}
-              </button>
-              <p className="text-xs text-gray-500 text-center mt-3 tracking-wide">
-                Você será desconectado e redirecionado para o login
-              </p>
-            </div>
-
-            {/* Footer Info */}
-            <div className="mt-12 text-center">
-              <p className="text-xs text-gray-600 tracking-widest uppercase">
-                © Coach Vinny - Premium Training System
-              </p>
+               <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full py-4 bg-white/5 text-zinc-500 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-iron-red hover:text-white transition-all flex items-center justify-center gap-3 group"
+                >
+                  <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+                  Sair da Conta
+                </button>
             </div>
           </div>
-        )}
+
+          {/* Settings Side */}
+          <div className="lg:col-span-2 space-y-6 md:space-y-8">
+            <div className="bg-iron-gray rounded-2xl md:rounded-[40px] shadow-2xl p-6 md:p-10 border border-white/5">
+               <h3 className="text-lg md:text-xl font-black text-white mb-8 md:mb-10 flex items-center gap-3">
+                  <UserCircle className="text-iron-red w-5 h-5 md:w-6 md:h-6" /> Informações Pessoais
+               </h3>
+
+               {message && (
+                  <div
+                    className={`mb-10 p-6 rounded-3xl flex items-center gap-4 text-xs font-bold uppercase tracking-widest ${
+                      message.type === 'success'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-iron-red/10 text-iron-red border border-iron-red/20'
+                    }`}
+                  >
+                    {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                    {message.text}
+                  </div>
+                )}
+
+               <form onSubmit={handleUpdateProfile} className="space-y-8">
+                  <div className="space-y-6">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">
+                        Nome Completo
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
+                        <input
+                          type="text"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Ex: João da Silva"
+                          required
+                          className="w-full h-16 pl-14 pr-6 bg-white/5 rounded-2xl text-white font-bold placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-iron-red/20 border border-white/5 focus:border-iron-red transition-all"
+                          disabled={updating}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 grayscale opacity-70">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">
+                        Endereço de E-mail
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
+                        <input
+                          type="email"
+                          value={email}
+                          disabled
+                          className="w-full h-16 pl-14 pr-6 bg-white/5 rounded-2xl text-zinc-500 font-bold cursor-not-allowed border border-white/10"
+                        />
+                      </div>
+                      <p className="mt-2 text-[9px] font-black text-zinc-600 uppercase tracking-widest ml-1">
+                        O e-mail é usado como login e não pode ser alterado por aqui.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className="w-full h-16 bg-iron-red text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-neon-red hover:bg-red-600 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                  >
+                    {updating ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <>
+                        <Save size={20} />
+                        Salvar Alterações
+                      </>
+                    )}
+                  </button>
+               </form>
+            </div>
+
+            {/* Support Info */}
+            <div className="p-10 rounded-[40px] bg-iron-gray border border-white/5 text-white shadow-2xl overflow-hidden relative group">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000"></div>
+               <div className="relative z-10 flex items-center justify-between gap-6">
+                  <div>
+                     <h4 className="text-xl font-black mb-2 tracking-tight">Precisa de ajuda?</h4>
+                     <p className="text-zinc-500 font-medium text-sm leading-relaxed max-w-sm">
+                        Para alterações de plano ou problemas técnicos, nossa equipe está pronta para te atender.
+                     </p>
+                  </div>
+                  <ChevronRight size={24} className="text-zinc-700 group-hover:text-iron-gold group-hover:translate-x-2 transition-all" />
+               </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

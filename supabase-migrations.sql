@@ -82,6 +82,16 @@ ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT true;
 ALTER TABLE parceiros 
 ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT true;
 
+-- Adicionar colunas de perfil em profiles se não existir
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS valor_plano NUMERIC(10,2);
+
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS arquivado BOOLEAN DEFAULT false;
+
 -- Adicionar coluna exercicio_id em historico_treinos se não existir
 -- Primeiro sem foreign key
 ALTER TABLE historico_treinos 
@@ -122,10 +132,17 @@ CREATE INDEX IF NOT EXISTS idx_parceiros_ordem ON parceiros(ordem, nome_marca) W
 -- =====================================================
 
 -- Habilitar RLS nas tabelas
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exercicios_biblioteca ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fichas_treino ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historico_treinos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parceiros ENABLE ROW LEVEL SECURITY;
+
+-- PERFIS: Política simples - usuários veem e editam apenas seu próprio perfil
+DROP POLICY IF EXISTS "users_own_profile" ON profiles;
+CREATE POLICY "users_own_profile" ON profiles
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 -- EXERCÍCIOS BIBLIOTECA: Todos podem ver, apenas coaches podem criar/editar
 DROP POLICY IF EXISTS "Todos podem visualizar exercícios" ON exercicios_biblioteca;

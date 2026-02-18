@@ -177,6 +177,7 @@ export async function POST(req: Request) {
         email: email,
         role: "aluno",
         status_pagamento: "pago",
+        arquivado: false,
       }, {
         onConflict: "id", // Se o ID já existir, atualiza em vez de falhar
         ignoreDuplicates: false // Força atualização dos campos

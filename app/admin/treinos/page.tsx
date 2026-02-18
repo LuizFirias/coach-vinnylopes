@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 
+import { PlusCircle, FileUp, CheckCircle2, AlertCircle, Loader2, Trash2, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+
 interface Aluno {
   id: string;
-  full_name?: string | null;
-  email: string;
+  full_name: string | null;
+  email: string | null;
 }
 
 export default function TreinosPage() {
@@ -29,6 +32,7 @@ export default function TreinosPage() {
           .from('profiles')
           .select('id, full_name, email')
           .eq('role', 'aluno')
+          .eq('arquivado', false)
           .order('full_name', { ascending: true });
 
         if (fetchError) {
@@ -51,7 +55,6 @@ export default function TreinosPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar que é PDF
       if (file.type !== 'application/pdf') {
         setError('Por favor, selecione um arquivo PDF');
         setSelectedFile(null);
@@ -59,7 +62,6 @@ export default function TreinosPage() {
         return;
       }
 
-      // Validar tamanho (máximo 50MB)
       if (file.size > 50 * 1024 * 1024) {
         setError('Arquivo muito grande. Máximo 50MB');
         setSelectedFile(null);
@@ -78,7 +80,6 @@ export default function TreinosPage() {
     setError(null);
     setSuccess(null);
 
-    // Validações
     if (!selectedAlunoId) {
       setError('Por favor, selecione um aluno');
       return;
@@ -92,226 +93,196 @@ export default function TreinosPage() {
     setLoading(true);
 
     try {
-      // 1. Fazer upload do arquivo para storage
       const fileName = `${selectedAlunoId}_${Date.now()}_${selectedFile.name}`;
       
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from('treinos-pdf')
         .upload(fileName, selectedFile, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: false
         });
 
-      if (uploadError) {
-        setError('Erro ao fazer upload: ' + uploadError.message);
-        setLoading(false);
-        return;
-      }
+      if (uploadError) throw uploadError;
 
-      // 2. Obter URL pública do arquivo
-      const { data: publicUrlData } = supabaseClient
-        .storage
+      const { data: { publicUrl } } = supabaseClient.storage
         .from('treinos-pdf')
         .getPublicUrl(fileName);
 
-      const urlPdf = publicUrlData.publicUrl;
-
-      // 3. Salvar na tabela treinos_alunos
       const { error: dbError } = await supabaseClient
         .from('treinos_alunos')
         .insert({
           aluno_id: selectedAlunoId,
-          url_pdf: urlPdf,
+          url_pdf: publicUrl,
           nome_arquivo: selectedFile.name,
           data_upload: new Date().toISOString(),
         });
 
-      if (dbError) {
-        setError('Erro ao salvar arquivo no banco: ' + dbError.message);
-        setLoading(false);
-        return;
-      }
+      if (dbError) throw dbError;
 
-      // Sucesso!
-      const alunoLabel = alunos.find(a => a.id === selectedAlunoId)?.full_name
-        || alunos.find(a => a.id === selectedAlunoId)?.email
-        || 'aluno';
-      setSuccess(`Treino enviado com sucesso para ${alunoLabel}!`);
+      setSuccess('Ficha de treino enviada com sucesso!');
       setSelectedFile(null);
       setFilePreview('');
       setSelectedAlunoId('');
-
-      // Limpar mensagem de sucesso após 3 segundos
+      
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Erro ao processar o upload');
+    } catch (err: any) {
+      console.error('Erro no upload:', err);
+      setError('Erro ao realizar upload: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-coach-black p-8 pt-8">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#050505] p-4 md:p-6 lg:p-10 lg:pl-28">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-8 md:mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Gerenciar Treinos</h1>
-              <p className="text-gray-400">Envie PDFs ou crie fichas digitais para seus alunos</p>
+              <Link 
+                href="/admin/dashboard" 
+                className="inline-flex items-center gap-2 text-[#E30613] font-black text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:gap-3 transition-all"
+              >
+                <ArrowLeft size={14} /> Voltar ao Painel
+              </Link>
+              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">
+                Gestão de <span className="text-[#E30613]">Treinos</span>
+              </h1>
+              <p className="text-zinc-500 font-medium">Envie a ficha de treino para o atleta</p>
             </div>
+            
+            <button
+              onClick={() => router.push('/admin/treinos/nova-ficha')}
+              className="flex items-center gap-3 px-6 md:px-8 py-3 md:py-4 bg-[#E30613] text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-[#E30613]/20 hover:scale-[1.02] transition-all active:scale-95"
+            >
+              <PlusCircle size={18} />
+              Nova Ficha Digital
+            </button>
           </div>
-          
-          {/* Botão Nova Ficha Digital */}
-          <button
-            onClick={() => router.push('/admin/treinos/nova-ficha')}
-            className="w-full mt-4 py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            CRIAR FICHA DIGITAL PREMIUM
-          </button>
         </div>
 
-        {/* Form Container */}
-        <div className="card-glass">
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded text-green-400 text-sm">
-              ✓ {success}
-            </div>
-          )}
-
-          {fetchingAlunos ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Carregando alunos...</p>
-            </div>
-          ) : (
-            <form onSubmit={handleUpload} className="space-y-8">
-              {/* Select Aluno */}
-              <div>
-                <label htmlFor="aluno" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-3">
-                  Selecione o Aluno
-                </label>
-                <select
-                  id="aluno"
-                  value={selectedAlunoId}
-                  onChange={(e) => setSelectedAlunoId(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50 cursor-pointer"
-                >
-                  <option value="">-- Escolha um aluno --</option>
-                  {alunos.map((aluno) => (
-                    <option key={aluno.id} value={aluno.id}>
-                        {aluno.full_name || aluno.email}
-                    </option>
-                  ))}
-                </select>
-                {alunos.length === 0 && (
-                  <p className="mt-2 text-yellow-400 text-sm">
-                    Nenhum aluno encontrado. Crie alunos primeiro.
-                  </p>
-                )}
+        <div className="grid grid-cols-1 gap-6 md:gap-8">
+          {/* Form Container */}
+          <div className="bg-zinc-900/50 backdrop-blur-xl rounded-2xl shadow-2xl p-6 md:p-8 lg:p-12 border border-white/5">
+            <div className="flex items-center gap-4 mb-6 md:mb-10 pb-4 md:pb-6 border-b border-white/5">
+              <div className="w-12 h-12 rounded-2xl bg-[#E30613]/10 flex items-center justify-center text-[#E30613]">
+                <FileUp size={24} />
               </div>
-
-              {/* File Upload */}
               <div>
-                <label htmlFor="file-input" className="block text-sm font-medium text-gray-300 mb-3">
-                  Arquivo PDF do Treino
-                </label>
+                <h2 className="text-xl font-bold text-white leading-tight">Upload de PDF</h2>
+                <p className="text-sm text-zinc-500">O arquivo ficará disponível imediatamente para o aluno</p>
+              </div>
+            </div>
 
-                {/* Hidden File Input */}
-                <input
-                  id="file-input"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  disabled={loading}
-                  className="hidden"
-                />
+            {/* Mensagens */}
+            {error && (
+              <div className="mb-8 p-4 bg-red-950/20 border border-red-900/50 rounded-2xl flex items-center gap-3 text-red-500 text-sm font-medium">
+                <AlertCircle size={18} />
+                {error}
+              </div>
+            )}
 
-                {/* Custom File Button */}
-                <div className="flex gap-3">
-                  <label
-                    htmlFor="file-input"
-                    className="flex-1 px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                    Selecionar PDF
+            {success && (
+              <div className="mb-8 p-4 bg-green-950/20 border border-green-900/50 rounded-2xl flex items-center gap-3 text-green-500 text-sm font-medium">
+                <CheckCircle2 size={18} />
+                {success}
+              </div>
+            )}
+
+            {fetchingAlunos ? (
+              <div className="flex flex-col items-center justify-center py-12 md:py-20 gap-4 text-zinc-500">
+                <Loader2 size={40} className="animate-spin text-[#E30613]" />
+                <p className="text-sm font-black uppercase tracking-widest">Carregando alunos...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleUpload} className="space-y-6 md:space-y-10">
+                {/* Select Aluno */}
+                <div className="space-y-4">
+                  <label htmlFor="aluno" className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 ml-1">
+                    SELECIONE O ALUNO
                   </label>
+                  <div className="relative group">
+                    <select
+                      id="aluno"
+                      value={selectedAlunoId}
+                      onChange={(e) => setSelectedAlunoId(e.target.value)}
+                      disabled={loading}
+                      className="w-full h-14 md:h-16 px-6 bg-white/[0.03] border border-white/10 rounded-2xl text-white font-semibold focus:outline-none focus:border-[#E30613]/50 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <option value="" className="bg-zinc-900">Aperte para escolher...</option>
+                      {alunos.map((aluno) => (
+                        <option key={aluno.id} value={aluno.id} className="bg-zinc-900">
+                            {aluno.full_name || aluno.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* File Preview */}
-                {filePreview && (
-                  <div className="mt-4 card-glass">
-                    <p className="text-gray-300 text-sm">
-                      <span className="text-coach-gold font-semibold">Arquivo selecionado:</span> {filePreview}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedFile(null);
-                        setFilePreview('');
-                      }}
-                      disabled={loading}
-                      className="mt-2 text-red-400 hover:text-red-300 text-sm transition"
-                    >
-                      Remover arquivo
-                    </button>
-                  </div>
-                )}
-              </div>
+                {/* File Upload Area */}
+                <div className="space-y-4">
+                  <label className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 ml-1">
+                    ARQUIVO DO TREINO (PDF)
+                  </label>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading || !selectedAlunoId || !selectedFile || alunos.length === 0}
-                className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Enviando...
-                  </span>
-                ) : (
-                  'Fazer Upload'
-                )}
-              </button>
-            </form>
-          )}
-        </div>
+                  {!selectedFile ? (
+                    <label className="relative flex flex-col items-center justify-center w-full h-32 md:h-40 border-2 border-dashed border-white/5 rounded-2xl bg-white/[0.02] hover:bg-[#E30613]/5 hover:border-[#E30613]/30 transition-all cursor-pointer group">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        disabled={loading}
+                        className="hidden"
+                      />
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <div className="w-12 h-12 mb-3 rounded-xl bg-zinc-800 shadow-sm flex items-center justify-center text-zinc-500 group-hover:text-[#E30613] transition-colors">
+                          <FileUp size={24} />
+                        </div>
+                        <p className="text-sm font-bold text-zinc-400">Arraste ou clique para selecionar</p>
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="relative p-4 md:p-6 bg-[#E30613]/5 border border-[#E30613]/20 rounded-2xl">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-[#E30613]/10 flex items-center justify-center text-[#E30613] shadow-sm">
+                          <FileUp size={20} />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="text-sm font-bold text-white truncate">{selectedFile.name}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedFile(null); setFilePreview(''); }}
+                          className="w-10 h-10 flex items-center justify-center text-zinc-500 hover:text-[#E30613] rounded-xl transition-all"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-        {/* Info Box */}
-        <div className="mt-8 card-glass">
-          <h3 className="text-coach-gold font-semibold mb-2">ℹ Informações</h3>
-          <ul className="text-gray-400 text-sm space-y-1">
-            <li>• Apenas arquivos PDF são aceitos</li>
-            <li>• Tamanho máximo: 50MB</li>
-            <li>• O aluno receberá acesso ao link automaticamente</li>
-          </ul>
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={loading || !selectedAlunoId || !selectedFile}
+                  className="w-full h-14 md:h-16 bg-[#E30613] text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl shadow-[#E30613]/20 hover:bg-[#ff0717] transition-all active:scale-[0.98] disabled:opacity-30"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      ENVIANDO...
+                    </>
+                  ) : (
+                    <>
+                      ENVIAR TREINO PARA O ALUNO
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>

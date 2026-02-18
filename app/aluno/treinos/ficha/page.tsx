@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { Clock, Play, Check, Video } from "lucide-react";
+import { 
+  Clock, 
+  Check, 
+  Video, 
+  ArrowLeft, 
+  Activity, 
+  History, 
+  X,
+  Play,
+  RotateCcw,
+  Trophy,
+  Dumbbell
+} from "lucide-react";
+import Link from "next/link";
 
 interface Serie {
   ordem: number;
@@ -27,7 +40,7 @@ interface FichaTreino {
   exercicios: Exercicio[];
 }
 
-export default function FichaTreinoAlunoPage() {
+function FichaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fichaId = searchParams?.get("id");
@@ -179,8 +192,6 @@ export default function FichaTreinoAlunoPage() {
       });
 
       if (error) throw error;
-
-      alert("Treino finalizado com sucesso! 💪");
       router.push("/aluno/treinos");
     } catch (err) {
       console.error("Erro ao salvar histórico:", err);
@@ -192,188 +203,204 @@ export default function FichaTreinoAlunoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-gray-400 text-lg">Carregando ficha...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 lg:pl-28">
+        <div className="flex flex-col items-center gap-4 text-slate-400">
+          <div className="w-12 h-12 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin"></div>
+          <span className="font-bold uppercase tracking-widest text-[10px]">Preparando seu treino...</span>
+        </div>
       </div>
     );
   }
 
   if (!ficha) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-400 text-lg mb-4">Nenhuma ficha encontrada</div>
-          <button
-            onClick={() => router.push("/aluno/treinos")}
-            className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 lg:pl-28">
+        <div className="bg-white p-12 rounded-[50px] shadow-2xl shadow-slate-200/40 text-center max-w-md w-full border border-slate-50">
+          <div className="w-20 h-20 bg-slate-50 rounded-[30px] flex items-center justify-center mx-auto mb-8 text-slate-400">
+             <Dumbbell size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase">Não Encontrado</h2>
+          <p className="text-slate-500 font-medium italic mb-10">Não conseguimos localizar os detalhes deste treino ou ele não está mais disponível.</p>
+          <Link
+            href="/aluno/treinos"
+            className="block w-full py-5 bg-brand-purple text-white rounded-3xl font-black shadow-xl shadow-brand-purple/30 hover:bg-brand-purple/90 transition-all uppercase tracking-widest text-xs"
           >
-            Voltar
-          </button>
+            Voltar para Meus Treinos
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">{ficha.nome_rotina}</h1>
-          <p className="text-gray-400">Preencha os pesos e repetições. Marque cada série ao completar.</p>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-10 lg:pl-40 font-sans pb-24 md:pb-32">
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Top Navigation & Status */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
+          <div>
+            <Link href="/aluno/treinos" className="inline-flex items-center gap-2 text-brand-purple font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+              <ArrowLeft size={12} /> Abandonar Treino
+            </Link>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-none uppercase">
+              {ficha.nome_rotina}
+            </h1>
+          </div>
+          
+          <button
+            onClick={handleFinalizarTreino}
+            disabled={saving}
+            className="h-14 md:h-16 px-8 md:px-10 bg-slate-900 text-white rounded-2xl md:rounded-[24px] font-black shadow-2xl shadow-slate-900/20 hover:bg-brand-purple hover:shadow-brand-purple/30 transition-all disabled:opacity-50 flex items-center justify-center gap-3 group uppercase tracking-widest text-xs"
+          >
+            {saving ? (
+              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <>
+                Finalizar Sessão
+                <Trophy className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </>
+            )}
+          </button>
         </div>
 
-        {/* Botão Iniciar Rotina */}
-        <button
-          onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
-          className="w-full mb-6 py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-2"
-        >
-          <Play className="w-5 h-5" />
-          INICIAR ROTINA
-        </button>
-
-        {/* Lista de Exercícios */}
-        <div className="space-y-6">
-          {ficha.exercicios.map((exercicio) => (
+        {/* Exercícios List */}
+        <div className="space-y-8 md:space-y-12">
+          {ficha.exercicios.map((exercicio, exIdx) => (
             <div
               key={exercicio.id}
-              className="bg-zinc-900 border border-yellow-500/10 rounded-xl p-6 shadow-lg"
+              className="bg-white rounded-2xl md:rounded-[50px] border border-white shadow-2xl shadow-slate-200/40 overflow-hidden"
             >
-              {/* Cabeçalho do Card */}
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-12 h-12 bg-linear-to-br from-yellow-600 to-yellow-800 rounded-lg flex items-center justify-center shrink-0">
-                  <span className="text-2xl">💪</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-1">{exercicio.nome}</h3>
-                  <div className="flex items-center gap-2 text-gray-400 text-sm">
-                    <Clock className="w-4 h-4" />
-                    <span>Descanso: {exercicio.descanso}</span>
+              {/* Exercicio Header */}
+              <div className="p-6 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 border-b border-slate-50">
+                <div className="flex items-start gap-4 md:gap-6">
+                  <div className="w-14 h-14 md:w-16 md:h-16 bg-slate-900 text-white rounded-2xl md:rounded-3xl flex items-center justify-center shrink-0 shadow-lg shadow-slate-200 rotate-3 transition-transform hover:rotate-0">
+                    <span className="text-xl md:text-2xl font-black">{(exIdx + 1).toString().padStart(2, '0')}</span>
                   </div>
-                  {exercicio.video_url && (
-                    <button
-                      onClick={() => setVideoModal(exercicio.video_url || null)}
-                      className="mt-2 flex items-center gap-1 text-yellow-500 hover:text-yellow-400 text-sm"
-                    >
-                      <Video className="w-4 h-4" />
-                      Ver vídeo explicativo
-                    </button>
-                  )}
+                  <div>
+                    <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-2 leading-tight uppercase tracking-tight">{exercicio.nome}</h3>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <RotateCcw size={12} className="text-brand-purple/60" />
+                        Descanso: {exercicio.descanso}
+                      </div>
+                      {exercicio.video_url && (
+                        <button
+                          onClick={() => setVideoModal(exercicio.video_url || null)}
+                          className="flex items-center gap-2 px-4 py-2 bg-brand-purple/5 text-brand-purple rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-purple/10 transition-colors"
+                        >
+                          <Video size={14} />
+                          Demonstração
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Tabela de Séries */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Série</th>
-                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Anterior</th>
-                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">KG</th>
-                      <th className="text-left py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Reps</th>
-                      <th className="text-center py-2 px-3 text-gray-400 text-xs uppercase font-semibold">Check</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exercicio.series.map((serie) => (
-                      <tr
-                        key={serie.ordem}
-                        className={`border-b border-gray-800/50 transition ${
-                          serie.completado ? "opacity-50 bg-yellow-500/5" : ""
-                        }`}
-                      >
-                        <td className="py-3 px-3 text-white font-semibold">{serie.ordem}ª</td>
-                        <td className="py-3 px-3 text-gray-400 text-sm">{serie.anterior}</td>
-                        <td className="py-3 px-3">
-                          <input
-                            type="number"
-                            value={serie.peso_atual || ""}
-                            onChange={(e) =>
-                              handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", Number(e.target.value))
-                            }
-                            className="w-20 px-2 py-1 bg-zinc-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-yellow-500"
-                            placeholder="0"
-                          />
-                        </td>
-                        <td className="py-3 px-3">
-                          <input
-                            type="number"
-                            value={serie.reps || ""}
-                            onChange={(e) =>
-                              handleUpdateSerie(exercicio.id, serie.ordem, "reps", Number(e.target.value))
-                            }
-                            className="w-20 px-2 py-1 bg-zinc-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-yellow-500"
-                            placeholder="0"
-                          />
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <button
-                            onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
-                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition ${
-                              serie.completado
-                                ? "bg-yellow-500 border-yellow-500"
-                                : "border-gray-600 hover:border-yellow-500"
-                            }`}
-                          >
-                            {serie.completado && <Check className="w-4 h-4 text-black font-bold" />}
-                          </button>
-                        </td>
+              {/* Series Table */}
+              <div className="p-4 md:p-10">
+                <div className="bg-slate-50/50 rounded-[35px] overflow-hidden border border-slate-50">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-slate-100/30">
+                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Série</th>
+                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Anterior</th>
+                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Carga (kg)</th>
+                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Reps</th>
+                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ação</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/50">
+                      {exercicio.series.map((serie) => (
+                        <tr 
+                          key={serie.ordem} 
+                          className={`transition-colors ${serie.completado ? 'bg-green-50/30' : 'hover:bg-white'}`}
+                        >
+                          <td className="py-5 px-6">
+                            <span className="text-sm font-black text-slate-900 italic">#{serie.ordem}</span>
+                          </td>
+                          <td className="py-5 px-6 text-center">
+                            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-50">
+                              <History size={10} />
+                              {serie.anterior}
+                            </div>
+                          </td>
+                          <td className="py-5 px-6">
+                             <input
+                               type="number"
+                               value={serie.peso_atual || ""}
+                               placeholder="0"
+                               onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
+                               className="w-20 mx-auto block bg-white border-2 border-slate-100 rounded-2xl py-2 px-2 text-center text-sm font-black text-slate-900 focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all"
+                             />
+                          </td>
+                          <td className="py-5 px-6">
+                            <input
+                              type="number"
+                              value={serie.reps || ""}
+                              placeholder="0"
+                              onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "reps", parseInt(e.target.value) || 0)}
+                              className="w-16 mx-auto block bg-white border-2 border-slate-100 rounded-2xl py-2 px-2 text-center text-sm font-black text-slate-900 focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all"
+                            />
+                          </td>
+                          <td className="py-5 px-6 text-right">
+                             <button
+                               onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
+                               className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ml-auto ${
+                                 serie.completado 
+                                  ? 'bg-green-500 text-white shadow-lg shadow-green-200 rotate-[360deg]' 
+                                  : 'bg-white border-2 border-slate-100 text-slate-300 hover:border-brand-purple hover:text-brand-purple'
+                               }`}
+                             >
+                               <Check size={20} strokeWidth={4} />
+                             </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Botão Finalizar Treino */}
-        <div className="mt-8 flex gap-4">
-          <button
-            onClick={() => router.push("/aluno/treinos")}
-            className="flex-1 py-4 bg-white/[0.03] border border-white/10 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-xl hover:bg-white/[0.05] transition-all duration-300"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleFinalizarTreino}
-            disabled={saving}
-            className="flex-1 py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "FINALIZAR TREINO"}
-          </button>
-        </div>
-      </div>
-
-      {/* Modal de Vídeo */}
-      {videoModal && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setVideoModal(null)}
-        >
-          <div
-            className="bg-zinc-900 rounded-xl p-6 max-w-3xl w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-white font-bold text-lg">Vídeo Explicativo</h3>
-              <button
-                onClick={() => setVideoModal(null)}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="aspect-video bg-black rounded-lg">
-              <iframe
-                src={videoModal}
-                className="w-full h-full rounded-lg"
-                allowFullScreen
-              />
+        {/* Video Modal */}
+        {videoModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/95 backdrop-blur-xl animate-in fade-in duration-300">
+            <div className="relative w-full max-w-4xl aspect-video bg-black rounded-[40px] overflow-hidden shadow-2xl">
+               <button 
+                 onClick={() => setVideoModal(null)}
+                 className="absolute top-6 right-6 z-10 w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-900 hover:scale-110 transition-transform"
+               >
+                 <X size={24} />
+               </button>
+               <iframe
+                 src={videoModal.replace("watch?v=", "embed/")}
+                 className="w-full h-full"
+                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                 allowFullScreen
+               ></iframe>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
     </div>
+  );
+}
+
+export default function FichaTreinoAlunoPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 lg:pl-28">
+        <div className="flex flex-col items-center gap-4 text-slate-400">
+          <div className="w-12 h-12 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin"></div>
+          <span className="font-bold uppercase tracking-widest text-[10px]">Iniciando aplicativo...</span>
+        </div>
+      </div>
+    }>
+      <FichaContent />
+    </Suspense>
   );
 }

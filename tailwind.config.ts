@@ -9,10 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        'coach-black': '#121212',
-        'coach-gray': '#1E1E1E',
-        'coach-gold': '#D4AF37',
-        'coach-gold-dark': '#BC962B',
+        'iron-black': '#050505',
+        'iron-gray': '#0F0F0F',
+        'iron-red': '#E30613',
+        'iron-gold': '#D4AF37',
+        'iron-gold-dark': '#B89626',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial'],

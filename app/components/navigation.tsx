@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { Menu, X, LogOut } from 'lucide-react';
+import { supabaseClient } from '@/lib/supabaseClient';
 
 const menuItems = [
   { name: 'TREINOS', href: '/aluno/treinos' },
@@ -10,6 +12,7 @@ const menuItems = [
   { name: 'FOTOS', href: '/aluno/fotos' },
   { name: 'PARCEIROS', href: '/aluno/parceiros' },
   { name: 'RANKING', href: '/aluno/ranking' },
+  { name: 'PERFIL', href: '/aluno/perfil' },
 ];
 
 export default function Navigation() {
@@ -17,66 +20,85 @@ export default function Navigation() {
 
   return (
     <>
-      {/* Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-coach-black/98 backdrop-blur-md border-b border-white/10 py-4">
-        <div className="px-4 sm:px-6 md:px-8 flex items-center justify-center relative">
-          {/* Hamburger button - left side */}
-          <button
-            aria-label="Abrir menu"
-            onClick={() => setOpen(true)}
-            className="absolute left-4 sm:left-6 md:left-8 w-10 h-10 rounded-lg flex items-center justify-center bg-black/40 border border-white/20 hover:bg-coach-gold/10 transition-all duration-200"
-          >
-            <svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect y="1" width="20" height="2" rx="1" fill="#D4AF37" />
-              <rect y="6" width="20" height="2" rx="1" fill="#D4AF37" />
-              <rect y="11" width="20" height="2" rx="1" fill="#D4AF37" />
-            </svg>
-          </button>
+      {/* Fixed Header - Modern Premium Style */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-100/50 py-5">
+        <div className="px-6 sm:px-10 flex items-center justify-between">
+          
+          <div className="flex items-center gap-4">
+             {/* Hamburger button */}
+            <button
+              aria-label="Abrir menu"
+              onClick={() => setOpen(true)}
+              className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100 hover:bg-brand-purple/5 hover:border-brand-purple/20 transition-all duration-300 lg:hidden"
+            >
+              <Menu size={18} className="text-brand-purple" />
+            </button>
+            <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-900">
+              VINNY LOPES <span className="text-brand-purple">COACH</span>
+            </h1>
+          </div>
 
-          {/* Brand name - center */}
-          <h1 className="text-xs sm:text-sm md:text-base font-bold tracking-[0.15em] uppercase text-white/95">
-            VINNY LOPES COACH
-          </h1>
+          <div className="hidden lg:flex items-center gap-8">
+            {menuItems.slice(0, 4).map((m) => (
+              <Link 
+                key={m.href} 
+                href={m.href} 
+                className="text-[9px] font-black tracking-[0.2em] text-slate-400 hover:text-brand-purple transition-all"
+              >
+                {m.name}
+              </Link>
+            ))}
+          </div>
         </div>
       </header>
 
       {/* Drawer Overlay */}
       <div
-        className={`fixed inset-0 z-40 transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-60 transition-all duration-500 ${open ? 'opacity-100 pointer-events-auto backdrop-blur-md' : 'opacity-0 pointer-events-none'}`}
         aria-hidden={!open}
         onClick={() => setOpen(false)}
       >
-        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-slate-900/10" />
       </div>
 
       {/* Drawer Menu */}
-      <aside className={`fixed left-0 top-0 h-screen w-[85%] max-w-sm bg-coach-black/99 border-r border-white/10 text-white z-[45] transform transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed left-0 top-0 h-screen w-[85%] max-w-sm bg-white border-r border-slate-50 shadow-2xl z-70 transform transition-transform duration-500 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Close button (X icon) */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-white/10">
-          <h2 className="text-xs font-bold tracking-[0.15em] uppercase text-white/80">MENU</h2>
+        <div className="flex justify-between items-center px-8 py-6 border-b border-slate-50">
+          <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-400">Navegação</h2>
           <button
             onClick={() => setOpen(false)}
-            className="w-8 h-8 flex items-center justify-center text-coach-gold hover:text-coach-gold/60 transition-colors rounded-lg hover:bg-white/5"
+            className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-brand-purple rounded-xl transition-all"
             aria-label="Fechar menu"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+            <X size={20} />
           </button>
         </div>
 
         {/* Menu content */}
-        <nav className="px-6 py-8 flex flex-col gap-8">
+        <nav className="px-6 py-10 flex flex-col gap-4">
           {menuItems.map((m) => (
             <Link
               key={m.href}
               href={m.href}
-              className="uppercase tracking-[0.1em] text-sm font-medium text-gray-300 hover:text-coach-gold transition-colors duration-200"
+              className="px-6 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-brand-purple hover:bg-brand-purple/5 transition-all"
               onClick={() => setOpen(false)}
             >
               {m.name}
             </Link>
           ))}
+
+          {/* Botão Sair */}
+          <button
+            onClick={async () => {
+              await supabaseClient.auth.signOut();
+              window.location.href = '/login';
+            }}
+            className="flex items-center gap-3 px-6 py-5 mt-10 rounded-2xl bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-100 transition-all"
+          >
+            <LogOut size={16} />
+            Sair da Plataforma
+          </button>
         </nav>
       </aside>
     </>

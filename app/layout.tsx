@@ -1,5 +1,5 @@
 import './globals.css';
-import ResponsiveNav from './components/responsive-nav';
+import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
 
 export default function RootLayout({
@@ -9,8 +9,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-br">
-      <body className="bg-coach-black text-white overflow-x-hidden">
-        <ResponsiveNav />
+      <body className="bg-gray-50 text-slate-900 overflow-x-hidden">
+        <Sidebar />
         {/* Main content wrapper handles internal padding and sidebar offset */}
         <MainWrapper>
           {children}

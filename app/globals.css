@@ -1,29 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050505;
+  --foreground: #FFFFFF;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-iron-black: #050505;
+  --color-iron-gray: #0F0F0F;
+  --color-iron-red: #E30613;
+  --color-iron-gold: #D4AF37;
+  
+  --shadow-neon-red: 0 0 15px rgba(227, 6, 19, 0.3);
+  --shadow-neon-gold: 0 0 15px rgba(212, 175, 55, 0.2);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, "Helvetica Neue", Arial;
+  background: #050505;
+  color: #FFFFFF;
+  font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
 }
 
@@ -31,26 +29,36 @@ html, body {
   overflow-x: hidden;
 }
 
-@layer components {
-  .card-glass {
-    @apply bg-white/5 backdrop-blur-md border border-white/20 rounded-xl p-4 sm:p-6 transition-all duration-200 hover:bg-white/8 hover:border-white/40;
-  }
+.card-iron {
+    background: #0F0F0F;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    transition: all 0.3s ease;
+}
 
-  .btn-glass {
-    @apply bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold uppercase tracking-widest hover:bg-white/20 hover:border-white/40 transition-all duration-200;
-    color: #D4AF37;
-  }
+.card-iron:hover {
+    border-color: rgba(227, 6, 19, 0.4);
+    box-shadow: 0 0 20px rgba(227, 6, 19, 0.1);
+}
 
-  .btn-gradient {
-    @apply bg-linear-to-r rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold uppercase tracking-widest hover:shadow-lg transition-all duration-200;
-    background: linear-gradient(to right, #D4AF37, #BC962B);
-    color: #121212;
-    box-shadow: 0 0 0 0px rgba(0, 0, 0, 0);
-  }
+.card-gold {
+    background: #0F0F0F;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 1.5rem;
+    padding: 2rem;
+}
 
-  .btn-gradient:hover {
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
-  }
+.text-gradient-gold {
+  background: linear-gradient(to right, #D4AF37, #F9E79F, #D4AF37);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-red {
+  background: linear-gradient(to right, #E30613, #FF4D4D);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 @keyframes slideUp {
@@ -59,5 +67,5 @@ html, body {
 }
 
 .animate-slide-up {
-  animation: slideUp 1000ms ease-out both;
+  animation: slideUp 600ms ease-out both;
 }

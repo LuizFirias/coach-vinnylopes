@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
   ResponsiveContainer,
@@ -21,8 +22,9 @@ interface Medida {
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload?.[0]) {
     return (
-      <div className="bg-coach-black/90 border border-coach-gold/30 rounded-lg p-2 text-xs text-white">
-        <p>{`Peso: ${payload[0].value} kg`}</p>
+      <div className="bg-white border border-slate-100 shadow-xl rounded-2xl p-3 text-sm text-slate-900">
+        <p className="font-bold text-brand-purple">{`${payload[0].value} kg`}</p>
+        <p className="text-xs text-slate-500">{payload[0].payload.data}</p>
       </div>
     );
   }
@@ -30,6 +32,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [name, setName] = useState<string>("Aluno");
   const [loading, setLoading] = useState(true);
   const [planExpiry, setPlanExpiry] = useState<string | null>(null);
@@ -47,8 +50,7 @@ export default function DashboardPage() {
         const { data: authData } = await supabaseClient.auth.getUser();
         const user = authData?.user;
         if (!user) {
-          setError("Usuário não autenticado");
-          setLoading(false);
+          router.replace("/login");
           return;
         }
 
@@ -57,9 +59,19 @@ export default function DashboardPage() {
         // Get profile info
         const { data: profile } = await supabaseClient
           .from("profiles")
-          .select("full_name, data_expiracao, status_pagamento")
+          .select("full_name, data_expiracao, status_pagamento, role")
           .eq("id", userId)
           .single();
+
+        if (profile?.role === "coach") {
+          router.replace("/admin/alunos");
+          return;
+        }
+
+        if (profile?.role === "super_admin") {
+          router.replace("/super-admin");
+          return;
+        }
 
         const displayName = profile?.full_name || user.email?.split("@")[0] || "Aluno";
         setName(displayName);
@@ -75,7 +87,7 @@ export default function DashboardPage() {
           setDaysLeft(diff);
 
           // Block if expired or payment pending
-          if (diff < 0 || profile.status_pagamento === "atrasado") {
+          if (diff <= 0 || profile.status_pagamento === "atrasado") {
             setIsBlocked(true);
             setLoading(false);
             return;
@@ -95,9 +107,9 @@ export default function DashboardPage() {
 
         // Medidas (peso)
         const { data: medidasData } = await supabaseClient
-          .from("medidas")
+          .from("medidas_aluno")
           .select("id, peso, data_medicao")
-          .eq("user_id", userId)
+          .eq("aluno_id", userId)
           .order("data_medicao", { ascending: true });
 
         setMedidas((medidasData as Medida[]) || []);
@@ -128,29 +140,42 @@ export default function DashboardPage() {
   const variacao = pesoAtual != null && pesoAnterior != null ? (pesoAtual - pesoAnterior).toFixed(1) : null;
 
   const dadosGrafico = medidas.map((m) => ({
-    data: new Date(m.data_medicao).toLocaleDateString("pt-BR"),
+    data: new Date(m.data_medicao).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }),
     peso: m.peso,
   }));
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-brand-purple border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   // Paywall screen
   if (isBlocked) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] lg:min-h-screen bg-coach-black flex items-center justify-center px-4 py-12">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
         <div className="max-w-sm w-full">
-          <div className="card-glass p-6 sm:p-8 text-center">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-3 tracking-tight">
-              Sua assinatura precisa de renovação
+          <div className="bg-white rounded-3xl shadow-xl shadow-slate-200 p-8 text-center border border-slate-100">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
+              Acesso Expirado
             </h2>
-            <p className="text-sm text-gray-300 mb-6 leading-relaxed">
-              Entre em contato com o coach para renovar seu plano e continuar com acesso.
+            <p className="text-slate-500 mb-8 leading-relaxed">
+              Sua assinatura precisa ser renovada para que você continue acessando os treinos e acompanhamento.
             </p>
             <a
               href="https://wa.me/5511999999999"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-gradient inline-block"
+              className="w-full py-4 bg-brand-purple text-white rounded-2xl font-bold hover:bg-brand-purple/90 transition-all block shadow-lg shadow-brand-purple/20"
             >
-              Falar com Coach no WhatsApp
+              Renovar pelo WhatsApp
             </a>
           </div>
         </div>
@@ -159,104 +184,128 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-coach-black px-4 sm:px-6 lg:px-8 pt-6 lg:pt-8 pb-12">
+    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 pt-24 lg:pt-12 pb-12">
       <div className="max-w-5xl mx-auto">
         {/* Welcome header */}
-        <div className="mb-8">
-          <h2 className="text-base sm:text-lg md:text-xl font-semibold text-white/95 tracking-tight">
-            Olá, {name}!
-          </h2>
-          <p className="text-xs sm:text-sm text-gray-400 mt-1 tracking-wide uppercase">
-            Pronto para o treino de hoje?
-          </p>
-        </div>
-
-        {/* Plan expiry */}
-        {planExpiry && (
-          <div className="mb-6 card-glass p-3 sm:p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm text-gray-300 uppercase tracking-wide">Acesso VIP até</span>
-              <span className={`text-sm sm:text-base font-semibold ${
-                daysLeft !== null && daysLeft < 5 ? 'text-coach-gold' : 'text-white'
-              }`}>
-                {new Date(planExpiry).toLocaleDateString("pt-BR")}
-              </span>
-            </div>
-            {daysLeft !== null && (
-              <p className={`text-xs mt-2 ${
-                daysLeft < 5 ? 'text-coach-gold/80' : 'text-gray-400'
-              }`}>
-                {daysLeft >= 0 ? `${daysLeft} dias restantes` : "Expirado"}
-              </p>
-            )}
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Olá, {name.split(' ')[0]}! 👋
+            </h2>
+            <p className="text-slate-500 mt-1 font-medium">
+              Pronto para evoluir hoje?
+            </p>
           </div>
-        )}
+          
+          {planExpiry && (
+            <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Acesso até {new Date(planExpiry).toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit' })}</span>
+            </div>
+          )}
+        </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-6 card-glass p-4 border-red-500/30 bg-red-900/10">
-            <p className="text-sm text-red-400/90">{error}</p>
+          <div className="mb-6 bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 text-sm font-medium">
+            {error}
           </div>
         )}
 
         {/* Top cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div className="card-glass p-4">
-            <h3 className="text-xs uppercase tracking-widest text-gray-400 mb-3 font-semibold">Último Treino</h3>
-            <p className="text-sm sm:text-base text-white/90 truncate">
-              {lastTreino || "Nenhum treino"}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+            <div className="w-10 h-10 bg-brand-purple/10 rounded-xl flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Último Treino</h3>
+            <p className="text-lg text-slate-900 font-bold truncate">
+              {lastTreino || "Aguardando envio..."}
             </p>
           </div>
 
-          <div className="card-glass p-4">
-            <h3 className="text-xs uppercase tracking-widest text-gray-400 mb-3 font-semibold">Evolução</h3>
-            <p className="text-sm sm:text-base text-white/90 font-medium">
-              {pesoAtual != null ? `${pesoAtual} kg` : "—"}
-            </p>
-            {variacao != null && (
-              <p className={`text-xs mt-2 ${
-                parseFloat(variacao) < 0 ? 'text-green-400/80' : 'text-gray-400'
-              }`}>
-                Variação: {parseFloat(variacao) > 0 ? '+' : ''}{variacao} kg
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+            <div className="w-10 h-10 bg-brand-purple/10 rounded-xl flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Peso Atual</h3>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl text-slate-900 font-bold">
+                {pesoAtual != null ? `${pesoAtual} kg` : "—"}
               </p>
-            )}
+              {variacao != null && (
+                <span className={`text-sm font-bold ${
+                  parseFloat(variacao) < 0 ? 'text-green-500' : 'text-slate-400'
+                }`}>
+                  {parseFloat(variacao) > 0 ? '+' : ''}{variacao} kg
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="card-glass p-4">
-            <h3 className="text-xs uppercase tracking-widest text-gray-400 mb-3 font-semibold">Ranking</h3>
-            <p className="text-sm sm:text-base text-white/90 font-medium">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+            <div className="w-10 h-10 bg-brand-purple/10 rounded-xl flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Ranking</h3>
+            <p className="text-2xl text-slate-900 font-bold">
               {rankingPos != null ? `#${rankingPos}` : "—"}
             </p>
-            <p className="text-xs text-gray-400 mt-2">Posição em frequência</p>
+            <p className="text-xs text-slate-400 font-medium">Posição em frequência</p>
           </div>
         </div>
 
         {/* Chart */}
         {dadosGrafico.length > 1 && (
-          <div className="card-glass p-4 sm:p-6">
-            <h2 className="text-sm sm:text-base font-semibold text-white mb-4 uppercase tracking-widest">
-              Evolução do Peso
-            </h2>
-            <div style={{ width: "100%", height: 240 }}>
+          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                Evolução do Peso
+              </h2>
+              <div className="flex gap-2">
+                 <div className="flex items-center gap-1.5">
+                   <div className="w-3 h-3 rounded-full bg-brand-purple"></div>
+                   <span className="text-xs font-bold text-slate-400 uppercase">KG</span>
+                 </div>
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dadosGrafico}>
+                <AreaChart data={dadosGrafico} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorPeso" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#ffffff10" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="data" stroke="#888888" style={{ fontSize: "11px" }} />
-                  <YAxis stroke="#888888" style={{ fontSize: "11px" }} />
+                  <CartesianGrid stroke="#f1f5f9" vertical={false} />
+                  <XAxis 
+                    dataKey="data" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 500 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 500 }}
+                  />
                   <Tooltip content={<CustomTooltip />} />
                   <Area
                     type="monotone"
                     dataKey="peso"
-                    stroke="#D4AF37"
-                    strokeWidth={2}
+                    stroke="#7C3AED"
+                    strokeWidth={3}
                     fill="url(#colorPeso)"
-                    dot={false}
+                    dot={{ r: 4, fill: "#7C3AED", strokeWidth: 2, stroke: "#fff" }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>

@@ -29,13 +29,17 @@ export default function SubscriptionGuard({ children }: Props) {
 
         const { data: profile, error } = await supabaseClient
           .from("profiles")
-          .select("status_pagamento, data_expiracao")
+          .select("status_pagamento, data_expiracao, arquivado")
           .eq("id", user.id)
           .single();
 
         if (error || !profile) {
           setAllowed(false);
           setStatus(null);
+        } else if (profile.arquivado) {
+          // Se estiver arquivado, ignore o resto e bloqueie
+          setAllowed(false);
+          setStatus("arquivado");
         } else {
           const exp = profile.data_expiracao ? new Date(profile.data_expiracao) : null;
           const now = new Date();

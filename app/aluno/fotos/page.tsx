@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import Image from 'next/image';
+import { Camera, Upload, Calendar, ChevronRight, Image as ImageIcon, ArrowLeft, CheckCircle2, AlertCircle, Loader2, Maximize2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface Foto {
   id: string;
@@ -28,10 +29,9 @@ export default function FotosPage() {
   const [diasAteProxima, setDiasAteProxima] = useState<number | null>(null);
   const [mostrarNotificacao, setMostrarNotificacao] = useState(false);
 
-  const WHATSAPP_NUMBER = '+55 67 8123-2717'; // Altere para o número real do coach
+  const WHATSAPP_NUMBER = '+55 67 8123-2717';
   const DIAS_NOTIFICACAO = 15;
 
-  // Buscar fotos ao montar
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -45,11 +45,10 @@ export default function FotosPage() {
 
         setUserId(authData.user.id);
 
-        // Buscar fotos
         const { data: fotosData, error: fotosError } = await supabaseClient
           .from('fotos_evolucao')
           .select('*')
-          .eq('user_id', authData.user.id)
+          .eq('aluno_id', authData.user.id)
           .order('data_upload', { ascending: false });
 
         if (fotosError) {
@@ -58,9 +57,8 @@ export default function FotosPage() {
           return;
         }
 
-        setFotos(fotosData || []);
+        setFotos(prev => fotosData || []);
 
-        // Verificar notificação de 15 dias
         if (fotosData && fotosData.length > 0) {
           const ultimaFoto = new Date(fotosData[0].data_upload);
           const agora = new Date();
@@ -89,13 +87,11 @@ export default function FotosPage() {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
 
-    // Validar tipo de arquivo
     if (!file.type.startsWith('image/')) {
       setError('Por favor, selecione uma imagem válida');
       return;
     }
 
-    // Validar tamanho (máximo 10MB)
     if (file.size > 10 * 1024 * 1024) {
       setError('Imagem muito grande. Máximo 10MB');
       return;
@@ -105,7 +101,6 @@ export default function FotosPage() {
     setError(null);
 
     try {
-      // 1. Upload para storage
       const fileName = `${userId}_${tipo}_${Date.now()}_${file.name}`;
 
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
@@ -125,7 +120,6 @@ export default function FotosPage() {
         return;
       }
 
-      // 2. Obter URL pública
       const { data: publicUrlData } = supabaseClient
         .storage
         .from('evolucao-fotos')
@@ -133,11 +127,10 @@ export default function FotosPage() {
 
       const urlFoto = publicUrlData.publicUrl;
 
-      // 3. Salvar na tabela
       const { error: dbError } = await supabaseClient
         .from('fotos_evolucao')
         .insert({
-          user_id: userId,
+          aluno_id: userId,
           tipo,
           url_foto: urlFoto,
           data_upload: new Date().toISOString(),
@@ -155,16 +148,14 @@ export default function FotosPage() {
 
       setSuccess(`Foto de ${tipo} enviada com sucesso!`);
 
-      // Recarregar fotos
       const { data: novasFotos } = await supabaseClient
         .from('fotos_evolucao')
         .select('*')
-        .eq('user_id', userId)
+        .eq('aluno_id', userId)
         .order('data_upload', { ascending: false });
 
       if (novasFotos) {
         setFotos(novasFotos);
-        // Resetar notificação
         setMostrarNotificacao(false);
         setDiasAteProxima(DIAS_NOTIFICACAO);
       }
@@ -194,7 +185,6 @@ export default function FotosPage() {
     }
   };
 
-  // Agrupar fotos por data
   const fotosPorData: FotosPorData[] = [];
   fotos.forEach((foto) => {
     const data = formatarData(foto.data_upload);
@@ -212,40 +202,65 @@ export default function FotosPage() {
     costas: 'Costas',
   };
 
-  const emojiTipo = {
-    frente: '',
-    lado: '',
-    costas: '',
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 gap-4">
+        <Loader2 className="w-12 h-12 text-brand-purple animate-spin" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregando galeria...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-coach-black p-8 pt-8">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-10 lg:pl-28 font-sans">
       <div className="max-w-6xl mx-auto">
+        
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Fotos de Evolução</h1>
-          <p className="text-gray-400">Acompanhe sua transformação visual</p>
+        <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
+          <div>
+            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-brand-purple font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+              <ArrowLeft size={12} /> Painel de Controle
+            </Link>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+              Fotos de <span className="text-brand-purple">Evolução</span>
+            </h1>
+            <p className="text-slate-500 font-medium text-sm">Acompanhe sua transformação visual através do tempo.</p>
+          </div>
+
+          {diasAteProxima !== null && (
+            <div className="bg-white px-5 md:px-8 py-4 md:py-5 rounded-2xl md:rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center gap-3 md:gap-4">
+              <div className={`w-3 h-3 rounded-full ${mostrarNotificacao ? 'bg-red-500 animate-pulse shadow-lg shadow-red-500/50' : 'bg-emerald-500'}`}></div>
+              <div>
+                <span className="block text-[10px] font-black text-slate-300 uppercase tracking-widest">Status da Avaliação</span>
+                <span className="text-xs md:text-sm font-black text-slate-900">
+                   {mostrarNotificacao ? 'FOTOS ATRASADAS!' : `${diasAteProxima} dias para o próximo registro`}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Notification Banner - 15 dias */}
+        {/* Warning Banner */}
         {mostrarNotificacao && (
-          <div className="mb-8 card-glass">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-coach-gold mb-1">
-                    Hora da avaliação!
-                  </h3>
-                  <p className="text-gray-300">
-                    Já faz mais de {DIAS_NOTIFICACAO} dias! Envie suas fotos hoje para manter o acompanhamento em dia.
-                  </p>
+          <div className="mb-8 md:mb-12 bg-white p-6 md:p-10 rounded-2xl md:rounded-[40px] border border-red-50 shadow-2xl shadow-red-100/30 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-48 h-48 md:w-64 md:h-64 bg-red-50/50 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-700"></div>
+            <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6 md:gap-8 text-center lg:text-left">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 justify-center lg:justify-start mb-3 md:mb-4">
+                   <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30">
+                     <Camera size={18} />
+                   </div>
+                   <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Hora de atualizar!</h3>
                 </div>
+                <p className="text-slate-500 font-medium max-w-2xl text-sm md:text-lg leading-relaxed">
+                  Já se passaram mais de {DIAS_NOTIFICACAO} dias desde sua última foto. Registrar sua evolução agora é fundamental para ajustarmos sua estratégia.
+                </p>
               </div>
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=Olá%20Coach!%20Estou%20enviando%20minhas%20fotos%20de%20evolução.`}
+                href={`https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, '')}?text=Olá%20Coach!%20Acabei%20de%20enviar%20minhas%20fotos%20de%20evolução%20atrasadas.`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] whitespace-nowrap"
+                className="px-10 py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple transition-all active:scale-95 whitespace-nowrap"
               >
                 Chamar no WhatsApp
               </a>
@@ -253,173 +268,125 @@ export default function FotosPage() {
           </div>
         )}
 
-        {/* Contador de Dias */}
-        {diasAteProxima !== null && diasAteProxima <= DIAS_NOTIFICACAO && !mostrarNotificacao && (
-          <div className="mb-8 card-glass">
-            <p className="text-gray-300">
-              <span className="text-coach-gold font-semibold">{diasAteProxima}</span>
-              <span className="ml-2">dias até a próxima avaliação</span>
-            </p>
-          </div>
-        )}
-
-        {/* Error State */}
+        {/* Status Messages */}
         {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400">
-            {error}
+          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-3xl text-red-600 flex items-center gap-4 text-xs font-bold uppercase tracking-widest shadow-sm">
+            <AlertCircle size={20} /> {error}
           </div>
         )}
 
-        {/* Success Message */}
         {success && (
-          <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded-lg text-green-400">
-            {success}
+          <div className="mb-8 p-6 bg-emerald-50 border border-emerald-100 rounded-3xl text-emerald-600 flex items-center gap-4 text-xs font-bold uppercase tracking-widest shadow-sm">
+            <CheckCircle2 size={20} /> {success}
           </div>
         )}
 
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="text-center">
-              <svg className="w-12 h-12 animate-spin text-coach-gold mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-gray-400">Carregando...</p>
+        {/* Upload Hub */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          {(['frente', 'lado', 'costas'] as const).map((tipo) => (
+            <div key={tipo} className="bg-white rounded-[40px] p-10 shadow-2xl shadow-slate-200/40 border border-slate-50 flex flex-col items-center group">
+               <div className="w-20 h-20 rounded-[30px] bg-slate-50 flex items-center justify-center text-slate-300 mb-6 group-hover:bg-brand-purple/5 group-hover:text-brand-purple transition-colors duration-500">
+                  {tipo === 'frente' && <Camera size={32} />}
+                  {tipo === 'lado' && <div className="w-8 h-8 rounded-full border-4 border-current border-r-transparent rotate-12" />}
+                  {tipo === 'costas' && <ImageIcon size={32} />}
+               </div>
+               
+               <h3 className="text-xl font-black text-slate-900 mb-1">{labelTipo[tipo]}</h3>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Pose Recomendada</p>
+
+               <label className="w-full">
+                 <button
+                   type="button"
+                   onClick={() => {
+                     const input = document.querySelector(`input[data-tipo="${tipo}"]`) as HTMLInputElement;
+                     input?.click();
+                   }}
+                   disabled={uploadingTypes.has(tipo)}
+                   className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                 >
+                   {uploadingTypes.has(tipo) ? (
+                     <Loader2 className="animate-spin" size={18} />
+                   ) : (
+                     <>
+                       <Upload size={18} />
+                       Enviar Foto
+                     </>
+                   )}
+                 </button>
+                 <input
+                   type="file"
+                   accept="image/*"
+                   onChange={(e) => handleFileUpload(e, tipo)}
+                   disabled={uploadingTypes.has(tipo)}
+                   data-tipo={tipo}
+                   className="hidden"
+                 />
+               </label>
             </div>
-          </div>
-        ) : (
-          <>
-            {/* Upload Areas */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-              {(['frente', 'lado', 'costas'] as const).map((tipo) => (
-                <div
-                  key={tipo}
-                  className="card-glass hover:border-coach-gold/30 transition"
-                >
-                  <div className="mb-6">
-                    <span className="text-5xl block mb-3">{emojiTipo[tipo]}</span>
-                    <h3 className="text-xl font-semibold text-white">
-                      {labelTipo[tipo]}
-                    </h3>
+          ))}
+        </div>
+
+        {/* Gallery Section */}
+        {fotosPorData.length > 0 ? (
+          <div className="space-y-16">
+            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+              <div className="w-2 h-8 bg-brand-purple rounded-full"></div>
+              Histórico Visual
+            </h2>
+
+            <div className="space-y-20">
+              {fotosPorData.map((grupo) => (
+                <div key={grupo.data} className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-100 -ml-8"></div>
+                  
+                  <div className="flex items-center gap-4 mb-10 -ml-12 bg-gray-50 pr-4 relative z-10">
+                     <div className="w-8 h-8 rounded-full bg-white border-2 border-slate-100 flex items-center justify-center text-brand-purple shadow-sm">
+                       <Calendar size={14} />
+                     </div>
+                     <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{grupo.data}</span>
                   </div>
 
-                  <label className="block">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload(e, tipo)}
-                      disabled={uploadingTypes.has(tipo)}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.querySelector(
-                          `input[data-tipo="${tipo}"]`
-                        ) as HTMLInputElement;
-                        input?.click();
-                      }}
-                      disabled={uploadingTypes.has(tipo)}
-                      className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {uploadingTypes.has(tipo) ? (
-                        <>
-                          <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Enviando...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                          </svg>
-                          Enviar Foto
-                        </>
-                      )}
-                    </button>
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload(e, tipo)}
-                    disabled={uploadingTypes.has(tipo)}
-                    data-tipo={tipo}
-                    className="hidden"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Galeria de Fotos */}
-            {fotosPorData.length > 0 && (
-              <div>
-                <h2 className="text-2xl font-semibold text-white mb-6">Histórico de Fotos</h2>
-
-                <div className="space-y-8">
-                  {fotosPorData.map((grupo) => (
-                    <div key={grupo.data} className="card-glass">
-                      <h3 className="text-lg font-semibold text-coach-gold mb-6">
-                        {grupo.data}
-                      </h3>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {grupo.fotos.map((foto) => (
-                          <div
-                            key={foto.id}
-                            className="group relative bg-coach-black rounded-lg overflow-hidden border border-coach-gold/20 hover:border-coach-gold/50 transition"
-                          >
-                            <div className="relative aspect-square bg-gray-900">
-                              <img
-                                src={foto.url_foto}
-                                alt={`Foto ${labelTipo[foto.tipo]}`}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            </div>
-
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                    {grupo.fotos.map((foto) => (
+                      <div key={foto.id} className="bg-white rounded-[40px] overflow-hidden border border-slate-50 shadow-xl shadow-slate-200/50 group">
+                         <div className="relative aspect-[3/4] overflow-hidden">
+                           <img
+                             src={foto.url_foto}
+                             alt={`Foto ${labelTipo[foto.tipo]}`}
+                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 shadow-inner"
+                           />
+                           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                           
+                           <div className="absolute inset-x-0 bottom-0 p-8 flex items-end justify-between">
+                              <div>
+                                 <p className="text-[10px] font-black text-brand-purple uppercase tracking-[0.2em] mb-1">{labelTipo[foto.tipo]}</p>
+                                 <p className="text-lg font-black text-white">{grupo.data}</p>
+                              </div>
                               <a
                                 href={foto.url_foto}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] transition-all duration-300"
+                                className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-slate-900 transition-all duration-300 shadow-xl"
                               >
-                                Visualizar
+                                <Maximize2 size={20} />
                               </a>
-                            </div>
-
-                            <div className="p-4">
-                              <p className="text-sm font-semibold text-coach-gold">
-                                {emojiTipo[foto.tipo]} {labelTipo[foto.tipo]}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                           </div>
+                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {fotosPorData.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="text-center max-w-md">
-                  <svg className="w-20 h-20 mx-auto mb-6 text-coach-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.414-1.414a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <h2 className="text-2xl font-semibold text-white mb-3">
-                    Nenhuma foto ainda
-                  </h2>
-                  <p className="text-gray-400">
-                    Comece seu histórico de evolução enviando suas primeiras fotos hoje!
-                  </p>
-                </div>
-              </div>
-            )}
-          </>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-[50px] p-24 border border-slate-100 flex flex-col items-center justify-center text-center shadow-xl shadow-slate-200/50">
+             <div className="w-32 h-32 rounded-[40px] bg-slate-50 flex items-center justify-center text-slate-200 mb-8 shadow-inner">
+               <ImageIcon size={64} />
+             </div>
+             <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Sem registros visuais</h2>
+             <p className="text-slate-500 max-w-sm text-lg font-medium italic">Sua jornada começa com o primeiro clique. Envie suas fotos iniciais acima.</p>
+          </div>
         )}
       </div>
     </div>

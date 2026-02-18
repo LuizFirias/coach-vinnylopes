@@ -3,17 +3,19 @@
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Ruler, Activity, TrendingUp, Calendar, Save, Trash2, ArrowLeft, Loader2, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 
 interface Medicao {
   id: string;
   peso: number;
-  torax: number;
+  peitoral: number;
   cintura: number;
-  braco_esq: number;
-  braco_dir: number;
-  coxa_esq: number;
-  coxa_dir: number;
-  panturrilha: number;
+  braco_esquerdo: number;
+  braco_direito: number;
+  coxa_esquerda: number;
+  coxa_direita: number;
+  panturrilha_direita: number;
   data_medicao: string;
 }
 
@@ -47,7 +49,6 @@ export default function MedidasPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Buscar dados ao montar
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -61,11 +62,10 @@ export default function MedidasPage() {
 
         setUserId(authData.user.id);
 
-        // Buscar medições do usuário
         const { data: medicoesData, error: medicoesError } = await supabaseClient
-          .from('medidas')
+          .from('medidas_aluno')
           .select('*')
-          .eq('user_id', authData.user.id)
+          .eq('aluno_id', authData.user.id)
           .order('data_medicao', { ascending: false });
 
         if (medicoesError) {
@@ -103,7 +103,6 @@ export default function MedidasPage() {
       return;
     }
 
-    // Validar que todos os campos estão preenchidos
     if (Object.values(formData).some((val) => !val || val === '')) {
       setError('Por favor, preencha todos os campos');
       return;
@@ -113,17 +112,17 @@ export default function MedidasPage() {
 
     try {
       const { error: insertError } = await supabaseClient
-        .from('medidas')
+        .from('medidas_aluno')
         .insert({
-          user_id: userId,
+          aluno_id: userId,
           peso: parseFloat(formData.peso),
-          torax: parseFloat(formData.torax),
+          peitoral: parseFloat(formData.torax),
           cintura: parseFloat(formData.cintura),
-          braco_esq: parseFloat(formData.braco_esq),
-          braco_dir: parseFloat(formData.braco_dir),
-          coxa_esq: parseFloat(formData.coxa_esq),
-          coxa_dir: parseFloat(formData.coxa_dir),
-          panturrilha: parseFloat(formData.panturrilha),
+          braco_esquerdo: parseFloat(formData.braco_esq),
+          braco_direito: parseFloat(formData.braco_dir),
+          coxa_esquerda: parseFloat(formData.coxa_esq),
+          coxa_direita: parseFloat(formData.coxa_dir),
+          panturrilha_direita: parseFloat(formData.panturrilha),
           data_medicao: new Date().toISOString(),
         });
 
@@ -135,7 +134,6 @@ export default function MedidasPage() {
 
       setSuccess('Medições salvas com sucesso!');
 
-      // Limpar formulário
       setFormData({
         peso: '',
         torax: '',
@@ -147,11 +145,10 @@ export default function MedidasPage() {
         panturrilha: '',
       });
 
-      // Recarregar medições
       const { data: novasMedicoes, error: fetchError } = await supabaseClient
-        .from('medidas')
+        .from('medidas_aluno')
         .select('*')
-        .eq('user_id', userId)
+        .eq('aluno_id', userId)
         .order('data_medicao', { ascending: false });
 
       if (!fetchError && novasMedicoes) {
@@ -179,322 +176,288 @@ export default function MedidasPage() {
     }
   };
 
-  // Preparar dados para o gráfico
   const dadosGrafico = medicoes
     .slice()
     .reverse()
     .map((med) => ({
       data: formatarData(med.data_medicao),
       peso: med.peso,
-      dataCompleta: med.data_medicao,
     }));
 
-  const [isMobile, setIsMobile] = useState<boolean>(false);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const ticksToShow = isMobile ? 4 : 8;
-  const tickInterval = dadosGrafico.length > 0 ? Math.max(0, Math.floor(dadosGrafico.length / ticksToShow)) : 0;
-
-  function CustomTooltip({ active, payload, label }: any) {
-    if (!active || !payload || !payload.length) return null;
-    const peso = payload[0]?.value;
+  if (loading) {
     return (
-      <div style={{ background: '#0b0b0b', border: '1px solid #D4AF37', padding: 8, borderRadius: 8, color: '#fff', fontSize: 13 }}>
-        <div style={{ fontWeight: 700, color: '#D4AF37', marginBottom: 4 }}>{label}</div>
-        <div>{peso?.toFixed ? `${peso.toFixed(1)} kg` : `${peso} kg`}</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 gap-4">
+        <Loader2 className="w-12 h-12 text-brand-purple animate-spin" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregando evolução...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-coach-black p-8 pt-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-10 lg:pl-28 font-sans">
+      <div className="max-w-6xl mx-auto">
+        
         {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">Minhas Medidas</h1>
-          <p className="text-gray-400">Acompanhe sua evolução corporal</p>
+        <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
+          <div>
+            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-brand-purple font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+              <ArrowLeft size={12} /> Painel de Controle
+            </Link>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+              Meu <span className="text-brand-purple">Progresso</span>
+            </h1>
+            <p className="text-slate-500 font-medium text-sm">Seus números não mentem: acompanhe sua evolução real.</p>
+          </div>
+
+          {!loading && medicoes.length > 0 && (
+            <div className="bg-white px-5 md:px-8 py-4 md:py-5 rounded-2xl md:rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center gap-3 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+                <TrendingUp size={20} />
+              </div>
+              <div>
+                <span className="block text-[10px] font-black text-slate-300 uppercase tracking-widest">Peso Atual</span>
+                <span className="text-xl md:text-2xl font-black text-slate-900">{medicoes[0].peso} kg</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-20">
-            <div className="text-center">
-              <svg className="w-12 h-12 animate-spin text-coach-gold mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-gray-400">Carregando...</p>
-            </div>
-          </div>
-        )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
+          
+          {/* Form Side */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl md:rounded-[40px] shadow-2xl shadow-slate-200/40 p-6 md:p-10 border border-slate-50 sticky top-24">
+              <h2 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 flex items-center gap-3">
+                <Ruler className="text-brand-purple w-5 h-5 md:w-6 md:h-6" /> Nova Medição
+              </h2>
 
-        {/* Error State */}
-        {error && !loading && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-400">
-            {error}
-          </div>
-        )}
-
-        {/* Success Message */}
-        {success && (
-          <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded-lg text-green-400">
-            ✓ {success}
-          </div>
-        )}
-
-        {!loading && !error && (
-          <>
-            {/* Form Container */}
-            <div className="card-glass mb-12">
-              <h2 className="text-2xl font-semibold text-white mb-8">Registrar Medições</h2>
-
-              <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Peso */}
-                <div>
-                  <label htmlFor="peso" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                    Peso (kg)
-                  </label>
-                  <input
-                    id="peso"
-                    type="number"
-                    name="peso"
-                    step="0.1"
-                    value={formData.peso}
-                    onChange={handleInputChange}
-                    placeholder="70.5"
-                    disabled={submitting}
-                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                    required
-                  />
-                </div>
-
-                {/* Grid com 2 colunas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Tórax */}
-                  <div>
-                    <label htmlFor="torax" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                      Tórax (cm)
-                    </label>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Peso (kg)</label>
                     <input
-                      id="torax"
+                      name="peso"
                       type="number"
-                      name="torax"
-                      step="0.1"
-                      value={formData.torax}
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.peso}
                       onChange={handleInputChange}
-                      placeholder="95.0"
-                      disabled={submitting}
-                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
+                      className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
                       required
                     />
                   </div>
-
-                  {/* Cintura */}
-                  <div>
-                    <label htmlFor="cintura" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                      Cintura (cm)
-                    </label>
-                    <input
-                      id="cintura"
-                      type="number"
-                      name="cintura"
-                      step="0.1"
-                      value={formData.cintura}
-                      onChange={handleInputChange}
-                      placeholder="80.0"
-                      disabled={submitting}
-                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                      required
-                    />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tórax (cm)</label>
+                      <input
+                        name="torax"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={formData.torax}
+                        onChange={handleInputChange}
+                        className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cintura (cm)</label>
+                      <input
+                        name="cintura"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={formData.cintura}
+                        onChange={handleInputChange}
+                        className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  {/* Braço Esquerdo */}
-                  <div>
-                    <label htmlFor="braco_esq" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                      Braço Esq. (cm)
-                    </label>
-                    <input
-                      id="braco_esq"
-                      type="number"
-                      name="braco_esq"
-                      step="0.1"
-                      value={formData.braco_esq}
-                      onChange={handleInputChange}
-                      placeholder="32.0"
-                      disabled={submitting}
-                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                      required
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Braco Esq (cm)</label>
+                      <input
+                        name="braco_esq"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={formData.braco_esq}
+                        onChange={handleInputChange}
+                        className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Braco Dir (cm)</label>
+                      <input
+                        name="braco_dir"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={formData.braco_dir}
+                        onChange={handleInputChange}
+                        className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  {/* Braço Direito */}
-                  <div>
-                    <label htmlFor="braco_dir" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                      Braço Dir. (cm)
-                    </label>
-                    <input
-                      id="braco_dir"
-                      type="number"
-                      name="braco_dir"
-                      step="0.1"
-                      value={formData.braco_dir}
-                      onChange={handleInputChange}
-                      placeholder="32.5"
-                      disabled={submitting}
-                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                      required
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Coxa Esq (cm)</label>
+                      <input
+                        name="coxa_esq"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={formData.coxa_esq}
+                        onChange={handleInputChange}
+                        className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Coxa Dir (cm)</label>
+                      <input
+                        name="coxa_dir"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={formData.coxa_dir}
+                        onChange={handleInputChange}
+                        className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  {/* Coxa Esquerda */}
-                  <div>
-                    <label htmlFor="coxa_esq" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                      Coxa Esq. (cm)
-                    </label>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Panturrilha (cm)</label>
                     <input
-                      id="coxa_esq"
+                      name="panturrilha"
                       type="number"
-                      name="coxa_esq"
                       step="0.1"
-                      value={formData.coxa_esq}
+                      placeholder="0.0"
+                      value={formData.panturrilha}
                       onChange={handleInputChange}
-                      placeholder="55.0"
-                      disabled={submitting}
-                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                      required
-                    />
-                  </div>
-
-                  {/* Coxa Direita */}
-                  <div>
-                    <label htmlFor="coxa_dir" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                      Coxa Dir. (cm)
-                    </label>
-                    <input
-                      id="coxa_dir"
-                      type="number"
-                      name="coxa_dir"
-                      step="0.1"
-                      value={formData.coxa_dir}
-                      onChange={handleInputChange}
-                      placeholder="55.5"
-                      disabled={submitting}
-                      className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
+                      className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-brand-purple text-slate-900 font-bold transition-all"
                       required
                     />
                   </div>
                 </div>
 
-                {/* Panturrilha */}
-                <div>
-                  <label htmlFor="panturrilha" className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">
-                    <span className="flex items-center gap-2">
-                      <span>🦶</span>
-                      Panturrilha (cm)
-                    </span>
-                  </label>
-                  <input
-                    id="panturrilha"
-                    type="number"
-                    name="panturrilha"
-                    step="0.1"
-                    value={formData.panturrilha}
-                    onChange={handleInputChange}
-                    placeholder="38.0"
-                    disabled={submitting}
-                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 disabled:opacity-50"
-                    required
-                  />
-                </div>
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
+                    <AlertCircle size={16} /> {error}
+                  </div>
+                )}
 
-                {/* Submit Button */}
+                {success && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
+                    <CheckCircle2 size={16} /> {success}
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-5 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                 >
-                  {submitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Salvando...
-                    </span>
-                  ) : (
-                    'Salvar Medições'
-                  )}
+                  {submitting ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Salvar Resultados
                 </button>
               </form>
             </div>
+          </div>
 
-            {/* Gráfico - Aparece apenas se houver mais de uma medição */}
-            {medicoes.length > 1 && (
-              <div className="card-glass">
-                <h2 className="text-2xl font-semibold text-white mb-8">Evolução do Peso</h2>
-                <div className="w-full h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dadosGrafico} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="gradPeso" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.18} />
-                          <stop offset="60%" stopColor="#D4AF37" stopOpacity={0.06} />
-                          <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
+          {/* Records Side */}
+          <div className="lg:col-span-2 space-y-12">
+            {medicoes.length === 0 ? (
+               <div className="bg-white rounded-[40px] p-24 border border-slate-100 flex flex-col items-center justify-center text-center shadow-xl shadow-slate-200/50">
+                  <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center text-slate-200 mb-8 border border-slate-50 shadow-inner">
+                    <Ruler size={48} />
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 mb-2">Sem histórico</h2>
+                  <p className="text-slate-500 max-w-sm italic">Registre sua primeira medição ao lado para ver sua evolução aqui.</p>
+               </div>
+            ) : (
+              medicoes.map((med, idx) => (
+                <div key={med.id} className="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-50 overflow-hidden hover:border-brand-purple/20 transition-colors">
+                  <div className="px-10 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-brand-purple shadow-sm">
+                        <Calendar size={20} />
+                      </div>
+                      <div>
+                        <span className="block text-sm font-black text-slate-900">{formatarData(med.data_medicao)}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{idx === 0 ? "ÚLTIMA ATUALIZAÇÃO" : "REGISTRO ANTERIOR"}</span>
+                      </div>
+                    </div>
+                  </div>
 
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff" strokeOpacity={0.03} />
+                  <div className="p-10">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-8">
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] block">Peso Corporal</span>
+                        <div className="flex items-baseline gap-1">
+                           <span className="text-4xl font-black text-slate-900 tracking-tight">{med.peso}</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase">kg</span>
+                        </div>
+                      </div>
 
-                      <XAxis
-                        dataKey="data"
-                        stroke="#BDBDBD"
-                        tick={{ fontSize: isMobile ? 10 : 12, fill: '#BDBDBD' }}
-                        interval={tickInterval}
-                        minTickGap={8}
-                      />
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] block">Tórax</span>
+                        <div className="flex items-baseline gap-1">
+                           <span className="text-4xl font-black text-slate-900 tracking-tight">{med.peitoral}</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase">cm</span>
+                        </div>
+                      </div>
 
-                      <YAxis
-                        stroke="#BDBDBD"
-                        tick={{ fontSize: isMobile ? 10 : 12, fill: '#BDBDBD' }}
-                        domain={["dataMin - 2", "dataMax + 2"]}
-                        allowDataOverflow={false}
-                      />
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] block">Cintura</span>
+                        <div className="flex items-baseline gap-1">
+                           <span className="text-4xl font-black text-slate-900 tracking-tight">{med.cintura}</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase">cm</span>
+                        </div>
+                      </div>
 
-                      <Tooltip content={<CustomTooltip />} wrapperStyle={{ outline: 'none' }} />
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] block">Panturrilha</span>
+                        <div className="flex items-baseline gap-1">
+                           <span className="text-4xl font-black text-slate-900 tracking-tight">{med.panturrilha_direita}</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase">cm</span>
+                        </div>
+                      </div>
 
-                      <Area
-                        type="monotone"
-                        dataKey="peso"
-                        stroke="#D4AF37"
-                        strokeWidth={2}
-                        fill="url(#gradPeso)"
-                        dot={{ fill: '#D4AF37', r: isMobile ? 3 : 4 }}
-                        activeDot={{ r: isMobile ? 5 : 6 }}
-                        isAnimationActive={true}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-black text-brand-purple uppercase tracking-[0.2em] block">Braço (E / D)</span>
+                        <div className="flex items-baseline gap-2">
+                           <span className="text-2xl font-black text-slate-900 tracking-tight">{med.braco_esquerdo}</span>
+                           <span className="text-sm font-black text-slate-200">/</span>
+                           <span className="text-2xl font-black text-slate-900 tracking-tight">{med.braco_direito}</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase">cm</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-black text-brand-purple uppercase tracking-[0.2em] block">Coxa (E / D)</span>
+                        <div className="flex items-baseline gap-2">
+                           <span className="text-2xl font-black text-slate-900 tracking-tight">{med.coxa_esquerda}</span>
+                           <span className="text-sm font-black text-slate-200">/</span>
+                           <span className="text-2xl font-black text-slate-900 tracking-tight">{med.coxa_direita}</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase">cm</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))
             )}
-
-            {/* Última Medição Info */}
-            {medicoes.length > 0 && (
-              <div className="mt-8 card-glass">
-                <p className="text-gray-300">
-                  <span className="text-coach-gold font-semibold">Última medição:</span>{' '}
-                  {formatarData(medicoes[0].data_medicao)} • Peso: {medicoes[0].peso} kg
-                </p>
-              </div>
-            )}
-          </>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );

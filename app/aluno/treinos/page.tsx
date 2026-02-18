@@ -4,42 +4,50 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
+import { 
+  Dumbbell, 
+  FileText, 
+  Calendar, 
+  ArrowRight, 
+  ChevronRight, 
+  Clock,
+  Layout,
+  Search,
+  ArrowLeft
+} from 'lucide-react';
+import Link from 'next/link';
 
 interface Treino {
   id: string;
-  nome_arquivo: string;
+  nome: string;
   url_pdf: string;
   data_upload: string;
 }
 
 interface FichaTreino {
   id: string;
-  nome_rotina: string;
+  rotina: string;
   criado_em: string;
 }
 
 export default function AlunoTreinosPage() {
   const router = useRouter();
-  const [treinos, setTreinos] = useState<Treino[]>([]);
   const [fichas, setFichas] = useState<FichaTreino[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
     const fetchTreinos = async () => {
       try {
-        // Obter usuário logado
         const { data: authData, error: authError } = await supabaseClient.auth.getUser();
 
         if (authError || !authData.user) {
-          setError('Você precisa estar logado para ver seus treinos');
+          setError('Sessão expirada. Faça login novamente.');
           setLoading(false);
           return;
         }
 
         const userId = authData.user.id;
-        setUserName(authData.user.email?.split('@')[0] || 'Aluno');
 
         const { data: profileData } = await supabaseClient
           .from('profiles')
@@ -52,30 +60,20 @@ export default function AlunoTreinosPage() {
           return;
         }
 
-        // Buscar treinos PDF do aluno
-        const { data: treinosData, error: treinosError } = await supabaseClient
-          .from('treinos_alunos')
-          .select('id, nome_arquivo, url_pdf, data_upload')
-          .eq('aluno_id', userId)
-          .order('data_upload', { ascending: false });
-
-        if (treinosError) {
-          setError('Erro ao carregar seus treinos: ' + treinosError.message);
-          setLoading(false);
-          return;
-        }
-
-        setTreinos(treinosData || []);
-
-        // Buscar fichas de treino digitais
-        const { data: fichasData } = await supabaseClient
+        // Buscar fichas de treino do aluno
+        const { data: fichasData, error: fichasError } = await supabaseClient
           .from('fichas_treino')
-          .select('id, nome_rotina, criado_em')
+          .select('id, rotina, criado_em')
           .eq('aluno_id', userId)
           .eq('ativo', true)
           .order('criado_em', { ascending: false });
 
-        setFichas(fichasData || []);
+        if (fichasError) {
+          setError('Erro ao carregar treinos: ' + fichasError.message);
+        } else {
+          setFichas(fichasData || []);
+        }
+        
         setLoading(false);
       } catch (err) {
         setError('Erro ao conectar com o servidor');
@@ -84,178 +82,130 @@ export default function AlunoTreinosPage() {
     };
 
     fetchTreinos();
-  }, []);
+  }, [router]);
 
   const formatarData = (dataString: string) => {
     try {
       const data = new Date(dataString);
       return new Intl.DateTimeFormat('pt-BR', {
         day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+        month: 'short',
+        year: 'numeric'
       }).format(data);
     } catch {
       return dataString;
     }
   };
 
-  const handleVisualizarPDF = (url: string) => {
-    window.open(url, '_blank');
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-iron-black flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4 text-zinc-500">
+          <div className="w-12 h-12 border-4 border-iron-red/20 border-t-iron-red rounded-full animate-spin"></div>
+          <span className="font-bold uppercase tracking-widest text-[10px]">Carregando treinos...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-coach-black p-8 pt-8">
-        <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">Meus Treinos</h1>
-          <p className="text-gray-400">Visualize suas fichas digitais e treinos em PDF</p>
-        </div>
+      <div className="min-h-screen bg-iron-black p-4 md:p-6 lg:p-10 lg:pl-28 font-sans">
+        <div className="max-w-6xl mx-auto pb-16 md:pb-20">
+          
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
+            <div>
+              <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-iron-red font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+                <ArrowLeft size={12} /> Voltar ao Painel
+              </Link>
+              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">
+                Central de <span className="text-gradient-red">Treinos</span>
+              </h1>
+              <p className="text-zinc-500 font-medium text-sm">Sua rotina técnica otimizada pelo Coach.</p>
+            </div>
+            
+            {fichas.length > 0 && (
+              <div className="bg-iron-gray px-4 md:px-6 py-3 md:py-4 rounded-2xl md:rounded-3xl border border-white/5 shadow-2xl flex items-center gap-3 md:gap-4">
+                <div className="w-9 h-9 md:w-10 md:h-10 bg-iron-red/10 rounded-xl md:rounded-2xl flex items-center justify-center text-iron-red">
+                  <Layout size={18} />
+                </div>
+                <div>
+                  <p className="text-[9px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest">Total Ativos</p>
+                  <p className="text-lg md:text-xl font-black text-white leading-none">{fichas.length} Fichas</p>
+                </div>
+              </div>
+            )}
+          </div>
 
-        {/* Fichas de Treino Digitais */}
-        {!loading && fichas.length > 0 && (
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-              <span className="text-3xl">💪</span>
-              Fichas de Treino Digitais
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {error && (
+            <div className="bg-iron-red/10 text-iron-red p-6 rounded-3xl border border-iron-red/20 mb-10 font-bold text-sm italic">
+              🚨 {error}
+            </div>
+          )}
+
+          {/* Fichas Grid */}
+          {fichas.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
               {fichas.map((ficha) => (
                 <div 
                   key={ficha.id} 
-                  className="bg-linear-to-br from-zinc-900 to-zinc-800 border-2 border-yellow-500/20 rounded-xl p-6 hover:border-yellow-500/40 transition cursor-pointer group"
                   onClick={() => router.push(`/aluno/treinos/ficha?id=${ficha.id}`)}
+                  className="group bg-iron-gray rounded-2xl md:rounded-3xl p-5 md:p-8 border border-white/5 shadow-2xl hover:border-iron-red/30 hover:-translate-y-2 transition-all duration-500 cursor-pointer relative overflow-hidden"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-white mb-2">{ficha.nome_rotina}</h3>
-                      <p className="text-sm text-gray-400">{formatarData(ficha.criado_em)}</p>
+                  <div className="absolute top-0 right-0 w-24 h-24 md:w-32 md:h-32 bg-white/5 rounded-bl-[100px] flex items-center justify-center -mr-4 -mt-4 transition-colors group-hover:bg-iron-red/10">
+                    <Dumbbell className="text-zinc-800 group-hover:text-iron-red/20 transition-colors" size={32} />
+                  </div>
+
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-5 md:mb-6">
+                      <div className="px-3 py-1 bg-iron-red/10 text-iron-red rounded-full text-[10px] font-black uppercase tracking-widest shadow-neon-red">
+                        Digital
+                      </div>
+                      <div className="flex items-center gap-1.5 text-zinc-600 text-[10px] font-bold uppercase tracking-widest">
+                        <Calendar size={12} />
+                        {formatarData(ficha.criado_em)}
+                      </div>
                     </div>
-                    <div className="w-12 h-12 bg-linear-to-br from-yellow-600 to-yellow-800 rounded-lg flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                      </svg>
+
+                    <h3 className="text-xl md:text-2xl font-black text-white mb-2 leading-tight pr-10 group-hover:text-iron-red transition-colors">
+                      {ficha.rotina}
+                    </h3>
+                    
+                    <p className="text-zinc-500 font-medium text-xs md:text-sm mb-6 md:mb-8 line-clamp-2">
+                       Acesse seus exercícios detalhados, séries, repetições e vídeos.
+                    </p>
+
+                    <div className="flex items-center justify-between pt-6 border-t border-white/5 mt-auto">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-zinc-600 group-hover:text-iron-red group-hover:bg-iron-red/10 transition-colors">
+                          <Clock size={16} />
+                        </div>
+                        <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Iniciado agora</span>
+                      </div>
+                      <div className="w-12 h-12 bg-iron-black rounded-2xl flex items-center justify-center text-white group-hover:bg-iron-red transition-all shadow-lg group-hover:shadow-neon-red group-hover:rotate-12">
+                        <ChevronRight size={24} strokeWidth={3} />
+                      </div>
                     </div>
                   </div>
-                  <button 
-                    className="w-full py-3 bg-linear-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black font-bold rounded-lg group-hover:opacity-90 transition"
-                  >
-                    ABRIR FICHA
-                  </button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Divider */}
-        {!loading && fichas.length > 0 && treinos.length > 0 && (
-          <div className="mb-12 border-t border-gray-800"></div>
-        )}
-
-        {/* Header Treinos PDF */}
-        {!loading && treinos.length > 0 && (
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-            <svg className="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            Treinos em PDF
-          </h2>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-20">
-            <div className="text-center">
-              <svg className="w-12 h-12 animate-spin text-coach-gold mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-gray-400">Carregando seus treinos...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && !loading && (
-          <div className="p-6 bg-red-900/20 border border-red-700 rounded-lg">
-            <p className="text-red-400">{error}</p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && treinos.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="text-center max-w-md">
-              <svg className="w-20 h-20 mx-auto mb-6 text-coach-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h2 className="text-2xl font-semibold text-white mb-3">Nenhum treino ainda</h2>
-              <p className="text-gray-400 mb-8">
-                Seu coach em breve compartilhará seus treinos personalizados aqui. Fique atento!
+          ) : (
+            <div className="bg-iron-gray rounded-[50px] p-24 text-center border border-dashed border-white/10 shadow-2xl flex flex-col items-center">
+              <div className="w-24 h-24 bg-white/5 rounded-[40px] flex items-center justify-center text-zinc-800 mb-8 border border-white/5">
+                <Search size={40} />
+              </div>
+              <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Nenhum treino ativo</h3>
+              <p className="max-w-xs text-zinc-500 font-medium mb-10">
+                Seu Coach ainda não atribuiu uma rotina de treinos para o seu perfil.
               </p>
-              <div className="px-6 py-3 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] inline-flex items-center justify-center gap-2">
-                ⭐ Bem-vindo à Plataforma Coach Vinny
+              <div className="px-6 py-3 bg-white/5 rounded-2xl flex items-center gap-3">
+                 <div className="w-2 h-2 rounded-full bg-zinc-800 animate-pulse"></div>
+                 <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Aguardando definição</span>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Treinos Grid */}
-        {!loading && !error && treinos.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {treinos.map((treino) => (
-              <div key={treino.id} className="group card-glass overflow-hidden transition-all duration-300 hover:shadow-lg">
-                {/* Card Header */}
-                <div className="p-6 border-b border-coach-gold/20">
-                  <div className="flex items-start gap-3 mb-4">
-                    <svg className="w-6 h-6 text-coach-gold shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-white truncate">
-                        {treino.nome_arquivo.replace('.pdf', '')}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-gray-400 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {formatarData(treino.data_upload)}
-                  </p>
-                </div>
-
-                {/* Card Footer - Button */}
-                <div className="p-4">
-                  <button
-                    onClick={() => handleVisualizarPDF(treino.url_pdf)}
-                    className="w-full py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4m-4-4l-4 4m0 0l-4-4m4 4V3" />
-                    </svg>
-                    Visualizar PDF
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Stats Footer */}
-        {!loading && !error && treinos.length > 0 && (
-          <div className="mt-12 card-glass">
-            <p className="text-center text-gray-300">
-              <span className="text-coach-gold font-semibold text-lg">{treinos.length}</span>
-              <span className="ml-2">{treinos.length === 1 ? 'treino foi' : 'treinos foram'} compartilhados com você</span>
-            </p>
-          </div>
-        )}
+          )}
         </div>
       </div>
     </SubscriptionGuard>

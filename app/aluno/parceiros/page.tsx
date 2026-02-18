@@ -2,6 +2,23 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { 
+  ShoppingBag, 
+  Tag, 
+  ExternalLink, 
+  Copy, 
+  Check, 
+  Plus, 
+  X,
+  Upload,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  Star
+} from 'lucide-react';
+import Link from 'next/link';
+import Image from 'next/image';
 
 interface Parceiro {
   id: string;
@@ -88,7 +105,7 @@ export default function ParceirosPage() {
   const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 5) {
-      setFormError('Selecione no maximo 5 imagens');
+      setFormError('Selecione no máximo 5 imagens');
       return;
     }
 
@@ -98,7 +115,7 @@ export default function ParceirosPage() {
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setFormError('Cada imagem deve ter no maximo 5MB');
+        setFormError('Cada imagem deve ter no máximo 5MB');
         return;
       }
     }
@@ -194,314 +211,304 @@ export default function ParceirosPage() {
     el.scrollBy({ left: el.clientWidth * direction, behavior: 'smooth' });
   };
 
-  return (
-    <div className="min-h-screen bg-coach-black p-8 pt-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">Parceiros Exclusivos</h1>
-          <p className="text-gray-400">
-            Descontos especiais para alunos Coach Vinny
-          </p>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 lg:pl-28">
+        <div className="flex flex-col items-center gap-4 text-slate-400">
+          <div className="w-12 h-12 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin"></div>
+          <span className="font-bold uppercase tracking-widest text-[10px]">Carregando benefícios...</span>
         </div>
+      </div>
+    );
+  }
 
-        {userRole === 'coach' && (
-          <div className="mb-8">
+  return (
+    <div className="min-h-screen bg-gray-50 p-6 md:p-10 lg:pl-28 font-sans pb-32">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8 mb-8 md:mb-16">
+          <div>
+            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-brand-purple font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+              <ArrowLeft size={12} /> Voltar ao Painel
+            </Link>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-none mb-2 md:mb-3">
+              Clube de <span className="text-brand-purple underline decoration-slate-200 decoration-8 underline-offset-4">Vantagens</span>
+            </h1>
+            <p className="text-slate-500 font-medium text-sm">Benefícios exclusivos para alunos Coach Vinny em marcas parceiras.</p>
+          </div>
+
+          {userRole === 'coach' && (
             <button
               onClick={() => setModalOpen(true)}
-              className="px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
+              className="px-6 md:px-8 py-4 md:py-5 bg-slate-900 text-white rounded-2xl md:rounded-[24px] font-black shadow-2xl shadow-slate-900/20 hover:bg-brand-purple hover:shadow-brand-purple/30 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px]"
             >
-              Adicionar Novo Parceiro
+              <Plus size={18} strokeWidth={3} />
+              Adicionar Parceiro
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-20">
-            <div className="text-center">
-              <svg
-                className="w-12 h-12 animate-spin text-coach-gold mx-auto mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <p className="text-gray-400">Carregando parceiros...</p>
+        {error && (
+            <div className="bg-red-50 text-red-600 p-6 rounded-3xl border border-red-100 mb-10 font-bold text-sm">
+              🚨 {error}
             </div>
-          </div>
         )}
 
-        {/* Error State */}
-        {error && !loading && (
-          <div className="p-6 bg-red-900/20 border border-red-700 rounded-lg">
-            <p className="text-red-400">{error}</p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && parceiros.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="text-center max-w-md">
-              <svg
-                className="w-20 h-20 mx-auto mb-6 text-coach-gray"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5.5m0 0H9m0 0H3.5m0 0H1m5.5 0a2.121 2.121 0 00-3 3m7-7a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <h2 className="text-2xl font-semibold text-white mb-3">
-                Nenhum parceiro cadastrado
-              </h2>
-              <p className="text-gray-400">
-                Em breve adicionaremos as melhores marcas e serviços exclusivos para você!
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Parceiros Grid */}
-        {!loading && !error && parceiros.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {parceiros.map((parceiro) => {
-              const images = (parceiro.imagens && parceiro.imagens.length > 0)
-                ? parceiro.imagens
-                : (parceiro.logo_url ? [parceiro.logo_url] : []);
-              const carouselId = `carousel-${parceiro.id}`;
-
-              return (
-              <div
-                key={parceiro.id}
-                className="group card-glass overflow-hidden transition-all duration-300 hover:shadow-lg"
-              >
-                {/* Carousel Section */}
-                <div className="relative h-52 bg-coach-black overflow-hidden">
-                  <div
-                    id={carouselId}
-                    className="flex h-full overflow-x-auto snap-x snap-mandatory scroll-smooth"
-                  >
-                    {images.length > 0 ? (
-                      images.map((src, idx) => (
-                        <div key={`${parceiro.id}-${idx}`} className="min-w-full h-52 snap-center">
-                          <img
-                            src={src}
-                            alt={parceiro.nome_marca}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ))
-                    ) : (
-                      <div className="min-w-full h-52 flex items-center justify-center text-gray-500">
-                        Sem imagens
+        {/* Partners Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
+          {parceiros.map((parceiro) => (
+            <div
+              key={parceiro.id}
+              className="bg-white rounded-2xl md:rounded-[50px] border border-white shadow-2xl shadow-slate-200/40 overflow-hidden flex flex-col group transition-all duration-500 hover:shadow-brand-purple/5"
+            >
+              {/* Image Carousel */}
+              <div className="relative h-[280px] md:h-[340px] w-full overflow-hidden bg-slate-100">
+                <div
+                  id={`carousel-${parceiro.id}`}
+                  className="flex h-full transition-transform duration-500 ease-out overflow-x-hidden"
+                >
+                  {(parceiro.imagens || [parceiro.logo_url || '']).map((img, idx) => (
+                    <div key={idx} className="min-w-full h-full relative p-4">
+                      <div className="w-full h-full rounded-[40px] overflow-hidden relative border-8 border-white shadow-inner bg-white">
+                        <Image
+                          src={img}
+                          alt={`${parceiro.nome_marca} view ${idx + 1}`}
+                          fill
+                          className="object-contain transition-transform duration-700 group-hover:scale-105"
+                          sizes="(max-w-768px) 100vw, 50vw"
+                        />
                       </div>
-                    )}
-                  </div>
-
-                  {images.length > 1 && (
-                    <>
-                      <button
-                        onClick={() => handleScroll(carouselId, -1)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 text-white"
-                        aria-label="Imagem anterior"
-                      >
-                        ‹
-                      </button>
-                      <button
-                        onClick={() => handleScroll(carouselId, 1)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 text-white"
-                        aria-label="Proxima imagem"
-                      >
-                        ›
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* Content Section */}
-                  <div className="p-6">
-                  {/* Nome da Marca */}
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    {parceiro.nome_marca}
-                  </h3>
-
-                  {/* Descrição */}
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    {parceiro.descricao}
-                  </p>
-
-                  {/* Cupom em Destaque */}
-                  <div className="mb-6 p-4 card-glass cursor-pointer" onClick={() => handleCopiarCupom(parceiro.cupom)}>
-                    <p className="text-xs text-gray-500 mb-1 uppercase tracking-widest">
-                      Cupom de Desconto
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold text-coach-gold">
-                        {parceiro.cupom}
-                      </p>
-                      <span className="text-xs text-gray-300">Copiar</span>
                     </div>
-                    {copiedCupom === parceiro.cupom && (
-                      <p className="text-xs text-green-400 mt-2">✓ Copiado!</p>
-                    )}
-                  </div>
-
-                  {/* Botão IR PARA O SITE */}
-                  <button
-                    onClick={() => handleIrParaSite(parceiro.link_desconto)}
-                    className="w-full py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
-                  >
-                    Ir para Loja
-                  </button>
+                  ))}
                 </div>
-              </div>
-            );
-            })}
-          </div>
-        )}
 
-        {/* Info Box */}
-        {!loading && !error && parceiros.length > 0 && (
-          <div className="mt-12 card-glass text-center">
-            <p className="text-gray-300">
-              <span className="text-coach-gold font-semibold">💝 Aproveite!</span>
-              {' '}Todos esses parceiros oferecem descontos exclusivos para alunos Coach Vinny
-            </p>
-          </div>
-        )}
-      </div>
-
-      {modalOpen && userRole === 'coach' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-2xl card-glass">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">Novo Parceiro</h2>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                Fechar
-              </button>
-            </div>
-
-            {formError && (
-              <div className="mb-4 p-3 bg-red-900/20 border border-red-700 rounded text-red-400 text-sm">
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreate} className="space-y-5">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Nome do Produto</label>
-                <input
-                  type="text"
-                  value={nomeProduto}
-                  onChange={(e) => setNomeProduto(e.target.value)}
-                  className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
-                  placeholder="Nome do produto"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Descrição</label>
-                <textarea
-                  rows={3}
-                  value={descricaoForm}
-                  onChange={(e) => setDescricaoForm(e.target.value)}
-                  className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300 resize-none"
-                  placeholder="Descricao do produto"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Código do Cupom</label>
-                  <input
-                    type="text"
-                    value={cupomForm}
-                    onChange={(e) => setCupomForm(e.target.value)}
-                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
-                    placeholder="COACH10"
-                    required
-                  />
+                {/* Badges Overlay */}
+                <div className="absolute top-8 left-8 flex flex-col gap-2 z-10">
+                   <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl flex items-center gap-2 shadow-xl">
+                      <Star size={14} className="fill-brand-purple text-brand-purple" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Premium Partner</span>
+                   </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1 mb-2">Link de Desconto</label>
-                  <input
-                    type="url"
-                    value={linkDesconto}
-                    onChange={(e) => setLinkDesconto(e.target.value)}
-                    className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500/40 focus:shadow-[0_0_20px_rgba(212,175,55,0.05)] transition-all duration-300"
-                    placeholder="https://loja.com"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Imagens (ate 5)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImagesChange}
-                  className="w-full text-sm text-gray-300"
-                />
-                {imagePreviews.length > 0 && (
-                  <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {imagePreviews.map((src) => (
-                      <div key={src} className="h-16 rounded bg-black/40 overflow-hidden">
-                        <img src={src} alt="Preview" className="w-full h-full object-cover" />
-                      </div>
-                    ))}
+                {/* Carousel Navigation */}
+                {(parceiro.imagens && parceiro.imagens.length > 1) && (
+                  <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleScroll(`carousel-${parceiro.id}`, -1)}
+                      className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-900 shadow-xl hover:bg-brand-purple hover:text-white transition-all border border-slate-100"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <div className="px-4 py-2 bg-slate-900/80 backdrop-blur text-white rounded-full text-[10px] font-black tabular-nums">
+                       GALERIA
+                    </div>
+                    <button
+                      onClick={() => handleScroll(`carousel-${parceiro.id}`, 1)}
+                      className="w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-900 shadow-xl hover:bg-brand-purple hover:text-white transition-all border border-slate-100"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              {/* Content Section */}
+              <div className="p-10 flex flex-col h-full">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <h3 className="text-3xl font-black text-slate-900 leading-none mb-2 uppercase italic tracking-tighter group-hover:text-brand-purple transition-colors">
+                      {parceiro.nome_marca}
+                    </h3>
+                    <div className="flex items-center gap-2 text-slate-400">
+                       <ShieldCheck size={14} />
+                       <span className="text-[10px] font-black uppercase tracking-widest">Verificado pelo Coach</span>
+                    </div>
+                  </div>
+                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-purple shadow-inner border border-white">
+                     <ShoppingBag size={24} />
+                  </div>
+                </div>
+
+                <p className="text-slate-500 font-medium text-sm mb-10 leading-relaxed max-w-lg">
+                  {parceiro.descricao}
+                </p>
+
+                <div className="mt-auto space-y-6">
+                   {/* Coupon Action */}
+                   <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 flex items-center justify-between group/cupom">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                           <Tag size={12} className="text-brand-purple" />
+                           Cupom Exclusivo
+                        </p>
+                        <span className="text-xl font-black text-slate-900 tracking-wider font-mono uppercase">{parceiro.cupom}</span>
+                      </div>
+                      <button
+                         onClick={() => handleCopiarCupom(parceiro.cupom)}
+                         className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg ${
+                            copiedCupom === parceiro.cupom 
+                             ? 'bg-green-500 text-white shadow-green-200' 
+                             : 'bg-white text-slate-900 hover:bg-slate-900 hover:text-white shadow-slate-100'
+                         }`}
+                      >
+                         {copiedCupom === parceiro.cupom ? (
+                           <><Check size={14} strokeWidth={3} /> Copiado</>
+                         ) : (
+                           <><Copy size={14} /> Copiar</>
+                         )}
+                      </button>
+                   </div>
+
+                   {/* External Link */}
+                   <button
+                     onClick={() => handleIrParaSite(parceiro.link_desconto)}
+                     className="w-full py-5 bg-brand-purple text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-brand-purple/30 hover:-translate-y-1 hover:shadow-brand-purple/40 transition-all flex items-center justify-center gap-3 relative overflow-hidden active:scale-95"
+                   >
+                     Aproveitar Desconto
+                     <ExternalLink size={18} />
+                   </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {parceiros.length === 0 && (
+            <div className="col-span-full bg-white rounded-[50px] p-24 text-center border border-dashed border-slate-200 shadow-xl shadow-slate-100 flex flex-col items-center">
+              <div className="w-24 h-24 bg-slate-50 rounded-[40px] flex items-center justify-center text-slate-200 mb-8 border border-white">
+                <ShieldCheck size={40} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Clube em Formação</h3>
+              <p className="max-w-xs text-slate-400 font-medium mb-6">
+                Estamos finalizando parcerias com as melhores marcas para trazer benefícios únicos para você.
+              </p>
+              <div className="px-6 py-3 bg-slate-50 rounded-2xl flex items-center gap-3 opacity-50">
+                 <div className="w-2 h-2 rounded-full bg-brand-purple animate-pulse"></div>
+                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Em negociação estratégica</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Adicionar Parceiro (Coach) */}
+        {modalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 lg:pl-28 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white rounded-[50px] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white">
+              <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg transform rotate-3">
+                    <ShoppingBag size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter">Novo Parceiro</h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cadastro Estratégico</p>
+                  </div>
+                </div>
                 <button
-                  type="button"
-                  onClick={() => {
-                    setModalOpen(false);
-                    resetForm();
-                  }}
-                  className="px-6 py-4 bg-white/[0.03] border border-white/10 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-xl hover:bg-white/[0.05] transition-all duration-300"
+                  onClick={() => { setModalOpen(false); resetForm(); }}
+                  className="w-12 h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-900 hover:rotate-90 transition-all shadow-sm"
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98] disabled:opacity-50"
-                >
-                  {saving ? 'Salvando...' : 'Salvar Parceiro'}
+                  <X size={24} />
                 </button>
               </div>
-            </form>
+
+              <div className="p-10 max-h-[70vh] overflow-y-auto">
+                <form onSubmit={handleCreate} className="space-y-8">
+                  {formError && (
+                    <div className="bg-red-50 text-red-600 p-6 rounded-3xl border border-red-100 font-bold text-xs animate-bounce">
+                      🚨 {formError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Marca/Produto</label>
+                       <input
+                         type="text"
+                         value={nomeProduto}
+                         onChange={(e) => setNomeProduto(e.target.value)}
+                         placeholder="Ex: Growth Supplements"
+                         className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 text-slate-900 font-bold focus:bg-white focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all outline-none"
+                       />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Cupom de Desconto</label>
+                       <input
+                         type="text"
+                         value={cupomForm}
+                         onChange={(e) => setCupomForm(e.target.value)}
+                         placeholder="Ex: VINNY10"
+                         className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 text-slate-900 font-mono font-black focus:bg-white focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all outline-none uppercase"
+                       />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Descrição Curta</label>
+                    <textarea
+                      value={descricaoForm}
+                      onChange={(e) => setDescricaoForm(e.target.value)}
+                      placeholder="Benefícios e sobre a marca..."
+                      rows={3}
+                      className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 text-slate-900 font-medium focus:bg-white focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Link Afiliado/Desconto</label>
+                    <input
+                      type="text"
+                      value={linkDesconto}
+                      onChange={(e) => setLinkDesconto(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 text-slate-900 font-bold focus:bg-white focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Imagens (Max 5)</label>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-4">
+                       {imagePreviews.map((url, idx) => (
+                         <div key={idx} className="relative aspect-square bg-slate-50 rounded-2xl border-2 border-slate-100 overflow-hidden shadow-inner group/preview">
+                            <Image src={url} alt="preview" fill className="object-cover" />
+                            <div className="absolute inset-0 bg-brand-purple/20 opacity-0 group-hover/preview:opacity-100 transition-opacity"></div>
+                         </div>
+                       ))}
+                       {imageFiles.length < 5 && (
+                         <label className="aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-300 hover:border-brand-purple hover:text-brand-purple transition-all cursor-pointer hover:bg-brand-purple/5 group/add">
+                            <Upload size={18} className="group-hover/add:scale-110 transition-transform" />
+                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleImagesChange} />
+                         </label>
+                       )}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 flex flex-col sm:flex-row gap-4">
+                    <button
+                      type="button"
+                      onClick={() => { setModalOpen(false); resetForm(); }}
+                      className="flex-1 py-5 bg-slate-50 text-slate-500 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100 active:scale-95"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex-[2] py-5 bg-slate-900 text-white rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple hover:shadow-brand-purple/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
+                    >
+                      {saving ? (
+                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      ) : (
+                        <>Salvar Parceiro <Check size={16} strokeWidth={4} /></>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
