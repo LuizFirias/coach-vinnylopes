@@ -1,0 +1,13 @@
+name: Local Config
+version: 1.0.0
+schema: v1
+models:
+  - title: Gemini 1.5 Flash
+    provider: google
+    model: gemini-1.5-flash
+    apiKey: AIzaSyC17-_Mn0aYbwpcgpVX4MC38d8HYOLU33w
+tabAutocompleteModel:
+  title: Gemini 1.5 Flash
+  provider: google
+  model: gemini-1.5-flash
+  apiKey: AIzaSyC17-_Mn0aYbwpcgpVX4MC38d8HYOLU33w
