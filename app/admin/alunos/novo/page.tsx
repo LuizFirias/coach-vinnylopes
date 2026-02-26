@@ -87,16 +87,16 @@ export default function NovoAlunoPage() {
 
   if (checkingRole) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!isCoach) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 md:p-8">
-        <div className="max-w-2xl w-full bg-white p-8 md:p-12 rounded-2xl shadow-xl text-slate-400 text-center font-black uppercase tracking-widest">
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 md:p-8">
+        <div className="max-w-2xl w-full bg-[#0F0F0F] p-12 rounded-3xl border border-[#1a1a1a] text-zinc-600 text-center font-black uppercase tracking-widest italic">
           Acesso restrito para coach.
         </div>
       </div>
@@ -104,67 +104,69 @@ export default function NovoAlunoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 pt-16 md:pt-24">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-[0.2em] uppercase mb-4">
-            NOVO ALUNO
-            <span className="block text-brand-purple text-lg tracking-[0.3em] mt-2">Convite e Acesso</span>
-          </h1>
-        </div>
+    <div className="min-h-screen bg-black p-6 md:p-12 lg:pl-28">
+      <div className="max-w-3xl mx-auto">
+        <header className="mb-12">
+            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase leading-none mb-3">
+              Recrutar <span className="text-zinc-500 tracking-tighter">Atleta</span>
+            </h1>
+            <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-[0.4em] italic leading-loose">Protocolo de Convite & Acesso Imediato</p>
+        </header>
 
         {error && (
-          <div className="mb-6 p-6 bg-red-50 border border-red-100 rounded-[30px] text-red-600 text-xs font-black uppercase tracking-widest animate-pulse flex items-center gap-4">
-            <span className="text-xl">!</span>
+          <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-4">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 md:mb-8 p-6 md:p-8 bg-green-50 border border-green-100 rounded-2xl shadow-sm">
-            <div className="text-green-600 font-black uppercase tracking-widest text-xs mb-6 flex items-center gap-4">
-              <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">✓</span>
+          <div className="mb-10 p-8 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-3xl shadow-2xl">
+            <div className="text-[#D4AF37] font-black uppercase tracking-[0.3em] text-[10px] mb-8 flex items-center gap-4 italic">
+              <div className="w-10 h-10 rounded-full bg-[#D4AF37] flex items-center justify-center text-black">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
               {success}
             </div>
             {temporaryPassword && (
-              <div className="p-6 md:p-8 bg-white border border-green-100 rounded-2xl shadow-inner text-center">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-black mb-4">Senha Temporária para Acesso</div>
-                <div className="text-3xl md:text-4xl font-black text-slate-900 tracking-[0.1em] font-mono bg-slate-50 py-4 md:py-6 px-4 rounded-2xl select-all border border-slate-100">
+              <div className="p-8 bg-black border border-[#1a1a1a] rounded-3xl shadow-2xl text-center">
+                <div className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black mb-6">SENHA TEMPORÁRIA DE ATIVAÇÃO</div>
+                <div className="text-4xl md:text-5xl font-black text-white tracking-[0.1em] font-mono bg-[#0F0F0F] py-8 px-4 rounded-2xl select-all border border-[#1a1a1a] shadow-inner mb-8">
                   {temporaryPassword}
                 </div>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-4 md:mt-6 bg-slate-50 inline-block px-4 py-2 rounded-full">
-                  ⚠️ Copie e forneça ao aluno
-                </p>
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-red-500/10 text-red-500 rounded-full">
+                   <span className="text-[9px] font-black uppercase tracking-widest italic">⚠️ Copie e forneça ao atleta</span>
+                </div>
               </div>
             )}
           </div>
         )}
 
-        <div className="bg-white p-6 md:p-10 lg:p-12 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-purple/5 rounded-bl-[100px] transition-all group-hover:scale-110"></div>
+        <div className="bg-[#0F0F0F] p-10 md:p-14 rounded-[40px] border border-[#1a1a1a] relative overflow-hidden group shadow-2xl">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4AF37]/5 rounded-bl-[120px] transition-all group-hover:scale-110 blur-3xl"></div>
           
-          <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8 relative">
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 mb-2 md:mb-3">Nome completo do Atleta</label>
+          <form onSubmit={handleSubmit} className="space-y-10 relative">
+            <div className="space-y-4">
+              <label className="block text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 ml-4">NOME COMPLETO DO ATLETA</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ex: João Silva"
-                className="w-full px-4 md:px-6 py-4 md:py-5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-300 font-bold focus:outline-none focus:border-brand-purple/30 focus:bg-white transition-all duration-300"
+                placeholder="Ex: João Vitor Performance"
+                className="w-full px-8 py-6 bg-black border border-[#1a1a1a] rounded-2xl text-white placeholder-zinc-900 font-bold focus:outline-none focus:border-[#D4AF37] transition-all"
                 disabled={loading}
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 mb-2 md:mb-3">Endereço de E-mail</label>
+            <div className="space-y-4">
+              <label className="block text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 ml-4">E-MAIL DE CADASTRO</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="aluno@email.com"
-                className="w-full px-4 md:px-6 py-4 md:py-5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 placeholder-slate-300 font-bold focus:outline-none focus:border-brand-purple/30 focus:bg-white transition-all duration-300"
+                placeholder="atleta@premium.com"
+                className="w-full px-8 py-6 bg-black border border-[#1a1a1a] rounded-2xl text-white placeholder-zinc-900 font-bold focus:outline-none focus:border-[#D4AF37] transition-all"
                 disabled={loading}
                 required
               />
@@ -173,15 +175,15 @@ export default function NovoAlunoPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 md:py-6 bg-brand-purple text-white text-[11px] font-black uppercase tracking-[0.4em] rounded-2xl shadow-lg shadow-brand-purple/20 hover:shadow-xl hover:shadow-brand-purple/30 hover:-translate-y-1 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-4"
+              className="w-full py-7 bg-[#D4AF37] text-black text-[12px] font-black uppercase tracking-[0.5em] rounded-3xl shadow-xl hover:bg-white hover:-translate-y-1 transition-all duration-500 disabled:opacity-50 flex items-center justify-center gap-4"
             >
               {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                  ENVIANDO CONVITE...
-                </>
+                <div className="flex items-center gap-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-black/20 border-t-black"></div>
+                  INDEXANDO...
+                </div>
               ) : (
-                "GERAR ACESSO DO ALUNO"
+                "LIBERAR ACESSO AGORA"
               )}
             </button>
           </form>

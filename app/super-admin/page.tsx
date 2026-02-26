@@ -40,80 +40,75 @@ export default function SuperAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-iron-black p-6 lg:p-12 lg:pl-28">
+    <div className="min-h-screen bg-black p-6 lg:p-12 lg:pl-28 font-sans">
       <div className="max-w-3xl mx-auto">
         <header className="mb-12 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-iron-gray rounded-full shadow-sm mb-6 border border-white/5">
-              <ShieldCheck className="w-4 h-4 text-iron-red" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Controle Master</span>
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0F0F0F] rounded-full shadow-2xl mb-8 border border-[#1a1a1a]">
+              <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">Controle Executivo</span>
             </div>
-            <h1 className="text-4xl font-black text-white tracking-tight mb-3">GERENCIAR <span className="text-gradient-red">ACESSOS</span></h1>
-            <p className="text-zinc-500 text-sm font-medium">Controle de permissões e expansão da plataforma premium</p>
+            <h1 className="text-5xl font-black text-white tracking-tighter mb-3 uppercase">GERENCIAR <span className="text-[#D4AF37]">ACESSOS</span></h1>
+            <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest italic">Controle de permissões e expansão da plataforma premium</p>
         </header>
 
-        <div className="bg-iron-gray rounded-[48px] p-10 lg:p-14 relative overflow-hidden shadow-2xl border border-white/5">
-          {/* Decoração sutil de fundo */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-iron-red/5 rounded-bl-[120px] pointer-events-none" />
-          
+        <div className="bg-[#0F0F0F] rounded-3xl p-10 lg:p-16 relative overflow-hidden shadow-2xl border border-[#1a1a1a]">
           <div className="relative">
-            <div className="mb-12 flex flex-col items-center sm:items-start">
-              <div className="w-12 h-12 bg-iron-red/10 rounded-2xl flex items-center justify-center mb-6 shadow-neon-red">
-                <UserPlus className="w-6 h-6 text-iron-red" />
+            <div className="mb-14 flex flex-col items-center sm:items-start">
+              <div className="w-14 h-14 bg-black rounded-2xl flex items-center justify-center mb-8 border border-[#1a1a1a] shadow-lg shadow-black/50">
+                <UserPlus className="w-6 h-6 text-[#D4AF37]" />
               </div>
-              <h2 className="text-2xl font-black text-white mb-2">Configurar Novo Professor</h2>
-              <p className="text-sm text-zinc-500 font-medium tracking-tight">Promova alunos existentes ou convide novos coaches externos</p>
+              <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Novo Professor</h2>
+              <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest leading-loose">Promova alunos existentes ou conceda credenciais de Coach</p>
             </div>
             
-            <form onSubmit={handlePromote} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-3 ml-2">
+            <form onSubmit={handlePromote} className="space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="md:col-span-2 space-y-3">
+                  <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
                     Nome Completo do Profissional
                   </label>
-                  <div className="relative group">
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Ex: Dr. Ricardo Silva"
-                      className="w-full px-7 py-5 bg-black/40 border border-white/5 rounded-3xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Ex: Dr. Ricardo Silva"
+                    className="w-full px-8 py-5 bg-black border border-[#1a1a1a] rounded-2xl text-white font-medium text-sm focus:border-[#D4AF37] transition-all placeholder:text-zinc-900 outline-none"
+                  />
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-3 ml-2">
-                    E-mail de Acesso
+                <div className="md:col-span-2 space-y-3">
+                  <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
+                    E-mail de Cadastro
                   </label>
                   <div className="relative group">
-                    <Mail className="absolute left-7 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
+                    <Mail className="absolute left-7 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-800 group-focus-within:text-[#D4AF37] transition-colors" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="email@consultoria.com"
                       required
-                      className="w-full pl-16 pr-7 py-5 bg-black/40 border border-white/5 rounded-3xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
+                      className="w-full pl-16 pr-8 py-5 bg-black border border-[#1a1a1a] rounded-2xl text-white font-medium text-sm focus:border-[#D4AF37] transition-all placeholder:text-zinc-900 outline-none"
                     />
                   </div>
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-3 ml-2">
+                <div className="md:col-span-2 space-y-3">
+                  <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
                     Nível de Autoridade
                   </label>
                   <div className="relative group">
-                    <Shield className="absolute left-7 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
+                    <Shield className="absolute left-7 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-800 group-focus-within:text-[#D4AF37] transition-colors" />
                     <select
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
-                      className="w-full pl-16 pr-7 py-5 bg-black/40 border border-white/5 rounded-3xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all appearance-none cursor-pointer"
+                      className="w-full pl-16 pr-8 py-5 bg-black border border-[#1a1a1a] rounded-2xl text-white font-medium text-sm focus:border-[#D4AF37] transition-all appearance-none cursor-pointer outline-none uppercase tracking-widest"
                     >
-                      <option value="coach">PERMISSÃO: PROFESSOR / COACH</option>
-                      <option value="aluno">PERMISSÃO: USUÁRIO ALUNO</option>
-                      <option value="super_admin">PERMISSÃO: ADMINISTRADOR MASTER</option>
+                      <option value="coach">PROFESSOR / COACH</option>
+                      <option value="aluno">USUÁRIO ALUNO</option>
+                      <option value="super_admin">ADMINISTRADOR MASTER</option>
                     </select>
-                    <div className="absolute right-7 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-600">
+                    <div className="absolute right-7 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-800">
                       <ChevronDown size={20} />
                     </div>
                   </div>
@@ -121,13 +116,13 @@ export default function SuperAdminPage() {
               </div>
 
               {message && (
-                <div className={`p-6 rounded-[24px] text-xs font-bold tracking-tight animate-in fade-in slide-in-from-bottom-4 flex items-center gap-4 ${
+                <div className={`p-8 rounded-2xl text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-4 flex items-center gap-5 ${
                   message.type === "success" 
-                    ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20" 
-                    : "bg-iron-red/10 text-iron-red border border-iron-red/20"
+                    ? "bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20" 
+                    : "bg-red-500/10 text-red-500 border border-red-500/20"
                 }`}>
-                  <div className={`p-2 rounded-full ${message.type === "success" ? "bg-emerald-400/20" : "bg-iron-red/20"}`}>
-                    {message.type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                  <div className={`p-2 rounded-lg ${message.type === "success" ? "bg-[#D4AF37]/20" : "bg-red-500/20"}`}>
+                    {message.type === "success" ? <CheckCircle size={18} strokeWidth={3} /> : <AlertCircle size={18} strokeWidth={3} />}
                   </div>
                   {message.text}
                 </div>
@@ -136,13 +131,13 @@ export default function SuperAdminPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-6 bg-iron-red text-white text-xs font-black uppercase tracking-[0.4em] rounded-[24px] shadow-neon-red hover:bg-red-600 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-4"
+                className="w-full py-6 bg-[#D4AF37] text-black text-[11px] font-black uppercase tracking-[0.4em] rounded-2xl shadow-xl hover:bg-white active:scale-[0.98] transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-4"
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
                 ) : (
                   <>
-                    APLICAR PERMISSÃO AGORA
+                    APLICAR PERMISSÕES AGORA
                   </>
                 )}
               </button>
@@ -150,14 +145,14 @@ export default function SuperAdminPage() {
           </div>
         </div>
 
-        <footer className="mt-16 text-center space-y-6">
-            <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.3em] max-w-sm mx-auto leading-loose">
+        <footer className="mt-20 text-center space-y-8">
+            <p className="text-zinc-700 text-[10px] font-black uppercase tracking-[0.3em] max-w-sm mx-auto leading-loose italic">
               O sistema processará o convite via e-mail e configurará o perfil do usuário automaticamente.
             </p>
             <div className="flex justify-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-zinc-800" />
-              <div className="w-12 h-2 rounded-full bg-zinc-800" />
-              <div className="w-2 h-2 rounded-full bg-zinc-800" />
+              <div className="w-2 h-2 rounded-full bg-[#1a1a1a]" />
+              <div className="w-16 h-2 rounded-full bg-[#D4AF37]/20" />
+              <div className="w-2 h-2 rounded-full bg-[#1a1a1a]" />
             </div>
         </footer>
       </div>

@@ -179,11 +179,11 @@ export default function NovaFichaCoachPage() {
           id: ex.id,
           nome: ex.nome,
           descanso: ex.descanso,
-          video_url: ex.video_url,
+          video_url: ex.video_url || "",
           series: ex.series.map((s) => ({
             ordem: s.ordem,
-            peso_atual: s.peso_sugerido,
-            reps: s.reps_sugerido,
+            peso_atual: s.peso_sugerido || 0,
+            reps: s.reps_sugerido || 0,
           })),
         })),
       };
@@ -196,12 +196,21 @@ export default function NovaFichaCoachPage() {
         ativo: true,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro Supabase completo:", JSON.stringify(error, null, 2));
+        console.error("Erro message:", error.message);
+        console.error("Erro code:", error.code);
+        throw new Error(
+          error.message || 
+          error.code || 
+          "Erro desconhecido ao salvar no banco de dados"
+        );
+      }
 
       router.push("/admin/treinos");
-    } catch (err) {
-      console.error("Erro ao salvar ficha:", err);
-      alert("Erro ao salvar ficha");
+    } catch (err: any) {
+      console.error("Erro detalhado ao salvar ficha:", err);
+      alert("Erro ao salvar ficha: " + (err.message || "Verifique os logs"));
     } finally {
       setSaving(false);
     }
@@ -225,17 +234,28 @@ export default function NovaFichaCoachPage() {
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24 md:pb-32">
       <div className="max-w-5xl mx-auto">
         {/* Top Header */}
-        <div className="flex items-center gap-4 mb-6 md:mb-10">
-          <button 
-            onClick={() => router.push('/admin/treinos')}
-            className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 hover:text-brand-purple transition-all"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Nova <span className="text-brand-purple">Ficha Digital</span></h1>
-            <p className="text-slate-500 font-medium text-sm">Monte o treino personalizado de alta fidelidade</p>
+        <div className="flex items-center justify-between mb-6 md:mb-10">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => router.push('/admin/treinos')}
+              className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 hover:text-brand-purple transition-all"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Nova <span className="text-brand-purple">Ficha Digital</span></h1>
+              <p className="text-slate-500 font-medium text-sm">Monte o treino personalizado de alta fidelidade</p>
+            </div>
           </div>
+
+          <button
+            onClick={handleSalvarFicha}
+            disabled={saving || !alunoSelecionado || !nomeRotina || exerciciosFicha.length === 0}
+            className="hidden md:flex items-center gap-3 px-8 py-4 bg-[#D4AF37] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg hover:bg-white transition-all disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+            PUBLICAR FICHA
+          </button>
         </div>
 
         {/* Global Settings Card */}
@@ -397,17 +417,7 @@ export default function NovaFichaCoachPage() {
           </div>
         </div>
 
-        {/* Global Action Bar */}
-        <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-40">
-           <button
-            onClick={handleSalvarFicha}
-            disabled={saving || !alunoSelecionado || !nomeRotina || exerciciosFicha.length === 0}
-            className="w-full h-16 md:h-20 bg-slate-900 text-white rounded-2xl font-black text-[12px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-2xl shadow-slate-900/30 hover:bg-brand-purple transition-all active:scale-95 disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-            {saving ? "PROCESSANDO..." : "PUBLICAR FICHA"}
-          </button>
-        </div>
+        {/* Global Action Bar Removido conforme solicitado */}
 
         {/* Modal BIBLIOTECA */}
         {modalExercicio && (

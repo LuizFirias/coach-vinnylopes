@@ -57,10 +57,25 @@ export default function FotosPage() {
           return;
         }
 
-        setFotos(prev => fotosData || []);
+        // Assinar URLs das fotos (bucket privado)
+        const fotosAssinadas = await Promise.all((fotosData || []).map(async (foto: any) => {
+          const pathParts = foto.url_foto.split('/evolucao-fotos/');
+          const filePath = pathParts.length > 1 ? pathParts[1] : foto.url_foto;
+          
+          const { data: signedData } = await supabaseClient.storage
+            .from('evolucao-fotos')
+            .createSignedUrl(filePath, 3600);
+            
+          return {
+            ...foto,
+            url_foto: signedData?.signedUrl || foto.url_foto
+          };
+        }));
 
-        if (fotosData && fotosData.length > 0) {
-          const ultimaFoto = new Date(fotosData[0].data_upload);
+        setFotos(prev => fotosAssinadas);
+
+        if (fotosAssinadas.length > 0) {
+          const ultimaFoto = new Date(fotosAssinadas[0].data_upload);
           const agora = new Date();
           const diasDiferenca = Math.floor(
             (agora.getTime() - ultimaFoto.getTime()) / (1000 * 60 * 60 * 24)
@@ -148,13 +163,28 @@ export default function FotosPage() {
 
       setSuccess(`Foto de ${tipo} enviada com sucesso!`);
 
-      const { data: novasFotos } = await supabaseClient
+      const { data: novasFotosRaw } = await supabaseClient
         .from('fotos_evolucao')
         .select('*')
         .eq('aluno_id', userId)
         .order('data_upload', { ascending: false });
 
-      if (novasFotos) {
+      if (novasFotosRaw) {
+        // Também assinar as novas fotos recém-carregadas
+        const novasFotos = await Promise.all(novasFotosRaw.map(async (foto: any) => {
+          const pathParts = foto.url_foto.split('/evolucao-fotos/');
+          const filePath = pathParts.length > 1 ? pathParts[1] : foto.url_foto;
+          
+          const { data: signedData } = await supabaseClient.storage
+            .from('evolucao-fotos')
+            .createSignedUrl(filePath, 3600);
+            
+          return {
+            ...foto,
+            url_foto: signedData?.signedUrl || foto.url_foto
+          };
+        }));
+
         setFotos(novasFotos);
         setMostrarNotificacao(false);
         setDiasAteProxima(DIAS_NOTIFICACAO);

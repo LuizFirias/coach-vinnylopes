@@ -241,7 +241,7 @@ export default function ParceirosPage() {
           {userRole === 'coach' && (
             <button
               onClick={() => setModalOpen(true)}
-              className="px-6 md:px-8 py-4 md:py-5 bg-slate-900 text-white rounded-2xl md:rounded-[24px] font-black shadow-2xl shadow-slate-900/20 hover:bg-brand-purple hover:shadow-brand-purple/30 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px]"
+              className="px-8 py-5 bg-[#D4AF37] text-black rounded-2xl shadow-2xl hover:bg-white transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px] font-black antialiased"
             >
               <Plus size={18} strokeWidth={3} />
               Adicionar Parceiro

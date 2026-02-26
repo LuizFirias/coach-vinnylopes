@@ -125,75 +125,75 @@ export default function SuperAdminPerfilPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4 text-slate-400">
-          <div className="w-12 h-12 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin"></div>
-          <span className="font-bold uppercase tracking-widest text-[10px]">Autenticando Master...</span>
+      <div className="min-h-screen bg-black flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4 text-zinc-800">
+          <div className="w-12 h-12 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
+          <span className="font-black uppercase tracking-widest text-[10px] italic">Autenticando Master...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 lg:p-12 font-sans">
-      <div className="max-w-3xl mx-auto pb-20">
+    <div className="min-h-screen bg-black p-6 lg:p-12 lg:pl-28 font-sans">
+      <div className="max-w-4xl mx-auto pb-20">
         
         {/* Header Section */}
         <header className="mb-12">
-            <Link href="/super-admin" className="inline-flex items-center gap-2 text-brand-purple font-black text-[10px] uppercase tracking-widest mb-6 hover:ml-1 transition-all">
-              <ArrowLeft size={14} /> Painel de Controle
+            <Link href="/super-admin" className="inline-flex items-center gap-2 text-[#D4AF37] font-black text-[10px] uppercase tracking-widest mb-6 hover:ml-1 transition-all">
+              <ArrowLeft size={14} /> Painel Executivo
             </Link>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-2">
-                  Configurações <span className="text-brand-purple tracking-tighter">Master</span>
+                <h1 className="text-5xl font-black text-white tracking-tighter leading-none mb-2 uppercase">
+                  Identidade <span className="text-zinc-500 tracking-tighter">Master</span>
                 </h1>
-                <p className="text-slate-500 font-medium">Gestão da identidade administrativa da plataforma.</p>
+                <p className="text-zinc-600 text-[10px] uppercase tracking-widest font-black italic">Gestão da autoridade máxima da plataforma.</p>
               </div>
-              <div className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/10">
-                 <ShieldCheck size={16} className="text-brand-purple" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Nível: Super Admin</span>
+              <div className="hidden md:flex items-center gap-3 px-6 py-3 bg-[#0F0F0F] text-white rounded-2xl shadow-xl border border-[#1a1a1a]">
+                 <ShieldCheck size={18} className="text-[#D4AF37]" />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Acesso de Nível 50</span>
               </div>
             </div>
         </header>
 
-        <div className="bg-white rounded-[50px] border border-white shadow-2xl shadow-slate-200/40 overflow-hidden">
+        <div className="bg-[#0F0F0F] rounded-[48px] border border-[#1a1a1a] shadow-2xl overflow-hidden relative">
           
-          <div className="p-10 lg:p-16">
+          <div className="p-12 lg:p-20 relative z-10">
             {message && (
-              <div className={`mb-12 p-6 rounded-[30px] border flex items-center gap-4 animate-in fade-in slide-in-from-top-4 ${
+              <div className={`mb-12 p-8 rounded-3xl border flex items-center gap-5 animate-in fade-in slide-in-from-top-4 ${
                 message.type === "success" 
-                  ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
-                  : "bg-red-50 text-red-600 border-red-100"
+                  ? "bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20" 
+                  : "bg-red-500/10 text-red-500 border-red-500/20"
               }`}>
-                {message.type === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-                <p className="font-black text-[11px] uppercase tracking-widest leading-none">{message.text}</p>
+                {message.type === "success" ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
+                <p className="font-black text-[10px] uppercase tracking-widest italic">{message.text}</p>
               </div>
             )}
 
             {/* Avatar Central Unit */}
-            <div className="mb-16 flex flex-col items-center text-center">
+            <div className="mb-20 flex flex-col items-center text-center">
               <div className="relative group">
-                <div className="w-40 h-40 rounded-[60px] bg-slate-100 border-8 border-white overflow-hidden shadow-2xl shadow-slate-200 relative transform transition-transform duration-500 group-hover:scale-[1.02] group-hover:rotate-2">
+                <div className="w-48 h-48 rounded-[64px] bg-black border-4 border-[#1a1a1a] overflow-hidden shadow-2xl relative transform transition-transform duration-700 group-hover:scale-[1.05] group-hover:border-[#D4AF37]/50">
                   {avatarUrl ? (
                     <Image src={avatarUrl} alt="Avatar Master" fill className="object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-200">
-                      <User size={64} />
+                    <div className="w-full h-full flex items-center justify-center bg-black text-zinc-900">
+                      <User size={80} strokeWidth={1} />
                     </div>
                   )}
                   {uploading && (
-                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-                      <div className="w-8 h-8 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin" />
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center">
+                      <div className="w-8 h-8 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin" />
                     </div>
                   )}
                 </div>
                 
                 <label
                   htmlFor="avatar-upload"
-                  className="absolute -bottom-4 -right-4 w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center cursor-pointer hover:bg-brand-purple hover:scale-110 transition-all shadow-xl border-4 border-white group-hover:rotate-12"
+                  className="absolute -bottom-4 -right-4 w-16 h-16 bg-[#D4AF37] text-black rounded-3xl flex items-center justify-center cursor-pointer hover:bg-white hover:scale-110 transition-all shadow-2xl border-8 border-[#0F0F0F] group-hover:rotate-12"
                 >
-                  <Camera size={20} />
+                  <Camera size={24} strokeWidth={2.5} />
                   <input
                     type="file"
                     accept="image/*"
@@ -204,70 +204,73 @@ export default function SuperAdminPerfilPage() {
                   />
                 </label>
               </div>
-              <div className="mt-8">
-                 <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Avatar Master</h2>
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Sua representação no sistema</p>
+              <div className="mt-10">
+                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Avatar Executivo</h2>
+                 <p className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.4em] mt-2 italic shadow-inner">Indexado na Nuvem Criptografada</p>
               </div>
             </div>
 
             {/* Profile Form */}
-            <form onSubmit={handleSave} className="space-y-10 max-w-xl mx-auto">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Identidade Administrativa</label>
+            <form onSubmit={handleSave} className="space-y-12 max-w-xl mx-auto">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-zinc-800 uppercase tracking-[0.4em] ml-2">Assinatura Digital Master</label>
                 <div className="relative group">
-                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-purple transition-colors">
-                    <User size={18} />
+                  <div className="absolute left-8 top-1/2 -translate-y-1/2 text-zinc-800 group-focus-within:text-[#D4AF37] transition-colors">
+                    <User size={20} />
                   </div>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Seu nome master"
-                    className="w-full pl-16 pr-8 py-5 bg-slate-50 border-2 border-slate-50 rounded-3xl text-slate-900 font-bold focus:bg-white focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all outline-none"
+                    className="w-full pl-20 pr-10 py-6 bg-black border-2 border-[#1a1a1a] rounded-[28px] text-white font-bold focus:border-[#D4AF37] transition-all outline-none placeholder:text-zinc-900"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">E-mail Master (Apenas Leitura)</label>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-zinc-800 uppercase tracking-[0.4em] ml-2">E-mail de Autoridade Máxima</label>
                 <div className="relative">
-                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300">
-                    <Mail size={18} />
+                  <div className="absolute left-8 top-1/2 -translate-y-1/2 text-zinc-800">
+                    <Mail size={20} />
                   </div>
                   <input
                     type="email"
                     value={email}
                     disabled
-                    className="w-full pl-16 pr-8 py-5 bg-slate-50 border-2 border-slate-50 rounded-3xl text-slate-400 font-bold cursor-not-allowed opacity-60"
+                    className="w-full pl-20 pr-10 py-6 bg-black border-2 border-[#1a1a1a] rounded-[28px] text-zinc-800 font-bold cursor-not-allowed italic"
                   />
                 </div>
-                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest ml-2">O e-mail master é configurado via terminal de segurança</p>
+                <p className="text-[9px] font-black text-zinc-900 uppercase tracking-[0.3em] ml-2 italic">Apenas leitura por protocolos de segurança avançados</p>
               </div>
 
-              <div className="pt-8 flex justify-center">
+              <div className="pt-10 flex justify-center">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full sm:w-auto px-16 py-6 bg-slate-900 text-white rounded-[28px] font-black text-[11px] uppercase tracking-[0.4em] shadow-2xl shadow-slate-900/20 hover:bg-brand-purple hover:shadow-brand-purple/30 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-4 active:scale-95 group"
+                  className="w-full sm:w-auto px-20 py-7 bg-[#D4AF37] text-black rounded-[32px] font-black text-[12px] uppercase tracking-[0.5em] shadow-2xl hover:bg-white hover:-translate-y-1 transition-all duration-500 disabled:opacity-50 flex items-center justify-center gap-5 active:scale-95 group"
                 >
                   {saving ? (
-                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-3 border-black/20 border-t-black rounded-full animate-spin" />
                   ) : (
                     <>
-                      Salvar Alterações
-                      <Save size={16} className="group-hover:rotate-12 transition-transform" />
+                      AUTORIZAR MUDANÇA
+                      <Save size={20} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
                     </>
                   )}
                 </button>
               </div>
             </form>
           </div>
+          
+          {/* Decorative background element */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/5 rounded-bl-[120px] pointer-events-none blur-3xl" />
         </div>
 
-        <div className="mt-16 flex justify-center pb-20">
-           <div className="px-6 py-3 bg-white rounded-2xl border border-slate-100 flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-brand-purple animate-ping" />
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nível de segurança master ativo</span>
+        <div className="mt-20 flex justify-center pb-20">
+           <div className="px-10 py-4 bg-[#0F0F0F] rounded-full border border-[#1a1a1a] flex items-center gap-4 shadow-2xl">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37] shadow-[0_0_15px_#D4AF37] animate-pulse" />
+              <span className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.4em]">Firewall Master Nível Ativo</span>
            </div>
         </div>
       </div>

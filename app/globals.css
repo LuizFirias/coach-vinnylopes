@@ -2,24 +2,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #050505;
+  --background: #000000;
   --foreground: #FFFFFF;
+  --divider: #1a1a1a;
+  --gold: #D4AF37;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-iron-black: #050505;
+  --color-iron-black: #000000;
   --color-iron-gray: #0F0F0F;
   --color-iron-red: #E30613;
   --color-iron-gold: #D4AF37;
+  --color-iron-divider: #1a1a1a;
   
   --shadow-neon-red: 0 0 15px rgba(227, 6, 19, 0.3);
   --shadow-neon-gold: 0 0 15px rgba(212, 175, 55, 0.2);
 }
 
 body {
-  background: #050505;
+  background: #000000;
   color: #FFFFFF;
   font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
@@ -30,23 +33,23 @@ html, body {
 }
 
 .card-iron {
-    background: #0F0F0F;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 1.5rem;
-    padding: 2rem;
+    background: rgba(15, 15, 15, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
     transition: all 0.3s ease;
 }
 
 .card-iron:hover {
-    border-color: rgba(227, 6, 19, 0.4);
-    box-shadow: 0 0 20px rgba(227, 6, 19, 0.1);
+    border-color: rgba(212, 175, 55, 0.2);
+    background: rgba(15, 15, 15, 0.6);
 }
 
 .card-gold {
-    background: #0F0F0F;
-    border: 1px solid rgba(212, 175, 55, 0.2);
-    border-radius: 1.5rem;
-    padding: 2rem;
+    background: rgba(15, 15, 15, 0.4);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
 }
 
 .text-gradient-gold {

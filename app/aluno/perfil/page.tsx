@@ -15,7 +15,9 @@ import {
   AlertCircle, 
   ArrowLeft,
   UserCircle,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,6 +31,10 @@ export default function AlunoPerfil() {
   const [updating, setUpdating] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const isFirstAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('firstAccess') === 'true';
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -151,58 +157,94 @@ export default function AlunoPerfil() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: 'error', text: 'As senhas não coincidem' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setMessage({ type: 'error', text: 'A senha deve ter pelo menos 6 caracteres' });
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ 
+        password: newPassword,
+        data: { first_login: false } 
+      });
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Senha atualizada com sucesso!' });
+      setNewPassword('');
+      setConfirmPassword('');
+      if (isFirstAccess) {
+        setTimeout(() => router.push('/aluno/dashboard'), 2000);
+      }
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-iron-black flex items-center justify-center p-6 gap-4">
-        <Loader2 className="w-12 h-12 text-iron-red animate-spin" />
-        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Carregando perfil...</p>
+      <div className="min-h-screen bg-black flex items-center justify-center p-6">
+        <div className="w-6 h-6 border-2 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-iron-black p-4 md:p-6 lg:p-10 lg:pl-28 font-sans">
+    <div className="min-h-screen bg-black px-6 py-10 lg:pl-28">
       <div className="max-w-4xl mx-auto">
         
         {/* Header */}
-        <div className="mb-8 md:mb-12">
-          <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-iron-red font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
-            <ArrowLeft size={12} /> Voltar ao Painel
+        <div className="mb-12 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">
+              Perfil do <span className="text-zinc-500">Atleta</span>
+            </h1>
+            <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-[0.4em] mt-2 italic">Configurações de Identidade & Acesso</p>
+          </div>
+          <Link href="/aluno/dashboard" className="px-6 py-3 bg-[#0F0F0F] border border-[#1a1a1a] text-zinc-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white hover:text-black transition-all shadow-2xl">
+            Voltar
           </Link>
-          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
-            Configurações de <span className="text-gradient-red">Perfil</span>
-          </h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           
           {/* Avatar Card */}
-          <div className="lg:col-span-1">
-            <div className="bg-iron-gray rounded-2xl md:rounded-[40px] shadow-2xl p-6 md:p-10 border border-white/5 flex flex-col items-center">
-               <div className="relative group mb-6 md:mb-8">
-                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-[40px] md:rounded-[50px] overflow-hidden bg-white/5 border-4 md:border-8 border-iron-gray shadow-2xl shadow-black group-hover:scale-[1.02] transition-transform duration-500">
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-[#0F0F0F] border border-[#1a1a1a] rounded-3xl p-10 flex flex-col items-center shadow-2xl">
+               <div className="relative group mb-8">
+                  <div className="w-40 h-40 rounded-3xl overflow-hidden bg-black border border-[#1a1a1a] relative shadow-2xl">
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
                         alt="Avatar"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-4xl md:text-5xl font-black text-iron-red bg-iron-red/5">
-                        {fullName ? fullName.charAt(0).toUpperCase() : <User size={40} />}
+                      <div className="w-full h-full flex items-center justify-center font-black text-5xl text-zinc-900">
+                        {fullName ? fullName.charAt(0).toUpperCase() : "A"}
+                      </div>
+                    )}
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                        <div className="w-6 h-6 border-2 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
                       </div>
                     )}
                   </div>
                   
                   <label
                     htmlFor="avatar-upload"
-                    className="absolute -bottom-2 -right-2 w-12 h-12 md:w-14 md:h-14 bg-iron-red text-white rounded-2xl md:rounded-3xl flex items-center justify-center cursor-pointer hover:bg-red-600 transition-all shadow-neon-red border-4 border-iron-gray group-active:scale-90"
+                    className="absolute -bottom-2 -right-2 p-4 bg-[#D4AF37] text-black rounded-2xl cursor-pointer hover:bg-white transition-all shadow-xl hover:scale-110 active:scale-95"
                   >
-                    {uploadingAvatar ? (
-                      <Loader2 className="animate-spin" size={20} />
-                    ) : (
-                      <Camera size={20} />
-                    )}
+                    <Camera size={18} strokeWidth={3} />
                   </label>
                   <input
                     id="avatar-upload"
@@ -214,33 +256,36 @@ export default function AlunoPerfil() {
                   />
                </div>
 
-               <h2 className="text-lg md:text-xl font-black text-white mb-1 text-center truncate w-full">{fullName || "Usuário"}</h2>
-               <p className="text-[10px] font-black text-iron-gold uppercase tracking-[0.2em] mb-8 md:mb-10">Membro Premium</p>
+               <h2 className="text-xl font-black text-white mb-1 text-center truncate w-full uppercase tracking-tight">{fullName || "Atleta Master"}</h2>
+               <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.3em] mb-12 italic">Performance Elite</p>
 
                <button
                   type="button"
                   onClick={handleSignOut}
-                  className="w-full py-4 bg-white/5 text-zinc-500 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-iron-red hover:text-white transition-all flex items-center justify-center gap-3 group"
+                  className="w-full py-5 bg-black text-zinc-700 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-red-500/10 hover:text-red-500 border border-[#1a1a1a] transition-all flex items-center justify-center gap-4"
                 >
-                  <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
-                  Sair da Conta
+                  <LogOut size={16} />
+                  Encerrar Sessão
                 </button>
             </div>
           </div>
 
           {/* Settings Side */}
-          <div className="lg:col-span-2 space-y-6 md:space-y-8">
-            <div className="bg-iron-gray rounded-2xl md:rounded-[40px] shadow-2xl p-6 md:p-10 border border-white/5">
-               <h3 className="text-lg md:text-xl font-black text-white mb-8 md:mb-10 flex items-center gap-3">
-                  <UserCircle className="text-iron-red w-5 h-5 md:w-6 md:h-6" /> Informações Pessoais
+          <div className="lg:col-span-2 space-y-10">
+            <div className="bg-[#0F0F0F] border border-[#1a1a1a] rounded-3xl p-10 shadow-2xl">
+               <h3 className="text-[11px] font-black text-white mb-10 flex items-center gap-4 uppercase tracking-[0.3em]">
+                  <div className="w-8 h-8 rounded-lg bg-[#D4AF37] flex items-center justify-center text-black">
+                    <UserCircle size={16} strokeWidth={3} />
+                  </div>
+                  Credenciais de Atleta
                </h3>
 
                {message && (
                   <div
-                    className={`mb-10 p-6 rounded-3xl flex items-center gap-4 text-xs font-bold uppercase tracking-widest ${
+                    className={`mb-10 p-6 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-widest ${
                       message.type === 'success'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-iron-red/10 text-iron-red border border-iron-red/20'
+                        ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
+                        : 'bg-red-500/10 text-red-500 border border-red-500/20'
                     }`}
                   >
                     {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
@@ -249,72 +294,120 @@ export default function AlunoPerfil() {
                 )}
 
                <form onSubmit={handleUpdateProfile} className="space-y-8">
-                  <div className="space-y-6">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">
-                        Nome Completo
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-                        <input
-                          type="text"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          placeholder="Ex: João da Silva"
-                          required
-                          className="w-full h-16 pl-14 pr-6 bg-white/5 rounded-2xl text-white font-bold placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-iron-red/20 border border-white/5 focus:border-iron-red transition-all"
-                          disabled={updating}
-                        />
-                      </div>
+                  <div className="space-y-8">
+                    <div className="space-y-3">
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">NOME DE GUERRA / COMPLETO</label>
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
+                        required
+                        placeholder="Ex: João Vitor Performance"
+                      />
                     </div>
 
-                    <div className="space-y-1.5 grayscale opacity-70">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">
-                        Endereço de E-mail
-                      </label>
+                    <div className="space-y-3">
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">E-MAIL DE ACESSO CRITICO</label>
                       <div className="relative">
-                        <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
                         <input
                           type="email"
                           value={email}
                           disabled
-                          className="w-full h-16 pl-14 pr-6 bg-white/5 rounded-2xl text-zinc-500 font-bold cursor-not-allowed border border-white/10"
+                          className="w-full bg-black/40 border border-[#1a1a1a] text-zinc-700 px-8 py-5 rounded-2xl text-sm font-medium cursor-not-allowed italic"
                         />
+                        <Mail size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
                       </div>
-                      <p className="mt-2 text-[9px] font-black text-zinc-600 uppercase tracking-widest ml-1">
-                        O e-mail é usado como login e não pode ser alterado por aqui.
-                      </p>
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={updating}
-                    className="w-full h-16 bg-iron-red text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-neon-red hover:bg-red-600 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
-                  >
-                    {updating ? (
-                      <Loader2 className="animate-spin" size={20} />
-                    ) : (
-                      <>
-                        <Save size={20} />
-                        Salvar Alterações
-                      </>
-                    )}
-                  </button>
+                  <div className="pt-6">
+                    <button
+                      type="submit"
+                      disabled={updating}
+                      className="w-full md:w-auto px-12 py-5 bg-[#D4AF37] text-black font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl hover:bg-white transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap3 active:scale-95"
+                    >
+                      {updating ? <Loader2 className="animate-spin w-4 h-4" /> : <Save size={16} strokeWidth={3} />}
+                      Salvar Protocolo
+                    </button>
+                  </div>
                </form>
             </div>
 
-            {/* Support Info */}
-            <div className="p-10 rounded-[40px] bg-iron-gray border border-white/5 text-white shadow-2xl overflow-hidden relative group">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-1000"></div>
-               <div className="relative z-10 flex items-center justify-between gap-6">
-                  <div>
-                     <h4 className="text-xl font-black mb-2 tracking-tight">Precisa de ajuda?</h4>
-                     <p className="text-zinc-500 font-medium text-sm leading-relaxed max-w-sm">
-                        Para alterações de plano ou problemas técnicos, nossa equipe está pronta para te atender.
-                     </p>
+            {/* Password Change Section */}
+            <div className={`bg-[#0F0F0F] border ${isFirstAccess ? 'border-[#D4AF37] shadow-[0_0_30px_rgba(212,175,55,0.15)]' : 'border-[#1a1a1a]'} rounded-3xl p-10 shadow-2xl`}>
+               <h3 className="text-[11px] font-black text-white mb-10 flex items-center gap-4 uppercase tracking-[0.3em]">
+                  <div className="w-8 h-8 rounded-lg bg-[#D4AF37] flex items-center justify-center text-black">
+                    <ShieldCheck size={16} strokeWidth={3} />
                   </div>
-                  <ChevronRight size={24} className="text-zinc-700 group-hover:text-iron-gold group-hover:translate-x-2 transition-all" />
+                  Segurança da Conta
+               </h3>
+
+               {isFirstAccess && (
+                  <div className="mb-8 p-6 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-2xl">
+                    <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest leading-relaxed">
+                      ⚠️ Atenção: Detectamos que este é seu primeiro acesso. 
+                      Para sua segurança, é obrigatório alterar sua senha temporária agora.
+                    </p>
+                  </div>
+               )}
+
+               <form onSubmit={handleChangePassword} className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">NOVA SENHA</label>
+                      <div className="relative">
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
+                          placeholder="••••••••"
+                        />
+                        <Lock size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">CONFIRMAR SENHA</label>
+                      <div className="relative">
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
+                          placeholder="••••••••"
+                        />
+                        <Lock size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <button
+                      type="submit"
+                      disabled={changingPassword}
+                      className="w-full md:w-auto px-12 py-5 bg-gradient-to-b from-[#F9E29B] via-[#D4AF37] to-[#B8860B] text-black font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl hover:brightness-110 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95 antialiased"
+                    >
+                      {changingPassword ? <Loader2 className="animate-spin w-4 h-4" /> : <Lock size={16} strokeWidth={3} />}
+                      Atualizar Senha
+                    </button>
+                  </div>
+               </form>
+            </div>
+
+            <div className="p-10 rounded-3xl bg-[#0F0F0F] border border-[#1a1a1a] text-white backdrop-blur-sm relative group cursor-pointer hover:border-[#D4AF37]/30 transition-all shadow-2xl">
+               <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/5 flex items-center justify-center text-[#D4AF37] border border-[#D4AF37]/10 shadow-lg">
+                      <AlertCircle size={22} />
+                    </div>
+                    <div>
+                       <h4 className="text-lg font-black tracking-tight uppercase">Suporte Técnico</h4>
+                       <p className="text-zinc-600 text-[10px] font-black uppercase tracking-widest mt-1">Acionar equipe de desenvolvimento</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-zinc-800 group-hover:text-iron-gold group-hover:translate-x-1 transition-all" />
                </div>
             </div>
           </div>

@@ -283,20 +283,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger para atualizar atualizado_em em fichas_treino
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.atualizado_em = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Trigger para atualizar atualizado_em em fichas_treino desativado
+-- (O campo é atualizado automaticamente pelo Supabase)
+-- CREATE OR REPLACE FUNCTION update_updated_at_column()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--   NEW.atualizado_em = NOW();
+--   RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS update_fichas_treino_updated_at ON fichas_treino;
-CREATE TRIGGER update_fichas_treino_updated_at
-BEFORE UPDATE ON fichas_treino
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+-- DROP TRIGGER IF EXISTS update_fichas_treino_updated_at ON fichas_treino;
+-- CREATE TRIGGER update_fichas_treino_updated_at
+-- BEFORE UPDATE ON fichas_treino
+-- FOR EACH ROW
+-- EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
 -- DADOS DE EXEMPLO (opcional - comente se não quiser)

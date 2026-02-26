@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { 
+  ShieldAlert, 
+  Calendar, 
+  Dumbbell, 
+  TrendingUp, 
+  Trophy 
+} from "lucide-react";
+import WeeklyAgenda from "./components/WeeklyAgenda";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -22,9 +30,9 @@ interface Medida {
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload?.[0]) {
     return (
-      <div className="bg-white border border-slate-100 shadow-xl rounded-2xl p-3 text-sm text-slate-900">
-        <p className="font-bold text-brand-purple">{`${payload[0].value} kg`}</p>
-        <p className="text-xs text-slate-500">{payload[0].payload.data}</p>
+      <div className="bg-iron-gray border border-white/10 shadow-2xl rounded-2xl p-4 text-sm text-white backdrop-blur-xl">
+        <p className="font-black text-iron-gold text-lg mb-1">{`${payload[0].value} kg`}</p>
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">{payload[0].payload.data}</p>
       </div>
     );
   }
@@ -146,8 +154,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-brand-purple border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-iron-black flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-iron-gold/20 border-t-iron-gold rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -155,27 +163,25 @@ export default function DashboardPage() {
   // Paywall screen
   if (isBlocked) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+      <div className="min-h-screen bg-iron-black flex items-center justify-center px-4 py-12">
         <div className="max-w-sm w-full">
-          <div className="bg-white rounded-3xl shadow-xl shadow-slate-200 p-8 text-center border border-slate-100">
-            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          <div className="bg-iron-gray/20 rounded-xl shadow-2xl p-10 text-center border border-white/3 backdrop-blur-md">
+            <div className="w-16 h-16 bg-iron-gold/5 rounded-xl flex items-center justify-center mx-auto mb-8 border border-iron-gold/10">
+              <ShieldAlert className="w-8 h-8 text-iron-gold" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
-              Acesso Expirado
+            <h2 className="text-xl font-bold text-white mb-3 tracking-tight uppercase">
+              Acesso <span className="text-iron-gold">Expirado</span>
             </h2>
-            <p className="text-slate-500 mb-8 leading-relaxed">
-              Sua assinatura precisa ser renovada para que você continue acessando os treinos e acompanhamento.
+            <p className="text-zinc-600 mb-10 leading-relaxed text-xs font-medium uppercase tracking-wider italic">
+              Sua jornada de evolução pausou. Renove sua assinatura para liberar o acesso.
             </p>
             <a
               href="https://wa.me/5511999999999"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-4 bg-brand-purple text-white rounded-2xl font-bold hover:bg-brand-purple/90 transition-all block shadow-lg shadow-brand-purple/20"
+              className="w-full py-4 bg-iron-gold text-black rounded-lg font-bold uppercase tracking-widest text-[10px] hover:bg-white transition-all block shadow-lg shadow-iron-gold/5"
             >
-              Renovar pelo WhatsApp
+              Renovar Agora
             </a>
           </div>
         </div>
@@ -184,62 +190,56 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 pt-24 lg:pt-12 pb-12">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-iron-black px-6 sm:px-8 lg:px-12 pt-20 lg:pt-10 pb-10 font-sans">
+      <div className="max-w-7xl mx-auto lg:pl-20">
         {/* Welcome header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Olá, {name.split(' ')[0]}! 👋
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-semibold tracking-widest text-iron-gold uppercase">Dashboard</span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              Olá, <span className="text-zinc-400">{name.split(' ')[0]}</span>
             </h2>
-            <p className="text-slate-500 mt-1 font-medium">
-              Pronto para evoluir hoje?
-            </p>
           </div>
           
           {planExpiry && (
-            <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Acesso até {new Date(planExpiry).toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit' })}</span>
+            <div className="flex items-center gap-3 text-zinc-500">
+              <Calendar size={14} />
+              <p className="text-[11px] font-medium tracking-wide">Plano até {new Date(planExpiry).toLocaleDateString("pt-BR")}</p>
             </div>
           )}
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 text-sm font-medium">
-            {error}
-          </div>
-        )}
+        {/* Agenda Semanal */}
+        <div className="mb-10">
+           <WeeklyAgenda />
+        </div>
 
         {/* Top cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-brand-purple/10 rounded-xl flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+          <div className="bg-iron-gray/40 border border-white-[0.03] p-6 rounded-xl relative overflow-hidden group">
+            <h3 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-4">Último Treino</h3>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-iron-gold/5 rounded-lg text-iron-gold">
+                <Dumbbell size={18} strokeWidth={1.5} />
+              </div>
+              <p className="text-sm text-white font-medium truncate">
+                {lastTreino || "Disponível em breve"}
+              </p>
             </div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Último Treino</h3>
-            <p className="text-lg text-slate-900 font-bold truncate">
-              {lastTreino || "Aguardando envio..."}
-            </p>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-brand-purple/10 rounded-xl flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Peso Atual</h3>
-            <div className="flex items-baseline gap-2">
-              <p className="text-2xl text-slate-900 font-bold">
-                {pesoAtual != null ? `${pesoAtual} kg` : "—"}
-              </p>
+          <div className="bg-iron-gray/40 border border-white-[0.03] p-6 rounded-xl relative overflow-hidden group">
+            <h3 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-4">Peso Atual</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-baseline gap-1">
+                <p className="text-2xl text-white font-bold">{pesoAtual || "—"}</p>
+                <span className="text-[10px] text-zinc-600 font-medium">KG</span>
+              </div>
               {variacao != null && (
-                <span className={`text-sm font-bold ${
-                  parseFloat(variacao) < 0 ? 'text-green-500' : 'text-slate-400'
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                  parseFloat(variacao) < 0 ? 'bg-green-500/10 text-green-500' : 'bg-iron-red/10 text-iron-red'
                 }`}>
                   {parseFloat(variacao) > 0 ? '+' : ''}{variacao} kg
                 </span>
@@ -247,32 +247,28 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-brand-purple/10 rounded-xl flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
+          <div className="bg-iron-gray/40 border border-white-[0.03] p-6 rounded-xl relative overflow-hidden group">
+            <h3 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-4">Ranking</h3>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-iron-gold/5 rounded-lg text-iron-gold">
+                <Trophy size={18} strokeWidth={1.5} />
+              </div>
+              <p className="text-xl text-white font-bold">
+                {rankingPos != null ? `#${rankingPos}` : "—"}
+              </p>
             </div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Ranking</h3>
-            <p className="text-2xl text-slate-900 font-bold">
-              {rankingPos != null ? `#${rankingPos}` : "—"}
-            </p>
-            <p className="text-xs text-slate-400 font-medium">Posição em frequência</p>
           </div>
         </div>
 
         {/* Chart */}
         {dadosGrafico.length > 1 && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                Evolução do Peso
-              </h2>
-              <div className="flex gap-2">
-                 <div className="flex items-center gap-1.5">
-                   <div className="w-3 h-3 rounded-full bg-brand-purple"></div>
-                   <span className="text-xs font-bold text-slate-400 uppercase">KG</span>
-                 </div>
+          <div className="bg-iron-gray/20 border border-white-[0.03] p-6 sm:p-8 rounded-2xl relative">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white tracking-widest uppercase mb-1">
+                  Evolução
+                </h2>
+                <p className="text-zinc-600 text-[10px] font-medium tracking-wide">Acompanhamento de peso corporal</p>
               </div>
             </div>
             <div style={{ width: "100%", height: 300 }}>
@@ -280,32 +276,32 @@ export default function DashboardPage() {
                 <AreaChart data={dadosGrafico} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorPeso" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#f1f5f9" vertical={false} />
+                  <CartesianGrid stroke="rgba(255,255,255,0.02)" vertical={false} />
                   <XAxis 
                     dataKey="data" 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 500 }}
+                    tick={{ fill: "#3f3f46", fontSize: 10, fontWeight: 500 }}
                     dy={10}
                   />
                   <YAxis 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 500 }}
+                    tick={{ fill: "#3f3f46", fontSize: 10, fontWeight: 500 }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(212, 175, 55, 0.1)', strokeWidth: 1 }} />
                   <Area
                     type="monotone"
                     dataKey="peso"
-                    stroke="#7C3AED"
-                    strokeWidth={3}
+                    stroke="#D4AF37"
+                    strokeWidth={2}
                     fill="url(#colorPeso)"
-                    dot={{ r: 4, fill: "#7C3AED", strokeWidth: 2, stroke: "#fff" }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    dot={{ r: 3, fill: "#D4AF37", strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: "#D4AF37", strokeWidth: 0 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>

@@ -116,24 +116,26 @@ export default function CoachPerfilPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-black px-6 py-10 lg:pl-28">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8 md:mb-12 flex items-center justify-between">
+        <div className="mb-12 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-[0.2em] uppercase">PERFIL</h1>
-            <p className="text-[10px] text-brand-purple font-black uppercase tracking-[0.3em] mt-2">Gestão Coach</p>
+            <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">
+              Configurações do <span className="text-zinc-500">Coach</span>
+            </h1>
+            <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-[0.4em] mt-2 italic">Gerenciamento de Identidade Profissional</p>
           </div>
           <button
             onClick={() => router.back()}
-            className="px-4 md:px-6 py-2 md:py-3 bg-white border border-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+            className="px-6 py-3 bg-[#0F0F0F] border border-[#1a1a1a] text-zinc-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white hover:text-black transition-all shadow-2xl"
           >
             Voltar
           </button>
@@ -141,98 +143,96 @@ export default function CoachPerfilPage() {
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-3xl text-red-600 text-xs font-black uppercase tracking-wider animate-pulse flex items-center gap-3">
-            <span className="text-lg">×</span> {error}
+          <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-4">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span>{error}</span>
           </div>
         )}
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-100 rounded-3xl text-green-600 text-xs font-black uppercase tracking-wider flex items-center gap-3">
-            <span className="text-lg">✓</span> {success}
+          <div className="mb-8 p-6 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-2xl text-[#D4AF37] text-[10px] font-black uppercase tracking-widest flex items-center gap-4">
+            <div className="w-2 h-2 rounded-full bg-[#D4AF37] animate-pulse" />
+            <span>{success}</span>
           </div>
         )}
 
-        {/* Profile Form */}
-        <form onSubmit={handleSaveProfile} className="bg-white p-6 md:p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50">
-          {/* Avatar Section */}
-          <div className="mb-8 md:mb-10 flex flex-col items-center">
-            <div className="relative mb-4 md:mb-6">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-8 border-slate-50 bg-slate-100 shadow-inner group">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-5xl font-black text-slate-300">
-                    {fullName.charAt(0).toUpperCase() || "C"}
-                  </div>
-                )}
-              </div>
-              {uploadingAvatar && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full">
-                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-brand-purple"></div>
+        {/* Profile Card */}
+        <div className="bg-[#0F0F0F] border border-[#1a1a1a] rounded-3xl p-10 shadow-2xl">
+          <form onSubmit={handleSaveProfile} className="space-y-10">
+            {/* Avatar Section */}
+            <div className="flex flex-col sm:flex-row items-center gap-10">
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-3xl overflow-hidden bg-black border border-[#1a1a1a] relative shadow-2xl">
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-900 font-black text-4xl">
+                      {fullName?.charAt(0) || "C"}
+                    </div>
+                  )}
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
+                    </div>
+                  )}
                 </div>
-              )}
-              <label className="absolute bottom-2 right-2 w-12 h-12 bg-brand-purple text-white rounded-full flex items-center justify-center border-4 border-white cursor-pointer shadow-lg hover:scale-110 transition-transform">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                <label className="absolute -bottom-2 -right-2 p-3.5 bg-[#D4AF37] text-black rounded-2xl cursor-pointer hover:bg-white transition-all shadow-xl hover:scale-110 active:scale-95">
+                  <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </label>
+              </div>
+              
+              <div className="text-center sm:text-left">
+                <h3 className="text-2xl font-black text-white uppercase tracking-tight">{fullName || "Mestre Treinador"}</h3>
+                <p className="text-[#D4AF37] text-[10px] font-black tracking-[0.4em] uppercase mt-2 italic">Autoridade Certificada</p>
+              </div>
+            </div>
+
+            {/* Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">NOME COMPLETO</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ex: Prof. Ricardo Silva"
+                  className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm placeholder:text-zinc-900 focus:outline-none focus:border-[#D4AF37] transition-all font-medium"
                 />
-              </label>
-            </div>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Foto do Coach</p>
-          </div>
+              </div>
 
-          <div className="grid grid-cols-1 gap-6">
-            {/* Name Field */}
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-4 mb-2">
-                Nome do Coach
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Seu nome profissional"
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-3xl text-slate-900 text-sm font-bold focus:outline-none focus:border-brand-purple/30 focus:bg-white transition-all duration-300"
-                required
-              />
+              <div className="space-y-3">
+                <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">CONTA DE E-MAIL</label>
+                <input
+                  type="email"
+                  value={email}
+                  disabled
+                  className="w-full bg-black/40 border border-[#1a1a1a] text-zinc-700 px-8 py-5 rounded-2xl text-sm transition-all font-medium cursor-not-allowed italic"
+                />
+              </div>
             </div>
 
-            {/* Email Field (Read-only) */}
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-4 mb-2">
-                Email de Acesso
-              </label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="w-full px-6 py-4 bg-slate-100 border border-slate-200 rounded-3xl text-slate-400 text-sm font-bold cursor-not-allowed opacity-60"
-              />
+            <div className="pt-6">
+              <button
+                type="submit"
+                disabled={saving || uploadingAvatar}
+                className="w-full py-5 bg-[#D4AF37] text-black font-black text-[11px] uppercase tracking-[0.4em] rounded-2xl hover:bg-white transition-all shadow-xl shadow-[#D4AF37]/5 disabled:opacity-50 active:scale-95"
+              >
+                {saving ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                    SALVANDO PROTOCOLO...
+                  </div>
+                ) : (
+                  "ATUALIZAR CREDENCIAIS"
+                )}
+              </button>
             </div>
-          </div>
-
-          <div className="mt-6 md:mt-10">
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full flex items-center justify-center gap-3 py-4 md:py-5 bg-brand-purple text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-lg shadow-brand-purple/20 hover:shadow-xl hover:shadow-brand-purple/30 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                  Salvando...
-                </>
-              ) : (
-                "ATUALIZAR DADOS"
-              )}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

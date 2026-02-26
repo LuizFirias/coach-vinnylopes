@@ -49,10 +49,28 @@ function FichaContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [videoModal, setVideoModal] = useState<string | null>(null);
+  const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
     loadFicha();
+    const interval = setInterval(() => {
+      setSeconds(s => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
   }, [fichaId]);
+
+  const formatTime = (totalSeconds: number) => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${hrs > 0 ? hrs + ":" : ""}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const totalVolume = ficha?.exercicios.reduce((acc, ex) => {
+    return acc + ex.series.filter(s => s.completado).reduce((sAcc, s) => sAcc + (s.peso_atual * s.reps), 0);
+  }, 0) || 0;
+
+  const totalSets = ficha?.exercicios.reduce((acc, ex) => acc + ex.series.filter(s => s.completado).length, 0) || 0;
 
   const loadFicha = async () => {
     if (!fichaId) {
@@ -111,8 +129,8 @@ function FichaContent() {
             return {
               ordem: serie.ordem || idx + 1,
               anterior,
-              peso_atual: serie.peso_atual || 0,
-              reps: serie.reps || 0,
+              peso_atual: serie.peso_atual ?? 0,
+              reps: serie.reps ?? 0,
               completado: false,
             };
           }),
@@ -178,18 +196,25 @@ function FichaContent() {
       const userId = authData?.user?.id;
       if (!userId) return;
 
-      const dadosSessao = {
-        nome_rotina: ficha.nome_rotina,
-        exercicios: ficha.exercicios,
-        data_sessao: new Date().toISOString(),
-      };
-
-      const { error } = await supabaseClient.from("historico_treinos").insert({
+      const agora = new Date().toISOString();
+      
+      // Criar um registro de histórico por exercício
+      const registros = ficha.exercicios.map((exercicio) => ({
         ficha_id: ficha.id,
         aluno_id: userId,
-        dados_sessao: dadosSessao,
-        data_conclusao: new Date().toISOString(),
-      });
+        exercicio_id: exercicio.id,
+        dados_sessao: {
+          nome_rotina: ficha.nome_rotina,
+          nome_exercicio: exercicio.nome,
+          series: exercicio.series,
+          data_sessao: agora,
+        },
+        data_conclusao: agora,
+      }));
+
+      const { error } = await supabaseClient
+        .from("historico_treinos")
+        .insert(registros);
 
       if (error) throw error;
       router.push("/aluno/treinos");
@@ -203,9 +228,9 @@ function FichaContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 lg:pl-28">
-        <div className="flex flex-col items-center gap-4 text-slate-400">
-          <div className="w-12 h-12 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 lg:pl-28">
+        <div className="flex flex-col items-center gap-4 text-zinc-500">
+          <div className="w-12 h-12 border-4 border-iron-gold/20 border-t-iron-gold rounded-full animate-spin"></div>
           <span className="font-bold uppercase tracking-widest text-[10px]">Preparando seu treino...</span>
         </div>
       </div>
@@ -214,16 +239,16 @@ function FichaContent() {
 
   if (!ficha) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 lg:pl-28">
-        <div className="bg-white p-12 rounded-[50px] shadow-2xl shadow-slate-200/40 text-center max-w-md w-full border border-slate-50">
-          <div className="w-20 h-20 bg-slate-50 rounded-[30px] flex items-center justify-center mx-auto mb-8 text-slate-400">
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 lg:pl-28">
+        <div className="bg-iron-gray p-12 rounded-3xl shadow-2xl text-center max-w-md w-full border border-iron-divider">
+          <div className="w-20 h-20 bg-black rounded-2xl flex items-center justify-center mx-auto mb-8 text-iron-gold">
              <Dumbbell size={40} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase">Não Encontrado</h2>
-          <p className="text-slate-500 font-medium italic mb-10">Não conseguimos localizar os detalhes deste treino ou ele não está mais disponível.</p>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase">Não Encontrado</h2>
+          <p className="text-zinc-500 font-medium italic mb-10">Não conseguimos localizar os detalhes deste treino.</p>
           <Link
             href="/aluno/treinos"
-            className="block w-full py-5 bg-brand-purple text-white rounded-3xl font-black shadow-xl shadow-brand-purple/30 hover:bg-brand-purple/90 transition-all uppercase tracking-widest text-xs"
+            className="block w-full py-5 bg-iron-gold text-black rounded-xl font-black shadow-xl hover:bg-white transition-all uppercase tracking-widest text-xs"
           >
             Voltar para Meus Treinos
           </Link>
@@ -233,159 +258,142 @@ function FichaContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-10 lg:pl-40 font-sans pb-24 md:pb-32">
+    <div className="min-h-screen bg-black p-4 md:p-6 lg:p-10 lg:pl-28 pb-32">
       <div className="max-w-4xl mx-auto">
         
-        {/* Top Navigation & Status */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
-          <div>
-            <Link href="/aluno/treinos" className="inline-flex items-center gap-2 text-brand-purple font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
-              <ArrowLeft size={12} /> Abandonar Treino
+        {/* Header Section */}
+        <div className="mb-10 flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <Link href="/aluno/treinos" className="inline-flex items-center gap-2 text-zinc-500 font-black text-[10px] uppercase tracking-widest hover:text-white transition-all">
+              <ArrowLeft size={12} /> Abandonar
             </Link>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-none uppercase">
+            <div className="flex items-center gap-6">
+               <div className="text-center">
+                  <p className="text-[8px] font-black text-zinc-600 uppercase tracking-tighter">Tempo</p>
+                  <p className="text-sm font-black text-white font-mono">{formatTime(seconds)}</p>
+               </div>
+               <div className="text-center">
+                  <p className="text-[8px] font-black text-zinc-600 uppercase tracking-tighter">Volume</p>
+                  <p className="text-sm font-black text-iron-gold">{totalVolume} kg</p>
+               </div>
+               <div className="text-center">
+                  <p className="text-[8px] font-black text-zinc-600 uppercase tracking-tighter">Séries</p>
+                  <p className="text-sm font-black text-white">{totalSets}</p>
+               </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-none uppercase">
               {ficha.nome_rotina}
             </h1>
+            <button
+               onClick={handleFinalizarTreino}
+               disabled={saving}
+               className="h-14 px-10 bg-iron-gold text-black rounded-xl font-bold uppercase tracking-widest text-[11px] hover:bg-white active:scale-95 transition-all flex items-center justify-center gap-3"
+            >
+               {saving ? "Salvando..." : "Concluir Treino"}
+            </button>
           </div>
-          
-          <button
-            onClick={handleFinalizarTreino}
-            disabled={saving}
-            className="h-14 md:h-16 px-8 md:px-10 bg-slate-900 text-white rounded-2xl md:rounded-[24px] font-black shadow-2xl shadow-slate-900/20 hover:bg-brand-purple hover:shadow-brand-purple/30 transition-all disabled:opacity-50 flex items-center justify-center gap-3 group uppercase tracking-widest text-xs"
-          >
-            {saving ? (
-              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-            ) : (
-              <>
-                Finalizar Sessão
-                <Trophy className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              </>
-            )}
-          </button>
         </div>
 
         {/* Exercícios List */}
-        <div className="space-y-8 md:space-y-12">
+        <div className="space-y-12">
           {ficha.exercicios.map((exercicio, exIdx) => (
-            <div
-              key={exercicio.id}
-              className="bg-white rounded-2xl md:rounded-[50px] border border-white shadow-2xl shadow-slate-200/40 overflow-hidden"
-            >
-              {/* Exercicio Header */}
-              <div className="p-6 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 border-b border-slate-50">
-                <div className="flex items-start gap-4 md:gap-6">
-                  <div className="w-14 h-14 md:w-16 md:h-16 bg-slate-900 text-white rounded-2xl md:rounded-3xl flex items-center justify-center shrink-0 shadow-lg shadow-slate-200 rotate-3 transition-transform hover:rotate-0">
-                    <span className="text-xl md:text-2xl font-black">{(exIdx + 1).toString().padStart(2, '0')}</span>
+            <div key={exercicio.id} className="bg-black">
+              {/* Exercicio Info */}
+              <div className="flex items-start gap-4 mb-6 pt-6 border-t border-iron-divider">
+                  <div className="w-10 h-10 bg-iron-gray rounded-lg border border-iron-divider flex items-center justify-center text-zinc-700 shrink-0">
+                    <Dumbbell size={20} />
                   </div>
-                  <div>
-                    <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-2 leading-tight uppercase tracking-tight">{exercicio.nome}</h3>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <RotateCcw size={12} className="text-brand-purple/60" />
-                        Descanso: {exercicio.descanso}
-                      </div>
-                      {exercicio.video_url && (
-                        <button
-                          onClick={() => setVideoModal(exercicio.video_url || null)}
-                          className="flex items-center gap-2 px-4 py-2 bg-brand-purple/5 text-brand-purple rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-purple/10 transition-colors"
-                        >
-                          <Video size={14} />
-                          Demonstração
-                        </button>
-                      )}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-black text-iron-gold uppercase tracking-tight">{exercicio.nome}</h3>
+                    <div className="flex items-center gap-4 mt-1">
+                       <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descanso: {exercicio.descanso}</span>
+                       {exercicio.video_url && (
+                         <button onClick={() => setVideoModal(exercicio.video_url || null)} className="text-[10px] font-black text-white uppercase tracking-widest underline decoration-iron-gold/30 underline-offset-4">Vídeo</button>
+                       )}
                     </div>
                   </div>
-                </div>
               </div>
 
               {/* Series Table */}
-              <div className="p-4 md:p-10">
-                <div className="bg-slate-50/50 rounded-[35px] overflow-hidden border border-slate-50">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="bg-slate-100/30">
-                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Série</th>
-                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Anterior</th>
-                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Carga (kg)</th>
-                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Reps</th>
-                        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100/50">
-                      {exercicio.series.map((serie) => (
-                        <tr 
-                          key={serie.ordem} 
-                          className={`transition-colors ${serie.completado ? 'bg-green-50/30' : 'hover:bg-white'}`}
+              <div className="w-full">
+                <div className="grid grid-cols-[3rem_1fr_1fr_1fr_3.5rem] gap-2 mb-3 px-2">
+                  <span className="text-[9px] font-black text-zinc-700 uppercase">Set</span>
+                  <span className="text-[9px] font-black text-zinc-700 uppercase text-center">Anterior</span>
+                  <span className="text-[9px] font-black text-zinc-700 uppercase text-center">Peso kg</span>
+                  <span className="text-[9px] font-black text-zinc-700 uppercase text-center">Reps</span>
+                  <span className="text-[9px] font-black text-zinc-700 uppercase text-right opacity-0">Y</span>
+                </div>
+
+                <div className="space-y-2">
+                  {exercicio.series.map((serie, sIdx) => (
+                    <div 
+                      key={sIdx} 
+                      className={`grid grid-cols-[3rem_1fr_1fr_1fr_3.5rem] gap-2 items-center p-2 rounded-lg transition-colors ${serie.completado ? 'bg-iron-gold/5' : 'bg-transparent'}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-iron-gray border border-iron-divider flex items-center justify-center">
+                         <span className="text-[10px] font-bold text-zinc-500">{sIdx + 1}</span>
+                      </div>
+                      
+                      <div className="text-center">
+                        <span className="text-[10px] font-bold text-zinc-600 font-mono italic">{serie.anterior}</span>
+                      </div>
+
+                      <div className="flex justify-center">
+                        <input
+                          type="number"
+                          value={serie.peso_atual}
+                          onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
+                          className="w-16 h-10 bg-black border border-iron-divider rounded-lg text-center text-sm font-bold text-white focus:border-iron-gold outline-none transition-colors"
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div className="flex justify-center">
+                        <input
+                          type="number"
+                          value={serie.reps}
+                          onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "reps", parseInt(e.target.value) || 0)}
+                          className="w-16 h-10 bg-black border border-iron-divider rounded-lg text-center text-sm font-bold text-white focus:border-iron-gold outline-none transition-colors"
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                            serie.completado 
+                              ? 'bg-iron-gold text-black shadow-lg shadow-iron-gold/20' 
+                              : 'bg-iron-gray text-zinc-700 border border-iron-divider'
+                          }`}
                         >
-                          <td className="py-5 px-6">
-                            <span className="text-sm font-black text-slate-900 italic">#{serie.ordem}</span>
-                          </td>
-                          <td className="py-5 px-6 text-center">
-                            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-50">
-                              <History size={10} />
-                              {serie.anterior}
-                            </div>
-                          </td>
-                          <td className="py-5 px-6">
-                             <input
-                               type="number"
-                               value={serie.peso_atual || ""}
-                               placeholder="0"
-                               onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
-                               className="w-20 mx-auto block bg-white border-2 border-slate-100 rounded-2xl py-2 px-2 text-center text-sm font-black text-slate-900 focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all"
-                             />
-                          </td>
-                          <td className="py-5 px-6">
-                            <input
-                              type="number"
-                              value={serie.reps || ""}
-                              placeholder="0"
-                              onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "reps", parseInt(e.target.value) || 0)}
-                              className="w-16 mx-auto block bg-white border-2 border-slate-100 rounded-2xl py-2 px-2 text-center text-sm font-black text-slate-900 focus:border-brand-purple focus:ring-4 focus:ring-brand-purple/5 transition-all"
-                            />
-                          </td>
-                          <td className="py-5 px-6 text-right">
-                             <button
-                               onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
-                               className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ml-auto ${
-                                 serie.completado 
-                                  ? 'bg-green-500 text-white shadow-lg shadow-green-200 rotate-[360deg]' 
-                                  : 'bg-white border-2 border-slate-100 text-slate-300 hover:border-brand-purple hover:text-brand-purple'
-                               }`}
-                             >
-                               <Check size={20} strokeWidth={4} />
-                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          <Check size={18} strokeWidth={4} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           ))}
         </div>
-
-        {/* Video Modal */}
-        {videoModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/95 backdrop-blur-xl animate-in fade-in duration-300">
-            <div className="relative w-full max-w-4xl aspect-video bg-black rounded-[40px] overflow-hidden shadow-2xl">
-               <button 
-                 onClick={() => setVideoModal(null)}
-                 className="absolute top-6 right-6 z-10 w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-900 hover:scale-110 transition-transform"
-               >
-                 <X size={24} />
-               </button>
-               <iframe
-                 src={videoModal.replace("watch?v=", "embed/")}
-                 className="w-full h-full"
-                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                 allowFullScreen
-               ></iframe>
-            </div>
-          </div>
-        )}
-
       </div>
+
+      {/* Video Modal */}
+      {videoModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setVideoModal(null)} />
+          <div className="relative bg-iron-gray w-full max-w-xl aspect-video rounded-2xl border border-iron-divider overflow-hidden shadow-2xl">
+            <button onClick={() => setVideoModal(null)} className="absolute top-4 right-4 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center z-10 backdrop-blur-md">
+              <X size={20} />
+            </button>
+            <iframe src={videoModal} className="w-full h-full" allowFullScreen />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

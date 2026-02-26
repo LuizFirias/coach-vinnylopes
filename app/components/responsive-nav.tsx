@@ -86,29 +86,29 @@ export default function ResponsiveNav() {
   return (
     <>
       {/* Mobile Header (hidden on desktop) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-iron-black/80 backdrop-blur-xl border-b border-white/[0.03] px-4">
         <div className="flex items-center justify-between h-full">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-50 border border-slate-100 hover:bg-brand-purple/5 transition-colors"
+            className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.03] border border-white/[0.05] active:scale-95 transition-all"
           >
-            <Menu size={20} className="text-brand-purple" />
+            <Menu size={20} className="text-zinc-400" />
           </button>
-          <div className="flex-1 flex justify-center items-center max-h-10">
+          <div className="flex-1 flex justify-center items-center">
             {!logoFailed ? (
                 <Image
                   src="/logo.png"
                   alt="Coach Logo"
-                  width={140}
-                  height={40}
+                  width={120}
+                  height={35}
                   priority
                   onError={() => setLogoFailed(true)}
                   style={{ height: 'auto' }}
-                  className="w-28 sm:w-32 h-10 object-contain brightness-0"
+                  className="w-24 object-contain"
                 />
             ) : (
-              <h1 className="text-[11px] leading-none font-bold tracking-widest uppercase text-slate-900 text-center z-50">
-                VINNY LOPES COACH
+              <h1 className="text-[11px] font-bold tracking-widest text-white text-center">
+                VINNY LOPES <span className="text-iron-gold">COACH</span>
               </h1>
             )}
           </div>
@@ -117,34 +117,16 @@ export default function ResponsiveNav() {
       </header>
 
       {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-100 flex-col z-40">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-20 bg-iron-black border-r border-white-[0.03] flex-col z-40 items-center">
         {/* Sidebar Header */}
-        <div className="p-6 border-b border-slate-100">
-          {!logoFailed ? (
-            <Image
-              src="/logo.png"
-              alt="Coach Logo"
-              width={220}
-              height={70}
-              priority
-              onError={() => setLogoFailed(true)}
-              style={{ height: 'auto' }}
-              className="w-52 mx-auto brightness-0"
-            />
-          ) : (
-            <div>
-              <h1 className="text-sm font-bold tracking-[0.15em] uppercase text-slate-900">
-                VINNY LOPES
-              </h1>
-              <p className="text-xs tracking-widest uppercase text-slate-400 mt-1">
-                COACH
-              </p>
-            </div>
-          )}
+        <div className="py-10 flex flex-col items-center">
+          <div className="w-10 h-10 bg-iron-gold rounded-lg flex items-center justify-center shadow-lg shadow-iron-gold/5 group cursor-pointer">
+            <span className="text-black font-black text-xs">CV</span>
+          </div>
         </div>
 
         {/* Sidebar Menu */}
-        <nav className="flex-1 px-4 py-8 flex flex-col gap-2">
+        <nav className="flex-1 w-full px-3 py-4 flex flex-col gap-4">
           {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -152,41 +134,37 @@ export default function ResponsiveNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium tracking-tight transition-all duration-200 ${
+                title={item.name}
+                className={`group flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all duration-300 ${
                   isActive 
-                    ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" 
-                    : "text-slate-600 hover:text-brand-purple hover:bg-brand-purple/5"
+                    ? "bg-white/[0.05] text-iron-gold" 
+                    : "text-zinc-600 hover:text-white hover:bg-white/[0.02]"
                 }`}
               >
                 <Icon
-                  size={18}
-                  className={`${isActive ? "text-white" : "text-slate-400 group-hover:text-brand-purple"} transition-colors`}
+                  size={20}
+                  strokeWidth={isActive ? 2 : 1.5}
+                  className={isActive ? "text-iron-gold" : "text-zinc-600 group-hover:text-zinc-300"}
                 />
-                <span>{item.name}</span>
+                <span className="text-[8px] font-bold uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+                  {item.name.split(' ')[0]}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Sidebar Footer com Nome e Botão Sair */}
-        <div className="p-4 border-t border-slate-100">
-          {userName && (
-            <div className="mb-3 px-2">
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Olá,</p>
-              <p className="text-sm text-slate-900 font-bold truncate">{userName}</p>
-            </div>
-          )}
+        {/* Sidebar Footer */}
+        <div className="py-8 w-full px-3 border-t border-white-[0.03] flex flex-col items-center gap-4">
           <button
             onClick={async () => {
               await supabaseClient.auth.signOut();
               window.location.href = '/login';
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider text-red-500 hover:text-white hover:bg-red-500 transition-all duration-200 border border-red-100 hover:border-red-500"
+            title="Sair"
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-zinc-600 hover:text-iron-red hover:bg-iron-red/10 transition-all"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V3.33333C2 2.97971 2.14048 2.64057 2.39052 2.39052C2.64057 2.14048 2.97971 2 3.33333 2H6M10.6667 11.3333L14 8M14 8L10.6667 4.66667M14 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            SAIR
+            <X size={18} strokeWidth={2} />
           </button>
         </div>
       </aside>
@@ -201,55 +179,30 @@ export default function ResponsiveNav() {
         aria-hidden={!mobileMenuOpen}
         onClick={() => setMobileMenuOpen(false)}
       >
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
       </div>
 
       {/* Mobile Drawer */}
       <aside
-        className={`lg:hidden fixed left-0 top-0 h-screen w-80 bg-white border-r border-slate-100 z-50 transform transition-transform duration-300 ease-out flex flex-col ${
+        className={`lg:hidden fixed left-0 top-0 h-screen w-72 bg-iron-black border-r border-white-[0.03] z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Drawer Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 flex-shrink-0">
-          <h2 className="text-xs font-bold tracking-[0.15em] uppercase text-slate-400">
-            MENU
+        <div className="flex justify-between items-center px-6 py-5 border-b border-white-[0.03]">
+          <h2 className="text-[10px] font-semibold tracking-widest text-zinc-500 uppercase">
+            NAVEGAÇÃO
           </h2>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-brand-purple hover:bg-brand-purple/5 rounded-xl transition-all"
+            className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-white"
           >
-            <X size={24} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Drawer Logo */}
-        <div className="px-6 py-8 border-b border-slate-100 flex-shrink-0 flex items-center justify-center">
-          {!logoFailed ? (
-            <Image
-              src="/logo.png"
-              alt="Coach Logo"
-              width={180}
-              height={60}
-              priority
-              onError={() => setLogoFailed(true)}
-              style={{ height: 'auto' }}
-              className="w-44 brightness-0"
-            />
-          ) : (
-            <div className="text-center">
-              <h1 className="text-sm font-bold tracking-[0.15em] uppercase text-slate-900">
-                VINNY LOPES
-              </h1>
-              <p className="text-xs tracking-widest uppercase text-slate-400 mt-1">
-                COACH
-              </p>
-            </div>
-          )}
-        </div>
-
         {/* Drawer Menu */}
-        <nav className="flex-1 px-4 py-6 flex flex-col gap-2 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 flex flex-col gap-1 overflow-y-auto">
           {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -257,16 +210,17 @@ export default function ResponsiveNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium tracking-tight transition-all duration-200 ${
+                className={`group flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                   isActive 
-                    ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" 
-                    : "text-slate-600 hover:text-brand-purple hover:bg-brand-purple/5"
+                    ? "bg-white/[0.05] text-iron-gold" 
+                    : "text-zinc-400 hover:text-white hover:bg-white/[0.02]"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Icon
-                  size={20}
-                  className={`${isActive ? "text-white" : "text-slate-400 group-hover:text-brand-purple"} transition-colors`}
+                  size={18}
+                  strokeWidth={isActive ? 2 : 1.5}
+                  className={isActive ? "text-iron-gold" : "text-zinc-500 group-hover:text-zinc-300"}
                 />
                 <span>{item.name}</span>
               </Link>
@@ -274,23 +228,15 @@ export default function ResponsiveNav() {
           })}
 
           {/* Botão Sair Mobile */}
-          <div className="pt-6 mt-auto border-t border-slate-100">
-            {userName && (
-              <div className="mb-4 px-2">
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Olá,</p>
-                <p className="text-sm text-slate-900 font-bold truncate">{userName}</p>
-              </div>
-            )}
+          <div className="mt-auto px-2 pb-6">
             <button
               onClick={async () => {
                 await supabaseClient.auth.signOut();
                 window.location.href = '/login';
               }}
-              className="w-full flex items-center justify-center gap-4 px-4 py-4 rounded-2xl text-sm font-bold uppercase tracking-wider text-red-500 bg-red-50 hover:bg-red-500 hover:text-white transition-all duration-200"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-xs font-medium text-zinc-500 border border-white-[0.05]"
             >
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M6 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V3.33333C2 2.97971 2.14048 2.64057 2.39052 2.39052C2.64057 2.14048 2.97971 2 3.33333 2H6M10.6667 11.3333L14 8M14 8L10.6667 4.66667M14 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <X size={14} />
               SAIR DA CONTA
             </button>
           </div>

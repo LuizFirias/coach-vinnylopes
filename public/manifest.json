@@ -1,0 +1,18 @@
+{
+  "name": "Vinny Lopes Coach",
+  "short_name": "VL Coach",
+  "description": "Ecossistema de Treinamento Exclusivo Coach Vinny Lopes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -14,6 +14,7 @@ const config: Config = {
         'iron-red': '#E30613',
         'iron-gold': '#D4AF37',
         'iron-gold-dark': '#B89626',
+        'brand-purple': '#D4AF37', // Mapeando o antigo purple para o novo Gold
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial'],

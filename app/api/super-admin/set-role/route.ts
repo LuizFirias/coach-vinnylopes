@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     // ===== 1. AUTENTICAÇÃO DO SOLICITANTE =====
     const cookieStore = cookies();
     const bearer = req.headers.get("authorization") || "";
-    const token = (await cookieStore).get("sv-session")?.value || bearer.replace("Bearer ", "");
+    const token = (await cookieStore).get("sb-access-token")?.value || bearer.replace("Bearer ", "");
 
     if (!token) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

@@ -132,9 +132,9 @@ export default function ParceirosAdminPage() {
           </div>
           <button
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-3 px-6 md:px-8 py-3 md:py-4 bg-brand-purple text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-brand-purple/20 hover:scale-[1.02] transition-all active:scale-95"
+            className="px-8 py-5 bg-[#D4AF37] text-black rounded-2xl shadow-2xl hover:bg-white transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px] font-black antialiased"
           >
-            <Plus size={18} />
+            <Plus size={18} strokeWidth={3} />
             ADICIONAR PARCEIRO
           </button>
         </div>
