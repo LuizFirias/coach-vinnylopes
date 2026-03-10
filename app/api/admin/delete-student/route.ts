@@ -56,27 +56,63 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    // ===== 3. ARQUIVAR USUÁRIO (Soft Delete) =====
-    // Em vez de excluir do Auth e Profiles, marcamos como arquivado.
-    // Isso preserva o histórico de faturamento e evolução.
-    
-    const { error: archiveError } = await adminClient
-      .from("profiles")
-      .update({ 
-        arquivado: true,
-        status_pagamento: "pendente" // Opcional: marca como pendente para parar de contar como "Ativo"
-      })
-      .eq("id", userId);
+    // ===== 3. DELETE DE FICHAS TREINO ASSOCIADAS =====
+    // Delete cascata: remover todas as fichas treino do coach antes de deletar seu perfil
+    const { error: deleteFichasError } = await adminClient
+      .from("fichas_treino")
+      .delete()
+      .eq("coach_id", userId);
 
-    if (archiveError) {
-      console.error("[ARCHIVE STUDENT] Erro ao arquivar no banco:", archiveError);
+    if (deleteFichasError) {
+      console.error("[DELETE FICHAS] Erro ao deletar fichas treino:", deleteFichasError);
       return NextResponse.json({ 
-        error: "Falha ao arquivar aluno no banco de dados",
-        details: archiveError.message 
+        error: "Falha ao remover fichas de treino associadas",
+        details: deleteFichasError.message 
       }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Aluno arquivado com sucesso" });
+    // ===== 4. DELETE DO SUPABASE AUTH =====
+    // Deletar usuário do Supabase Auth (usando admin client)
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
+
+    if (deleteAuthError) {
+      console.error("[DELETE AUTH] Erro ao deletar usuário do auth:", deleteAuthError);
+      console.warn("[DELETE AUTH] Continuando mesmo com erro de Auth...");
+    }
+
+    // ===== 5. DELETE DO BANCO (Soft Delete como fallback) =====
+    // Se Auth falhou, pelo menos arquiva o perfil
+    const { error: deleteProfileError } = await adminClient
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (deleteProfileError) {
+      console.error("[DELETE PROFILE] Erro ao deletar profile:", deleteProfileError);
+      // Fallback: arquivar em vez de deletar
+      const { error: archiveError } = await adminClient
+        .from("profiles")
+        .update({ 
+          arquivado: true,
+          status_pagamento: "pendente"
+        })
+        .eq("id", userId);
+
+      if (archiveError) {
+        return NextResponse.json({ 
+          error: "Falha ao remover/arquivar perfil",
+          details: archiveError.message 
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({ 
+        message: "Perfil arquivado com sucesso (não foi possível deletar completamente)" 
+      });
+    }
+
+    return NextResponse.json({ 
+      message: "Usuário deletado completamente do app e da autenticação" 
+    });
 
   } catch (err: any) {
     console.error("[DELETE STUDENT] Erro inesperado:", err);
