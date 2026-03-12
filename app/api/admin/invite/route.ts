@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     // ===== 5. CRIAR USUÁRIO COM SENHA TEMPORÁRIA (SEM SMTP) =====
     console.log("[INVITE] 👤 Criando usuário com senha temporária...");
     
-    const temporaryPassword = "Mudar@123";
+    const temporaryPassword = "Mudar123!";
 
     const { data: createData, error: createError } = await adminClient.auth.admin.createUser({
       email: email,

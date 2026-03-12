@@ -36,6 +36,20 @@ export default function AlunoPerfil() {
   const [changingPassword, setChangingPassword] = useState(false);
   const isFirstAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('firstAccess') === 'true';
 
+  // Password validation requirements
+  const validatePassword = (password: string) => {
+    return {
+      minLength: password.length >= 8,
+      hasUpperCase: /[A-Z]/.test(password),
+      hasLowerCase: /[a-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    };
+  };
+
+  const passwordReq = validatePassword(newPassword);
+  const isPasswordValid = Object.values(passwordReq).every(req => req);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -159,12 +173,14 @@ export default function AlunoPerfil() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (newPassword !== confirmPassword) {
       setMessage({ type: 'error', text: 'As senhas não coincidem' });
       return;
     }
-    if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'A senha deve ter pelo menos 6 caracteres' });
+
+    if (!isPasswordValid) {
+      setMessage({ type: 'error', text: 'A senha não atende aos requisitos de segurança' });
       return;
     }
 
@@ -383,11 +399,74 @@ export default function AlunoPerfil() {
                     </div>
                   </div>
 
+                  {newPassword && (
+                    <div className="mt-6 p-6 bg-black/40 border border-[#1a1a1a] rounded-2xl space-y-3">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Requisitos de Segurança:</p>
+                      
+                      <div className="space-y-2">
+                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          passwordReq.minLength ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            passwordReq.minLength ? 'border-green-400 bg-green-400' : 'border-red-400'
+                          }`}>
+                            {passwordReq.minLength && <span className="text-black text-[8px]">✓</span>}
+                          </div>
+                          Mínimo 8 caracteres
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          passwordReq.hasUpperCase ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            passwordReq.hasUpperCase ? 'border-green-400 bg-green-400' : 'border-red-400'
+                          }`}>
+                            {passwordReq.hasUpperCase && <span className="text-black text-[8px]">✓</span>}
+                          </div>
+                          Pelo menos 1 LETRA MAIÚSCULA (A-Z)
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          passwordReq.hasLowerCase ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            passwordReq.hasLowerCase ? 'border-green-400 bg-green-400' : 'border-red-400'
+                          }`}>
+                            {passwordReq.hasLowerCase && <span className="text-black text-[8px]">✓</span>}
+                          </div>
+                          Pelo menos 1 letra minúscula (a-z)
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          passwordReq.hasNumber ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            passwordReq.hasNumber ? 'border-green-400 bg-green-400' : 'border-red-400'
+                          }`}>
+                            {passwordReq.hasNumber && <span className="text-black text-[8px]">✓</span>}
+                          </div>
+                          Pelo menos 1 NÚMERO (0-9)
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          passwordReq.hasSpecialChar ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            passwordReq.hasSpecialChar ? 'border-green-400 bg-green-400' : 'border-red-400'
+                          }`}>
+                            {passwordReq.hasSpecialChar && <span className="text-black text-[8px]">✓</span>}
+                          </div>
+                          Pelo menos 1 CARACTERE ESPECIAL (!@#$%^&*, etc)
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="pt-6">
                     <button
                       type="submit"
-                      disabled={changingPassword}
-                      className="w-full md:w-auto px-12 py-5 bg-gradient-to-b from-[#F9E29B] via-[#D4AF37] to-[#B8860B] text-black font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl hover:brightness-110 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95 antialiased"
+                      disabled={changingPassword || !isPasswordValid || !newPassword || !confirmPassword}
+                      className="w-full md:w-auto px-12 py-5 bg-gradient-to-b from-[#F9E29B] via-[#D4AF37] to-[#B8860B] text-black font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl hover:brightness-110 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 active:scale-95 antialiased"
                     >
                       {changingPassword ? <Loader2 className="animate-spin w-4 h-4" /> : <Lock size={16} strokeWidth={3} />}
                       Atualizar Senha

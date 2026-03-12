@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       if (inviteError) {
         // Se o envio de e-mail falhar (Erro 500 ou cota do Supabase), tentamos criar o usuário diretamente
         if (inviteError.status === 500 || inviteError.code === 'unexpected_failure' || inviteError.message?.includes("email")) {
-          const temporaryPassword = "Mudar@123";
+          const temporaryPassword = "Mudar123!";
           
           const { data: createdUser, error: createError } = await adminClient.auth.admin.createUser({
             email,
