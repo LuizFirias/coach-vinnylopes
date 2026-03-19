@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { Trophy, Medal, Star, Zap, User, Loader2, Target, ArrowLeft } from 'lucide-react';
+import { Trophy, Medal, Star, Zap, User, Loader2, Target, ArrowLeft, Clock } from 'lucide-react';
 import Link from 'next/link';
 
 interface RankingEntry {

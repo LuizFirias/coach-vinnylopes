@@ -1,4 +1,6 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+
+const supabaseAdmin = getSupabaseAdmin();
 
 export async function PUT(request: Request) {
   try {

@@ -162,8 +162,8 @@ export default function AddManualWorkoutModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl border border-[#D4AF37]/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden">
+    <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl border border-iron-gold/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/40">
           <h2 className="text-lg font-black text-white uppercase tracking-tight">
@@ -184,7 +184,7 @@ export default function AddManualWorkoutModal({
             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
               Data do Treino
             </p>
-            <p className="text-sm font-black text-[#D4AF37]">
+            <p className="text-sm font-black text-iron-gold">
               {date.toLocaleDateString("pt-BR", {
                 weekday: "long",
                 day: "2-digit",
@@ -208,7 +208,7 @@ export default function AddManualWorkoutModal({
                 }}
                 className={`p-4 rounded-xl font-black text-sm uppercase tracking-tight transition-all ${
                   workoutType === "musculacao"
-                    ? "bg-[#D4AF37] text-black ring-2 ring-[#D4AF37]/50"
+                    ? "bg-iron-gold text-black ring-2 ring-iron-gold/50"
                     : "bg-zinc-800 text-white hover:bg-zinc-700"
                 }`}
               >
@@ -219,7 +219,7 @@ export default function AddManualWorkoutModal({
                 onClick={() => setWorkoutType("cardio")}
                 className={`p-4 rounded-xl font-black text-sm uppercase tracking-tight transition-all ${
                   workoutType === "cardio"
-                    ? "bg-[#D4AF37] text-black ring-2 ring-[#D4AF37]/50"
+                    ? "bg-iron-gold text-black ring-2 ring-iron-gold/50"
                     : "bg-zinc-800 text-white hover:bg-zinc-700"
                 }`}
               >
@@ -241,8 +241,8 @@ export default function AddManualWorkoutModal({
                   value={duration}
                   onChange={handleDurationChange}
                   placeholder="00:00"
-                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white font-mono text-lg placeholder-zinc-600 focus:outline-none focus:border-[#D4AF37] transition-colors"
-                  maxLength="5"
+                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white font-mono text-lg placeholder-zinc-600 focus:outline-none focus:border-iron-gold transition-colors"
+                  maxLength={5}
                 />
               </div>
               <p className="text-[9px] text-zinc-500 mt-2">
@@ -261,7 +261,7 @@ export default function AddManualWorkoutModal({
               onChange={(e) => setDescricao(e.target.value)}
               placeholder="Ex: Treino de perna, séries de agachamento...
 Ex: Corrida no parque..."
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#D4AF37] transition-colors text-sm resize-none h-24"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-iron-gold transition-colors text-sm resize-none h-24"
             />
           </div>
 
@@ -272,7 +272,7 @@ Ex: Corrida no parque..."
               id="concluido"
               checked={concluido}
               onChange={(e) => setConcluido(e.target.checked)}
-              className="w-5 h-5 cursor-pointer accent-[#D4AF37]"
+              className="w-5 h-5 cursor-pointer accent-iron-gold"
             />
             <label htmlFor="concluido" className="text-sm font-bold text-white cursor-pointer flex-1">
               Marcar como concluído
@@ -281,33 +281,33 @@ Ex: Corrida no parque..."
 
           {/* Points Info */}
           {workoutType && (
-            <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-lg p-4">
+            <div className="bg-iron-gold/10 border border-iron-gold/30 rounded-lg p-4">
               <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
                 Pontuação
               </p>
               <div className="space-y-1">
                 {workoutType === "musculacao" ? (
                   <p className="text-sm text-white font-black">
-                    Musculação = <span className="text-[#D4AF37]">20 pts</span>
+                    Musculação = <span className="text-iron-gold">20 pts</span>
                   </p>
                 ) : (
                   <>
                     <p className="text-[9px] text-zinc-400">Cardio:</p>
                     <p className="text-[9px] text-zinc-300">
-                      10-19 min = <span className="text-[#D4AF37]">10 pts</span>
+                      10-19 min = <span className="text-iron-gold">10 pts</span>
                     </p>
                     <p className="text-[9px] text-zinc-300">
-                      20-49 min = <span className="text-[#D4AF37]">20 pts</span>
+                      20-49 min = <span className="text-iron-gold">20 pts</span>
                     </p>
                     <p className="text-[9px] text-zinc-300">
-                      50+ min = <span className="text-[#D4AF37]">30 pts</span>
+                      50+ min = <span className="text-iron-gold">30 pts</span>
                     </p>
                   </>
                 )}
               </div>
               {concluido && estimatedPoints > 0 && (
-                <div className="mt-3 pt-3 border-t border-[#D4AF37]/20">
-                  <p className="text-sm font-black text-[#D4AF37]">
+                <div className="mt-3 pt-3 border-t border-iron-gold/20">
+                  <p className="text-sm font-black text-iron-gold">
                     ✓ +{estimatedPoints} pontos no ranking
                   </p>
                 </div>
@@ -339,7 +339,7 @@ Ex: Corrida no parque..."
           <button
             type="submit"
             disabled={!workoutType || loading}
-            className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black font-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+            className="w-full bg-iron-gold hover:bg-iron-gold/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black font-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
