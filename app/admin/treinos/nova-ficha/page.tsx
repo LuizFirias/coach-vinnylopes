@@ -42,6 +42,7 @@ interface ExercicioFicha {
   nome: string;
   descanso: string;
   video_url: string;
+  observacoes: string;
   series: SerieDefinicao[];
 }
 
@@ -53,6 +54,13 @@ export default function NovaFichaCoachPage() {
   const [nomeRotina, setNomeRotina] = useState<string>("");
   const [exerciciosFicha, setExerciciosFicha] = useState<ExercicioFicha[]>([]);
   const [modalExercicio, setModalExercicio] = useState<boolean>(false);
+  const [modalNovoExercicio, setModalNovoExercicio] = useState<boolean>(false);
+  const [novoExercicioForm, setNovoExercicioForm] = useState({
+    nome: "",
+    grupo_muscular: "",
+    descricao: "",
+    video_url: ""
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -128,6 +136,7 @@ export default function NovaFichaCoachPage() {
       nome: exercicio.nome,
       descanso: "1:30",
       video_url: "",
+      observacoes: "",
       series: [
         { ordem: 1, peso_sugerido: 0, reps_sugerido: 12 },
         { ordem: 2, peso_sugerido: 0, reps_sugerido: 12 },
@@ -136,6 +145,51 @@ export default function NovaFichaCoachPage() {
     };
     setExerciciosFicha([...exerciciosFicha, novoExercicio]);
     setModalExercicio(false);
+  };
+
+  const criarNovoExercicio = async () => {
+    if (!novoExercicioForm.nome || !novoExercicioForm.grupo_muscular) {
+      alert("Preencha pelo menos nome e grupo muscular");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabaseClient
+        .from("exercicios_biblioteca")
+        .insert({
+          nome: novoExercicioForm.nome,
+          grupo_muscular: novoExercicioForm.grupo_muscular,
+          descricao: novoExercicioForm.descricao || null,
+          video_url: novoExercicioForm.video_url || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Adicionar o novo exercício à ficha
+      const novoExercicio: ExercicioFicha = {
+        id: data.id,
+        nome: data.nome,
+        descanso: "1:30",
+        video_url: novoExercicioForm.video_url || "",
+        observacoes: "",
+        series: [
+          { ordem: 1, peso_sugerido: 0, reps_sugerido: 12 },
+          { ordem: 2, peso_sugerido: 0, reps_sugerido: 12 },
+          { ordem: 3, peso_sugerido: 0, reps_sugerido: 12 },
+        ],
+      };
+      setExerciciosFicha([...exerciciosFicha, novoExercicio]);
+      setExerciciosCatalogo([...exerciciosCatalogo, data]);
+      
+      // Limpar form
+      setNovoExercicioForm({ nome: "", grupo_muscular: "", descricao: "", video_url: "" });
+      setModalNovoExercicio(false);
+    } catch (err: any) {
+      console.error("Erro ao criar exercício:", err);
+      alert("Erro ao criar exercício: " + err.message);
+    }
   };
 
   const removerExercicio = (index: number) => {
@@ -192,6 +246,7 @@ export default function NovaFichaCoachPage() {
           nome: ex.nome,
           descanso: ex.descanso,
           video_url: ex.video_url || "",
+          observacoes: ex.observacoes || "",
           series: ex.series.map((s) => ({
             ordem: s.ordem,
             peso_atual: s.peso_sugerido || 0,
@@ -368,6 +423,19 @@ export default function NovaFichaCoachPage() {
                   </button>
                 </div>
 
+                {/* Observações */}
+                <div className="space-y-4 mb-6 md:mb-8 pb-6 md:pb-8 border-b border-slate-50">
+                  <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-300">Observações para o Aluno</label>
+                  <textarea
+                    value={exercicio.observacoes}
+                    onChange={(e) => atualizarExercicio(exIndex, "observacoes", e.target.value)}
+                    placeholder="Ex: Manter o core contraído, não arquear as costas, respirar na descida..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 font-medium focus:outline-none focus:border-brand-purple resize-none"
+                    rows={3}
+                  />
+                  <p className="text-[8px] text-slate-400">Apenas {alunoSelecionado ? 'o aluno selecionado' : 'o aluno desta ficha'} poderá ver essas observações</p>
+                </div>
+
                 {/* Series Table */}
                 <div className="space-y-4">
                   <div className="grid grid-cols-4 gap-4 px-4">
@@ -442,9 +510,20 @@ export default function NovaFichaCoachPage() {
                   <h3 className="text-xl md:text-2xl font-black text-slate-900">Biblioteca <span className="text-brand-purple">Fitness</span></h3>
                   <p className="text-slate-400 text-sm font-medium">Selecione o movimento para adicionar</p>
                 </div>
-                <button onClick={() => setModalExercicio(false)} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100">
-                  <X size={24} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      setModalExercicio(false);
+                      setModalNovoExercicio(true);
+                    }}
+                    className="px-4 py-2 bg-brand-purple text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-opacity-90 transition-all"
+                  >
+                    + Novo
+                  </button>
+                  <button onClick={() => setModalExercicio(false)} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100">
+                    <X size={24} />
+                  </button>
+                </div>
               </div>
 
               <div className="p-4 md:p-6">
@@ -480,6 +559,96 @@ export default function NovaFichaCoachPage() {
                     <p className="text-slate-400">Nenhum exercício encontrado</p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal CRIAR NOVO EXERCÍCIO */}
+        {modalNovoExercicio && (
+          <div className="fixed inset-0 z-101 flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setModalNovoExercicio(false)} />
+            
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden">
+              <div className="p-6 md:p-8 border-b border-slate-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Criar <span className="text-brand-purple">Novo Exercício</span></h3>
+                  <p className="text-slate-400 text-sm font-medium">Adicione à biblioteca e à ficha</p>
+                </div>
+                <button onClick={() => setModalNovoExercicio(false)} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 md:p-8 space-y-6">
+                <div className="space-y-3">
+                  <label className="block text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Nome do Exercício *</label>
+                  <input
+                    type="text"
+                    value={novoExercicioForm.nome}
+                    onChange={(e) => setNovoExercicioForm({...novoExercicioForm, nome: e.target.value})}
+                    placeholder="Ex: Supino Inclinado"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-brand-purple"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Grupo Muscular *</label>
+                  <select
+                    value={novoExercicioForm.grupo_muscular}
+                    onChange={(e) => setNovoExercicioForm({...novoExercicioForm, grupo_muscular: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-brand-purple appearance-none"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="Peito">Peito</option>
+                    <option value="Costas">Costas</option>
+                    <option value="Ombros">Ombros</option>
+                    <option value="Bíceps">Bíceps</option>
+                    <option value="Tríceps">Tríceps</option>
+                    <option value="Antebraço">Antebraço</option>
+                    <option value="Perna">Perna</option>
+                    <option value="Glúteos">Glúteos</option>
+                    <option value="Core">Core</option>
+                    <option value="Cárdio">Cárdio</option>
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Vídeo YouTube (ID)</label>
+                  <input
+                    type="text"
+                    value={novoExercicioForm.video_url}
+                    onChange={(e) => setNovoExercicioForm({...novoExercicioForm, video_url: e.target.value})}
+                    placeholder="Ex: dQw4w9WgXcQ"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-brand-purple"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Descrição</label>
+                  <textarea
+                    value={novoExercicioForm.descricao}
+                    onChange={(e) => setNovoExercicioForm({...novoExercicioForm, descricao: e.target.value})}
+                    placeholder="Ex: Exercício para o desenvolvimento de peito..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-brand-purple resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setModalNovoExercicio(false)}
+                    className="flex-1 px-6 py-3 bg-slate-100 text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={criarNovoExercicio}
+                    className="flex-1 px-6 py-3 bg-brand-purple text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-opacity-90 transition-all"
+                  >
+                    Criar e Adicionar
+                  </button>
+                </div>
               </div>
             </div>
           </div>

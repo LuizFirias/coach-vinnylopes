@@ -10,10 +10,12 @@ import {
   AlertCircle, 
   ArrowLeft,
   ShieldCheck,
-  Save
+  Save,
+  Lock
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 
 export default function SuperAdminPerfilPage() {
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,7 @@ export default function SuperAdminPerfilPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -244,7 +247,15 @@ export default function SuperAdminPerfilPage() {
                 <p className="text-[9px] font-black text-zinc-900 uppercase tracking-[0.3em] ml-2 italic">Apenas leitura por protocolos de segurança avançados</p>
               </div>
 
-              <div className="pt-10 flex justify-center">
+              <div className="pt-10 flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  type="button"
+                  onClick={() => setChangePasswordModalOpen(true)}
+                  className="px-12 py-7 bg-brand-purple/10 text-brand-purple rounded-[32px] font-black text-[12px] uppercase tracking-[0.5em] shadow-2xl hover:bg-brand-purple/20 transition-all duration-500 border border-brand-purple/20 flex items-center justify-center gap-5 active:scale-95"
+                >
+                  <Lock size={20} strokeWidth={2.5} />
+                  TROCAR SENHA
+                </button>
                 <button
                   type="submit"
                   disabled={saving}
@@ -274,6 +285,12 @@ export default function SuperAdminPerfilPage() {
            </div>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={changePasswordModalOpen}
+        onClose={() => setChangePasswordModalOpen(false)}
+      />
     </div>
   );
 }

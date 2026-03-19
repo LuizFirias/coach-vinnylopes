@@ -20,6 +20,7 @@ import {
   Lock
 } from 'lucide-react';
 import Link from 'next/link';
+import ChangePasswordModal from '@/app/components/ChangePasswordModal';
 
 export default function AlunoPerfil() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function AlunoPerfil() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
   const isFirstAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('firstAccess') === 'true';
 
   // Password validation requirements
@@ -277,6 +279,15 @@ export default function AlunoPerfil() {
 
                <button
                   type="button"
+                  onClick={() => setChangePasswordModalOpen(true)}
+                  className="w-full py-5 bg-brand-purple/10 text-brand-purple rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-brand-purple/20 border border-brand-purple/20 transition-all flex items-center justify-center gap-3 mb-3"
+                >
+                  <Lock size={16} />
+                  Trocar Senha
+                </button>
+
+               <button
+                  type="button"
                   onClick={handleSignOut}
                   className="w-full py-5 bg-black text-zinc-700 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-red-500/10 hover:text-red-500 border border-[#1a1a1a] transition-all flex items-center justify-center gap-4"
                 >
@@ -492,6 +503,12 @@ export default function AlunoPerfil() {
           </div>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={changePasswordModalOpen}
+        onClose={() => setChangePasswordModalOpen(false)}
+      />
     </div>
   );
 }

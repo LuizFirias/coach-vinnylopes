@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { LogOut, Camera, Lock } from "lucide-react";
+import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 
 export default function CoachPerfilPage() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function CoachPerfilPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -215,11 +218,19 @@ export default function CoachPerfilPage() {
               </div>
             </div>
 
-            <div className="pt-6">
+            <div className="pt-6 flex gap-4 flex-col sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setChangePasswordModalOpen(true)}
+                className="flex-1 py-5 bg-brand-purple/10 text-brand-purple font-black text-[11px] uppercase tracking-[0.4em] rounded-2xl hover:bg-brand-purple/20 border border-brand-purple/20 transition-all flex items-center justify-center gap-3"
+              >
+                <Lock size={16} />
+                TROCAR SENHA
+              </button>
               <button
                 type="submit"
                 disabled={saving || uploadingAvatar}
-                className="w-full py-5 bg-[#D4AF37] text-black font-black text-[11px] uppercase tracking-[0.4em] rounded-2xl hover:bg-white transition-all shadow-xl shadow-[#D4AF37]/5 disabled:opacity-50 active:scale-95"
+                className="flex-1 py-5 bg-[#D4AF37] text-black font-black text-[11px] uppercase tracking-[0.4em] rounded-2xl hover:bg-white transition-all shadow-xl shadow-[#D4AF37]/5 disabled:opacity-50 active:scale-95"
               >
                 {saving ? (
                   <div className="flex items-center justify-center gap-3">
@@ -234,6 +245,12 @@ export default function CoachPerfilPage() {
           </form>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={changePasswordModalOpen}
+        onClose={() => setChangePasswordModalOpen(false)}
+      />
     </div>
   );
 }

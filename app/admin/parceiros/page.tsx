@@ -13,14 +13,16 @@ interface Parceiro {
   imagens?: string[] | null;
 }
 
-import { Plus, Tag, ExternalLink, Image as ImageIcon, X, Loader2, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Plus, Tag, ExternalLink, Image as ImageIcon, X, Loader2, AlertCircle, ShoppingBag, Edit2, Trash2 } from 'lucide-react';
 
 export default function ParceirosAdminPage() {
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalEditOpen, setModalEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [parceiroEditando, setParceiroEditando] = useState<Parceiro | null>(null);
   
   // Form state
   const [nomeProduto, setNomeProduto] = useState("");
@@ -119,6 +121,103 @@ export default function ParceirosAdminPage() {
     setFormError(null);
   };
 
+  const abrirEditarParceiro = (parceiro: Parceiro) => {
+    setParceiroEditando(parceiro);
+    setNomeProduto(parceiro.nome_marca);
+    setDescricao(parceiro.descricao);
+    setCupom(parceiro.cupom);
+    setLinkDesconto(parceiro.link_desconto);
+    setImageFiles([]);
+    setFormError(null);
+    setModalEditOpen(true);
+  };
+
+  const handleEditarParceiro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!parceiroEditando) return;
+
+    setSaving(true);
+    setFormError(null);
+
+    try {
+      let uploadedUrls: string[] = [];
+
+      // Fazer upload de novas imagens, se houver
+      if (imageFiles.length > 0) {
+        for (const file of imageFiles) {
+          const fileName = `${Date.now()}_${file.name}`;
+          const { error: uploadError } = await supabaseClient.storage
+            .from("parceiros-logos")
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicUrlData } = supabaseClient.storage
+            .from("parceiros-logos")
+            .getPublicUrl(fileName);
+
+          uploadedUrls.push(publicUrlData.publicUrl);
+        }
+      }
+
+      // Preparar dados de atualização
+      const updateData: any = {
+        nome_marca: nomeProduto,
+        descricao,
+        cupom,
+        link_desconto: linkDesconto,
+      };
+
+      // Se há novas imagens, atualizar
+      if (uploadedUrls.length > 0) {
+        updateData.logo_url = uploadedUrls[0];
+        updateData.imagens = uploadedUrls;
+      }
+
+      const response = await fetch("/api/admin/parceiros", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: parceiroEditando.id,
+          ...updateData,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao atualizar parceiro");
+      }
+
+      setModalEditOpen(false);
+      setParceiroEditando(null);
+      resetForm();
+      fetchParceiros();
+    } catch (err: any) {
+      setFormError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletarParceiro = async (id: string) => {
+    if (!confirm("Tem certeza que deseja deletar este parceiro?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/parceiros?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao deletar parceiro");
+      }
+
+      fetchParceiros();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-10 lg:pl-28">
       <div className="max-w-6xl mx-auto">
@@ -192,6 +291,21 @@ export default function ParceirosAdminPage() {
                   >
                     ACESSAR LOJA <ExternalLink size={14} />
                   </a>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => abrirEditarParceiro(parceiro)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all"
+                    >
+                      <Edit2 size={14} /> EDITAR
+                    </button>
+                    <button
+                      onClick={() => handleDeletarParceiro(parceiro.id)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
+                    >
+                      <Trash2 size={14} /> DELETAR
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -321,6 +435,128 @@ export default function ParceirosAdminPage() {
                   'CADASTRAR PARCEIRO'
                 )}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal EDITAR PARCEIRO */}
+      {modalEditOpen && parceiroEditando && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setModalEditOpen(false)} />
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 md:p-10 overflow-hidden">
+            <div className="flex items-center justify-between mb-6 md:mb-10 border-b border-slate-50 pb-4 md:pb-6">
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-slate-900">Editar <span className="text-brand-purple">{parceiroEditando.nome_marca}</span></h2>
+                <p className="text-slate-400 font-medium text-sm">Atualize os dados da marca parceira</p>
+              </div>
+              <button
+                onClick={() => setModalEditOpen(false)}
+                className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-red-500 rounded-2xl transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {formError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 flex items-center gap-3 text-sm font-medium">
+                <AlertCircle size={18} />
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditarParceiro} className="space-y-6 md:space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">NOME DA MARCA</label>
+                  <input
+                    type="text"
+                    value={nomeProduto}
+                    onChange={(e) => setNomeProduto(e.target.value)}
+                    className="w-full h-14 px-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-semibold focus:outline-none focus:border-brand-purple transition-all"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">CÓDIGO DO CUPOM</label>
+                  <div className="relative">
+                    <Tag className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                    <input
+                      type="text"
+                      value={cupom}
+                      onChange={(e) => setCupom(e.target.value)}
+                      className="w-full h-14 pl-14 pr-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold focus:outline-none focus:border-brand-purple transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">DESCRIÇÃO CURTA</label>
+                <textarea
+                  rows={2}
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-medium focus:outline-none focus:border-brand-purple transition-all resize-none"
+                  required
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">LINK DE DESCONTO</label>
+                <div className="relative">
+                  <ExternalLink className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input
+                    type="url"
+                    value={linkDesconto}
+                    onChange={(e) => setLinkDesconto(e.target.value)}
+                    className="w-full h-14 pl-14 pr-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-medium focus:outline-none focus:border-brand-purple transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">NOVA IMAGEM (OPCIONAL)</label>
+                <div className="relative flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-brand-purple/5 hover:border-brand-purple/30 transition-all cursor-pointer group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFiles(Array.from(e.target.files || []))}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center justify-center p-4">
+                    <ImageIcon size={24} className="text-slate-300 mb-2 group-hover:text-brand-purple" />
+                    <p className="text-xs font-bold text-slate-500">Clique para atualizar imagem</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setModalEditOpen(false)}
+                  className="flex-1 h-14 md:h-16 bg-slate-100 text-slate-900 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-slate-200 transition-all"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 h-14 md:h-16 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 hover:bg-brand-purple transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      SALVANDO...
+                    </>
+                  ) : (
+                    'SALVAR MUDANÇAS'
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
