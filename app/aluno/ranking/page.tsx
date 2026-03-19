@@ -263,7 +263,7 @@ export default function RankingPage() {
                   </div>
                   <h3 className="font-black text-white truncate w-full">{profiles[2].full_name?.split(' ')[0] || 'Atleta'}</h3>
                   <div className="mt-4 flex items-center gap-2 text-zinc-500 font-bold text-[10px] uppercase tracking-widest">
-                    <Clock size={12} /> {profiles[2].ultimo_checkin ? new Date(profiles[2].ultimo_checkin).toLocaleDateString('pt-BR') : '—'}
+                    <Zap size={12} /> {profiles[2].total_pontos} pts
                   </div>
                 </div>
               )}
