@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import UploadNutritionPlan from "@/app/components/UploadNutritionPlan";
 import { 
   ArrowLeft, 
   User, 
@@ -21,7 +22,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Dumbbell,
-  Edit2
+  Edit2,
+  Apple
 } from "lucide-react";
 
 interface Profile {
@@ -70,6 +72,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [editDataInicio, setEditDataInicio] = useState<string>("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [planosAlimentares, setPlanosAlimentares] = useState<any[]>([]);
+  const [uploadNutritionOpen, setUploadNutritionOpen] = useState(false);
+  const [coaches, setCoaches] = useState<any[]>([]);
+  const [selectedNewCoach, setSelectedNewCoach] = useState<string | null>(null);
+  const [changingCoach, setChangingCoach] = useState(false);
+  const [currentCoachId, setCurrentCoachId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -164,6 +172,36 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         .eq("aluno_id", id)
         .order("data_medicao", { ascending: true });
       setMedidas(medidasData || []);
+
+      // Carregar planos alimentares
+      const { data: planosData } = await supabaseClient
+        .from("plano_alimentar_pdf")
+        .select("*")
+        .eq("aluno_id", id)
+        .order("criado_em", { ascending: false });
+      
+      // Assinar URLs dos PDFs de nutrição
+      const planosAssinados = await Promise.all((planosData || []).map(async (p: any) => {
+        const pathParts = p.pdf_url.split('/plano-alimentar/');
+        const filePath = pathParts.length > 1 ? pathParts[1] : p.pdf_url;
+        const { data: signedData } = await supabaseClient.storage.from('plano-alimentar').createSignedUrl(filePath, 3600);
+        return { ...p, pdf_url: signedData?.signedUrl || p.pdf_url };
+      }));
+      setPlanosAlimentares(planosAssinados);
+
+      // Carregar lista de coaches disponíveis
+      const { data: coachesData } = await supabaseClient
+        .from("profiles")
+        .select("id, full_name")
+        .eq("role", "coach")
+        .order("full_name", { ascending: true });
+      setCoaches(coachesData || []);
+
+      // Armazenar coach_id atual
+      if (prof && prof.coach_id) {
+        setCurrentCoachId(prof.coach_id);
+        setSelectedNewCoach(prof.coach_id);
+      }
     } catch (err: any) {
       setError(err?.message || String(err));
     }
@@ -255,6 +293,89 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       setError("Erro ao deletar ficha: " + err.message);
     }
   };
+
+  const handleChangeCoach = async () => {
+    if (!selectedNewCoach) return setError("Selecione um coach");
+    if (selectedNewCoach === currentCoachId) return setError("Este é o coach atual do aluno");
+
+    if (!window.confirm("Deseja transferir este aluno para outro coach? A tabela de relacionamento será atualizada corretamente.")) {
+      return;
+    }
+
+    setChangingCoach(true);
+    setError(null);
+
+    try {
+      const oldCoachId = currentCoachId;
+
+      // 1. Remover da tabela coach_alunos (coach antigo)
+      if (oldCoachId) {
+        const { error: deleteError } = await supabaseClient
+          .from("coach_alunos")
+          .delete()
+          .eq("coach_id", oldCoachId)
+          .eq("aluno_id", id);
+        
+        if (deleteError) console.error("Erro ao remover coach anterior:", deleteError);
+      }
+
+      // 2. Adicionar à tabela coach_alunos (coach novo)
+      const { error: insertError } = await supabaseClient
+        .from("coach_alunos")
+        .insert([{ coach_id: selectedNewCoach, aluno_id: id }]);
+      
+      if (insertError && !insertError.message.includes("unique")) {
+        throw insertError;
+      }
+
+      // 3. Atualizar coach_id no profiles
+      const { error: updateError } = await supabaseClient
+        .from("profiles")
+        .update({ coach_id: selectedNewCoach })
+        .eq("id", id);
+      
+      if (updateError) throw updateError;
+
+      setCurrentCoachId(selectedNewCoach);
+      setError(null);
+      
+      // Recarregar dados
+      await load();
+    } catch (err: any) {
+      setError("Erro ao transferir aluno: " + err.message);
+      setSelectedNewCoach(currentCoachId);
+    } finally {
+      setChangingCoach(false);
+    }
+  };
+
+  const handleDeleteNutritionPlan = async (planId: string, pdfUrl: string) => {
+    if (!window.confirm("Remover este plano alimentar permanentemente?")) return;
+
+    try {
+      // 1. Deletar do Storage
+      const pathParts = pdfUrl.split('/plano-alimentar/');
+      const filePath = pathParts.length > 1 ? pathParts[1] : pdfUrl;
+      
+      const { error: storageError } = await supabaseClient.storage
+        .from("plano-alimentar")
+        .remove([filePath]);
+      
+      if (storageError) console.error("Erro ao remover do storage:", storageError);
+
+      // 2. Deletar do Banco
+      const { error: dbError } = await supabaseClient
+        .from("plano_alimentar_pdf")
+        .delete()
+        .eq("id", planId);
+      
+      if (dbError) throw dbError;
+
+      await load();
+    } catch (err: any) {
+      setError("Erro ao deletar plano: " + err.message);
+    }
+  };;
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -547,7 +668,120 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <p className="mt-3 text-[9px] text-zinc-600 font-bold uppercase tracking-widest text-right">Auto-save ao sair do campo</p>
         </div>
 
+        {/* Seção de Mudança de Coach */}
+        <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl mb-8 md:mb-12 relative overflow-hidden group">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
+              <User size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Tutor Responsável</h3>
+              <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Transferência de Coach</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Atribuir a Novo Coach</label>
+              <select
+                value={selectedNewCoach || ""}
+                onChange={(e) => setSelectedNewCoach(e.target.value || null)}
+                disabled={changingCoach}
+                className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white font-bold text-sm focus:ring-2 focus:ring-iron-gold transition-all appearance-none cursor-pointer disabled:opacity-50"
+              >
+                <option value="">Selecione um coach...</option>
+                {coaches.map((coach) => (
+                  <option key={coach.id} value={coach.id}>
+                    {coach.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleChangeCoach}
+              disabled={changingCoach || !selectedNewCoach || selectedNewCoach === currentCoachId}
+              className="w-full py-4 bg-iron-gold text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(212,175,55,0.1)]"
+            >
+              {changingCoach ? 'Transferindo...' : 'Confirmar Transferência'}
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-8 md:mb-12">
+           {/* Upload de Nutrição */}
+          <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl flex flex-col h-full relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
+            
+            <div className="flex items-center gap-4 mb-8 relative z-10">
+              <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
+                <Apple size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Plano <span className="text-iron-gold">Alimentar</span></h3>
+                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Uploads de PDF</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setUploadNutritionOpen(true)}
+              className="w-full py-4 md:py-5 bg-iron-gold text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.1)] mb-6 relative z-10"
+            >
+              <Upload size={16} />
+              Adicionar Plano Alimentar
+            </button>
+
+            {/* Lista de Planos Alimentares */}
+            {planosAlimentares.length > 0 && (
+              <div className="space-y-3 relative z-10">
+                <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-4">Planos Ativos</h4>
+                <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                  {planosAlimentares.map((p) => (
+                    <div key={p.id} className="flex items-start justify-between p-3 bg-zinc-900/50 rounded-xl border border-white/5 group/item">
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex items-center gap-3 mb-1">
+                          <Apple size={14} className="text-iron-gold shrink-0" />
+                          <span className="text-[10px] font-bold text-white truncate">{p.nome_arquivo}</span>
+                        </div>
+                        {p.descricao && (
+                          <p className="text-[9px] text-zinc-500 truncate ml-[22px]">{p.descricao}</p>
+                        )}
+                        <p className="text-[8px] text-zinc-600 ml-[22px] mt-1">
+                          {new Date(p.criado_em).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2 shrink-0">
+                        <a
+                          href={p.pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-zinc-500 hover:text-iron-gold transition-colors"
+                        >
+                          <FileText size={12} />
+                        </a>
+                        <button
+                          onClick={() => handleDeleteNutritionPlan(p.id, p.pdf_url)}
+                          className="p-2 text-zinc-700 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {planosAlimentares.length === 0 && (
+              <div className="flex-1 flex items-center justify-center text-center p-6 relative z-10">
+                <div>
+                  <Apple size={32} className="text-zinc-800 mx-auto mb-3" />
+                  <p className="text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum plano enviado ainda</p>
+                </div>
+              </div>
+            )}
+          </div>
+
            {/* Upload de Treino */}
           <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl flex flex-col h-full relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
@@ -788,6 +1022,18 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </div>
           )}
         </div>
+
+        {/* Modal de Upload de Nutrição */}
+        <UploadNutritionPlan
+          isOpen={uploadNutritionOpen}
+          onClose={() => setUploadNutritionOpen(false)}
+          alunoId={id}
+          alunoName={profile?.full_name || "Aluno"}
+          onUploadSuccess={() => {
+            setUploadNutritionOpen(false);
+            load();
+          }}
+        />
       </div>
     </div>
   );
