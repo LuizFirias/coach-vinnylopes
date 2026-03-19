@@ -111,16 +111,14 @@ export default function AddManualWorkoutModal({
       return;
     }
 
-    // Check if date is <= today
+    // Validate date: cannot add workouts for future dates
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const workoutDate = new Date(date);
     workoutDate.setHours(0, 0, 0, 0);
 
-    if (workoutDate > today && concluido) {
-      alert(
-        "Você só pode marcar como concluído treinos da data atual ou passada"
-      );
+    if (workoutDate > today) {
+      alert("Você só pode adicionar treinos da data atual ou passada. Nenhuma trapaça! 💪");
       return;
     }
 
@@ -316,6 +314,26 @@ Ex: Corrida no parque..."
               )}
             </div>
           )}
+
+          {/* Past Date Warning */}
+          {(() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const workoutDate = new Date(date);
+            workoutDate.setHours(0, 0, 0, 0);
+            const isPastDate = workoutDate < today;
+
+            return isPastDate ? (
+              <div className="bg-yellow-950/30 border border-yellow-700/50 rounded-lg p-4">
+                <p className="text-[10px] font-black text-yellow-600 uppercase tracking-widest mb-1">
+                  ⚠️ Data Retroativa
+                </p>
+                <p className="text-[9px] text-yellow-600/80">
+                  Você está adicionando um treino de {date.toLocaleDateString("pt-BR")}. Certifique-se de relatar apenas treinos que realmente aconteceram.
+                </p>
+              </div>
+            ) : null;
+          })()}
 
           {/* Submit Button */}
           <button

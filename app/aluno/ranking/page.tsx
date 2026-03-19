@@ -31,40 +31,64 @@ export default function RankingPage() {
       try {
         setLoading(true);
         
-        // Fetch top 50 alunos by points
-        const { data: topData, error: topError } = await supabaseClient
-          .from('pontuacao_alunos')
-          .select(`
-            aluno_id,
-            total_pontos,
-            profiles(full_name, avatar_url)
-          `)
-          .order('total_pontos', { ascending: false })
-          .limit(50);
-
-        if (topError) throw topError;
-
-        // Map the data to include profile info
-        const mappedData: RankingEntry[] = (topData || []).map((item: any) => ({
-          aluno_id: item.aluno_id,
-          total_pontos: item.total_pontos,
-          full_name: item.profiles?.full_name,
-          avatar_url: item.profiles?.avatar_url
-        }));
-
-        // Get current user
+        // Get current user first
         const { data: authData } = await supabaseClient.auth.getUser();
         const user = authData?.user;
+
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+
+        // Get user's profile and coach_id
+        const { data: meData, error: meError } = await supabaseClient
+          .from('profiles')
+          .select('id, full_name, email, avatar_url, coach_id, role')
+          .eq('id', user.id)
+          .single();
+
+        if (meError || !meData) {
+          throw new Error('Não foi possível carregar seu perfil');
+        }
+
+        let mappedData: RankingEntry[] = [];
         let currentProfile: {profile: Profile, points: number} | null = null;
         let position: number | null = null;
 
-        if (user) {
-          // Get user's profile
-          const { data: meData, error: meError } = await supabaseClient
-            .from('profiles')
-            .select('id, full_name, email, avatar_url')
-            .eq('id', user.id)
-            .single();
+        // If user is a student, fetch only their coach's students
+        if (meData.role === 'aluno') {
+          const coachId = meData.coach_id;
+          
+          if (!coachId) {
+            setError('Você não está atribuído a nenhum coach ainda.');
+            setLoading(false);
+            return;
+          }
+
+          // Fetch all students of the same coach
+          const { data: coachStudents, error: coachError } = await supabaseClient
+            .from('coach_alunos')
+            .select(`
+              aluno_id,
+              pontuacao_alunos(aluno_id, total_pontos, profiles(full_name, avatar_url))
+            `)
+            .eq('coach_id', coachId);
+
+          if (coachError) throw coachError;
+
+          // Map the data safely
+          mappedData = (coachStudents || [])
+            .filter(item => item.pontuacao_alunos && item.pontuacao_alunos.length > 0)
+            .map((item: any) => {
+              const pontuacao = item.pontuacao_alunos[0];
+              return {
+                aluno_id: pontuacao.aluno_id,
+                total_pontos: pontuacao.total_pontos,
+                full_name: pontuacao.profiles?.full_name,
+                avatar_url: pontuacao.profiles?.avatar_url
+              };
+            })
+            .sort((a, b) => b.total_pontos - a.total_pontos);
 
           // Get user's points
           const { data: pointsData } = await supabaseClient
@@ -73,17 +97,44 @@ export default function RankingPage() {
             .eq('aluno_id', user.id)
             .single();
 
-          if (!meError && meData) {
-            currentProfile = {
-              profile: meData as Profile,
-              points: pointsData?.total_pontos || 0
-            };
+          currentProfile = {
+            profile: meData as Profile,
+            points: pointsData?.total_pontos || 0
+          };
 
-            // Calculate user's position
-            const userPoints = currentProfile.points;
-            const usersWithMorePoints = mappedData.filter(p => p.total_pontos > userPoints).length;
-            position = usersWithMorePoints + 1;
-          }
+          // Calculate user's position
+          const usersWithMorePoints = mappedData.filter(p => p.total_pontos > (pointsData?.total_pontos || 0)).length;
+          position = usersWithMorePoints + 1;
+        }
+        // If user is a coach, show their students
+        else if (meData.role === 'coach') {
+          const { data: coachStudents, error: coachError } = await supabaseClient
+            .from('coach_alunos')
+            .select(`
+              aluno_id,
+              pontuacao_alunos(aluno_id, total_pontos, profiles(full_name, avatar_url))
+            `)
+            .eq('coach_id', user.id);
+
+          if (coachError) throw coachError;
+
+          mappedData = (coachStudents || [])
+            .filter(item => item.pontuacao_alunos && item.pontuacao_alunos.length > 0)
+            .map((item: any) => {
+              const pontuacao = item.pontuacao_alunos[0];
+              return {
+                aluno_id: pontuacao.aluno_id,
+                total_pontos: pontuacao.total_pontos,
+                full_name: pontuacao.profiles?.full_name,
+                avatar_url: pontuacao.profiles?.avatar_url
+              };
+            })
+            .sort((a, b) => b.total_pontos - a.total_pontos);
+
+          currentProfile = {
+            profile: meData as Profile,
+            points: 0
+          };
         }
 
         setProfiles(mappedData);

@@ -178,9 +178,25 @@ ALTER TABLE pontuacao_alunos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Alunos veem sua pontuação" ON pontuacao_alunos;
 CREATE POLICY "Alunos veem sua pontuação" ON pontuacao_alunos
   FOR SELECT
-  USING (aluno_id = auth.uid());
+  USING (
+    aluno_id = auth.uid() OR
+    -- Alunos veem outros alunos que estão no mesmo coach (para ranking)
+    EXISTS (
+      SELECT 1 FROM profiles p1
+      WHERE p1.id = auth.uid() AND p1.role = 'aluno'
+      AND EXISTS (
+        SELECT 1 FROM coach_alunos ca1
+        WHERE ca1.aluno_id = p1.id
+        AND EXISTS (
+          SELECT 1 FROM coach_alunos ca2
+          WHERE ca2.aluno_id = pontuacao_alunos.aluno_id
+          AND ca2.coach_id = ca1.coach_id
+        )
+      )
+    )
+  );
 
--- Coaches veem pontuação de seus alunos
+-- Coaches veem pontuação de seus alunos (ranking do coach)
 DROP POLICY IF EXISTS "Coaches veem pontuação de seus alunos" ON pontuacao_alunos;
 CREATE POLICY "Coaches veem pontuação de seus alunos" ON pontuacao_alunos
   FOR SELECT
