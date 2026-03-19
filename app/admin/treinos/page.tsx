@@ -28,10 +28,39 @@ export default function TreinosPage() {
   useEffect(() => {
     const fetchAlunos = async () => {
       try {
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const coachId = authData?.user?.id;
+
+        if (!coachId) {
+          setError('Sessão inválida');
+          setFetchingAlunos(false);
+          return;
+        }
+
+        // Buscar IDs dos alunos do coach
+        const { data: alunoLinks, error: linkError } = await supabaseClient
+          .from('coach_alunos')
+          .select('aluno_id')
+          .eq('coach_id', coachId);
+
+        if (linkError) {
+          setError('Erro ao carregar alunos: ' + linkError.message);
+          setFetchingAlunos(false);
+          return;
+        }
+
+        const ids = alunoLinks?.map(link => link.aluno_id) || [];
+        if (ids.length === 0) {
+          setAlunos([]);
+          setFetchingAlunos(false);
+          return;
+        }
+
+        // Buscar dados dos alunos
         const { data, error: fetchError } = await supabaseClient
           .from('profiles')
           .select('id, full_name, email')
-          .eq('role', 'aluno')
+          .in('id', ids)
           .eq('arquivado', false)
           .order('full_name', { ascending: true });
 

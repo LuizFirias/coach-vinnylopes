@@ -81,14 +81,26 @@ export default function NovaFichaCoachPage() {
         return;
       }
 
-      const { data: alunosData } = await supabaseClient
-        .from("profiles")
-        .select("id, full_name, email")
-        .eq("role", "aluno")
-        .eq("arquivado", false)
-        .order("full_name", { ascending: true });
+      // Buscar apenas alunos relacionados ao coach
+      const { data: alunoLinks } = await supabaseClient
+        .from("coach_alunos")
+        .select("aluno_id")
+        .eq("coach_id", userId);
 
-      setAlunos(alunosData || []);
+      const alunoIds = alunoLinks?.map(link => link.aluno_id) || [];
+      
+      let alunosData: any[] = [];
+      if (alunoIds.length > 0) {
+        const { data } = await supabaseClient
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", alunoIds)
+          .eq("arquivado", false)
+          .order("full_name", { ascending: true });
+        alunosData = data || [];
+      }
+
+      setAlunos(alunosData);
 
       const { data: exerciciosData } = await supabaseClient
         .from("exercicios_biblioteca")

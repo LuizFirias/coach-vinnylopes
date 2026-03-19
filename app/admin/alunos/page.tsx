@@ -68,19 +68,48 @@ export default function AdminAlunosPage() {
     setLoading(true);
     setError(null);
     try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const coachId = authData?.user?.id;
+
+      if (!coachId) {
+        setError("Sessão inválida");
+        setLoading(false);
+        return;
+      }
+
       let q = supabaseClient
+        .from("coach_alunos")
+        .select("aluno_id")
+        .eq("coach_id", coachId);
+
+      const { data: alunoIds, error: linkError } = await q;
+      if (linkError) {
+        console.error("[ADMIN ALUNOS] Erro ao buscar relação:", linkError);
+        setError("Erro ao carregar alunos");
+        setLoading(false);
+        return;
+      }
+
+      const ids = alunoIds?.map(link => link.aluno_id) || [];
+      if (ids.length === 0) {
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+
+      let q2 = supabaseClient
         .from("profiles")
         .select("id, full_name, email, status_pagamento, created_at")
-        .eq("role", "aluno")
+        .in("id", ids)
         .eq("arquivado", false)
         .order("created_at", { ascending: false })
         .limit(200);
 
       if (query.trim().length > 0) {
-        q = q.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`);
+        q2 = q2.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`);
       }
 
-      const { data, error: fetchError } = await q;
+      const { data, error: fetchError } = await q2;
       if (fetchError) throw fetchError;
 
       setRows((data as ProfileRow[]) || []);
