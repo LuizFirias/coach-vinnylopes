@@ -62,7 +62,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 relative bg-zinc-900/50">
+        <div className="flex-1 relative bg-zinc-900/50 overflow-hidden">
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10">
               <div className="w-12 h-12 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
@@ -71,7 +71,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
           )}
           
           <iframe
-            src={`${url}#view=FitH`}
+            src={`${url}#view=Fit`}
             className="w-full h-full border-none"
             onLoad={() => setLoading(false)}
             title={title}

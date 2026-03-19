@@ -2,20 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { Trophy, Medal, Star, Clock, User, Loader2, Target, ArrowLeft } from 'lucide-react';
+import { Trophy, Medal, Star, Zap, User, Loader2, Target, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+
+interface RankingEntry {
+  aluno_id: string;
+  total_pontos: number;
+  full_name: string | null;
+  avatar_url: string | null;
+}
 
 interface Profile {
   id: string;
   full_name: string | null;
   email: string | null;
-  ultimo_checkin: string | null;
   avatar_url: string | null;
 }
 
 export default function RankingPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [profiles, setProfiles] = useState<RankingEntry[]>([]);
+  const [userProfile, setUserProfile] = useState<{profile: Profile, points: number} | null>(null);
   const [userPosition, setUserPosition] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,47 +30,63 @@ export default function RankingPage() {
     const fetchRanking = async () => {
       try {
         setLoading(true);
-        // top 50 alunos para o ranking
+        
+        // Fetch top 50 alunos by points
         const { data: topData, error: topError } = await supabaseClient
-          .from('profiles')
-          .select('id, full_name, email, ultimo_checkin, avatar_url')
-          .eq('role', 'aluno')
-          .order('ultimo_checkin', { ascending: false, nullsFirst: false })
+          .from('pontuacao_alunos')
+          .select(`
+            aluno_id,
+            total_pontos,
+            profiles(full_name, avatar_url)
+          `)
+          .order('total_pontos', { ascending: false })
           .limit(50);
 
         if (topError) throw topError;
 
-        // current user
+        // Map the data to include profile info
+        const mappedData: RankingEntry[] = (topData || []).map((item: any) => ({
+          aluno_id: item.aluno_id,
+          total_pontos: item.total_pontos,
+          full_name: item.profiles?.full_name,
+          avatar_url: item.profiles?.avatar_url
+        }));
+
+        // Get current user
         const { data: authData } = await supabaseClient.auth.getUser();
         const user = authData?.user;
-        let currentProfile: Profile | null = null;
+        let currentProfile: {profile: Profile, points: number} | null = null;
         let position: number | null = null;
 
         if (user) {
+          // Get user's profile
           const { data: meData, error: meError } = await supabaseClient
             .from('profiles')
-            .select('id, full_name, email, ultimo_checkin, avatar_url')
+            .select('id, full_name, email, avatar_url')
             .eq('id', user.id)
             .single();
 
+          // Get user's points
+          const { data: pointsData } = await supabaseClient
+            .from('pontuacao_alunos')
+            .select('total_pontos')
+            .eq('aluno_id', user.id)
+            .single();
+
           if (!meError && meData) {
-            currentProfile = meData as Profile;
+            currentProfile = {
+              profile: meData as Profile,
+              points: pointsData?.total_pontos || 0
+            };
 
-            if (currentProfile.ultimo_checkin) {
-              const { count, error: countError } = await supabaseClient
-                .from('profiles')
-                .select('id', { count: 'exact' })
-                .eq('role', 'aluno')
-                .gt('ultimo_checkin', currentProfile.ultimo_checkin);
-
-              if (!countError) {
-                position = (count || 0) + 1;
-              }
-            }
+            // Calculate user's position
+            const userPoints = currentProfile.points;
+            const usersWithMorePoints = mappedData.filter(p => p.total_pontos > userPoints).length;
+            position = usersWithMorePoints + 1;
           }
         }
 
-        setProfiles((topData as Profile[]) || []);
+        setProfiles(mappedData);
         setUserProfile(currentProfile);
         setUserPosition(position);
       } catch (err) {
@@ -88,11 +110,23 @@ export default function RankingPage() {
               <ArrowLeft size={12} /> Voltar ao Painel
             </Link>
             <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">
-              Ranking de <span className="text-iron-red">Frequência</span>
+              Ranking de <span className="text-iron-red">Desempenho</span>
             </h1>
-            <p className="text-zinc-500 font-medium text-sm">Os atletas mais consistentes da consultoria</p>
+            <p className="text-zinc-500 font-medium text-sm">Os atletas mais dedicados da consultoria</p>
           </div>
           
+          {userProfile && (
+            <div className="bg-zinc-900/50 backdrop-blur-xl px-5 md:px-8 py-4 md:py-5 rounded-xl md:rounded-2xl border border-white/5 shadow-2xl flex items-center gap-3 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
+                <Zap size={20} />
+              </div>
+              <div>
+                <span className="block text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1">Seus Pontos</span>
+                <span className="text-xl md:text-2xl font-black text-white">{userProfile.points} pts</span>
+              </div>
+            </div>
+          )}
+
           {userPosition && (
             <div className="bg-zinc-900/50 backdrop-blur-xl px-5 md:px-8 py-4 md:py-5 rounded-xl md:rounded-2xl border border-white/5 shadow-2xl flex items-center gap-3 md:gap-4">
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-iron-red/10 flex items-center justify-center text-iron-red">
@@ -141,7 +175,7 @@ export default function RankingPage() {
                   </div>
                   <h3 className="font-black text-white truncate w-full text-sm md:text-base">{profiles[1].full_name?.split(' ')[0] || 'Atleta'}</h3>
                   <div className="mt-3 md:mt-4 flex items-center gap-2 text-zinc-500 font-bold text-[9px] md:text-[10px] uppercase tracking-widest">
-                    <Clock size={12} /> {profiles[1].ultimo_checkin ? new Date(profiles[1].ultimo_checkin).toLocaleDateString('pt-BR') : '—'}
+                    <Zap size={12} /> {profiles[1].total_pontos} pts
                   </div>
                 </div>
               )}
@@ -161,7 +195,7 @@ export default function RankingPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#E30613]/20 to-transparent" />
                   </div>
                   <h3 className="text-xl font-black text-white truncate w-full">{profiles[0].full_name?.split(' ')[0] || 'Atleta'}</h3>
-                  <p className="text-[#E30613] font-black text-[10px] uppercase tracking-widest mt-2">Elite Performance</p>
+                  <p className="text-[#E30613] font-black text-[12px] uppercase tracking-widest mt-2">{profiles[0].total_pontos} pontos</p>
                 </div>
               )}
 
@@ -195,10 +229,10 @@ export default function RankingPage() {
                
                <div className="divide-y divide-white/5">
                 {profiles.map((p, index) => {
-                  const isCurrentUser = userProfile?.id === p.id;
+                  const isCurrentUser = userProfile?.profile.id === p.aluno_id;
                   
                   return (
-                    <div key={p.id} className={`px-10 py-6 flex items-center justify-between hover:bg-white/5 transition-colors ${isCurrentUser ? 'bg-[#E30613]/5' : ''}`}>
+                    <div key={p.aluno_id} className={`px-10 py-6 flex items-center justify-between hover:bg-white/5 transition-colors ${isCurrentUser ? 'bg-[#E30613]/5' : ''}`}>
                       <div className="flex items-center gap-6">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shadow-sm ${
                           index < 3 ? 'bg-[#E30613] text-white' : 'bg-zinc-800 text-zinc-500'
@@ -218,19 +252,19 @@ export default function RankingPage() {
                           </div>
                           <div>
                             <p className={`font-bold ${isCurrentUser ? 'text-[#E30613]' : 'text-white'}`}>
-                              {p.full_name || p.email?.split('@')[0]}
+                              {p.full_name || 'Atleta'}
                               {isCurrentUser && <span className="ml-2 text-[8px] font-black uppercase bg-[#E30613] text-white px-2 py-0.5 rounded-full tracking-widest">VOCÊ</span>}
                             </p>
-                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Atleta Ironberg</p>
+                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Elite Athlete</p>
                           </div>
                         </div>
                       </div>
                       
                       <div className="text-right">
                         <p className="text-sm font-black text-white">
-                          {p.ultimo_checkin ? new Date(p.ultimo_checkin).toLocaleDateString('pt-BR') : '—'}
+                          {p.total_pontos} pts
                         </p>
-                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Último Check-in</p>
+                        <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Pontuação Total</p>
                       </div>
                     </div>
                   );
