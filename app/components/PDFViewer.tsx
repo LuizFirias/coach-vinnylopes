@@ -15,9 +15,10 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
   const router = useRouter();
 
   // URL do PDF com parâmetros otimizados para exibição
-  // zoom=page-fit: mostra a página inteira
+  // zoom=100: tamanho real (ajuste conforme necessário)
   // toolbar=0: remove barra de ferramentas
-  const pdfUrl = `${url}#zoom=page-fit&toolbar=0`;
+  // pagemode=none: esconde o painel de navegação
+  const pdfUrl = `${url}#zoom=100&toolbar=0&pagemode=none`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 md:p-4 bg-black/95 backdrop-blur-sm">

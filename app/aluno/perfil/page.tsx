@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import ChangePasswordModal from '@/app/components/ChangePasswordModal';
+import DateOfBirthModal from '@/app/components/DateOfBirthModal';
 
 export default function AlunoPerfil() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function AlunoPerfil() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [dateOfBirthModalOpen, setDateOfBirthModalOpen] = useState(false);
 
 
   useEffect(() => {
@@ -298,17 +300,6 @@ export default function AlunoPerfil() {
                         <Mail size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
                       </div>
                     </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">DATA DE NASCIMENTO</label>
-                      <input
-                        type="date"
-                        value={dateOfBirth}
-                        onChange={(e) => setDateOfBirth(e.target.value)}
-                        className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
-                        placeholder="Ex: 1990-01-15"
-                      />
-                    </div>
                   </div>
 
                   <div className="pt-6">
@@ -340,6 +331,22 @@ export default function AlunoPerfil() {
               </div>
             </button>
 
+            {/* Update Date of Birth Button */}
+            <button
+              onClick={() => setDateOfBirthModalOpen(true)}
+              className="w-full bg-[#0F0F0F] border border-[#1a1a1a] hover:border-[#D4AF37]/30 rounded-3xl p-10 shadow-2xl transition-all group"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-black transition-all">
+                  <User size={16} strokeWidth={3} />
+                </div>
+                <div>
+                  <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Atualizar Perfil</h3>
+                  <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-1">Sua data de nascimento e informações pessoais</p>
+                </div>
+              </div>
+            </button>
+
             {/* Technical Support Card */}
             <div className="p-10 rounded-3xl bg-[#0F0F0F] border border-[#1a1a1a] text-white backdrop-blur-sm relative group cursor-pointer hover:border-[#D4AF37]/30 transition-all shadow-2xl">
                <div className="relative z-10 flex items-center justify-between">
@@ -363,6 +370,15 @@ export default function AlunoPerfil() {
       <ChangePasswordModal
         isOpen={changePasswordModalOpen}
         onClose={() => setChangePasswordModalOpen(false)}
+      />
+
+      {/* Date of Birth Modal */}
+      <DateOfBirthModal
+        isOpen={dateOfBirthModalOpen}
+        onClose={() => setDateOfBirthModalOpen(false)}
+        userId={userId || ''}
+        currentDate={dateOfBirth}
+        onSuccess={(newDate) => setDateOfBirth(newDate)}
       />
     </div>
   );

@@ -21,6 +21,7 @@ import PDFViewer from '@/app/components/PDFViewer';
 
 interface TreinoPDF {
   id: string;
+  aluno_id: string;
   url_pdf: string;
   nome_arquivo: string;
   data_upload: string;
@@ -34,6 +35,7 @@ interface FichaTreino {
 
 export default function AlunoTreinosPage() {
   const router = useRouter();
+  const [userId, setUserId] = useState<string | null>(null);
   const [fichas, setFichas] = useState<FichaTreino[]>([]);
   const [treinosPdf, setTreinosPdf] = useState<TreinoPDF[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,13 +66,14 @@ export default function AlunoTreinosPage() {
         // Buscar PDFs
         const { data: pdfsData, error: pdfsError } = await supabaseClient
           .from('treinos_alunos')
-          .select('*')
+          .select('id, aluno_id, url_pdf, nome_arquivo, data_upload')
           .eq('aluno_id', userId)
           .order('data_upload', { ascending: false });
 
         if (fichasError || pdfsError) {
           setError('Erro ao carregar treinos');
         } else {
+          setUserId(userId);
           setFichas(fichasData || []);
           
           // Gerar URLs assinadas para cada PDF pois o bucket é privado
@@ -219,7 +222,15 @@ export default function AlunoTreinosPage() {
                   {treinosPdf.map((pdf) => (
                     <div 
                       key={pdf.id} 
-                      onClick={() => setSelectedPdf(pdf)}
+                      onClick={() => {
+                        // ===== VERIFICAÇÃO DE SEGURANÇA =====
+                        if (pdf.aluno_id !== userId) {
+                          console.error('[SECURITY] Tentativa de acessar PDF de treino de outro aluno bloqueada');
+                          alert('Erro de segurança: PDF não encontrado');
+                          return;
+                        }
+                        setSelectedPdf(pdf);
+                      }}
                       className="group bg-black/60 rounded-2xl p-5 border border-white/5 hover:border-[#D4AF37]/40 transition-all duration-500 cursor-pointer flex items-center gap-4 relative overflow-hidden"
                     >
                       <div className="absolute top-0 right-0 w-24 h-24 bg-[#D4AF37]/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-[#D4AF37]/10 transition-colors"></div>
