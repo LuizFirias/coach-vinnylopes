@@ -26,6 +26,7 @@ export default function AlunoPerfil() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
@@ -68,13 +69,16 @@ export default function AlunoPerfil() {
 
         const { data: profileData, error: profileError } = await supabaseClient
           .from('profiles')
-          .select('full_name, avatar_url')
+          .select('full_name, avatar_url, date_of_birth')
           .eq('id', user.id)
           .single();
 
         if (!profileError && profileData) {
           setFullName(profileData.full_name || '');
           setAvatarUrl(prev => profileData.avatar_url);
+          if (profileData.date_of_birth) {
+            setDateOfBirth(profileData.date_of_birth);
+          }
         }
 
         setLoading(false);
@@ -97,6 +101,7 @@ export default function AlunoPerfil() {
         .from('profiles')
         .update({
           full_name: fullName.trim(),
+          date_of_birth: dateOfBirth || null,
         })
         .eq('id', userId);
 
@@ -345,6 +350,17 @@ export default function AlunoPerfil() {
                         />
                         <Mail size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
                       </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">DATA DE NASCIMENTO</label>
+                      <input
+                        type="date"
+                        value={dateOfBirth}
+                        onChange={(e) => setDateOfBirth(e.target.value)}
+                        className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
+                        placeholder="Ex: 1990-01-15"
+                      />
                     </div>
                   </div>
 

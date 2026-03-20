@@ -14,7 +14,7 @@ interface DashboardStats {
   fichasTreino: number;
 }
 
-import { Trophy, Medal, Dumbbell, Activity, Camera, Ruler, Users, User, ArrowRight, Loader2, Calendar, TrendingUp } from 'lucide-react';
+import { Trophy, Medal, Dumbbell, Activity, Camera, Ruler, Users, User, ArrowRight, Loader2, Calendar, TrendingUp, AlertCircle } from 'lucide-react';
 import WeeklyAgenda from "@/app/components/WeeklyAgenda";
 
 export default function AlunoDashboardPage() {
@@ -29,6 +29,7 @@ export default function AlunoDashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>("");
+  const [incompleteData, setIncompleteData] = useState(false);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -46,7 +47,7 @@ export default function AlunoDashboardPage() {
         // Buscar informações do perfil
         const { data: profileData } = await supabaseClient
           .from("profiles")
-          .select("full_name, role, first_access_completed")
+          .select("full_name, role, first_access_completed, date_of_birth")
           .eq("id", userId)
           .single();
 
@@ -60,6 +61,12 @@ export default function AlunoDashboardPage() {
         if (profileData?.role === "aluno" && !profileData?.first_access_completed) {
           router.push("/aluno/onboarding");
           return;
+        }
+
+        // ===== NOVO: Verificar dados incompletos =====
+        // Se aluno já acessou mas não tem date_of_birth preenchida
+        if (profileData?.role === "aluno" && profileData?.first_access_completed && !profileData?.date_of_birth) {
+          setIncompleteData(true);
         }
 
         setUserName(profileData?.full_name || user.email?.split("@")[0] || "Aluno");
@@ -157,6 +164,24 @@ export default function AlunoDashboardPage() {
             </span>
           </div>
         </div>
+
+        {/* ===== ALERTA DE DADOS INCOMPLETOS ===== */}
+        {incompleteData && (
+          <div className="mb-8 p-6 bg-orange-900/20 border border-orange-700/50 rounded-2xl flex items-start gap-4">
+            <AlertCircle className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5" strokeWidth={2} />
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-orange-200 mb-1">Dados Incompletos</h3>
+              <p className="text-xs text-orange-100/80 mb-4">
+                Detectamos que sua data de nascimento não foi preenchida. Para um melhor planejamento, 
+                por favor atualize seu perfil com essa informação.
+              </p>
+              <Link href="/aluno/perfil" className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg transition-colors">
+                Atualizar Perfil
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Weekly Agenda Section */}
         <div className="mb-12">
