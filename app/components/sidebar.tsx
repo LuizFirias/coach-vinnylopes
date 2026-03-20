@@ -19,7 +19,8 @@ import {
   Users,
   LayoutDashboard,
   ShieldAlert,
-  Settings
+  Settings,
+  Apple
 } from 'lucide-react';
 
 const menuItems = [
@@ -35,6 +36,7 @@ const menuItems = [
 const coachMenuItems = [
   { name: 'Painel Alunos', href: '/admin/alunos', icon: Users },
   { name: 'Treinos Gerais', href: '/admin/treinos', icon: Dumbbell },
+  { name: 'Nutrição', href: '/admin/nutricao', icon: Apple },
   { name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
   { name: 'Ranking Geral', href: '/admin/ranking', icon: Trophy },
   { name: 'Meu Perfil', href: '/admin/perfil', icon: User },

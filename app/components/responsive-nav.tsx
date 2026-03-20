@@ -18,6 +18,7 @@ import {
   Handshake,
   User,
   ShieldCheck,
+  Apple,
 } from "lucide-react";
 
 const menuItems = [
@@ -33,6 +34,7 @@ const menuItems = [
 const coachMenuItems = [
   { name: "ALUNOS", href: "/admin/alunos", icon: Users },
   { name: "TREINOS", href: "/admin/treinos", icon: Dumbbell },
+  { name: "NUTRIÇÃO", href: "/admin/nutricao", icon: Apple },
   { name: "PARCEIROS", href: "/admin/parceiros", icon: Handshake },
   { name: "RANKING", href: "/admin/ranking", icon: Trophy },
   { name: "PERFIL", href: "/admin/perfil", icon: User },
