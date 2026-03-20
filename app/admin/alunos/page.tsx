@@ -19,7 +19,7 @@ import {
 
 interface ProfileRow {
   id: string;
-  full_name?: string | null;
+  coaching_reference?: string | null;
   email?: string | null;
   status_pagamento?: string | null;
   created_at?: string | null;
@@ -99,14 +99,14 @@ export default function AdminAlunosPage() {
 
       let q2 = supabaseClient
         .from("profiles")
-        .select("id, full_name, email, status_pagamento, created_at")
+        .select("id, coaching_reference, email, status_pagamento, created_at")
         .in("id", ids)
         .eq("arquivado", false)
         .order("created_at", { ascending: false })
         .limit(200);
 
       if (query.trim().length > 0) {
-        q2 = q2.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`);
+        q2 = q2.or(`coaching_reference.ilike.%${query}%,email.ilike.%${query}%`);
       }
 
       const { data, error: fetchError } = await q2;
@@ -196,11 +196,11 @@ export default function AdminAlunosPage() {
               >
                 <div className="flex items-center gap-5">
                   <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-zinc-700 font-black border border-[#1a1a1a] transition-all group-hover:text-[#D4AF37] group-hover:border-[#D4AF37]/20 text-lg">
-                    {(r.full_name || r.email || "?")[0].toUpperCase()}
+                    {(r.coaching_reference || r.email || "?")[0].toUpperCase()}
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white group-hover:text-[#D4AF37] transition-colors leading-tight">
-                      {r.full_name || "Sem Nome"}
+                      {r.coaching_reference || "Sem Nome"}
                     </h3>
                     <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-1">{r.email}</p>
                   </div>

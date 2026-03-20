@@ -5,7 +5,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 
 interface Profile {
   id: string;
-  full_name?: string | null;
+  coaching_reference?: string | null;
   email?: string | null;
   ultimo_checkin?: string | null;
   avatar_url?: string | null;
@@ -29,7 +29,7 @@ export default function AdminRankingPage() {
       
       const { data, error: fetchError } = await supabaseClient
         .from('profiles')
-        .select('id, full_name, email, ultimo_checkin, avatar_url, role')
+        .select('id, coaching_reference, email, ultimo_checkin, avatar_url, role')
         .eq('role', 'aluno')
         // Order by latest check-in first. If multiple have the same, secondary sort can be anything.
         .order('ultimo_checkin', { ascending: false, nullsFirst: false });
@@ -87,7 +87,7 @@ export default function AdminRankingPage() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {profiles.map((p, index) => {
-                  const displayName = p.full_name || p.email?.split('@')[0] || 'Aluno';
+                  const displayName = p.coaching_reference || p.email?.split('@')[0] || 'Aluno';
                   const isTop3 = index < 3;
                   
                   return (

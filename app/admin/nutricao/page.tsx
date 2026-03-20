@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 interface Aluno {
   id: string;
-  full_name: string | null;
+  coaching_reference: string | null;
   email: string | null;
 }
 
@@ -60,10 +60,10 @@ export default function NutricaoPage() {
         // Buscar dados dos alunos
         const { data, error: fetchError } = await supabaseClient
           .from('profiles')
-          .select('id, full_name, email')
+          .select('id, coaching_reference, email')
           .in('id', ids)
           .eq('arquivado', false)
-          .order('full_name', { ascending: true });
+          .order('coaching_reference', { ascending: true });
 
         if (fetchError) {
           setError('Erro ao carregar alunos: ' + fetchError.message);
@@ -246,7 +246,7 @@ export default function NutricaoPage() {
                       <option value="" className="bg-black">Aperte para escolher...</option>
                       {alunos.map((aluno) => (
                         <option key={aluno.id} value={aluno.id} className="bg-black">
-                            {aluno.full_name || aluno.email}
+                            {aluno.coaching_reference || aluno.email}
                         </option>
                       ))}
                     </select>

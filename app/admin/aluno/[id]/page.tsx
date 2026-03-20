@@ -29,6 +29,8 @@ import {
 interface Profile {
   id: string;
   full_name?: string | null;
+  coaching_reference?: string | null;
+  date_of_birth?: string | null;
   email?: string | null;
   ultimo_checkin?: string | null;
   status_pagamento?: string | null;
@@ -499,7 +501,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   </div>
                   <div>
                     <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter uppercase italic leading-none mb-4">
-                       {profile.full_name || 'Protocolo Sem Nome'}
+                       {profile.coaching_reference || 'Protocolo Sem Nome'}
                     </h2>
                     <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] ${
                       profile.status_pagamento === 'pago' 

@@ -46,12 +46,19 @@ export default function AlunoDashboardPage() {
         // Buscar informações do perfil
         const { data: profileData } = await supabaseClient
           .from("profiles")
-          .select("full_name, role")
+          .select("full_name, role, first_access_completed")
           .eq("id", userId)
           .single();
 
         if (profileData?.role === "coach" || profileData?.role === "super_admin") {
           router.push("/admin/alunos");
+          return;
+        }
+
+        // ===== NOVO: Detectar primeiro acesso =====
+        // Se aluno e não completou onboarding, redireciona
+        if (profileData?.role === "aluno" && !profileData?.first_access_completed) {
+          router.push("/aluno/onboarding");
           return;
         }
 

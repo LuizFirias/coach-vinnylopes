@@ -21,7 +21,7 @@ import {
 
 interface Aluno {
   id: string;
-  full_name: string;
+  coaching_reference: string;
   email: string;
 }
 
@@ -101,10 +101,10 @@ export default function NovaFichaCoachPage() {
       if (alunoIds.length > 0) {
         const { data } = await supabaseClient
           .from("profiles")
-          .select("id, full_name, email")
+          .select("id, coaching_reference, email")
           .in("id", alunoIds)
           .eq("arquivado", false)
-          .order("full_name", { ascending: true });
+          .order("coaching_reference", { ascending: true });
         alunosData = data || [];
       }
 
@@ -341,7 +341,7 @@ export default function NovaFichaCoachPage() {
                 <option value="">Selecione o atleta...</option>
                 {alunos.map((aluno) => (
                   <option key={aluno.id} value={aluno.id}>
-                    {aluno.full_name}
+                    {aluno.coaching_reference}
                   </option>
                 ))}
               </select>

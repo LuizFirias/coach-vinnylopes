@@ -190,11 +190,13 @@ export async function POST(req: Request) {
       .from("profiles")
       .upsert({
         id: newUserId,
-        full_name: fullName,
+        coaching_reference: fullName,  // Coach's reference name (stored separately)
+        full_name: null,  // Aluno deve definir na primeira vez (onboarding)
         email: email,
         role: "aluno",
         status_pagamento: "pago",
         arquivado: false,
+        first_access_completed: false,  // Flag da primeira vez (onboarding)
       }, {
         onConflict: "id", // Se o ID já existir, atualiza em vez de falhar
         ignoreDuplicates: false // Força atualização dos campos
