@@ -12,7 +12,12 @@ interface PDFViewerProps {
 
 export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
   const [loading, setLoading] = useState(true);
+  const [pageMode, setPageMode] = useState<"fit" | "fullwidth">("fullwidth");
   const router = useRouter();
+
+  const pdfUrl = pageMode === "fit" 
+    ? `${url}#view=FitH` // Fit Height (mostra página inteira em largura)
+    : `${url}#view=FitH`; // Full Width también mostra a página inteira
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/95 backdrop-blur-sm">
@@ -71,7 +76,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
           )}
           
           <iframe
-            src={`${url}#view=Fit`}
+            src={pdfUrl}
             className="w-full h-full border-none"
             onLoad={() => setLoading(false)}
             title={title}

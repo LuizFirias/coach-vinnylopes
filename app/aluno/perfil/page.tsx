@@ -16,7 +16,6 @@ import {
   ArrowLeft,
   UserCircle,
   ChevronRight,
-  ShieldCheck,
   Lock
 } from 'lucide-react';
 import Link from 'next/link';
@@ -33,25 +32,8 @@ export default function AlunoPerfil() {
   const [updating, setUpdating] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
-  const isFirstAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('firstAccess') === 'true';
 
-  // Password validation requirements
-  const validatePassword = (password: string) => {
-    return {
-      minLength: password.length >= 8,
-      hasUpperCase: /[A-Z]/.test(password),
-      hasLowerCase: /[a-z]/.test(password),
-      hasNumber: /[0-9]/.test(password),
-      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
-    };
-  };
-
-  const passwordReq = validatePassword(newPassword);
-  const isPasswordValid = Object.values(passwordReq).every(req => req);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -178,41 +160,6 @@ export default function AlunoPerfil() {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'As senhas não coincidem' });
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setMessage({ type: 'error', text: 'A senha não atende aos requisitos de segurança' });
-      return;
-    }
-
-    setChangingPassword(true);
-    try {
-      const { error } = await supabaseClient.auth.updateUser({ 
-        password: newPassword,
-        data: { first_login: false } 
-      });
-
-      if (error) throw error;
-
-      setMessage({ type: 'success', text: 'Senha atualizada com sucesso!' });
-      setNewPassword('');
-      setConfirmPassword('');
-      if (isFirstAccess) {
-        setTimeout(() => router.push('/aluno/dashboard'), 2000);
-      }
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message });
-    } finally {
-      setChangingPassword(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-6">
@@ -280,7 +227,7 @@ export default function AlunoPerfil() {
                </div>
 
                <h2 className="text-xl font-black text-white mb-1 text-center truncate w-full uppercase tracking-tight">{fullName || "Atleta Master"}</h2>
-               <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.3em] mb-12 italic">Performance Elite</p>
+               <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.3em] mb-12 italic">Alta Performance</p>
 
                <button
                   type="button"
@@ -328,7 +275,7 @@ export default function AlunoPerfil() {
                <form onSubmit={handleUpdateProfile} className="space-y-8">
                   <div className="space-y-8">
                     <div className="space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">NOME DE GUERRA / COMPLETO</label>
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">NOME</label>
                       <input
                         type="text"
                         value={fullName}
@@ -340,7 +287,7 @@ export default function AlunoPerfil() {
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">E-MAIL DE ACESSO CRITICO</label>
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">E-MAIL DE ACESSO</label>
                       <div className="relative">
                         <input
                           type="email"
@@ -377,131 +324,23 @@ export default function AlunoPerfil() {
                </form>
             </div>
 
-            {/* Password Change Section */}
-            <div className={`bg-[#0F0F0F] border ${isFirstAccess ? 'border-[#D4AF37] shadow-[0_0_30px_rgba(212,175,55,0.15)]' : 'border-[#1a1a1a]'} rounded-3xl p-10 shadow-2xl`}>
-               <h3 className="text-[11px] font-black text-white mb-10 flex items-center gap-4 uppercase tracking-[0.3em]">
-                  <div className="w-8 h-8 rounded-lg bg-[#D4AF37] flex items-center justify-center text-black">
-                    <ShieldCheck size={16} strokeWidth={3} />
-                  </div>
-                  Segurança da Conta
-               </h3>
+            {/* Password Change Button */}
+            <button
+              onClick={() => setChangePasswordModalOpen(true)}
+              className="w-full bg-[#0F0F0F] border border-[#1a1a1a] hover:border-[#D4AF37]/30 rounded-3xl p-10 shadow-2xl transition-all group"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-black transition-all">
+                  <Lock size={16} strokeWidth={3} />
+                </div>
+                <div>
+                  <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Trocar Senha</h3>
+                  <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-1">Atualize sua senha de acesso</p>
+                </div>
+              </div>
+            </button>
 
-               {isFirstAccess && (
-                  <div className="mb-8 p-6 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-2xl">
-                    <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest leading-relaxed">
-                      ⚠️ Atenção: Detectamos que este é seu primeiro acesso. 
-                      Para sua segurança, é obrigatório alterar sua senha temporária agora.
-                    </p>
-                  </div>
-               )}
-
-               <form onSubmit={handleChangePassword} className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">NOVA SENHA</label>
-                      <div className="relative">
-                        <input
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
-                          placeholder="••••••••"
-                        />
-                        <Lock size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">CONFIRMAR SENHA</label>
-                      <div className="relative">
-                        <input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
-                          placeholder="••••••••"
-                        />
-                        <Lock size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {newPassword && (
-                    <div className="mt-6 p-6 bg-black/40 border border-[#1a1a1a] rounded-2xl space-y-3">
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Requisitos de Segurança:</p>
-                      
-                      <div className="space-y-2">
-                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                          passwordReq.minLength ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                        }`}>
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                            passwordReq.minLength ? 'border-green-400 bg-green-400' : 'border-red-400'
-                          }`}>
-                            {passwordReq.minLength && <span className="text-black text-[8px]">✓</span>}
-                          </div>
-                          Mínimo 8 caracteres
-                        </div>
-
-                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                          passwordReq.hasUpperCase ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                        }`}>
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                            passwordReq.hasUpperCase ? 'border-green-400 bg-green-400' : 'border-red-400'
-                          }`}>
-                            {passwordReq.hasUpperCase && <span className="text-black text-[8px]">✓</span>}
-                          </div>
-                          Pelo menos 1 LETRA MAIÚSCULA (A-Z)
-                        </div>
-
-                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                          passwordReq.hasLowerCase ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                        }`}>
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                            passwordReq.hasLowerCase ? 'border-green-400 bg-green-400' : 'border-red-400'
-                          }`}>
-                            {passwordReq.hasLowerCase && <span className="text-black text-[8px]">✓</span>}
-                          </div>
-                          Pelo menos 1 letra minúscula (a-z)
-                        </div>
-
-                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                          passwordReq.hasNumber ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                        }`}>
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                            passwordReq.hasNumber ? 'border-green-400 bg-green-400' : 'border-red-400'
-                          }`}>
-                            {passwordReq.hasNumber && <span className="text-black text-[8px]">✓</span>}
-                          </div>
-                          Pelo menos 1 NÚMERO (0-9)
-                        </div>
-
-                        <div className={`flex items-center gap-3 p-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                          passwordReq.hasSpecialChar ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                        }`}>
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                            passwordReq.hasSpecialChar ? 'border-green-400 bg-green-400' : 'border-red-400'
-                          }`}>
-                            {passwordReq.hasSpecialChar && <span className="text-black text-[8px]">✓</span>}
-                          </div>
-                          Pelo menos 1 CARACTERE ESPECIAL (!@#$%^&*, etc)
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="pt-6">
-                    <button
-                      type="submit"
-                      disabled={changingPassword || !isPasswordValid || !newPassword || !confirmPassword}
-                      className="w-full md:w-auto px-12 py-5 bg-gradient-to-b from-[#F9E29B] via-[#D4AF37] to-[#B8860B] text-black font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl hover:brightness-110 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 active:scale-95 antialiased"
-                    >
-                      {changingPassword ? <Loader2 className="animate-spin w-4 h-4" /> : <Lock size={16} strokeWidth={3} />}
-                      Atualizar Senha
-                    </button>
-                  </div>
-               </form>
-            </div>
-
+            {/* Technical Support Card */}
             <div className="p-10 rounded-3xl bg-[#0F0F0F] border border-[#1a1a1a] text-white backdrop-blur-sm relative group cursor-pointer hover:border-[#D4AF37]/30 transition-all shadow-2xl">
                <div className="relative z-10 flex items-center justify-between">
                   <div className="flex items-center gap-6">
