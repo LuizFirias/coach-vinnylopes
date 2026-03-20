@@ -10,6 +10,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 
 interface NutritionPlan {
   id: string;
+  aluno_id: string;
   nome_arquivo: string;
   url_pdf: string;
   descricao: string | null;
@@ -72,6 +73,14 @@ export default function PlanoAlimentarPage() {
 
   const handleOpenPdf = async (plano: NutritionPlan) => {
     try {
+      // ===== VERIFICAÇÃO DE SEGURANÇA =====
+      // Dupla verificação: o PDF deve pertencer ao aluno autenticado
+      if (plano.aluno_id !== userId) {
+        console.error('[SECURITY] Tentativa de acessar PDF de outro aluno bloqueada');
+        alert('Erro de segurança: PDF não encontrado');
+        return;
+      }
+
       // Check if URL is a path that needs signing
       if (plano.url_pdf.includes('plano-alimentar/')) {
         const pathMatch = plano.url_pdf.match(/plano-alimentar\/(.*)/);

@@ -12,16 +12,16 @@ interface PDFViewerProps {
 
 export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
   const [loading, setLoading] = useState(true);
-  const [pageMode, setPageMode] = useState<"fit" | "fullwidth">("fullwidth");
   const router = useRouter();
 
-  const pdfUrl = pageMode === "fit" 
-    ? `${url}#view=FitH` // Fit Height (mostra página inteira em largura)
-    : `${url}#view=FitH`; // Full Width también mostra a página inteira
+  // URL do PDF com parâmetros otimizados para exibição
+  // zoom=page-fit: mostra a página inteira
+  // toolbar=0: remove barra de ferramentas
+  const pdfUrl = `${url}#zoom=page-fit&toolbar=0`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/95 backdrop-blur-sm">
-      <div className="relative w-full h-full max-w-5xl bg-[#0a0a0a] rounded-3xl border border-[#D4AF37]/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 md:p-4 bg-black/95 backdrop-blur-sm">
+      <div className="relative w-full h-full bg-[#0a0a0a] rounded-3xl border border-[#D4AF37]/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden flex flex-col">
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/40">
