@@ -78,6 +78,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [selectedNewCoach, setSelectedNewCoach] = useState<string | null>(null);
   const [changingCoach, setChangingCoach] = useState(false);
   const [currentCoachId, setCurrentCoachId] = useState<string | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     load();
@@ -111,6 +112,18 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const load = async () => {
     setError(null);
     try {
+      // Verificar role do usuário autenticado
+      const { data: authData } = await supabaseClient.auth.getUser();
+      if (authData.user) {
+        const { data: userData } = await supabaseClient
+          .from("profiles")
+          .select("role")
+          .eq("id", authData.user.id)
+          .single();
+        
+        setIsSuperAdmin(userData?.role === "super_admin");
+      }
+
       const { data: prof } = await supabaseClient.from("profiles").select("*").eq("id", id).single();
       setProfile(prof as Profile);
       
@@ -189,13 +202,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       }));
       setPlanosAlimentares(planosAssinados);
 
-      // Carregar lista de coaches disponíveis
-      const { data: coachesData } = await supabaseClient
-        .from("profiles")
-        .select("id, full_name")
-        .eq("role", "coach")
-        .order("full_name", { ascending: true });
-      setCoaches(coachesData || []);
+      // Carregar lista de coaches apenas se super-admin
+      if (isSuperAdmin) {
+        const { data: coachesData } = await supabaseClient
+          .from("profiles")
+          .select("id, full_name")
+          .eq("role", "coach")
+          .order("full_name", { ascending: true });
+        setCoaches(coachesData || []);
+      }
 
       // Armazenar coach_id atual
       if (prof && prof.coach_id) {
@@ -668,7 +683,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <p className="mt-3 text-[9px] text-zinc-600 font-bold uppercase tracking-widest text-right">Auto-save ao sair do campo</p>
         </div>
 
-        {/* Seção de Mudança de Coach */}
+        {/* Seção de Mudança de Coach - Apenas Super Admin */}
+        {isSuperAdmin && (
         <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl mb-8 md:mb-12 relative overflow-hidden group">
           <div className="flex items-center gap-4 mb-8">
             <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
@@ -707,6 +723,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </button>
           </div>
         </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-8 md:mb-12">
            {/* Upload de Nutrição */}
