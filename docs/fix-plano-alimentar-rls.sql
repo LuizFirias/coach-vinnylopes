@@ -7,11 +7,18 @@
 
 -- ===== 1. VERIFICAR E REAPLICAR POLÍTICAS DE RLS =====
 
--- Limpar políticas antigas
+-- Limpar políticas antigas (TODOS os nomes possíveis)
 DROP POLICY IF EXISTS "Alunos veem seus próprios planos" ON plano_alimentar_pdf;
 DROP POLICY IF EXISTS "Coaches fazem upload para seus alunos" ON plano_alimentar_pdf;
 DROP POLICY IF EXISTS "Coaches veem planos de seus alunos" ON plano_alimentar_pdf;
 DROP POLICY IF EXISTS "Super admin vê tudo" ON plano_alimentar_pdf;
+DROP POLICY IF EXISTS "aluno_sees_own_plans" ON plano_alimentar_pdf;
+DROP POLICY IF EXISTS "aluno_no_modify" ON plano_alimentar_pdf;
+DROP POLICY IF EXISTS "aluno_no_delete" ON plano_alimentar_pdf;
+DROP POLICY IF EXISTS "coach_insert_plan" ON plano_alimentar_pdf;
+DROP POLICY IF EXISTS "coach_sees_own_uploads" ON plano_alimentar_pdf;
+DROP POLICY IF EXISTS "coach_delete_own" ON plano_alimentar_pdf;
+DROP POLICY IF EXISTS "super_admin_all_access" ON plano_alimentar_pdf;
 
 -- Garantir RLS está ativada
 ALTER TABLE plano_alimentar_pdf ENABLE ROW LEVEL SECURITY;
