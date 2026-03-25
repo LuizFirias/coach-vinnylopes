@@ -1,9 +1,8 @@
-"use client";
+﻿"use client";
 
-import React, { useEffect, useState } from "react";
-import { Dumbbell, Plus, Trash2, Calendar as CalIcon, ChevronDown, Check, FileText } from "lucide-react";
-import { supabaseClient } from "@/lib/supabaseClient";
-import AddManualWorkoutModal from "./AddManualWorkoutModal";
+import React, { useEffect, useState } from"react";
+import { Dumbbell, Plus, X, Check, FileText, Moon, ChevronRight, Loader2, Pencil } from"lucide-react";
+import { supabaseClient } from"@/lib/supabaseClient";import { getSafeSession } from '@/lib/authErrorHandler';import AddManualWorkoutModal from"./AddManualWorkoutModal";
 
 interface WorkoutOption {
   id: string;
@@ -22,8 +21,199 @@ interface AgendaEntry {
   url?: string;
 }
 
-const dayLabels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+const dayLabels = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
+const dayFull   = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 
+// ─── Modal de configuração do dia ───────────────────────────────────────────
+interface DayModalProps {
+  isOpen: boolean;
+  day: number | null;
+  currentEntry?: AgendaEntry;
+  availableWorkouts: WorkoutOption[];
+  saving: boolean;
+  onClose: () => void;
+  onSave: (day: number, workout: WorkoutOption | 'rest' | 'livre', descricao: string) => void;
+}
+
+function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, onClose, onSave }: DayModalProps) {
+  const [selected, setSelected] = useState<WorkoutOption | 'rest' | 'livre' | null>(null);
+  const [descricao, setDescricao] = useState('');
+
+  useEffect(() => {
+    if (isOpen) { setSelected(null); setDescricao(''); }
+  }, [isOpen, day]);
+
+  if (!isOpen || day === null) return null;
+
+  const fichas = availableWorkouts.filter(w => w.type === 'ficha');
+  const pdfs   = availableWorkouts.filter(w => w.type === 'pdf');
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm p-0 md:p-4" onClick={onClose}>
+      <div
+        className="relative bg-[#0A0A0A] w-full md:max-w-lg rounded-t-2xl md:rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[78vh] md:max-h-[90vh]"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle mobile */}
+        <div className="flex justify-center pt-2 pb-0 md:hidden">
+          <div className="w-8 h-1 bg-white/20 rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-white/5">
+          <div>
+            <p className="text-[9px] text-[#D4AF37] uppercase tracking-[0.4em]">Configurar dia</p>
+            <h2 className="text-base md:text-xl text-white uppercase tracking-tight">{dayFull[day]}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 md:p-2 bg-white/5 hover:bg-white/10 rounded-xl text-zinc-400 hover:text-white transition-all">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Options */}
+        <div className="flex-1 overflow-y-auto px-3 py-3 md:p-6 space-y-2 md:space-y-4">
+
+          {/* Descanso */}
+          <button
+            onClick={() => setSelected('rest')}
+            className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
+              selected === 'rest'
+                ? 'bg-zinc-700/40 border-white/30 ring-2 ring-white/20'
+                : 'bg-zinc-900/50 border-white/5 hover:border-white/20'
+            }`}
+          >
+            <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+              <Moon size={16} />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-xs md:text-sm text-white uppercase tracking-tight">Dia de Descanso</p>
+              <p className="text-[9px] md:text-[10px] text-zinc-500 tracking-widest uppercase">Recuperação ativa</p>
+            </div>
+            {selected === 'rest' && <Check size={16} className="text-white shrink-0" />}
+          </button>
+
+          {/* Treino Livre */}
+          <div>
+            <p className="text-[9px] md:text-[10px] text-zinc-600 uppercase tracking-[0.3em] mb-1.5 px-1">Treino Livre</p>
+            <button
+              onClick={() => setSelected('livre')}
+              className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
+                selected === 'livre'
+                  ? 'bg-[#D4AF37]/10 border-[#D4AF37]/50 ring-2 ring-[#D4AF37]/20'
+                  : 'bg-zinc-900/50 border-white/5 hover:border-[#D4AF37]/20'
+              }`}
+            >
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] shrink-0">
+                <Pencil size={16} />
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-xs md:text-sm text-white uppercase tracking-tight">Treino Livre</p>
+                <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest">Descreva o que treinou</p>
+              </div>
+              {selected === 'livre' && <Check size={16} className="text-[#D4AF37] shrink-0" />}
+            </button>
+            {selected === 'livre' && (
+              <div className="mt-2">
+                <input
+                  type="text"
+                  value={descricao}
+                  onChange={e => setDescricao(e.target.value)}
+                  placeholder="Ex: Peito, Quadríceps, Corrida..."
+                  autoFocus
+                  className="w-full bg-zinc-900/60 border border-[#D4AF37]/20 rounded-xl px-3 py-2.5 text-xs md:text-sm text-white placeholder-zinc-700 outline-none focus:border-[#D4AF37]/40 transition-all"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Fichas */}
+          {fichas.length > 0 && (
+            <div>
+              <p className="text-[9px] md:text-[10px] text-zinc-600 uppercase tracking-[0.3em] mb-1.5 px-1">Fichas Digitais</p>
+              <div className="space-y-1.5 md:space-y-2">
+                {fichas.map(w => (
+                  <button
+                    key={w.id}
+                    onClick={() => setSelected(w)}
+                    className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
+                      selected !== 'rest' && selected !== 'livre' && (selected as WorkoutOption)?.id === w.id
+                        ? 'bg-[#D4AF37]/10 border-[#D4AF37]/50 ring-2 ring-[#D4AF37]/20'
+                        : 'bg-zinc-900/50 border-white/5 hover:border-[#D4AF37]/20'
+                    }`}
+                  >
+                    <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-green-500/10 flex items-center justify-center text-green-400 shrink-0">
+                      <Dumbbell size={16} />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs md:text-sm text-white uppercase tracking-tight truncate">{w.name}</p>
+                      <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest">Ficha Digital</p>
+                    </div>
+                    {selected !== 'rest' && selected !== 'livre' && (selected as WorkoutOption)?.id === w.id && (
+                      <Check size={16} className="text-[#D4AF37] shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* PDFs */}
+          {pdfs.length > 0 && (
+            <div>
+              <p className="text-[9px] md:text-[10px] text-zinc-600 uppercase tracking-[0.3em] mb-1.5 px-1">Protocolos PDF</p>
+              <div className="space-y-1.5 md:space-y-2">
+                {pdfs.map(w => (
+                  <button
+                    key={w.id}
+                    onClick={() => setSelected(w)}
+                    className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
+                      selected !== 'rest' && selected !== 'livre' && (selected as WorkoutOption)?.id === w.id
+                        ? 'bg-[#D4AF37]/10 border-[#D4AF37]/50 ring-2 ring-[#D4AF37]/20'
+                        : 'bg-zinc-900/50 border-white/5 hover:border-[#D4AF37]/20'
+                    }`}
+                  >
+                    <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-red-500/10 flex items-center justify-center text-red-400 shrink-0">
+                      <FileText size={16} />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs md:text-sm text-white uppercase tracking-tight truncate">{w.name}</p>
+                      <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest">Protocolo PDF</p>
+                    </div>
+                    {selected !== 'rest' && selected !== 'livre' && (selected as WorkoutOption)?.id === w.id && (
+                      <Check size={16} className="text-[#D4AF37] shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-3 py-3 md:p-6 border-t border-white/5 flex gap-2 md:gap-3 bg-black/40">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 md:py-4 bg-zinc-900 border border-white/10 text-zinc-400 text-[10px] md:text-[11px] uppercase tracking-widest rounded-xl md:rounded-2xl hover:bg-zinc-800 transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              if (selected !== null) onSave(day, selected, descricao);
+            }}
+            disabled={selected === null || saving}
+            className="flex-1 py-3 md:py-4 bg-[#D4AF37] hover:bg-[#D4AF37]/90 disabled:opacity-40 text-black text-[10px] md:text-[11px] uppercase tracking-widest rounded-xl md:rounded-2xl transition-all flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Componente principal ────────────────────────────────────────────────────
 export default function WeeklyAgenda() {
   const [agenda, setAgenda] = useState<Record<number, AgendaEntry>>({});
   const [availableWorkouts, setAvailableWorkouts] = useState<WorkoutOption[]>([]);
@@ -41,77 +231,57 @@ export default function WeeklyAgenda() {
   const fetchData = async () => {
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+      if (!user) { setLoading(false); return; }
 
       setUserId(user.id);
 
-      // 1. Fetch available workouts (fichas)
       const { data: fichas } = await supabaseClient
         .from('fichas_treino')
         .select('id, nome_rotina')
         .eq('aluno_id', user.id)
         .eq('ativo', true);
 
-      // 2. Fetch available PDFs
       const { data: pdfs } = await supabaseClient
         .from('treinos_alunos')
-        .select('id, nome_arquivo, url_pdf')
+        .select('id, aluno_id, nome_arquivo, url_pdf')
         .eq('aluno_id', user.id);
 
       const options: WorkoutOption[] = [
         ...(fichas || []).map(f => ({ id: f.id, name: f.nome_rotina, type: 'ficha' as const })),
-        ...(pdfs || []).map(p => {
-          const pathParts = p.url_pdf.split('/treinos-pdf/');
-          const filePath = pathParts.length > 1 ? pathParts[1] : p.url_pdf;
-          
-          return { 
-            id: p.id, 
-            name: p.nome_arquivo, 
-            type: 'pdf' as const, 
-            url: filePath
-          };
-        }),
-        // Add manual workout option
-        { id: 'manual', name: '+ Novo Treino Manual', type: 'manual' as const }
+        ...(pdfs || [])
+          // segurança extra: garantir apenas PDFs do aluno logado
+          .filter((p: any) => p.aluno_id === user.id)
+          .map((p: any) => {
+            const pathParts = p.url_pdf.split('/treinos-pdf/');
+            const filePath = pathParts.length > 1 ? pathParts[1] : p.url_pdf;
+            return { id: p.id, name: p.nome_arquivo, type: 'pdf' as const, url: filePath };
+          }),
       ];
       setAvailableWorkouts(options);
 
-      // 3. Fetch agenda
       const { data: agendaData } = await supabaseClient
         .from('agenda_semanal')
-        .select(`
-          *,
-          fichas_treino(nome_rotina),
-          treinos_alunos(nome_arquivo, url_pdf)
-        `)
+        .select(`*, fichas_treino(nome_rotina), treinos_alunos(nome_arquivo, url_pdf)`)
         .eq('aluno_id', user.id);
 
       const agendaMap: Record<number, AgendaEntry> = {};
-      
-      // Assinar URLs dos PDFs na Agenda
       if (agendaData) {
         for (const item of agendaData) {
           let finalUrl = item.treinos_alunos?.url_pdf;
           if (item.treino_pdf_id && finalUrl) {
             const pathParts = finalUrl.split('/treinos-pdf/');
             const filePath = pathParts.length > 1 ? pathParts[1] : finalUrl;
-            
             const { data: signedData } = await supabaseClient.storage
               .from('treinos-pdf')
               .createSignedUrl(filePath, 3600);
-            
             finalUrl = signedData?.signedUrl || finalUrl;
           }
-
           agendaMap[item.dia_semana] = {
             ...item,
             workout_name: item.fichas_treino?.nome_rotina || item.treinos_alunos?.nome_arquivo,
             type: item.ficha_id ? 'ficha' : item.treino_pdf_id ? 'pdf' : undefined,
             url: finalUrl,
-            is_rest_day: item.is_off
+            is_rest_day: item.is_off,
           };
         }
       }
@@ -123,16 +293,45 @@ export default function WeeklyAgenda() {
     }
   };
 
-  const saveDay = async (day: number, workout: WorkoutOption | 'rest') => {
-    // Handle manual workout type - open modal instead
+  const saveDay = async (day: number, workout: WorkoutOption | 'rest' | 'livre', descricao?: string) => {
+    // Treino livre: só registra check-in, sem atualizar agenda
+    if (workout === 'livre') {
+      setSaving(true);
+      try {
+        const session = await getSafeSession();
+        if (!session?.user) return;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data: existing } = await supabaseClient
+          .from('treinos_manuais')
+          .select('id')
+          .eq('aluno_id', session.user.id)
+          .eq('data_treino', todayStr)
+          .eq('concluido', true)
+          .limit(1);
+        if (!existing || existing.length === 0) {
+          await supabaseClient.from('treinos_manuais').insert({
+            aluno_id: session.user.id,
+            tipo_treino: 'musculacao',
+            concluido: true,
+            pontos_earn: 20,
+            descricao: descricao?.trim() || null,
+            data_treino: todayStr,
+          });
+        }
+      } catch (err) {
+        console.error('Erro ao salvar treino livre:', err);
+      } finally {
+        setSaving(false);
+        setEditingDay(null);
+      }
+      return;
+    }
+
     if (workout !== 'rest' && workout.type === 'manual') {
-      // Calculate actual date for the selected day
       const today = new Date();
-      const currentDay = today.getDay();
-      const diff = day - currentDay;
+      const diff = day - today.getDay();
       const workoutDate = new Date(today);
       workoutDate.setDate(workoutDate.getDate() + diff);
-      
       setSelectedModalDate(workoutDate);
       setModalOpen(true);
       setEditingDay(null);
@@ -141,7 +340,8 @@ export default function WeeklyAgenda() {
 
     setSaving(true);
     try {
-      const { data: { user } } = await supabaseClient.auth.getUser();
+      const session = await getSafeSession();
+      const user = session?.user;
       if (!user) throw new Error('Usuário não autenticado');
 
       const payload: any = {
@@ -153,12 +353,10 @@ export default function WeeklyAgenda() {
       if (workout !== 'rest' && workout.type === 'ficha') {
         payload.ficha_id = workout.id;
         payload.treino_pdf_id = null;
-      } 
-      else if (workout !== 'rest' && workout.type === 'pdf') {
+      } else if (workout !== 'rest' && workout.type === 'pdf') {
         payload.ficha_id = null;
         payload.treino_pdf_id = workout.id;
-      } 
-      else {
+      } else {
         payload.ficha_id = null;
         payload.treino_pdf_id = null;
       }
@@ -167,124 +365,108 @@ export default function WeeklyAgenda() {
         .from('agenda_semanal')
         .upsert(payload, { onConflict: 'aluno_id,dia_semana' });
 
-      if (error) {
-        console.error('Database error details:', error.message, error.code);
-        throw new Error(error.message || 'Erro ao atualizar agenda');
+      if (error) throw new Error(error.message);
+
+      // Se for o dia de hoje e não for descanso, registrar check-in
+      if (day === new Date().getDay() && workout !== 'rest') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data: existing } = await supabaseClient
+          .from('treinos_manuais')
+          .select('id')
+          .eq('aluno_id', user.id)
+          .eq('data_treino', todayStr)
+          .eq('concluido', true)
+          .limit(1);
+        if (!existing || existing.length === 0) {
+          await supabaseClient.from('treinos_manuais').insert({
+            aluno_id: user.id,
+            tipo_treino: 'musculacao',
+            concluido: true,
+            pontos_earn: 20,
+            descricao: descricao?.trim() || null,
+            data_treino: todayStr,
+          });
+        }
       }
-      
+
       await fetchData();
       setEditingDay(null);
     } catch (err: any) {
-      const errorMessage = err?.message || err?.toString() || 'Erro desconhecido';
-      console.error("Error saving day:", errorMessage, err);
-      alert(`Erro ao salvar agenda: ${errorMessage}`);
+      alert(`Erro ao salvar agenda: ${err?.message || 'Erro desconhecido'}`);
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className="h-32 flex items-center justify-center text-zinc-500 animate-pulse uppercase text-[10px] font-black tracking-widest">Carregando Agenda...</div>;
+  if (loading) return (
+    <div className="h-32 flex items-center justify-center text-zinc-500 animate-pulse uppercase text-[10px] tracking-widest">
+      Carregando Agenda...
+    </div>
+  );
 
   return (
     <>
       <div className="w-full">
         <div className="flex items-center justify-between mb-6">
           <div>
-             <h2 className="text-sm font-black text-white tracking-widest uppercase">Agenda Semanal</h2>
-             <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-tighter">Organize sua rotina de elite</p>
+            <h2 className="text-sm text-white tracking-widest uppercase">Agenda Semanal</h2>
+            <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-tighter">Organize sua rotina de elite</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {dayLabels.map((label, dayIdx) => {
             const entry = agenda[dayIdx];
-            const isEditing = editingDay === dayIdx;
 
             return (
-              <div 
-                key={dayIdx} 
-                className={`flex flex-col h-36 rounded-xl border relative transition-all duration-300
-                  ${entry?.is_rest_day 
-                    ? 'bg-zinc-900/20 border-white/5 opacity-60' 
-                    : entry?.workout_name 
-                      ? 'bg-black border-iron-gold/30 shadow-[0_4px_20px_rgba(212,175,55,0.05)]' 
-                      : 'bg-black border-white/5 hover:border-white/10'}
-                  ${isEditing ? 'ring-2 ring-iron-gold z-10' : ''}
+              <button
+                key={dayIdx}
+                onClick={() => setEditingDay(dayIdx)}
+                className={`flex flex-col h-16 rounded-xl border relative transition-all duration-300 text-left cursor-pointer group
+                  ${entry?.is_rest_day
+                    ? 'bg-zinc-900/20 border-white/5 opacity-60'
+                    : entry?.workout_name
+                      ? 'bg-black border-[#D4AF37]/30 shadow-[0_4px_20px_rgba(212,175,55,0.06)] hover:border-[#D4AF37]/50'
+                      : 'bg-black border-white/5 hover:border-white/20'}
                 `}
               >
-                {/* Day Header */}
-                <div className="p-3 border-b border-white/5 flex justify-between items-start">
-                  <span className="text-[10px] font-black text-iron-gold tracking-widest">{label}</span>
-                  {!isEditing && (
-                    <button 
-                      onClick={() => setEditingDay(dayIdx)}
-                      className="text-zinc-600 hover:text-white transition-colors"
-                    >
-                      <Plus size={12} />
-                    </button>
-                  )}
+                {/* Header */}
+                <div className="px-2.5 pt-2 flex justify-between items-center w-full">
+                  <span className="text-[9px] text-[#D4AF37] tracking-widest">{label}</span>
+                  <Plus size={9} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
                 </div>
 
-                {/* Day Content */}
-                <div className="flex-1 p-3 flex flex-col justify-center overflow-hidden">
-                  {isEditing ? (
-                    <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1">
-                      <button 
-                        onClick={() => saveDay(dayIdx, 'rest')}
-                        className="text-[8px] font-black uppercase tracking-tighter bg-zinc-800 hover:bg-zinc-700 text-white p-1 rounded transition-colors"
-                      >
-                        Descanso
-                      </button>
-                      <div className="max-h-16 overflow-y-auto flex flex-col gap-1 custom-scrollbar">
-                        {availableWorkouts.map(w => (
-                          <button 
-                            key={w.id}
-                            onClick={() => saveDay(dayIdx, w)}
-                            className="text-[8px] font-bold text-left p-1 rounded bg-iron-gold/10 hover:bg-iron-gold/20 text-iron-gold truncate"
-                          >
-                            {w.name}
-                          </button>
-                        ))}
-                      </div>
-                      <button onClick={() => setEditingDay(null)} className="text-[7px] font-black uppercase text-zinc-600 self-center">Cancelar</button>
-                    </div>
+                {/* Content */}
+                <div className="flex-1 px-2.5 pb-2 flex flex-col justify-center overflow-hidden">
+                  {entry?.is_rest_day ? (
+                    <span className="text-[8px] text-zinc-700 uppercase tracking-[0.15em]">Off</span>
+                  ) : entry?.workout_name ? (
+                    <span className="text-[8px] text-white uppercase tracking-tighter leading-tight line-clamp-1 block">
+                      {entry.workout_name}
+                    </span>
                   ) : (
-                    <>
-                      {entry?.is_rest_day ? (
-                        <span className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em] italic self-center">Off-Day</span>
-                      ) : entry?.workout_name ? (
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-black text-white uppercase tracking-tighter leading-tight line-clamp-2 mb-1">
-                            {entry.workout_name}
-                          </span>
-                          <div className="flex items-center gap-2">
-                             {entry.type === 'pdf' ? (
-                               <div className="px-1.5 py-0.5 bg-red-500/10 text-red-500 rounded text-[7px] font-black uppercase tracking-widest">PDF</div>
-                             ) : entry.type === 'manual' ? (
-                               <div className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded text-[7px] font-black uppercase tracking-widest">Manual</div>
-                             ) : (
-                               <div className="px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded text-[7px] font-black uppercase tracking-widest">Digi</div>
-                             )}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-[8px] font-bold text-zinc-800 uppercase tracking-widest self-center">Vazio</span>
-                      )}
-                    </>
+                    <span className="text-[7px] text-zinc-800 uppercase tracking-widest">+</span>
                   )}
                 </div>
-
-                {/* Background Icon */}
-                {!isEditing && (
-                  <div className="absolute -right-1 -bottom-1 opacity-[0.03] pointer-events-none">
-                     <Dumbbell size={48} className="text-white" />
-                  </div>
-                )}
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
+
+      {/* Modal de configuração do dia */}
+      <DayConfigModal
+        isOpen={editingDay !== null}
+        day={editingDay}
+        currentEntry={editingDay !== null ? agenda[editingDay] : undefined}
+        availableWorkouts={availableWorkouts}
+        saving={saving}
+        onClose={() => setEditingDay(null)}
+        onSave={(day, workout, descricao) => {
+          saveDay(day, workout, descricao);
+          if (workout !== 'livre') setEditingDay(null);
+        }}
+      />
 
       {/* Modal for adding manual workout */}
       <AddManualWorkoutModal

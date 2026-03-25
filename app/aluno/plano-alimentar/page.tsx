@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import UploadNutritionPlan from '@/app/components/UploadNutritionPlan';
@@ -74,38 +74,52 @@ export default function PlanoAlimentarPage() {
   const handleOpenPdf = async (plano: NutritionPlan) => {
     try {
       // ===== VERIFICAÇÃO DE SEGURANÇA =====
-      // Dupla verificação: o PDF deve pertencer ao aluno autenticado
       if (plano.aluno_id !== userId) {
         console.error('[SECURITY] Tentativa de acessar PDF de outro aluno bloqueada');
         alert('Erro de segurança: PDF não encontrado');
         return;
       }
 
-      // Check if URL is a path that needs signing
-      if (plano.url_pdf.includes('plano-alimentar/')) {
-        const pathMatch = plano.url_pdf.match(/plano-alimentar\/(.*)/);
-        if (pathMatch) {
-          const { data: signedUrl } = await supabaseClient.storage
-            .from('plano-alimentar')
-            .createSignedUrl(pathMatch[1], 3600);
-          
-          if (signedUrl?.signedUrl) {
-            setSelectedPdf({
-              url: signedUrl.signedUrl,
-              title: plano.nome_arquivo
-            });
-          }
-        }
+      // Extrair path para signed URL — suporta URLs completas legadas e paths novos
+      let filePath: string;
+      const url = plano.url_pdf;
+
+      console.log('[PDF] URL original:', url);
+
+      if (url.startsWith('http')) {
+        // URL pública legada: extrai o caminho após o nome do bucket
+        const match = url.match(/plano_alimentar\/(.+?)(\?|$)/);
+        filePath = match ? match[1] : url;
       } else {
-        setSelectedPdf({
-          url: plano.url_pdf,
-          title: plano.nome_arquivo
-        });
+        // Path direto (novo formato):"aluno_id/timestamp_file.pdf"
+        filePath = url;
       }
+
+      console.log('[PDF] FilePath extraído:', filePath);
+
+      const { data: signedData, error: signError } = await supabaseClient.storage
+        .from('plano_alimentar')
+        .createSignedUrl(filePath, 3600);
+
+      console.log('[PDF] signedData:', signedData);
+      console.log('[PDF] signError:', signError);
+
+      if (signError) {
+        console.error('[PDF] Erro ao criar signed URL:', signError);
+        throw new Error(`Erro ao gerar link: ${signError.message}`);
+      }
+
+      if (!signedData?.signedUrl) {
+        console.error('[PDF] signedData vazio');
+        throw new Error('Não foi possível gerar link de acesso ao PDF');
+      }
+
+      console.log('[PDF] Abrindo PDF com signed URL');
+      setSelectedPdf({ url: signedData.signedUrl, title: plano.nome_arquivo });
       setPdfViewerOpen(true);
-    } catch (err) {
-      console.error('Erro ao abrir PDF:', err);
-      alert('Erro ao abrir plano alimentar');
+    } catch (err: any) {
+      console.error('[PDF] Erro completo:', err);
+      alert(`Erro ao abrir plano alimentar: ${err.message || 'Erro desconhecido'}`);
     }
   };
 
@@ -115,10 +129,10 @@ export default function PlanoAlimentarPage() {
         <div className="max-w-4xl mx-auto">
           
           <div className="mb-8 md:mb-12">
-            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-iron-red font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-iron-red text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
               <ArrowLeft size={12} /> Voltar ao Painel
             </Link>
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2">
+            <h1 className="text-3xl md:text-4xl text-white tracking-tight mb-2">
               Plano <span className="text-[#D4AF37]">Alimentar</span>
             </h1>
             <p className="text-zinc-500 font-medium text-sm">Sua nutrição estratégica para resultados máximos.</p>
@@ -127,7 +141,7 @@ export default function PlanoAlimentarPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-zinc-500">
               <Loader2 size={40} className="animate-spin text-[#D4AF37]" />
-              <p className="text-xs font-black uppercase tracking-[0.3em]">Carregando planos...</p>
+              <p className="text-xs uppercase tracking-[0.3em]">Carregando planos...</p>
             </div>
           ) : userRole === 'coach' ? (
             // Coach view - can upload plans
@@ -136,7 +150,7 @@ export default function PlanoAlimentarPage() {
                 <Utensils size={32} />
               </div>
               
-              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight uppercase mb-4">
+              <h2 className="text-xl md:text-2xl text-white tracking-tight uppercase mb-4">
                 Gerenciar Planos Alimentares
               </h2>
               
@@ -146,7 +160,7 @@ export default function PlanoAlimentarPage() {
               
               <button
                 onClick={() => setUploadModalOpen(true)}
-                className="px-8 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black font-black text-sm uppercase tracking-tight rounded-lg transition-all flex items-center gap-2"
+                className="px-8 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black text-sm uppercase tracking-tight rounded-lg transition-all flex items-center gap-2"
               >
                 <Upload size={18} />
                 Enviar Plano
@@ -159,7 +173,7 @@ export default function PlanoAlimentarPage() {
                 <Utensils size={32} />
               </div>
               
-              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight uppercase mb-4">
+              <h2 className="text-xl md:text-2xl text-white tracking-tight uppercase mb-4">
                 Plano em Breve
               </h2>
               
@@ -170,7 +184,7 @@ export default function PlanoAlimentarPage() {
               <div className="mt-10 md:mt-12 pt-10 md:pt-12 border-t border-white/10 flex justify-center">
                  <div className="px-6 py-3 bg-zinc-800 rounded-2xl flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-[#D4AF37] animate-pulse"></div>
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Aguardando liberação do Coach</span>
+                    <span className="text-[10px] text-zinc-400 uppercase tracking-widest">Aguardando liberação do Coach</span>
                  </div>
               </div>
             </div>
@@ -188,20 +202,20 @@ export default function PlanoAlimentarPage() {
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-black text-white truncate mb-1 uppercase text-sm">
+                      <h3 className="text-white truncate mb-1 uppercase text-sm">
                         {plano.nome_arquivo.replace('.pdf', '')}
                       </h3>
                       {plano.descricao && (
                         <p className="text-[9px] text-zinc-400 mb-3">{plano.descricao}</p>
                       )}
-                      <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
+                      <p className="text-[9px] text-zinc-600 uppercase tracking-widest">
                         {new Date(plano.criado_em).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
 
                     <button
                       onClick={() => handleOpenPdf(plano)}
-                      className="px-4 py-2 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black font-black text-xs uppercase tracking-tight rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
+                      className="px-4 py-2 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black text-xs uppercase tracking-tight rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
                     >
                       <FileText size={14} />
                       Visualizar
@@ -301,7 +315,7 @@ function CoachSelectStudent({
       <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl border border-[#D4AF37]/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden">
           <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/40">
-            <h2 className="text-lg font-black text-white uppercase tracking-tight">
+            <h2 className="text-lg text-white uppercase tracking-tight">
               Selecionar Aluno
             </h2>
             <button
@@ -329,7 +343,7 @@ function CoachSelectStudent({
                       setUploadModalOpen(true);
                       onClose();
                     }}
-                    className="w-full p-3 text-left rounded-lg bg-zinc-800 hover:bg-[#D4AF37] text-white hover:text-black font-bold text-sm uppercase tracking-tight transition-all"
+                    className="w-full p-3 text-left rounded-lg bg-zinc-800 hover:bg-[#D4AF37] text-white hover:text-black text-sm uppercase tracking-tight transition-all"
                   >
                     {student.name}
                   </button>

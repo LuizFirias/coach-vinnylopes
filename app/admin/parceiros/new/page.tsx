@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { supabaseClient } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Check, AlertCircle, ShoppingBag, Globe, Tag, Image as ImageIcon } from "lucide-react";
+import { useMemo, useState, useEffect } from"react";
+import { supabaseClient } from"@/lib/supabaseClient";
+import { useRouter } from"next/navigation";
+import { ArrowLeft, Plus, Check, AlertCircle, ShoppingBag, Globe, Tag, Image as ImageIcon } from"lucide-react";
 
 export default function NovoParceiroPage() {
   const router = useRouter();
@@ -72,7 +72,7 @@ export default function NovoParceiroPage() {
         const { error: uploadError } = await supabaseClient.storage
           .from("parceiros-logos")
           .upload(fileName, file, {
-            cacheControl: "3600",
+            cacheControl:"3600",
             upsert: false,
           });
 
@@ -116,7 +116,7 @@ export default function NovoParceiroPage() {
         router.push("/admin/parceiros");
       }, 2000);
     } catch (err: any) {
-      setError(err?.message || "Erro ao processar a solicitação");
+      setError(err?.message ||"Erro ao processar a solicitação");
     } finally {
       setLoading(false);
     }
@@ -132,28 +132,28 @@ export default function NovoParceiroPage() {
             className="flex items-center gap-3 text-zinc-500 hover:text-white transition-colors group px-4 py-2 bg-iron-gray rounded-xl border border-white/5 w-fit"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Painel Anterior</span>
+            <span className="text-[10px] uppercase tracking-widest">Painel Anterior</span>
           </button>
         </header>
 
         <div className="mb-8 md:mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-iron-gray rounded-full shadow-sm mb-4 md:mb-6 border border-white/5">
               <ShoppingBag className="w-4 h-4 text-iron-red" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Expansão de Benefícios</span>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">Expansão de Benefícios</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3 uppercase">Novo <span className="text-iron-red">Parceiro</span></h1>
+            <h1 className="text-3xl md:text-4xl text-white tracking-tight mb-3 uppercase">Novo <span className="text-iron-red">Parceiro</span></h1>
             <p className="text-zinc-500 text-sm font-medium">Cadastre novas marcas e cupons exclusivos para seus atletas.</p>
         </div>
 
         {error && (
-          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-iron-red/10 border border-iron-red/20 text-iron-red rounded-xl text-xs font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
+          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-iron-red/10 border border-iron-red/20 text-iron-red rounded-xl text-xs animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
             <AlertCircle className="w-5 h-5 shrink-0" />
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 rounded-xl text-xs font-bold animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
+          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 rounded-xl text-xs animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
             <Check className="w-5 h-5 shrink-0" />
             {success}
           </div>
@@ -164,7 +164,7 @@ export default function NovoParceiroPage() {
           
           <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8 relative">
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Marca / Produto</label>
+              <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Marca / Produto</label>
               <input
                 type="text"
                 value={nomeProduto}
@@ -177,7 +177,7 @@ export default function NovoParceiroPage() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Descrição da Oferta</label>
+              <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Descrição da Oferta</label>
               <textarea
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
@@ -191,7 +191,7 @@ export default function NovoParceiroPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Código do Cupom</label>
+                <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Código do Cupom</label>
                 <div className="relative group">
                   <Tag className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
                   <input
@@ -206,7 +206,7 @@ export default function NovoParceiroPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Link da Loja</label>
+                <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Link da Loja</label>
                 <div className="relative group">
                   <Globe className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
                   <input
@@ -223,7 +223,7 @@ export default function NovoParceiroPage() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-4 ml-2">Galeria de Imagens (Máx 5)</label>
+              <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-4 ml-2">Galeria de Imagens (Máx 5)</label>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 {imagePreviews.map((preview, index) => (
                   <div key={index} className="aspect-square rounded-2xl overflow-hidden border border-white/10 shadow-lg relative group/img">
@@ -236,7 +236,7 @@ export default function NovoParceiroPage() {
                 {imageFiles.length < 5 && (
                   <label className="aspect-square rounded-2xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center cursor-pointer hover:border-iron-red/30 hover:bg-white/5 transition-all group/add">
                     <Plus className="text-zinc-700 group-hover:text-iron-red transition-colors" size={24} />
-                    <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mt-2 group-hover:text-white">Adicionar</span>
+                    <span className="text-[8px] text-zinc-600 uppercase tracking-widest mt-2 group-hover:text-white">Adicionar</span>
                     <input
                       type="file"
                       multiple
@@ -253,15 +253,14 @@ export default function NovoParceiroPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 md:py-6 bg-iron-red text-white text-xs font-black uppercase tracking-[0.4em] rounded-2xl shadow-neon-red hover:bg-red-600 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-4"
+              className="w-full py-5 md:py-6 bg-iron-red text-white text-xs uppercase tracking-[0.4em] rounded-2xl shadow-neon-red hover:bg-red-600 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-4"
             >
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
                   REGISTRANDO...
                 </>
-              ) : (
-                "PUBLICAR PARCEIRO"
+              ) : ("PUBLICAR PARCEIRO"
               )}
             </button>
           </form>

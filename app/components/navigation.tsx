@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -33,7 +33,7 @@ export default function Navigation() {
             >
               <Menu size={18} className="text-brand-purple" />
             </button>
-            <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-900">
+            <h1 className="text-[10px] tracking-[0.3em] uppercase text-slate-900">
               VINNY LOPES <span className="text-brand-purple">COACH</span>
             </h1>
           </div>
@@ -43,7 +43,7 @@ export default function Navigation() {
               <Link 
                 key={m.href} 
                 href={m.href} 
-                className="text-[9px] font-black tracking-[0.2em] text-slate-400 hover:text-brand-purple transition-all"
+                className="text-[9px] tracking-[0.2em] text-slate-400 hover:text-brand-purple transition-all"
               >
                 {m.name}
               </Link>
@@ -65,7 +65,7 @@ export default function Navigation() {
       <aside className={`fixed left-0 top-0 h-screen w-[85%] max-w-sm bg-white border-r border-slate-50 shadow-2xl z-70 transform transition-transform duration-500 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Close button (X icon) */}
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-50">
-          <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-400">Navegação</h2>
+          <h2 className="text-[10px] tracking-[0.3em] uppercase text-slate-400">Navegação</h2>
           <button
             onClick={() => setOpen(false)}
             className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-brand-purple rounded-xl transition-all"
@@ -81,7 +81,7 @@ export default function Navigation() {
             <Link
               key={m.href}
               href={m.href}
-              className="px-6 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-brand-purple hover:bg-brand-purple/5 transition-all"
+              className="px-6 py-4 rounded-2xl text-[11px] uppercase tracking-[0.2em] text-slate-500 hover:text-brand-purple hover:bg-brand-purple/5 transition-all"
               onClick={() => setOpen(false)}
             >
               {m.name}
@@ -94,7 +94,7 @@ export default function Navigation() {
               await supabaseClient.auth.signOut();
               window.location.href = '/login';
             }}
-            className="flex items-center gap-3 px-6 py-5 mt-10 rounded-2xl bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-100 transition-all"
+            className="flex items-center gap-3 px-6 py-5 mt-10 rounded-2xl bg-red-50 text-red-600 text-[10px] uppercase tracking-[0.3em] hover:bg-red-100 transition-all"
           >
             <LogOut size={16} />
             Sair da Plataforma

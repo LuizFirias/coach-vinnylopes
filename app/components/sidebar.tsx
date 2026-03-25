@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { useAuth } from './AuthProvider';
 import { 
   Dumbbell, 
   Utensils, 
@@ -20,7 +21,9 @@ import {
   LayoutDashboard,
   ShieldAlert,
   Settings,
-  Apple
+  Apple,
+  BookOpen,
+  MessageCircle
 } from 'lucide-react';
 
 const menuItems = [
@@ -35,8 +38,10 @@ const menuItems = [
 
 const coachMenuItems = [
   { name: 'Painel Alunos', href: '/admin/alunos', icon: Users },
+  { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
   { name: 'Treinos Gerais', href: '/admin/treinos', icon: Dumbbell },
   { name: 'Nutrição', href: '/admin/nutricao', icon: Apple },
+  { name: 'Feedbacks', href: '/admin/feedbacks', icon: MessageCircle },
   { name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
   { name: 'Ranking Geral', href: '/admin/ranking', icon: Trophy },
   { name: 'Meu Perfil', href: '/admin/perfil', icon: User },
@@ -49,72 +54,20 @@ const superAdminMenuItems = [
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { userRole, loading, user } = useAuth();
   const pathname = usePathname();
+  
+  console.log('[Sidebar] Rendered with role:', userRole, 'loading:', loading, 'user:', user?.id);
 
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        // First, check if user is authenticated
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-        
-        if (sessionError || !session) {
-          console.warn('No session found, user may need to login');
-          setLoading(false);
-          return;
-        }
+  // Ocultar em rotas públicas ou enquanto carrega
+  if (pathname === '/login' || pathname === '/' || loading) {
+    return null;
+  }
 
-        const { data: authData, error: authError } = await supabaseClient.auth.getUser();
-
-        if (authError || !authData.user) {
-          console.error('Auth error:', authError?.message || 'No user');
-          setLoading(false);
-          return;
-        }
-
-        const { data: profileData, error: profileError } = await supabaseClient
-          .from('profiles')
-          .select('role')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (!profileError && profileData) {
-          console.log('User role fetched:', profileData.role);
-          setUserRole(profileData.role);
-        } else if (profileError) {
-          console.error('Profile fetch error:', profileError);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar role do usuário:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserRole();
-    
-    // Listen for auth state changes
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        console.log('Auth state changed, user logged in');
-        setLoading(true);
-        // Re-fetch role when auth state changes
-        fetchUserRole();
-      } else {
-        console.log('Auth state changed, user logged out');
-        setUserRole(null);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
-
-  // Ocultar em rotas de login ou se não estiver logado
-  if (pathname === '/login' || pathname === '/') return null;
+  // Se não há usuário autenticado, não renderizar
+  if (!user) {
+    return null;
+  }
 
   const currentMenuItems = userRole === 'aluno' ? menuItems : userRole === 'coach' ? coachMenuItems : superAdminMenuItems;
 
@@ -144,7 +97,7 @@ export default function Sidebar() {
                    {isActive && <div className="absolute left-0 w-1 h-6 bg-[#D4AF37] rounded-r-full" />}
                    <Icon size={22} className={`${!isActive && 'group-hover:scale-110'} transition-transform ${isActive ? 'fill-[#D4AF37]/20 stroke-[2.5px]' : 'stroke-[1.5px]'}`} />
                    {!isActive && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-[#0F0F0F]/95 backdrop-blur-xl text-white text-[10px] font-bold uppercase tracking-wider rounded-xl opacity-0 group-hover:opacity-100 border border-[#1a1a1a] pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
+                      <div className="absolute left-full ml-4 px-3 py-2 bg-[#0F0F0F]/95 backdrop-blur-xl text-white text-[10px] uppercase tracking-wider rounded-xl opacity-0 group-hover:opacity-100 border border-[#1a1a1a] pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
                         {m.name}
                       </div>
                    )}
@@ -165,11 +118,11 @@ export default function Sidebar() {
         </button>
       </aside>
 
-      {/* Hamburger button - Mobile Only */}
+      {/* Hamburger button - Mobile Only - DISABLED (using bottom nav instead) */}
       <button
         aria-label="Menu"
         onClick={() => setOpen(true)}
-        className="fixed top-6 left-6 z-50 w-12 h-12 rounded-2xl flex items-center justify-center bg-black shadow-2xl border border-[#1a1a1a] hover:border-[#D4AF37]/50 active:scale-95 transition-all lg:hidden"
+        className="hidden"
       >
         <Menu size={22} className="text-[#D4AF37]" />
       </button>
@@ -204,8 +157,8 @@ export default function Sidebar() {
                  <User size={15} className="text-[#D4AF37]" />
               </div>
               <div className="flex flex-col">
-                 <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-wider leading-none mb-1">Acesso</span>
-                 <span className="text-[9px] font-bold text-white uppercase tracking-wide">
+                 <span className="text-[8px] text-zinc-600 uppercase tracking-wider leading-none mb-1">Acesso</span>
+                 <span className="text-[9px] text-white uppercase tracking-wide">
                     {userRole?.replace('_', ' ') || 'Carregando...'}
                  </span>
               </div>
@@ -220,7 +173,7 @@ export default function Sidebar() {
               <Link
                 key={m.href}
                 href={m.href}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wide transition-all group ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-[10px] uppercase tracking-wide transition-all group ${
                   isActive ? 'bg-iron-red text-white shadow-lg shadow-iron-red/20' : 'text-zinc-500 hover:text-iron-red hover:bg-white/5'
                 }`}
                 onClick={() => setOpen(false)}
@@ -242,7 +195,7 @@ export default function Sidebar() {
                 await supabaseClient.auth.signOut();
                 window.location.href = '/login';
               }}
-              className="w-full h-12 bg-iron-red text-white rounded-2xl flex items-center justify-center gap-2 text-[9px] font-bold uppercase tracking-wider hover:bg-red-600 transition-all active:scale-95 shadow-neon-red"
+              className="w-full h-12 bg-iron-red text-white rounded-2xl flex items-center justify-center gap-2 text-[9px] uppercase tracking-wider hover:bg-red-600 transition-all active:scale-95 shadow-neon-red"
             >
               <LogOut size={16} />
               Sair

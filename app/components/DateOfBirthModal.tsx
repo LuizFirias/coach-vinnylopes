@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
@@ -99,7 +99,7 @@ export default function DateOfBirthModal({
             <Calendar size={24} strokeWidth={2} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white uppercase tracking-tight">
+            <h2 className="text-xl text-white uppercase tracking-tight">
               Data de Nascimento
             </h2>
             <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
@@ -111,7 +111,7 @@ export default function DateOfBirthModal({
         {/* Messages */}
         {message && (
           <div
-            className={`mb-8 p-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-widest ${
+            className={`mb-8 p-4 rounded-2xl flex items-center gap-4 text-[10px] uppercase tracking-widest ${
               message.type === 'success'
                 ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
                 : 'bg-red-500/10 text-red-500 border border-red-500/20'
@@ -129,7 +129,7 @@ export default function DateOfBirthModal({
         {/* Form */}
         <form onSubmit={handleUpdateDate} className="space-y-6">
           <div className="space-y-3">
-            <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 font-black ml-1">
+            <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">
               Data
             </label>
             <input
@@ -148,14 +148,14 @@ export default function DateOfBirthModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-[#0F0F0F] border border-[#1a1a1a] text-zinc-500 font-black text-[10px] uppercase tracking-[0.3em] rounded-xl hover:bg-white/5 transition-all disabled:opacity-50"
+              className="flex-1 px-6 py-3 bg-[#0F0F0F] border border-[#1a1a1a] text-zinc-500 text-[10px] uppercase tracking-[0.3em] rounded-xl hover:bg-white/5 transition-all disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading || !dateOfBirth}
-              className="flex-1 px-6 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black font-black text-[10px] uppercase tracking-[0.3em] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black text-[10px] uppercase tracking-[0.3em] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

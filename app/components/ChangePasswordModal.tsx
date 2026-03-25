@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
@@ -122,7 +122,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
               <Lock className="text-brand-purple" size={24} />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black text-slate-900">Trocar <span className="text-brand-purple">Senha</span></h2>
+              <h2 className="text-xl md:text-2xl text-slate-900">Trocar <span className="text-brand-purple">Senha</span></h2>
               <p className="text-slate-400 font-medium text-sm">Atualize sua senha de acesso</p>
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
         <form onSubmit={handleChangePassword} className="space-y-6">
           {/* Senha Atual */}
           <div className="space-y-3">
-            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">Senha Atual</label>
+            <label className="text-[9px] uppercase tracking-[0.3em] text-slate-400 ml-1">Senha Atual</label>
             <div className="relative">
               <input
                 type={showCurrentPassword ? 'text' : 'password'}
@@ -187,7 +187,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
 
           {/* Nova Senha */}
           <div className="space-y-3">
-            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">Nova Senha</label>
+            <label className="text-[9px] uppercase tracking-[0.3em] text-slate-400 ml-1">Nova Senha</label>
             <div className="relative">
               <input
                 type={showNewPassword ? 'text' : 'password'}
@@ -209,7 +209,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
           {/* Password Requirements */}
           {newPassword && (
             <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Requisitos de Segurança</p>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400">Requisitos de Segurança</p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -267,7 +267,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
 
           {/* Confirmar Nova Senha */}
           <div className="space-y-3">
-            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">Confirmar Nova Senha</label>
+            <label className="text-[9px] uppercase tracking-[0.3em] text-slate-400 ml-1">Confirmar Nova Senha</label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
@@ -302,7 +302,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
               Esqueceu a senha?{' '}
               <Link 
                 href="/forgot-password" 
-                className="font-black underline hover:text-blue-700"
+                className="underline hover:text-blue-700"
               >
                 Recuperar Acesso
               </Link>
@@ -314,14 +314,14 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 bg-slate-100 text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+              className="flex-1 px-6 py-3 bg-slate-100 text-slate-900 rounded-xl text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading || !isPasswordValid || !passwordsMatch || !currentPassword}
-              className="flex-1 px-6 py-3 bg-brand-purple text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 bg-brand-purple text-white rounded-xl text-[10px] uppercase tracking-widest hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

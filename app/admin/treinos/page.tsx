@@ -122,6 +122,10 @@ export default function TreinosPage() {
     setLoading(true);
 
     try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const coachId = authData?.user?.id;
+      if (!coachId) throw new Error('Sessão inválida');
+
       const fileName = `${selectedAlunoId}/${Date.now()}_${selectedFile.name}`;
       
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
@@ -133,15 +137,12 @@ export default function TreinosPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabaseClient.storage
-        .from('treinos-pdf')
-        .getPublicUrl(fileName);
-
       const { error: dbError } = await supabaseClient
         .from('treinos_alunos')
         .insert({
           aluno_id: selectedAlunoId,
-          url_pdf: publicUrl,
+          coach_id: coachId,
+          url_pdf: fileName,
           nome_arquivo: selectedFile.name,
           data_upload: new Date().toISOString(),
         });
@@ -171,19 +172,19 @@ export default function TreinosPage() {
             <div>
               <Link 
                 href="/admin/dashboard" 
-                className="inline-flex items-center gap-2 text-[#D4AF37] font-black text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:gap-3 transition-all"
+                className="inline-flex items-center gap-2 text-[#D4AF37] text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:gap-3 transition-all"
               >
                 <ArrowLeft size={14} /> Painel de Controle
               </Link>
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-2 uppercase">
+              <h1 className="text-4xl md:text-5xl text-white tracking-tighter mb-2 uppercase">
                 Gestão de <span className="text-zinc-500">Treinos</span>
               </h1>
-              <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-black italic">Expedição de treinos técnicos para atletas</p>
+              <p className="text-zinc-500 text-[10px] uppercase tracking-widest">Expedição de treinos técnicos para atletas</p>
             </div>
             
             <button
               onClick={() => router.push('/admin/treinos/nova-ficha')}
-              className="flex items-center gap-3 px-8 py-4 bg-[#D4AF37] text-black rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-white transition-all active:scale-95"
+              className="flex items-center gap-3 px-8 py-4 bg-[#D4AF37] text-black rounded-2xl text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-white transition-all active:scale-95"
             >
               <PlusCircle size={18} />
               Nova Ficha Digital
@@ -199,21 +200,21 @@ export default function TreinosPage() {
                 <FileUp size={24} />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">Upload de PDF</h2>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-loose">Sincronização imediata com o app do atleta</p>
+                <h2 className="text-2xl text-white uppercase tracking-tight">Upload de PDF</h2>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-loose">Sincronização imediata com o app do atleta</p>
               </div>
             </div>
 
             {/* Mensagens */}
             {error && (
-              <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500 text-[10px] font-black uppercase tracking-widest">
+              <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500 text-[10px] uppercase tracking-widest">
                 <AlertCircle size={18} />
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="mb-8 p-6 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-2xl flex items-center gap-4 text-[#D4AF37] text-[10px] font-black uppercase tracking-widest">
+              <div className="mb-8 p-6 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-2xl flex items-center gap-4 text-[#D4AF37] text-[10px] uppercase tracking-widest">
                 <CheckCircle2 size={18} />
                 {success}
               </div>
@@ -222,13 +223,13 @@ export default function TreinosPage() {
             {fetchingAlunos ? (
               <div className="flex flex-col items-center justify-center py-20 gap-6 text-zinc-500">
                 <Loader2 size={40} className="animate-spin text-[#D4AF37]" />
-                <p className="text-[10px] font-black uppercase tracking-widest italic tracking-[0.4em]">Indexando Atletas...</p>
+                <p className="text-[10px] uppercase tracking-widest tracking-[0.4em]">Indexando Atletas...</p>
               </div>
             ) : (
               <form onSubmit={handleUpload} className="space-y-10">
                 {/* Select Aluno */}
                 <div className="space-y-4">
-                  <label htmlFor="aluno" className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
+                  <label htmlFor="aluno" className="inline-block text-[10px] uppercase tracking-[0.3em] text-zinc-700 ml-1">
                     SELECIONE O ATLETA
                   </label>
                   <div className="relative group">
@@ -254,7 +255,7 @@ export default function TreinosPage() {
 
                 {/* File Upload Area */}
                 <div className="space-y-4">
-                  <label className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
+                  <label className="inline-block text-[10px] uppercase tracking-[0.3em] text-zinc-700 ml-1">
                     PROTOCOLAR ARQUIVO (PDF)
                   </label>
 
@@ -271,7 +272,7 @@ export default function TreinosPage() {
                         <div className="w-16 h-16 mb-4 rounded-2xl bg-black border border-[#1a1a1a] shadow-lg flex items-center justify-center text-zinc-500 group-hover:text-[#D4AF37] transition-colors">
                           <FileUp size={28} />
                         </div>
-                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Arraste ou clique para selecionar</p>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Arraste ou clique para selecionar</p>
                       </div>
                     </label>
                   ) : (
@@ -281,8 +282,8 @@ export default function TreinosPage() {
                           <FileUp size={24} />
                         </div>
                         <div className="flex-1 overflow-hidden">
-                          <p className="text-sm font-black text-white uppercase tracking-tighter truncate">{selectedFile.name}</p>
-                          <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest">Documento Válido</p>
+                          <p className="text-sm text-white uppercase tracking-tighter truncate">{selectedFile.name}</p>
+                          <p className="text-[10px] text-[#D4AF37] uppercase tracking-widest">Documento Válido</p>
                         </div>
                         <button
                           type="button"
@@ -300,7 +301,7 @@ export default function TreinosPage() {
                 <button
                   type="submit"
                   disabled={loading || !selectedAlunoId || !selectedFile}
-                  className="w-full h-16 md:h-20 bg-[#D4AF37] text-black rounded-3xl font-black text-[12px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-[#D4AF37]/10 hover:bg-white transition-all active:scale-[0.98] disabled:opacity-30"
+                  className="w-full h-16 md:h-20 bg-[#D4AF37] text-black rounded-3xl text-[12px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-[#D4AF37]/10 hover:bg-white transition-all active:scale-[0.98] disabled:opacity-30"
                 >
                   {loading ? (
                     <>

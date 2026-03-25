@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Plus, Clock } from "lucide-react";
-import { supabaseClient } from "@/lib/supabaseClient";
+import React, { useState, useEffect } from"react";
+import { X, Plus, Clock } from"lucide-react";
+import { supabaseClient } from"@/lib/supabaseClient";
 
 interface AddManualWorkoutModalProps {
   isOpen: boolean;
@@ -11,14 +11,11 @@ interface AddManualWorkoutModalProps {
   onWorkoutAdded: () => void;
 }
 
-type WorkoutType = "musculacao" | "cardio" | null;
+type WorkoutType ="musculacao" |"cardio" | null;
 
 const WORKOUT_POINTS = {
   musculacao: 20,
-  cardio: {
-    "10-19": 10,
-    "20-49": 20,
-    "50+": 30,
+  cardio: {"10-19": 10,"20-49": 20,"50+": 30,
   },
 };
 
@@ -68,9 +65,9 @@ export default function AddManualWorkoutModal({
       return;
     }
 
-    if (workoutType === "musculacao") {
+    if (workoutType ==="musculacao") {
       setEstimatedPoints(WORKOUT_POINTS.musculacao);
-    } else if (workoutType === "cardio" && duration) {
+    } else if (workoutType ==="cardio" && duration) {
       const [hours, minutes] = duration.split(":").map(Number);
       const totalMinutes = hours * 60 + minutes;
 
@@ -87,10 +84,10 @@ export default function AddManualWorkoutModal({
   }, [workoutType, duration, concluido]);
 
   const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/[^\d]/g, "");
+    let value = e.target.value.replace(/[^\d]/g,"");
 
     if (value.length <= 2) {
-      setDuration(value.padEnd(2, "0") + ":00");
+      setDuration(value.padEnd(2,"0") +":00");
     } else if (value.length <= 4) {
       const hours = value.slice(0, 2);
       const minutes = value.slice(2, 4);
@@ -106,7 +103,7 @@ export default function AddManualWorkoutModal({
       return;
     }
 
-    if (workoutType === "cardio" && !duration) {
+    if (workoutType ==="cardio" && !duration) {
       alert("Defina a duração do cardio");
       return;
     }
@@ -127,7 +124,7 @@ export default function AddManualWorkoutModal({
     try {
       // Convert duration to minutes if cardio
       let durationMinutes = null;
-      if (workoutType === "cardio") {
+      if (workoutType ==="cardio") {
         const [hours, minutes] = duration.split(":").map(Number);
         durationMinutes = hours * 60 + minutes;
       }
@@ -166,7 +163,7 @@ export default function AddManualWorkoutModal({
       <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl border border-iron-gold/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/40">
-          <h2 className="text-lg font-black text-white uppercase tracking-tight">
+          <h2 className="text-lg text-white uppercase tracking-tight">
             Novo Treino
           </h2>
           <button
@@ -181,22 +178,22 @@ export default function AddManualWorkoutModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Date Display */}
           <div className="text-center">
-            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2">
               Data do Treino
             </p>
-            <p className="text-sm font-black text-iron-gold">
+            <p className="text-sm text-iron-gold">
               {date.toLocaleDateString("pt-BR", {
-                weekday: "long",
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
+                weekday:"long",
+                day:"2-digit",
+                month:"2-digit",
+                year:"numeric",
               })}
             </p>
           </div>
 
           {/* Workout Type Selection */}
           <div>
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 block">
+            <label className="text-[10px] text-zinc-400 uppercase tracking-widest mb-3 block">
               Tipo de Treino
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -206,10 +203,10 @@ export default function AddManualWorkoutModal({
                   setWorkoutType("musculacao");
                   setDuration("00:00");
                 }}
-                className={`p-4 rounded-xl font-black text-sm uppercase tracking-tight transition-all ${
-                  workoutType === "musculacao"
-                    ? "bg-iron-gold text-black ring-2 ring-iron-gold/50"
-                    : "bg-zinc-800 text-white hover:bg-zinc-700"
+                className={`p-4 rounded-xl text-sm uppercase tracking-tight transition-all ${
+                  workoutType ==="musculacao"
+                    ?"bg-iron-gold text-black ring-2 ring-iron-gold/50"
+                    :"bg-zinc-800 text-white hover:bg-zinc-700"
                 }`}
               >
                 💪 Musculação
@@ -217,10 +214,10 @@ export default function AddManualWorkoutModal({
               <button
                 type="button"
                 onClick={() => setWorkoutType("cardio")}
-                className={`p-4 rounded-xl font-black text-sm uppercase tracking-tight transition-all ${
-                  workoutType === "cardio"
-                    ? "bg-iron-gold text-black ring-2 ring-iron-gold/50"
-                    : "bg-zinc-800 text-white hover:bg-zinc-700"
+                className={`p-4 rounded-xl text-sm uppercase tracking-tight transition-all ${
+                  workoutType ==="cardio"
+                    ?"bg-iron-gold text-black ring-2 ring-iron-gold/50"
+                    :"bg-zinc-800 text-white hover:bg-zinc-700"
                 }`}
               >
                 🏃 Cardio
@@ -229,9 +226,9 @@ export default function AddManualWorkoutModal({
           </div>
 
           {/* Duration Input for Cardio */}
-          {workoutType === "cardio" && (
+          {workoutType ==="cardio" && (
             <div>
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 block">
+              <label className="text-[10px] text-zinc-400 uppercase tracking-widest mb-3 block">
                 Duração (HH:MM)
               </label>
               <div className="flex items-center gap-3">
@@ -253,7 +250,7 @@ export default function AddManualWorkoutModal({
 
           {/* Description */}
           <div>
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 block">
+            <label className="text-[10px] text-zinc-400 uppercase tracking-widest mb-3 block">
               Descrição (opcional)
             </label>
             <textarea
@@ -274,7 +271,7 @@ Ex: Corrida no parque..."
               onChange={(e) => setConcluido(e.target.checked)}
               className="w-5 h-5 cursor-pointer accent-iron-gold"
             />
-            <label htmlFor="concluido" className="text-sm font-bold text-white cursor-pointer flex-1">
+            <label htmlFor="concluido" className="text-sm text-white cursor-pointer flex-1">
               Marcar como concluído
             </label>
           </div>
@@ -282,12 +279,12 @@ Ex: Corrida no parque..."
           {/* Points Info */}
           {workoutType && (
             <div className="bg-iron-gold/10 border border-iron-gold/30 rounded-lg p-4">
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
+              <p className="text-[10px] text-zinc-400 uppercase tracking-widest mb-2">
                 Pontuação
               </p>
               <div className="space-y-1">
-                {workoutType === "musculacao" ? (
-                  <p className="text-sm text-white font-black">
+                {workoutType ==="musculacao" ? (
+                  <p className="text-sm text-white">
                     Musculação = <span className="text-iron-gold">20 pts</span>
                   </p>
                 ) : (
@@ -307,7 +304,7 @@ Ex: Corrida no parque..."
               </div>
               {concluido && estimatedPoints > 0 && (
                 <div className="mt-3 pt-3 border-t border-iron-gold/20">
-                  <p className="text-sm font-black text-iron-gold">
+                  <p className="text-sm text-iron-gold">
                     ✓ +{estimatedPoints} pontos no ranking
                   </p>
                 </div>
@@ -325,7 +322,7 @@ Ex: Corrida no parque..."
 
             return isPastDate ? (
               <div className="bg-yellow-950/30 border border-yellow-700/50 rounded-lg p-4">
-                <p className="text-[10px] font-black text-yellow-600 uppercase tracking-widest mb-1">
+                <p className="text-[10px] text-yellow-600 uppercase tracking-widest mb-1">
                   ⚠️ Data Retroativa
                 </p>
                 <p className="text-[9px] text-yellow-600/80">
@@ -339,7 +336,7 @@ Ex: Corrida no parque..."
           <button
             type="submit"
             disabled={!workoutType || loading}
-            className="w-full bg-iron-gold hover:bg-iron-gold/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black font-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+            className="w-full bg-iron-gold hover:bg-iron-gold/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

@@ -123,41 +123,35 @@ export default function NutricaoPage() {
     setLoading(true);
 
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
-
-      if (!coachId) {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      
+      if (!session) {
         setError('Sessão inválida');
         return;
       }
 
-      const fileName = `${selectedAlunoId}/${Date.now()}_${selectedFile.name}`;
-      
-      const { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from('plano-alimentar')
-        .upload(fileName, selectedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      // Preparar FormData para enviar o arquivo e dados
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('aluno_id', selectedAlunoId);
+      if (descricao) {
+        formData.append('descricao', descricao);
+      }
 
-      if (uploadError) throw uploadError;
+      // Fazer upload via API
+      const response = await fetch('/api/admin/nutricao', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
 
-      const { data: { publicUrl } } = supabaseClient.storage
-        .from('plano-alimentar')
-        .getPublicUrl(fileName);
+      const data = await response.json();
 
-      const { error: dbError } = await supabaseClient
-        .from('plano_alimentar_pdf')
-        .insert({
-          aluno_id: selectedAlunoId,
-          coach_id: coachId,
-          pdf_url: publicUrl,
-          nome_arquivo: selectedFile.name,
-          descricao: descricao || null,
-          criado_em: new Date().toISOString(),
-        });
-
-      if (dbError) throw dbError;
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao fazer upload');
+      }
 
       setSuccess('Plano alimentar enviado com sucesso!');
       setSelectedFile(null);
@@ -183,14 +177,14 @@ export default function NutricaoPage() {
             <div>
               <Link 
                 href="/admin/dashboard" 
-                className="inline-flex items-center gap-2 text-iron-gold font-black text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:gap-3 transition-all"
+                className="inline-flex items-center gap-2 text-iron-gold text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:gap-3 transition-all"
               >
                 <ArrowLeft size={14} /> Painel de Controle
               </Link>
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-2 uppercase">
+              <h1 className="text-4xl md:text-5xl text-white tracking-tighter mb-2 uppercase">
                 Gestão de <span className="text-zinc-500">Nutrição</span>
               </h1>
-              <p className="text-zinc-500 text-[10px] uppercase tracking-widest font-black italic">Expedição de planos alimentares para atletas</p>
+              <p className="text-zinc-500 text-[10px] uppercase tracking-widest">Expedição de planos alimentares para atletas</p>
             </div>
           </div>
         </div>
@@ -203,21 +197,21 @@ export default function NutricaoPage() {
                 <Apple size={24} />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">Upload de Plano Alimentar</h2>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest leading-loose">Sincronização imediata com o app do atleta</p>
+                <h2 className="text-1xl text-white uppercase tracking-tight">Upload de Plano Alimentar</h2>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-loose">Sincronização imediata com o app do atleta</p>
               </div>
             </div>
 
             {/* Mensagens */}
             {error && (
-              <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500 text-[10px] font-black uppercase tracking-widest">
+              <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500 text-[10px] uppercase tracking-widest">
                 <AlertCircle size={18} />
                 {error}
               </div>
             )}
 
             {success && (
-              <div className="mb-8 p-6 bg-iron-gold/10 border border-iron-gold/20 rounded-2xl flex items-center gap-4 text-iron-gold text-[10px] font-black uppercase tracking-widest">
+              <div className="mb-8 p-6 bg-iron-gold/10 border border-iron-gold/20 rounded-2xl flex items-center gap-4 text-iron-gold text-[10px] uppercase tracking-widest">
                 <CheckCircle2 size={18} />
                 {success}
               </div>
@@ -226,13 +220,13 @@ export default function NutricaoPage() {
             {fetchingAlunos ? (
               <div className="flex flex-col items-center justify-center py-20 gap-6 text-zinc-500">
                 <Loader2 size={40} className="animate-spin text-iron-gold" />
-                <p className="text-[10px] font-black uppercase tracking-widest italic tracking-[0.4em]">Indexando Atletas...</p>
+                <p className="text-[10px] uppercase tracking-widest tracking-[0.4em]">Indexando Atletas...</p>
               </div>
             ) : (
-              <form onSubmit={handleUpload} className="space-y-10">
+              <form onSubmit={handleUpload} className="space-y-3">
                 {/* Select Aluno */}
                 <div className="space-y-4">
-                  <label htmlFor="aluno" className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
+                  <label htmlFor="aluno" className="inline-block text-[10px] uppercase tracking-[0.3em] text-zinc-700 ml-1">
                     SELECIONE O ATLETA
                   </label>
                   <div className="relative group">
@@ -258,7 +252,7 @@ export default function NutricaoPage() {
 
                 {/* Descrição opcional */}
                 <div className="space-y-4">
-                  <label htmlFor="descricao" className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
+                  <label htmlFor="descricao" className="inline-block text-[10px] uppercase tracking-[0.3em] text-zinc-700 ml-1">
                     DESCRIÇÃO (OPCIONAL)
                   </label>
                   <textarea
@@ -271,14 +265,14 @@ export default function NutricaoPage() {
                     rows={3}
                     className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white placeholder-zinc-600 font-medium focus:outline-none focus:border-iron-gold transition-all resize-none disabled:opacity-50"
                   />
-                  <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest text-right">
+                  <p className="text-[8px] text-zinc-600 uppercase tracking-widest text-right">
                     {descricao.length}/500 caracteres
                   </p>
                 </div>
 
                 {/* File Upload Area */}
                 <div className="space-y-4">
-                  <label className="inline-block text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 ml-1">
+                  <label className="inline-block text-[10px] uppercase tracking-[0.3em] text-zinc-700 ml-1">
                     PROTOCOLAR ARQUIVO (PDF)
                   </label>
 
@@ -295,7 +289,7 @@ export default function NutricaoPage() {
                         <div className="w-16 h-16 mb-4 rounded-2xl bg-zinc-900 border border-white/10 shadow-lg flex items-center justify-center text-zinc-500 group-hover:text-iron-gold transition-colors">
                           <FileUp size={28} />
                         </div>
-                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Arraste ou clique para selecionar</p>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Arraste ou clique para selecionar</p>
                       </div>
                     </label>
                   ) : (
@@ -305,8 +299,8 @@ export default function NutricaoPage() {
                           <FileUp size={24} />
                         </div>
                         <div className="flex-1 overflow-hidden">
-                          <p className="text-sm font-black text-white uppercase tracking-tighter truncate">{selectedFile.name}</p>
-                          <p className="text-[10px] text-iron-gold font-bold uppercase tracking-widest">Documento Válido</p>
+                          <p className="text-sm text-white uppercase tracking-tighter truncate">{selectedFile.name}</p>
+                          <p className="text-[10px] text-iron-gold uppercase tracking-widest">Documento Válido</p>
                         </div>
                         <button
                           type="button"
@@ -324,7 +318,7 @@ export default function NutricaoPage() {
                 <button
                   type="submit"
                   disabled={loading || !selectedAlunoId || !selectedFile}
-                  className="w-full h-16 md:h-20 bg-iron-gold text-black rounded-3xl font-black text-[12px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-[0_10px_30px_rgba(212,175,55,0.1)] hover:bg-white transition-all active:scale-[0.98] disabled:opacity-30"
+                  className="w-full h-16 md:h-20 bg-iron-gold text-black rounded-3xl text-[12px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-[0_10px_30px_rgba(212,175,55,0.1)] hover:bg-white transition-all active:scale-[0.98] disabled:opacity-30"
                 >
                   {loading ? (
                     <>

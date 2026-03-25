@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, FormEvent, ChangeEvent, Suspense } from "react";
-import Image from "next/image";
-import { supabaseClient } from "@/lib/supabaseClient";
-import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, LogIn, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import PWAInstall from "../components/PWAInstall";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, FormEvent, ChangeEvent, Suspense } from"react";
+import Image from"next/image";
+import { supabaseClient } from"@/lib/supabaseClient";
+import { useRouter, useSearchParams } from"next/navigation";
+import { AlertCircle, LogIn, Eye, EyeOff, ShieldCheck } from"lucide-react";
+import PWAInstall from"../components/PWAInstall";
+import DumbbellLoader from"../components/DumbbellLoader";
+import { motion, AnimatePresence } from"framer-motion";
 
 function LoginForm() {
   const router = useRouter();
@@ -28,6 +29,12 @@ function LoginForm() {
   const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
     setError(null);
+  };
+
+  const handleSupportClick = () => {
+    if (typeof window !== 'undefined') {
+      window.open('https://wa.me/556781232717', '_blank');
+    }
   };
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -76,8 +83,8 @@ function LoginForm() {
 
         try {
           await fetch("/api/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method:"POST",
+            headers: {"Content-Type":"application/json" },
             body: JSON.stringify({
               access_token: data.session.access_token,
               refresh_token: data.session.refresh_token,
@@ -89,27 +96,27 @@ function LoginForm() {
         }
 
         const from = searchParams?.get("from");
-        const role = profileData?.role || "aluno";
+        const role = profileData?.role ||"aluno";
         
-        let defaultRoute = "/aluno/treinos";
-        if (role === "coach") defaultRoute = "/admin/alunos";
-        if (role === "super_admin") defaultRoute = "/super-admin";
+        let defaultRoute ="/aluno/treinos";
+        if (role ==="coach") defaultRoute ="/admin/alunos";
+        if (role ==="super_admin") defaultRoute ="/super-admin";
 
-        const allowAdmin = role === "coach" || role === "super_admin";
+        const allowAdmin = role ==="coach" || role ==="super_admin";
 
         if (from) {
           const isAlunoRoute = from.startsWith("/aluno");
           const isAdminRoute = from.startsWith("/admin");
           const isSuperAdminRoute = from.startsWith("/super-admin");
 
-          if ((isAlunoRoute && role === "aluno") || ((isAdminRoute || isSuperAdminRoute) && allowAdmin)) {
+          if ((isAlunoRoute && role ==="aluno") || ((isAdminRoute || isSuperAdminRoute) && allowAdmin)) {
             router.push(from);
             return;
           }
         }
 
         // Check if first access (never changed password)
-        if (role === "aluno") {
+        if (role ==="aluno") {
           const { data: userData } = await supabaseClient.auth.getUser();
           if (userData.user?.user_metadata?.first_login !== false) {
              router.push("/aluno/perfil?firstAccess=true");
@@ -138,7 +145,7 @@ function LoginForm() {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
+        transition={{ duration: 0.8, ease:"easeOut" }}
         className="w-full max-w-[400px] flex flex-col items-center relative z-10"
       >
         
@@ -166,7 +173,7 @@ function LoginForm() {
               <div className="w-20 h-20 bg-[#0F0F0F] border border-[#1a1a1a] rounded-2xl flex items-center justify-center mb-4 shadow-xl">
                  <ShieldCheck className="text-[#D4AF37] w-10 h-10" />
               </div>
-              <h1 className="text-2xl font-bold text-white tracking-[0.2em] uppercase">COACH VINNY</h1>
+              <h1 className="text-2xl text-white tracking-[0.2em] uppercase">COACH VINNY</h1>
             </div>
           )}
           
@@ -181,7 +188,7 @@ function LoginForm() {
           <form onSubmit={handleLogin} className="space-y-8 relative z-10">
             
             <div className="space-y-3">
-              <label className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold ml-1">E-mail de acesso</label>
+              <label className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 ml-1">E-mail de acesso</label>
               <input
                 type="email"
                 value={email}
@@ -194,11 +201,11 @@ function LoginForm() {
 
             <div className="space-y-3">
               <div className="flex justify-between items-center ml-1">
-                <label className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold">Senha privada</label>
+                <label className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">Senha privada</label>
               </div>
               <div className="relative group">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ?"text" :"password"}
                   value={password}
                   onChange={handlePasswordChange}
                   placeholder="••••••••"
@@ -220,9 +227,9 @@ function LoginForm() {
                 {error && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
+                    animate={{ opacity: 1, height:"auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="bg-red-500/10 border border-red-500/20 text-red-500 px-5 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest mb-6 flex items-center gap-3 overflow-hidden"
+                    className="bg-red-500/10 border border-red-500/20 text-red-500 px-5 py-4 rounded-2xl text-[10px] uppercase tracking-widest mb-6 flex items-center gap-3 overflow-hidden"
                   >
                     <AlertCircle size={16} className="shrink-0" />
                     <span>{error}</span>
@@ -233,7 +240,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-14 bg-linear-to-b from-[#F9E29B] via-iron-gold to-iron-gold-dark text-black rounded-2xl font-bold uppercase tracking-[0.2em] text-[11px] hover:brightness-110 hover:scale-[1.01] active:scale-95 transition-all duration-500 shadow-[0_8px_32px_rgba(212,175,55,0.2)] border border-white/20 flex items-center justify-center gap-4 disabled:opacity-50 antialiased"
+                className="w-full h-14 bg-linear-to-b from-[#F9E29B] via-iron-gold to-iron-gold-dark text-black rounded-2xl uppercase tracking-[0.2em] text-[11px] hover:brightness-110 hover:scale-[1.01] active:scale-95 transition-all duration-500 shadow-[0_8px_32px_rgba(212,175,55,0.2)] border border-white/20 flex items-center justify-center gap-4 disabled:opacity-50 antialiased"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
@@ -255,8 +262,8 @@ function LoginForm() {
           className="mt-12 text-center"
         >
           <button 
-            onClick={() => window.open('https://wa.me/556781232717', '_blank')}
-            className="text-zinc-700 text-[10px] font-bold uppercase tracking-[0.4em] hover:text-iron-gold transition-all duration-300 italic flex items-center gap-3"
+            onClick={handleSupportClick}
+            className="text-zinc-700 text-[10px] uppercase tracking-[0.4em] hover:text-iron-gold transition-all duration-300 flex items-center gap-3"
           >
             <span className="w-8 h-[1px] bg-zinc-900" />
             Suporte Técnico
@@ -273,7 +280,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-iron-gold/20 border-t-iron-gold rounded-full animate-spin"></div>
+        <DumbbellLoader />
       </div>
     }>
       <LoginForm />

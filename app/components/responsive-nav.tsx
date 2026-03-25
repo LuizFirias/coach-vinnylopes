@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from"react";
 import { usePathname } from 'next/navigation';
-import Link from "next/link";
-import Image from "next/image";
-import { supabaseClient } from "@/lib/supabaseClient";
-import {
+import Link from"next/link";
+import Image from"next/image";
+import { supabaseClient } from"@/lib/supabaseClient";import { getSafeSession } from '@/lib/authErrorHandler';import {
   Menu,
   X,
   Dumbbell,
@@ -19,30 +18,30 @@ import {
   User,
   ShieldCheck,
   Apple,
-} from "lucide-react";
+} from"lucide-react";
 
 const menuItems = [
-  { name: "TREINOS", href: "/aluno/treinos", icon: Dumbbell },
-  { name: "PLANO ALIMENTAR", href: "/aluno/plano-alimentar", icon: Utensils },
-  { name: "MEDIDAS", href: "/aluno/medidas", icon: TrendingUp },
-  { name: "FOTOS", href: "/aluno/fotos", icon: Camera },
-  { name: "PARCEIROS", href: "/aluno/parceiros", icon: Users },
-  { name: "RANKING", href: "/aluno/ranking", icon: Trophy },
-  { name: "PERFIL", href: "/aluno/perfil", icon: User },
+  { name:"TREINOS", href:"/aluno/treinos", icon: Dumbbell },
+  { name:"PLANO ALIMENTAR", href:"/aluno/plano-alimentar", icon: Utensils },
+  { name:"MEDIDAS", href:"/aluno/medidas", icon: TrendingUp },
+  { name:"FOTOS", href:"/aluno/fotos", icon: Camera },
+  { name:"PARCEIROS", href:"/aluno/parceiros", icon: Users },
+  { name:"RANKING", href:"/aluno/ranking", icon: Trophy },
+  { name:"PERFIL", href:"/aluno/perfil", icon: User },
 ];
 
 const coachMenuItems = [
-  { name: "ALUNOS", href: "/admin/alunos", icon: Users },
-  { name: "TREINOS", href: "/admin/treinos", icon: Dumbbell },
-  { name: "NUTRIÇÃO", href: "/admin/nutricao", icon: Apple },
-  { name: "PARCEIROS", href: "/admin/parceiros", icon: Handshake },
-  { name: "RANKING", href: "/admin/ranking", icon: Trophy },
-  { name: "PERFIL", href: "/admin/perfil", icon: User },
+  { name:"ALUNOS", href:"/admin/alunos", icon: Users },
+  { name:"TREINOS", href:"/admin/treinos", icon: Dumbbell },
+  { name:"NUTRIÇÃO", href:"/admin/nutricao", icon: Apple },
+  { name:"PARCEIROS", href:"/admin/parceiros", icon: Handshake },
+  { name:"RANKING", href:"/admin/ranking", icon: Trophy },
+  { name:"PERFIL", href:"/admin/perfil", icon: User },
 ];
 
 const superAdminMenuItems = [
-  { name: "GERENCIAR ACESSOS", href: "/super-admin", icon: ShieldCheck },
-  { name: "PERFIL", href: "/super-admin/perfil", icon: User },
+  { name:"GERENCIAR ACESSOS", href:"/super-admin", icon: ShieldCheck },
+  { name:"PERFIL", href:"/super-admin/perfil", icon: User },
 ];
 
 export default function ResponsiveNav() {
@@ -55,9 +54,9 @@ export default function ResponsiveNav() {
   useEffect(() => {
     const fetchRole = async () => {
       try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (!user) return;
+        const session = await getSafeSession();
+        if (!session?.user) return;
+        const user = session.user;
 
         const { data: profileData, error } = await supabaseClient
           .from('profiles')
@@ -109,7 +108,7 @@ export default function ResponsiveNav() {
                   className="w-24 object-contain"
                 />
             ) : (
-              <h1 className="text-[11px] font-bold tracking-widest text-white text-center">
+              <h1 className="text-[11px] tracking-widest text-white text-center">
                 VINNY LOPES <span className="text-iron-gold">COACH</span>
               </h1>
             )}
@@ -123,7 +122,7 @@ export default function ResponsiveNav() {
         {/* Sidebar Header */}
         <div className="py-10 flex flex-col items-center">
           <div className="w-10 h-10 bg-iron-gold rounded-lg flex items-center justify-center shadow-lg shadow-iron-gold/5 group cursor-pointer">
-            <span className="text-black font-black text-xs">CV</span>
+            <span className="text-black text-xs">CV</span>
           </div>
         </div>
 
@@ -139,16 +138,16 @@ export default function ResponsiveNav() {
                 title={item.name}
                 className={`group flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all duration-300 ${
                   isActive 
-                    ? "bg-white/[0.05] text-iron-gold" 
-                    : "text-zinc-600 hover:text-white hover:bg-white/[0.02]"
+                    ?"bg-white/[0.05] text-iron-gold" 
+                    :"text-zinc-600 hover:text-white hover:bg-white/[0.02]"
                 }`}
               >
                 <Icon
                   size={20}
                   strokeWidth={isActive ? 2 : 1.5}
-                  className={isActive ? "text-iron-gold" : "text-zinc-600 group-hover:text-zinc-300"}
+                  className={isActive ?"text-iron-gold" :"text-zinc-600 group-hover:text-zinc-300"}
                 />
-                <span className="text-[8px] font-bold uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[8px] uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
                   {item.name.split(' ')[0]}
                 </span>
               </Link>
@@ -175,8 +174,8 @@ export default function ResponsiveNav() {
       <div
         className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-300 ${
           mobileMenuOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
+            ?"opacity-100 pointer-events-auto"
+            :"opacity-0 pointer-events-none"
         }`}
         aria-hidden={!mobileMenuOpen}
         onClick={() => setMobileMenuOpen(false)}
@@ -187,7 +186,7 @@ export default function ResponsiveNav() {
       {/* Mobile Drawer */}
       <aside
         className={`lg:hidden fixed left-0 top-0 h-screen w-72 bg-iron-black border-r border-white-[0.03] z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          mobileMenuOpen ?"translate-x-0" :"-translate-x-full"
         }`}
       >
         {/* Drawer Header */}
@@ -214,15 +213,15 @@ export default function ResponsiveNav() {
                 href={item.href}
                 className={`group flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                   isActive 
-                    ? "bg-white/[0.05] text-iron-gold" 
-                    : "text-zinc-400 hover:text-white hover:bg-white/[0.02]"
+                    ?"bg-white/[0.05] text-iron-gold" 
+                    :"text-zinc-400 hover:text-white hover:bg-white/[0.02]"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Icon
                   size={18}
                   strokeWidth={isActive ? 2 : 1.5}
-                  className={isActive ? "text-iron-gold" : "text-zinc-500 group-hover:text-zinc-300"}
+                  className={isActive ?"text-iron-gold" :"text-zinc-500 group-hover:text-zinc-300"}
                 />
                 <span>{item.name}</span>
               </Link>

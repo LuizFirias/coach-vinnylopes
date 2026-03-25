@@ -23,7 +23,8 @@ export default function ParceirosAdminPage() {
   const [modalEditOpen, setModalEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [parceiroEditando, setParceiroEditando] = useState<Parceiro | null>(null);
-  
+  const [coachId, setCoachId] = useState<string | null>(null);
+
   // Form state
   const [nomeProduto, setNomeProduto] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -38,15 +39,33 @@ export default function ParceirosAdminPage() {
   );
 
   useEffect(() => {
-    fetchParceiros();
+    const init = async () => {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const currentCoachId = authData?.user?.id || null;
+      setCoachId(currentCoachId);
+      
+      if (currentCoachId) {
+        fetchParceiros(currentCoachId);
+      }
+    };
+    init();
   }, []);
 
-  const fetchParceiros = async () => {
+  const fetchParceiros = async (currentCoachId?: string) => {
+    const idToUse = currentCoachId || coachId;
+    
+    if (!idToUse) {
+      setError('Coach não identificado');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabaseClient
         .from('parceiros')
         .select('*')
+        .eq('coach_id', idToUse)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -97,7 +116,8 @@ export default function ParceirosAdminPage() {
           cupom,
           link_desconto: linkDesconto,
           logo_url: uploadedUrls[0] || null,
-          imagens: uploadedUrls
+          imagens: uploadedUrls,
+          coach_id: coachId,
         });
 
       if (dbError) throw dbError;
@@ -174,9 +194,18 @@ export default function ParceirosAdminPage() {
         updateData.imagens = uploadedUrls;
       }
 
+      // Buscar token de autorização
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        throw new Error('Sessão inválida');
+      }
+
       const response = await fetch("/api/admin/parceiros", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method:"PUT",
+        headers: {
+          "Content-Type":"application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           id: parceiroEditando.id,
           ...updateData,
@@ -185,7 +214,7 @@ export default function ParceirosAdminPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao atualizar parceiro");
+        throw new Error(errorData.error ||"Erro ao atualizar parceiro");
       }
 
       setModalEditOpen(false);
@@ -203,13 +232,22 @@ export default function ParceirosAdminPage() {
     if (!confirm("Tem certeza que deseja deletar este parceiro?")) return;
 
     try {
+      // Buscar token de autorização
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        throw new Error('Sessão inválida');
+      }
+
       const response = await fetch(`/api/admin/parceiros?id=${id}`, {
-        method: "DELETE",
+        method:"DELETE",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao deletar parceiro");
+        throw new Error(errorData.error ||"Erro ao deletar parceiro");
       }
 
       fetchParceiros();
@@ -224,14 +262,14 @@ export default function ParceirosAdminPage() {
         {/* Header */}
         <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+            <h1 className="text-3xl md:text-4xl text-slate-900 tracking-tight mb-2">
               Gestão de <span className="text-brand-purple">Parceiros</span>
             </h1>
             <p className="text-slate-500 font-medium">Configure benefícios e cupons exclusivos para seus alunos</p>
           </div>
           <button
             onClick={() => setModalOpen(true)}
-            className="px-8 py-5 bg-[#D4AF37] text-black rounded-2xl shadow-2xl hover:bg-white transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px] font-black antialiased"
+            className="px-8 py-5 bg-[#D4AF37] text-black rounded-2xl shadow-2xl hover:bg-white transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-[10px] antialiased"
           >
             <Plus size={18} strokeWidth={3} />
             ADICIONAR PARCEIRO
@@ -248,14 +286,14 @@ export default function ParceirosAdminPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 md:py-32 gap-4 text-slate-400">
             <Loader2 size={40} className="animate-spin text-brand-purple" />
-            <p className="text-xs font-black uppercase tracking-[0.3em]">Carregando rede...</p>
+            <p className="text-xs uppercase tracking-[0.3em]">Carregando rede...</p>
           </div>
         ) : parceiros.length === 0 ? (
           <div className="bg-white rounded-2xl p-20 md:p-32 border border-slate-100 flex flex-col items-center justify-center text-center">
             <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center text-slate-200 mb-8">
               <ShoppingBag size={48} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Nenhum parceiro ativo</h2>
+            <h2 className="text-2xl text-slate-900 mb-2">Nenhum parceiro ativo</h2>
             <p className="text-slate-500 max-w-sm">Cadastre marcas parceiras para que seus alunos tenham acesso a descontos exclusivos.</p>
           </div>
         ) : (
@@ -274,20 +312,20 @@ export default function ParceirosAdminPage() {
                   )}
                 </div>
                 
-                <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-3">{parceiro.nome_marca}</h3>
+                <h3 className="text-lg md:text-xl text-slate-900 mb-3">{parceiro.nome_marca}</h3>
                 <p className="text-sm text-slate-500 leading-relaxed mb-6 md:mb-8 line-clamp-3 min-h-18">{parceiro.descricao}</p>
                 
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between px-5 py-3 bg-brand-purple/5 rounded-2xl border border-brand-purple/10">
-                    <span className="text-[10px] font-black text-brand-purple/60 uppercase tracking-widest">CUPOM</span>
-                    <span className="font-black text-brand-purple tracking-wider font-mono">{parceiro.cupom}</span>
+                    <span className="text-[10px] text-brand-purple/60 uppercase tracking-widest">CUPOM</span>
+                    <span className="text-brand-purple tracking-wider font-mono">{parceiro.cupom}</span>
                   </div>
                   
                   <a
                     href={parceiro.link_desconto}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all"
+                    className="flex items-center justify-center gap-2 w-full py-4 text-[10px] uppercase tracking-[0.2em] text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all"
                   >
                     ACESSAR LOJA <ExternalLink size={14} />
                   </a>
@@ -295,13 +333,13 @@ export default function ParceirosAdminPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => abrirEditarParceiro(parceiro)}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-[9px] uppercase tracking-[0.2em] text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all"
                     >
                       <Edit2 size={14} /> EDITAR
                     </button>
                     <button
                       onClick={() => handleDeletarParceiro(parceiro.id)}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-[9px] uppercase tracking-[0.2em] text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
                     >
                       <Trash2 size={14} /> DELETAR
                     </button>
@@ -319,7 +357,7 @@ export default function ParceirosAdminPage() {
           <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 md:p-10 overflow-hidden">
             <div className="flex items-center justify-between mb-6 md:mb-10 border-b border-slate-50 pb-4 md:pb-6">
               <div>
-                <h2 className="text-xl md:text-2xl font-black text-slate-900">Novo <span className="text-brand-purple">Parceiro</span></h2>
+                <h2 className="text-xl md:text-2xl text-slate-900">Novo <span className="text-brand-purple">Parceiro</span></h2>
                 <p className="text-slate-400 font-medium text-sm">Preencha os dados da marca parceira</p>
               </div>
               <button
@@ -340,7 +378,7 @@ export default function ParceirosAdminPage() {
             <form onSubmit={handleCreate} className="space-y-6 md:space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">NOME DA MARCA</label>
+                  <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">NOME DA MARCA</label>
                   <input
                     type="text"
                     value={nomeProduto}
@@ -352,14 +390,14 @@ export default function ParceirosAdminPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">CÓDIGO DO CUPOM</label>
+                  <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">CÓDIGO DO CUPOM</label>
                   <div className="relative">
                     <Tag className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                     <input
                       type="text"
                       value={cupom}
                       onChange={(e) => setCupom(e.target.value)}
-                      className="w-full h-14 pl-14 pr-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold focus:outline-none focus:border-brand-purple transition-all"
+                      className="w-full h-14 pl-14 pr-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 focus:outline-none focus:border-brand-purple transition-all"
                       placeholder="COACHVINNY"
                       required
                     />
@@ -368,7 +406,7 @@ export default function ParceirosAdminPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">DESCRIÇÃO CURTA</label>
+                <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">DESCRIÇÃO CURTA</label>
                 <textarea
                   rows={2}
                   value={descricao}
@@ -380,7 +418,7 @@ export default function ParceirosAdminPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">LINK DE DESCONTO</label>
+                <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">LINK DE DESCONTO</label>
                 <div className="relative">
                   <ExternalLink className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                   <input
@@ -395,7 +433,7 @@ export default function ParceirosAdminPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">IMAGENS (MÁX 5)</label>
+                <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">IMAGENS (MÁX 5)</label>
                 <div className="relative flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-brand-purple/5 hover:border-brand-purple/30 transition-all cursor-pointer group">
                   <input
                     type="file"
@@ -406,7 +444,7 @@ export default function ParceirosAdminPage() {
                   />
                   <div className="flex flex-col items-center justify-center p-4">
                     <ImageIcon size={24} className="text-slate-300 mb-2 group-hover:text-brand-purple" />
-                    <p className="text-xs font-bold text-slate-500">Clique para selecionar</p>
+                    <p className="text-xs text-slate-500">Clique para selecionar</p>
                   </div>
                 </div>
                 
@@ -424,7 +462,7 @@ export default function ParceirosAdminPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full h-14 md:h-16 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 hover:bg-brand-purple transition-all active:scale-[0.98] disabled:opacity-50"
+                className="w-full h-14 md:h-16 bg-slate-900 text-white rounded-2xl text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 hover:bg-brand-purple transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -447,7 +485,7 @@ export default function ParceirosAdminPage() {
           <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 md:p-10 overflow-hidden">
             <div className="flex items-center justify-between mb-6 md:mb-10 border-b border-slate-50 pb-4 md:pb-6">
               <div>
-                <h2 className="text-xl md:text-2xl font-black text-slate-900">Editar <span className="text-brand-purple">{parceiroEditando.nome_marca}</span></h2>
+                <h2 className="text-xl md:text-2xl text-slate-900">Editar <span className="text-brand-purple">{parceiroEditando.nome_marca}</span></h2>
                 <p className="text-slate-400 font-medium text-sm">Atualize os dados da marca parceira</p>
               </div>
               <button
@@ -468,7 +506,7 @@ export default function ParceirosAdminPage() {
             <form onSubmit={handleEditarParceiro} className="space-y-6 md:space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">NOME DA MARCA</label>
+                  <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">NOME DA MARCA</label>
                   <input
                     type="text"
                     value={nomeProduto}
@@ -479,14 +517,14 @@ export default function ParceirosAdminPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">CÓDIGO DO CUPOM</label>
+                  <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">CÓDIGO DO CUPOM</label>
                   <div className="relative">
                     <Tag className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                     <input
                       type="text"
                       value={cupom}
                       onChange={(e) => setCupom(e.target.value)}
-                      className="w-full h-14 pl-14 pr-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold focus:outline-none focus:border-brand-purple transition-all"
+                      className="w-full h-14 pl-14 pr-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 focus:outline-none focus:border-brand-purple transition-all"
                       required
                     />
                   </div>
@@ -494,7 +532,7 @@ export default function ParceirosAdminPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">DESCRIÇÃO CURTA</label>
+                <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">DESCRIÇÃO CURTA</label>
                 <textarea
                   rows={2}
                   value={descricao}
@@ -505,7 +543,7 @@ export default function ParceirosAdminPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">LINK DE DESCONTO</label>
+                <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">LINK DE DESCONTO</label>
                 <div className="relative">
                   <ExternalLink className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                   <input
@@ -519,7 +557,7 @@ export default function ParceirosAdminPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-1">NOVA IMAGEM (OPCIONAL)</label>
+                <label className="text-[10px] uppercase tracking-[0.3em] text-slate-400 ml-1">NOVA IMAGEM (OPCIONAL)</label>
                 <div className="relative flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-brand-purple/5 hover:border-brand-purple/30 transition-all cursor-pointer group">
                   <input
                     type="file"
@@ -529,7 +567,7 @@ export default function ParceirosAdminPage() {
                   />
                   <div className="flex flex-col items-center justify-center p-4">
                     <ImageIcon size={24} className="text-slate-300 mb-2 group-hover:text-brand-purple" />
-                    <p className="text-xs font-bold text-slate-500">Clique para atualizar imagem</p>
+                    <p className="text-xs text-slate-500">Clique para atualizar imagem</p>
                   </div>
                 </div>
               </div>
@@ -538,14 +576,14 @@ export default function ParceirosAdminPage() {
                 <button
                   type="button"
                   onClick={() => setModalEditOpen(false)}
-                  className="flex-1 h-14 md:h-16 bg-slate-100 text-slate-900 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-slate-200 transition-all"
+                  className="flex-1 h-14 md:h-16 bg-slate-100 text-slate-900 rounded-2xl text-[11px] uppercase tracking-[0.3em] hover:bg-slate-200 transition-all"
                 >
                   CANCELAR
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 h-14 md:h-16 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 hover:bg-brand-purple transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="flex-1 h-14 md:h-16 bg-slate-900 text-white rounded-2xl text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 hover:bg-brand-purple transition-all active:scale-[0.98] disabled:opacity-50"
                 >
                   {saving ? (
                     <>

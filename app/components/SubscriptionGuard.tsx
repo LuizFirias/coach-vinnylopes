@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
-import React, { useEffect, useState } from "react";
-import { supabaseClient } from "@/lib/supabaseClient";
-import Link from "next/link";
+import React, { useEffect, useState } from"react";
+import { supabaseClient } from"@/lib/supabaseClient";
+import Link from"next/link";
 
 interface Props {
   children: React.ReactNode;
@@ -73,7 +73,7 @@ export default function SubscriptionGuard({ children }: Props) {
     check();
   }, []);
 
-  const WHATSAPP_NUMBER = "556781232717"; // international format without '+'
+  const WHATSAPP_NUMBER ="556781232717"; // international format without '+'
   const waMessage = encodeURIComponent("Olá Coach Vinny, preciso renovar minha assinatura.");
 
   if (loading) {
@@ -98,12 +98,12 @@ export default function SubscriptionGuard({ children }: Props) {
             href={`https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] font-black uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
+            className="inline-block px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
           >
             Falar com Coach no WhatsApp
           </a>
 
-          <Link href="/login" className="mt-2 sm:mt-0 inline-block px-6 py-4 bg-white/[0.03] border border-white/10 text-white text-[11px] font-bold uppercase tracking-[0.2em] rounded-xl hover:bg-white/[0.05] transition-all duration-300">
+          <Link href="/login" className="mt-2 sm:mt-0 inline-block px-6 py-4 bg-white/[0.03] border border-white/10 text-white text-[11px] uppercase tracking-[0.2em] rounded-xl hover:bg-white/[0.05] transition-all duration-300">
             Entrar / Gerenciar Assinatura
           </Link>
         </div>

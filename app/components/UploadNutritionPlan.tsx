@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Upload, FileText, Loader2 } from "lucide-react";
-import { supabaseClient } from "@/lib/supabaseClient";
+import React, { useState, useEffect } from"react";
+import { X, Upload, FileText, Loader2 } from"lucide-react";
+import { supabaseClient } from"@/lib/supabaseClient";
 
 interface UploadNutritionPlanProps {
   isOpen: boolean;
@@ -39,7 +39,7 @@ export default function UploadNutritionPlan({
           .eq("id", authData.user.id)
           .single();
 
-        if (profile?.role === "coach") {
+        if (profile?.role ==="coach") {
           setCoachId(authData.user.id);
         } else if (profile?.coach_id) {
           setCoachId(profile.coach_id);
@@ -55,9 +55,9 @@ export default function UploadNutritionPlan({
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+    if (e.type ==="dragenter" || e.type ==="dragover") {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (e.type ==="dragleave") {
       setDragActive(false);
     }
   };
@@ -70,7 +70,7 @@ export default function UploadNutritionPlan({
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       const selectedFile = files[0];
-      if (selectedFile.type === "application/pdf") {
+      if (selectedFile.type ==="application/pdf") {
         setFile(selectedFile);
       } else {
         alert("Por favor, selecione um arquivo PDF");
@@ -81,7 +81,7 @@ export default function UploadNutritionPlan({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (selectedFile.type === "application/pdf") {
+      if (selectedFile.type ==="application/pdf") {
         setFile(selectedFile);
       } else {
         alert("Por favor, selecione um arquivo PDF");
@@ -105,31 +105,36 @@ export default function UploadNutritionPlan({
     setLoading(true);
 
     try {
-      // Upload file to storage
-      const fileName = `${alunoId}/${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from("plano-alimentar")
-        .upload(fileName, file);
+      // Get session token
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      
+      if (!session) {
+        alert('Sessão inválida. Faça login novamente.');
+        return;
+      }
 
-      if (uploadError) throw uploadError;
+      // Prepare FormData
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('aluno_id', alunoId);
+      if (descricao) {
+        formData.append('descricao', descricao);
+      }
 
-      // Get signed URL
-      const { data: signedUrl } = await supabaseClient.storage
-        .from("plano-alimentar")
-        .createSignedUrl(uploadData.path, 365 * 24 * 60 * 60); // 1 year
+      // Upload via API
+      const response = await fetch('/api/admin/nutricao', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
 
-      // Save to database
-      const { error: dbError } = await supabaseClient
-        .from("plano_alimentar_pdf")
-        .insert({
-          aluno_id: alunoId,
-          coach_id: coachId,
-          nome_arquivo: file.name,
-          url_pdf: signedUrl?.signedUrl || uploadData.path,
-          descricao: descricao || null,
-        });
+      const data = await response.json();
 
-      if (dbError) throw dbError;
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao fazer upload');
+      }
 
       // Reset form
       setFile(null);
@@ -152,7 +157,7 @@ export default function UploadNutritionPlan({
       <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl border border-[#D4AF37]/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/40">
-          <h2 className="text-lg font-black text-white uppercase tracking-tight">
+          <h2 className="text-lg text-white uppercase tracking-tight">
             Plano Alimentar
           </h2>
           <button
@@ -167,10 +172,10 @@ export default function UploadNutritionPlan({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Student Info */}
           <div className="text-center">
-            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2">
               Para o aluno
             </p>
-            <p className="text-sm font-black text-[#D4AF37]">{alunoName}</p>
+            <p className="text-sm text-[#D4AF37]">{alunoName}</p>
           </div>
 
           {/* File Upload Area */}
@@ -181,8 +186,8 @@ export default function UploadNutritionPlan({
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-all cursor-pointer ${
               dragActive
-                ? "border-[#D4AF37] bg-[#D4AF37]/5"
-                : "border-zinc-700 hover:border-[#D4AF37]/50 bg-zinc-900/30"
+                ?"border-[#D4AF37] bg-[#D4AF37]/5"
+                :"border-zinc-700 hover:border-[#D4AF37]/50 bg-zinc-900/30"
             }`}
           >
             <input
@@ -194,8 +199,8 @@ export default function UploadNutritionPlan({
             />
             <label htmlFor="file-input" className="cursor-pointer block">
               <FileText size={32} className="mx-auto mb-3 text-zinc-600" />
-              <p className="text-sm font-black text-white mb-1">
-                {file ? file.name : "Selecione ou arraste o PDF"}
+              <p className="text-sm text-white mb-1">
+                {file ? file.name :"Selecione ou arraste o PDF"}
               </p>
               <p className="text-[9px] text-zinc-500">
                 Máximo 10MB • Apenas PDF
@@ -209,10 +214,10 @@ export default function UploadNutritionPlan({
               <div className="flex items-center gap-3">
                 <FileText size={16} className="text-[#D4AF37]" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
                     Arquivo
                   </p>
-                  <p className="text-sm font-bold text-white truncate">
+                  <p className="text-sm text-white truncate">
                     {file.name}
                   </p>
                   <p className="text-[9px] text-zinc-500">
@@ -225,7 +230,7 @@ export default function UploadNutritionPlan({
 
           {/* Description */}
           <div>
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 block">
+            <label className="text-[10px] text-zinc-400 uppercase tracking-widest mb-3 block">
               Descrição (opcional)
             </label>
             <textarea
@@ -240,7 +245,7 @@ export default function UploadNutritionPlan({
           <button
             type="submit"
             disabled={!file || loading}
-            className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black font-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+            className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

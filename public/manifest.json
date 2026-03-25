@@ -4,9 +4,11 @@
   "description": "Ecossistema de Treinamento Exclusivo Coach Vinny Lopes",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#000000",
   "theme_color": "#000000",
   "scope": "/",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/icon-512.png",

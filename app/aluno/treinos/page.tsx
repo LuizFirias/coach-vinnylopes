@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import PDFViewer from '@/app/components/PDFViewer';
+import DumbbellLoader from '@/app/components/DumbbellLoader';
 
 interface TreinoPDF {
   id: string;
@@ -80,7 +81,7 @@ export default function AlunoTreinosPage() {
           const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: any) => {
             // Extrair o path do arquivo da URL antiga (que continha o publicUrl)
             // Se já tivermos o path no banco seria melhor, mas podemos extrair o path relativo do bucket
-            // Como salvamos como "aluno_id/timestamp_nome.pdf", vamos extrair
+            // Como salvamos como"aluno_id/timestamp_nome.pdf", vamos extrair
             const pathParts = pdf.url_pdf.split('/treinos-pdf/');
             const filePath = pathParts.length > 1 ? pathParts[1] : pdf.url_pdf;
 
@@ -123,10 +124,7 @@ export default function AlunoTreinosPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-iron-black flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4 text-zinc-500">
-          <div className="w-12 h-12 border-4 border-iron-red/20 border-t-iron-red rounded-full animate-spin"></div>
-          <span className="font-bold uppercase tracking-widest text-[10px]">Carregando treinos...</span>
-        </div>
+        <DumbbellLoader text="Carregando treinos..." />
       </div>
     );
   }
@@ -139,10 +137,10 @@ export default function AlunoTreinosPage() {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-12">
             <div>
-              <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-[#D4AF37] font-black text-[10px] uppercase tracking-widest mb-4 hover:ml-1 transition-all">
+              <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-[#D4AF37] text-[10px] uppercase tracking-widest mb-4 hover:ml-1 transition-all">
                 <ArrowLeft size={12} /> Dashboard
               </Link>
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-2 uppercase">
+              <h1 className="text-4xl md:text-5xl text-white tracking-tight mb-2 uppercase">
                 Minhas <span className="text-[#D4AF37]">Rotinas</span>
               </h1>
               <p className="text-zinc-500 font-medium text-sm border-l-2 border-[#D4AF37] pl-4">Seu cronograma técnico de treinamento.</p>
@@ -154,15 +152,15 @@ export default function AlunoTreinosPage() {
                   <Layout size={18} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest leading-none mb-1">Total</p>
-                  <p className="text-xl font-black text-white leading-none">{fichas.length + treinosPdf.length} Protocolos</p>
+                  <p className="text-[10px] text-zinc-600 uppercase tracking-widest leading-none mb-1">Total</p>
+                  <p className="text-xl text-white leading-none">{fichas.length + treinosPdf.length} Protocolos</p>
                 </div>
               </div>
             )}
           </div>
 
           {error && (
-            <div className="bg-red-500/10 text-red-500 p-6 rounded-3xl border border-red-500/20 mb-10 font-bold text-sm italic">
+            <div className="bg-red-500/10 text-red-500 p-6 rounded-3xl border border-red-500/20 mb-10 text-sm">
               🚨 {error}
             </div>
           )}
@@ -172,7 +170,7 @@ export default function AlunoTreinosPage() {
             {/* Rotinas Estruturadas */}
             {fichas.length > 0 && (
               <section>
-                <h2 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-6 flex items-center gap-4">
+                <h2 className="text-[10px] text-zinc-600 uppercase tracking-[0.3em] mb-6 flex items-center gap-4">
                    Rotinas Interativas <div className="h-[1px] flex-1 bg-white/5"></div>
                 </h2>
                 <div className="flex flex-col gap-4">
@@ -188,19 +186,16 @@ export default function AlunoTreinosPage() {
                         </div>
 
                         <div>
-                          <h3 className="text-xl font-bold text-[#D4AF37] leading-tight group-hover:text-white transition-colors">
+                          <h3 className="text-xl text-[#D4AF37] leading-tight group-hover:text-white transition-colors">
                             {ficha.nome_rotina}
                           </h3>
-                          <p className="text-zinc-400 font-medium text-xs mt-1">
-                            Acompanhamento de séries e cargas em tempo real.
-                          </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-6">
                         <div className="hidden sm:flex flex-col items-end">
-                          <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Digital</span>
-                          <span className="text-xs font-bold text-white uppercase">{formatarData(ficha.criado_em)}</span>
+                          <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Digital</span>
+                          <span className="text-xs text-white uppercase">{formatarData(ficha.criado_em)}</span>
                         </div>
                         <div className="w-10 h-10 bg-[#0F0F0F] rounded-xl flex items-center justify-center text-zinc-600 group-hover:text-white group-hover:bg-[#D4AF37] transition-all">
                           <ChevronRight size={20} />
@@ -215,7 +210,7 @@ export default function AlunoTreinosPage() {
             {/* PDFs */}
             {treinosPdf.length > 0 && (
               <section>
-                <h2 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-6 flex items-center gap-4">
+                <h2 className="text-[10px] text-zinc-600 uppercase tracking-[0.3em] mb-6 flex items-center gap-4">
                    Fichas PDF (Protocolos) <div className="h-[1px] flex-1 bg-white/5"></div>
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -240,10 +235,10 @@ export default function AlunoTreinosPage() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-black text-white uppercase tracking-tight truncate">
+                        <h3 className="text-sm text-white uppercase tracking-tight truncate">
                           {pdf.nome_arquivo.replace('.pdf', '')}
                         </h3>
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
                           Enviado em {formatarData(pdf.data_upload)}
                         </p>
                       </div>
@@ -262,7 +257,7 @@ export default function AlunoTreinosPage() {
                 <div className="w-24 h-24 bg-white/5 rounded-[40px] flex items-center justify-center text-zinc-800 mb-8 border border-white/5">
                   <Search size={40} />
                 </div>
-                <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Nenhum treino ativo</h3>
+                <h3 className="text-2xl text-white mb-2 uppercase tracking-tight">Nenhum treino ativo</h3>
                 <p className="max-w-xs text-zinc-500 font-medium mb-10">
                   Seu Coach ainda não atribuiu uma rotina de treinos para o seu perfil.
                 </p>

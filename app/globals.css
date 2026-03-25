@@ -1,6 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+/* Prevent zoom on mobile devices */
+html {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 :root {
   --background: #000000;
   --foreground: #FFFFFF;
@@ -16,7 +23,13 @@
   --color-iron-red: #E30613;
   --color-iron-gold: #D4AF37;
   --color-iron-divider: #1a1a1a;
-  
+  --color-brand-purple: #D4AF37;
+
+  /* z-index values beyond the default Tailwind scale (0–50) */
+  --z-60: 60;
+  --z-70: 70;
+  --z-100: 100;
+
   --shadow-neon-red: 0 0 15px rgba(227, 6, 19, 0.3);
   --shadow-neon-gold: 0 0 15px rgba(212, 175, 55, 0.2);
 }
@@ -25,12 +38,13 @@ body {
   background: #000000;
   color: #FFFFFF;
   font-family: 'Inter', system-ui, sans-serif;
-  overflow-x: hidden;
 }
 
-html, body {
-  overflow-x: hidden;
-}
+/* Explicit z-index utilities (Tailwind v4 default scale stops at z-50) */
+.z-60  { z-index: 60; }
+.z-70  { z-index: 70; }
+.z-100 { z-index: 100; }
+.z-101 { z-index: 101; }
 
 .card-iron {
     background: rgba(15, 15, 15, 0.4);
@@ -71,4 +85,14 @@ html, body {
 
 .animate-slide-up {
   animation: slideUp 600ms ease-out both;
+}
+
+/* Hide scrollbar for horizontal scroll in bottom nav */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
 }

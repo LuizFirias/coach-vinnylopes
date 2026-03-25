@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabaseClient } from "@/lib/supabaseClient";
-import { Calendar } from "lucide-react";
+import { useEffect, useState } from"react";
+import { useRouter } from"next/navigation";
+import { supabaseClient } from"@/lib/supabaseClient";
+import { Calendar } from"lucide-react";
+import DumbbellLoader from"@/app/components/DumbbellLoader";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function OnboardingPage() {
         }
 
         // Apenas alunos podem acessar
-        if (profileData.role !== "aluno") {
+        if (profileData.role !=="aluno") {
           router.replace("/admin/dashboard");
           return;
         }
@@ -118,10 +119,7 @@ export default function OnboardingPage() {
   if (checkingAccess) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-iron-gold mx-auto mb-4"></div>
-          <p className="text-gray-400">Carregando...</p>
-        </div>
+        <DumbbellLoader text="Carregando..." />
       </div>
     );
   }
@@ -131,7 +129,7 @@ export default function OnboardingPage() {
       {/* Header com logo e boas-vindas */}
       <div className="bg-gradient-to-b from-black to-gray-900 border-b border-gray-800 px-4 py-8">
         <div className="max-w-md mx-auto text-center">
-          <h1 className="text-4xl font-black text-iron-gold mb-2">COACH VINNY</h1>
+          <h1 className="text-4xl text-iron-gold mb-2">COACH VINNY</h1>
           <p className="text-gray-400 text-sm uppercase tracking-wider">Bem-vindo ao Time</p>
         </div>
       </div>
@@ -144,11 +142,11 @@ export default function OnboardingPage() {
             <div className="w-16 h-16 bg-iron-gold/10 border-2 border-iron-gold rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-8 h-8 text-iron-gold" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Comple te seu Perfil</h2>
+            <h2 className="text-2xl text-white mb-2">Comple te seu Perfil</h2>
             <p className="text-gray-400 text-sm">
               {coachName && (
                 <>
-                  Seu coach <span className="text-iron-gold font-bold">{coachName}</span> já criou sua conta.
+                  Seu coach <span className="text-iron-gold">{coachName}</span> já criou sua conta.
                   <br />
                   <br />
                 </>
@@ -168,7 +166,7 @@ export default function OnboardingPage() {
 
           {/* Campo: Nome Completo */}
           <div>
-            <label htmlFor="fullName" className="block text-sm font-bold text-gray-300 mb-2 uppercase tracking-wider">
+            <label htmlFor="fullName" className="block text-sm text-gray-300 mb-2 uppercase tracking-wider">
               Seu Nome Completo
             </label>
             <input
@@ -185,7 +183,7 @@ export default function OnboardingPage() {
 
           {/* Campo: Data de Nascimento */}
           <div>
-            <label htmlFor="dateOfBirth" className="block text-sm font-bold text-gray-300 mb-2 uppercase tracking-wider">
+            <label htmlFor="dateOfBirth" className="block text-sm text-gray-300 mb-2 uppercase tracking-wider">
               Data de Nascimento
             </label>
             <input
@@ -203,9 +201,9 @@ export default function OnboardingPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-iron-gold to-yellow-500 hover:from-yellow-500 hover:to-iron-gold disabled:opacity-50 disabled:cursor-not-allowed text-black font-black py-4 rounded-lg uppercase tracking-wider transition"
+            className="w-full bg-gradient-to-r from-iron-gold to-yellow-500 hover:from-yellow-500 hover:to-iron-gold disabled:opacity-50 disabled:cursor-not-allowed text-black py-4 rounded-lg uppercase tracking-wider transition"
           >
-            {loading ? "Salvando..." : "Começar Meu Treino"}
+            {loading ?"Salvando..." :"Começar Meu Treino"}
           </button>
         </form>
 

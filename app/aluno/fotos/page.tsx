@@ -1,13 +1,13 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { Camera, Upload, Calendar, ChevronRight, Image as ImageIcon, ArrowLeft, CheckCircle2, AlertCircle, Loader2, Maximize2 } from 'lucide-react';
+import { Camera, Upload, Calendar, ChevronRight, Image as ImageIcon, ArrowLeft, CheckCircle2, AlertCircle, Loader2, Maximize2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Foto {
   id: string;
-  tipo: 'frente' | 'lado' | 'costas';
+  posicao: 'frente' | 'lado' | 'costas';
   url_foto: string;
   data_upload: string;
 }
@@ -17,17 +17,19 @@ interface FotosPorData {
   fotos: Foto[];
 }
 
-type TipoFoto = 'frente' | 'lado' | 'costas';
+type PosicaoFoto = 'frente' | 'lado' | 'costas';
 
 export default function FotosPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [fotos, setFotos] = useState<Foto[]>([]);
-  const [uploadingTypes, setUploadingTypes] = useState<Set<TipoFoto>>(new Set());
+  const [uploadingTypes, setUploadingTypes] = useState<Set<PosicaoFoto>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [diasAteProxima, setDiasAteProxima] = useState<number | null>(null);
   const [mostrarNotificacao, setMostrarNotificacao] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [photoToDelete, setPhotoToDelete] = useState<Foto | null>(null);
 
   const WHATSAPP_NUMBER = '+55 67 8123-2717';
   const DIAS_NOTIFICACAO = 15;
@@ -59,12 +61,10 @@ export default function FotosPage() {
 
         // Assinar URLs das fotos (bucket privado)
         const fotosAssinadas = await Promise.all((fotosData || []).map(async (foto: any) => {
-          const pathParts = foto.url_foto.split('/evolucao-fotos/');
-          const filePath = pathParts.length > 1 ? pathParts[1] : foto.url_foto;
-          
+          // url_foto agora contém apenas o fileName, não a URL completa
           const { data: signedData } = await supabaseClient.storage
             .from('evolucao-fotos')
-            .createSignedUrl(filePath, 3600);
+            .createSignedUrl(foto.url_foto, 3600);
             
           return {
             ...foto,
@@ -97,7 +97,7 @@ export default function FotosPage() {
 
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    tipo: TipoFoto
+    posicao: PosicaoFoto
   ) => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
@@ -112,11 +112,11 @@ export default function FotosPage() {
       return;
     }
 
-    setUploadingTypes((prev) => new Set(prev).add(tipo));
+    setUploadingTypes((prev) => new Set(prev).add(posicao));
     setError(null);
 
     try {
-      const fileName = `${userId}_${tipo}_${Date.now()}_${file.name}`;
+      const fileName = `${userId}_${posicao}_${Date.now()}_${file.name}`;
 
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from('evolucao-fotos')
@@ -129,25 +129,19 @@ export default function FotosPage() {
         setError('Erro ao fazer upload: ' + uploadError.message);
         setUploadingTypes((prev) => {
           const next = new Set(prev);
-          next.delete(tipo);
+          next.delete(posicao);
           return next;
         });
         return;
       }
 
-      const { data: publicUrlData } = supabaseClient
-        .storage
-        .from('evolucao-fotos')
-        .getPublicUrl(fileName);
-
-      const urlFoto = publicUrlData.publicUrl;
-
+      // Salvar apenas o nome do arquivo (path relativo), não a URL completa
       const { error: dbError } = await supabaseClient
         .from('fotos_evolucao')
         .insert({
           aluno_id: userId,
-          tipo,
-          url_foto: urlFoto,
+          posicao,
+          url_foto: fileName,  // Salvar apenas o nome do arquivo
           data_upload: new Date().toISOString(),
         });
 
@@ -155,13 +149,13 @@ export default function FotosPage() {
         setError('Erro ao salvar foto: ' + dbError.message);
         setUploadingTypes((prev) => {
           const next = new Set(prev);
-          next.delete(tipo);
+          next.delete(posicao);
           return next;
         });
         return;
       }
 
-      setSuccess(`Foto de ${tipo} enviada com sucesso!`);
+      setSuccess(`Foto de ${posicao} enviada com sucesso!`);
 
       const { data: novasFotosRaw } = await supabaseClient
         .from('fotos_evolucao')
@@ -172,12 +166,10 @@ export default function FotosPage() {
       if (novasFotosRaw) {
         // Também assinar as novas fotos recém-carregadas
         const novasFotos = await Promise.all(novasFotosRaw.map(async (foto: any) => {
-          const pathParts = foto.url_foto.split('/evolucao-fotos/');
-          const filePath = pathParts.length > 1 ? pathParts[1] : foto.url_foto;
-          
+          // url_foto agora contém apenas o fileName
           const { data: signedData } = await supabaseClient.storage
             .from('evolucao-fotos')
-            .createSignedUrl(filePath, 3600);
+            .createSignedUrl(foto.url_foto, 3600);
             
           return {
             ...foto,
@@ -196,9 +188,50 @@ export default function FotosPage() {
     } finally {
       setUploadingTypes((prev) => {
         const next = new Set(prev);
-        next.delete(tipo);
+        next.delete(posicao);
         return next;
       });
+    }
+  };
+
+  const handleDeletePhoto = async (foto: Foto) => {
+    if (!userId) return;
+    
+    setDeletingPhotoId(foto.id);
+    try {
+      // Deletar o arquivo do storage
+      const { error: storageError } = await supabaseClient.storage
+        .from('evolucao-fotos')
+        .remove([foto.url_foto]);
+
+      if (storageError) {
+        console.error('Erro ao deletar arquivo do storage:', storageError);
+        // Continuar mesmo com erro no storage, pois o arquivo pode não existir
+      }
+
+      // Deletar registro do banco
+      const { error: dbError } = await supabaseClient
+        .from('fotos_evolucao')
+        .delete()
+        .eq('id', foto.id);
+
+      if (dbError) {
+        setError('Erro ao deletar foto: ' + dbError.message);
+        setDeletingPhotoId(null);
+        setPhotoToDelete(null);
+        return;
+      }
+
+      // Atualizar lista de fotos
+      setFotos(fotos.filter(f => f.id !== foto.id));
+      setSuccess('Foto deletada com sucesso!');
+      setPhotoToDelete(null);
+      
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Erro ao processar exclusão');
+    } finally {
+      setDeletingPhotoId(null);
     }
   };
 
@@ -236,7 +269,7 @@ export default function FotosPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 gap-4">
         <Loader2 className="w-12 h-12 text-brand-purple animate-spin" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregando galeria...</p>
+        <p className="text-[10px] text-slate-400 uppercase tracking-widest">Carregando galeria...</p>
       </div>
     );
   }
@@ -248,10 +281,10 @@ export default function FotosPage() {
         {/* Header */}
         <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
           <div>
-            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-brand-purple font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
+            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-brand-purple text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
               <ArrowLeft size={12} /> Painel de Controle
             </Link>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+            <h1 className="text-3xl md:text-4xl text-slate-900 tracking-tight mb-2">
               Fotos de <span className="text-brand-purple">Evolução</span>
             </h1>
             <p className="text-slate-500 font-medium text-sm">Acompanhe sua transformação visual através do tempo.</p>
@@ -261,8 +294,8 @@ export default function FotosPage() {
             <div className="bg-white px-5 md:px-8 py-4 md:py-5 rounded-2xl md:rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center gap-3 md:gap-4">
               <div className={`w-3 h-3 rounded-full ${mostrarNotificacao ? 'bg-red-500 animate-pulse shadow-lg shadow-red-500/50' : 'bg-emerald-500'}`}></div>
               <div>
-                <span className="block text-[10px] font-black text-slate-300 uppercase tracking-widest">Status da Avaliação</span>
-                <span className="text-xs md:text-sm font-black text-slate-900">
+                <span className="block text-[10px] text-slate-300 uppercase tracking-widest">Status da Avaliação</span>
+                <span className="text-xs md:text-sm text-slate-900">
                    {mostrarNotificacao ? 'FOTOS ATRASADAS!' : `${diasAteProxima} dias para o próximo registro`}
                 </span>
               </div>
@@ -280,7 +313,7 @@ export default function FotosPage() {
                    <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30">
                      <Camera size={18} />
                    </div>
-                   <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Hora de atualizar!</h3>
+                   <h3 className="text-xl md:text-2xl text-slate-900 tracking-tight">Hora de atualizar!</h3>
                 </div>
                 <p className="text-slate-500 font-medium max-w-2xl text-sm md:text-lg leading-relaxed">
                   Já se passaram mais de {DIAS_NOTIFICACAO} dias desde sua última foto. Registrar sua evolução agora é fundamental para ajustarmos sua estratégia.
@@ -290,7 +323,7 @@ export default function FotosPage() {
                 href={`https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, '')}?text=Olá%20Coach!%20Acabei%20de%20enviar%20minhas%20fotos%20de%20evolução%20atrasadas.`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-10 py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple transition-all active:scale-95 whitespace-nowrap"
+                className="px-10 py-5 bg-slate-900 text-white rounded-2xl text-[11px] uppercase tracking-[0.3em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple transition-all active:scale-95 whitespace-nowrap"
               >
                 Chamar no WhatsApp
               </a>
@@ -300,13 +333,13 @@ export default function FotosPage() {
 
         {/* Status Messages */}
         {error && (
-          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-3xl text-red-600 flex items-center gap-4 text-xs font-bold uppercase tracking-widest shadow-sm">
+          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-3xl text-red-600 flex items-center gap-4 text-xs uppercase tracking-widest shadow-sm">
             <AlertCircle size={20} /> {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-8 p-6 bg-emerald-50 border border-emerald-100 rounded-3xl text-emerald-600 flex items-center gap-4 text-xs font-bold uppercase tracking-widest shadow-sm">
+          <div className="mb-8 p-6 bg-emerald-50 border border-emerald-100 rounded-3xl text-emerald-600 flex items-center gap-4 text-xs uppercase tracking-widest shadow-sm">
             <CheckCircle2 size={20} /> {success}
           </div>
         )}
@@ -321,8 +354,8 @@ export default function FotosPage() {
                   {tipo === 'costas' && <ImageIcon size={32} />}
                </div>
                
-               <h3 className="text-xl font-black text-slate-900 mb-1">{labelTipo[tipo]}</h3>
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Pose Recomendada</p>
+               <h3 className="text-xl text-slate-900 mb-1">{labelTipo[tipo]}</h3>
+               <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em] mb-8">Pose Recomendada</p>
 
                <label className="w-full">
                  <button
@@ -332,7 +365,7 @@ export default function FotosPage() {
                      input?.click();
                    }}
                    disabled={uploadingTypes.has(tipo)}
-                   className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                   className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-slate-900/20 hover:bg-brand-purple transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                  >
                    {uploadingTypes.has(tipo) ? (
                      <Loader2 className="animate-spin" size={18} />
@@ -359,7 +392,7 @@ export default function FotosPage() {
         {/* Gallery Section */}
         {fotosPorData.length > 0 ? (
           <div className="space-y-16">
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+            <h2 className="text-2xl text-slate-900 flex items-center gap-3">
               <div className="w-2 h-8 bg-brand-purple rounded-full"></div>
               Histórico Visual
             </h2>
@@ -373,7 +406,7 @@ export default function FotosPage() {
                      <div className="w-8 h-8 rounded-full bg-white border-2 border-slate-100 flex items-center justify-center text-brand-purple shadow-sm">
                        <Calendar size={14} />
                      </div>
-                     <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{grupo.data}</span>
+                     <span className="text-xs text-slate-400 uppercase tracking-widest">{grupo.data}</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -382,24 +415,37 @@ export default function FotosPage() {
                          <div className="relative aspect-[3/4] overflow-hidden">
                            <img
                              src={foto.url_foto}
-                             alt={`Foto ${labelTipo[foto.tipo]}`}
+                             alt={`Foto ${labelTipo[foto.posicao]}`}
                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 shadow-inner"
                            />
                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
                            
                            <div className="absolute inset-x-0 bottom-0 p-8 flex items-end justify-between">
                               <div>
-                                 <p className="text-[10px] font-black text-brand-purple uppercase tracking-[0.2em] mb-1">{labelTipo[foto.tipo]}</p>
-                                 <p className="text-lg font-black text-white">{grupo.data}</p>
+                                 <p className="text-[10px] text-brand-purple uppercase tracking-[0.2em] mb-1">{labelTipo[foto.posicao]}</p>
+                                 <p className="text-lg text-white">{grupo.data}</p>
                               </div>
-                              <a
-                                href={foto.url_foto}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-slate-900 transition-all duration-300 shadow-xl"
-                              >
-                                <Maximize2 size={20} />
-                              </a>
+                              <div className="flex gap-2">
+                                <a
+                                  href={foto.url_foto}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white hover:text-slate-900 transition-all duration-300 shadow-xl"
+                                >
+                                  <Maximize2 size={20} />
+                                </a>
+                                <button
+                                  onClick={() => setPhotoToDelete(foto)}
+                                  disabled={deletingPhotoId === foto.id}
+                                  className="w-12 h-12 rounded-2xl bg-red-500/10 backdrop-blur-md border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all duration-300 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {deletingPhotoId === foto.id ? (
+                                    <Loader2 size={20} className="animate-spin" />
+                                  ) : (
+                                    <Trash2 size={20} />
+                                  )}
+                                </button>
+                              </div>
                            </div>
                          </div>
                       </div>
@@ -414,11 +460,53 @@ export default function FotosPage() {
              <div className="w-32 h-32 rounded-[40px] bg-slate-50 flex items-center justify-center text-slate-200 mb-8 shadow-inner">
                <ImageIcon size={64} />
              </div>
-             <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Sem registros visuais</h2>
-             <p className="text-slate-500 max-w-sm text-lg font-medium italic">Sua jornada começa com o primeiro clique. Envie suas fotos iniciais acima.</p>
+             <h2 className="text-3xl text-slate-900 mb-4 tracking-tight">Sem registros visuais</h2>
+             <p className="text-slate-500 max-w-sm text-lg font-medium">Sua jornada começa com o primeiro clique. Envie suas fotos iniciais acima.</p>
           </div>
         )}
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {photoToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[40px] p-8 md:p-12 max-w-md w-full shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
+              <Trash2 size={32} className="text-red-500" />
+            </div>
+            
+            <h3 className="text-2xl text-slate-900 mb-2 text-center">Excluir Foto</h3>
+            <p className="text-slate-600 text-center mb-8">
+              Tem certeza que deseja excluir a foto de <span className="font-semibold text-brand-purple">{labelTipo[photoToDelete.posicao]}</span>?
+              <br />
+              <span className="text-sm text-slate-400">Esta ação não pode ser desfeita.</span>
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPhotoToDelete(null)}
+                disabled={deletingPhotoId === photoToDelete.id}
+                className="flex-1 px-6 py-4 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDeletePhoto(photoToDelete)}
+                disabled={deletingPhotoId === photoToDelete.id}
+                className="flex-1 px-6 py-4 bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deletingPhotoId === photoToDelete.id ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  'Excluir Foto'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

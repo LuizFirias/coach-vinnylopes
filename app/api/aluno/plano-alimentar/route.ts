@@ -85,11 +85,11 @@ export async function DELETE(request: NextRequest) {
     if (deleteError) throw deleteError;
 
     // Delete from storage
-    if (plan.url_pdf.includes('plano-alimentar/')) {
-      const pathMatch = plan.url_pdf.match(/plano-alimentar\/(.*)/);
+    if (plan.url_pdf.includes('plano_alimentar/')) {
+      const pathMatch = plan.url_pdf.match(/plano_alimentar\/(.*)/);
       if (pathMatch) {
         await supabaseAdmin.storage
-          .from('plano-alimentar')
+          .from('plano_alimentar')
           .remove([pathMatch[1]]);
       }
     }

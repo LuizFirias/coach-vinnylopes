@@ -194,6 +194,7 @@ export async function POST(req: Request) {
         full_name: null,  // Aluno deve definir na primeira vez (onboarding)
         email: email,
         role: "aluno",
+        coach_id: userId,
         status_pagamento: "pago",
         arquivado: false,
         first_access_completed: false,  // Flag da primeira vez (onboarding)
@@ -218,6 +219,48 @@ export async function POST(req: Request) {
     }
 
     console.log("[INVITE] ✓ Perfil salvo com sucesso.");
+
+    // ===== 6.5. VINCULAR ALUNO AO COACH (coach_alunos) =====
+    console.log("[INVITE] 🔗 Vinculando aluno ao coach em coach_alunos...");
+
+    const { error: linkError } = await adminClient
+      .from("coach_alunos")
+      .upsert({
+        coach_id: userId,
+        aluno_id: newUserId,
+      }, {
+        onConflict: "coach_id,aluno_id",
+        ignoreDuplicates: true,
+      });
+
+    if (linkError) {
+      console.error("[INVITE] ❌❌ ERRO AO VINCULAR COACH-ALUNO:", {
+        message: linkError.message,
+        details: linkError.details,
+        hint: linkError.hint,
+        code: linkError.code,
+        fullError: JSON.stringify(linkError, null, 2)
+      });
+
+      // Best-effort rollback: evita deixar usuário "solto" sem aparecer para o coach
+      try {
+        await adminClient.from("profiles").delete().eq("id", newUserId);
+      } catch (e) {
+        console.warn("[INVITE] ⚠️ Falha ao remover profile no rollback:", e);
+      }
+      try {
+        await adminClient.auth.admin.deleteUser(newUserId);
+      } catch (e) {
+        console.warn("[INVITE] ⚠️ Falha ao remover auth user no rollback:", e);
+      }
+
+      return NextResponse.json({
+        error: "Usuário criado, mas falhou ao vincular ao coach. Verifique a tabela coach_alunos e RLS.",
+        details: linkError.message,
+      }, { status: 400 });
+    }
+
+    console.log("[INVITE] ✓ Vínculo coach_alunos criado/confirmado.");
 
     // ===== 7. ENVIAR E-MAIL DE BOAS-VINDAS (RESEND) =====
     console.log("[INVITE] 📧 Enviando convite via Resend...");

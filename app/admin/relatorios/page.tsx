@@ -11,6 +11,7 @@ import {
   Tooltip, 
   Cell 
 } from 'recharts';
+import DumbbellLoader from"@/app/components/DumbbellLoader";
 
 export default function RelatoriosPage() {
   const [totalAlunos, setTotalAlunos] = useState(0);
@@ -30,28 +31,68 @@ export default function RelatoriosPage() {
       setLoading(true);
       setError(null);
       try {
+        // 1. Buscar ID do coach autenticado
+        const { data: authData } = await supabaseClient.auth.getUser();
+        const coachId = authData?.user?.id;
+
+        if (!coachId) {
+          setError('Sessão inválida');
+          setLoading(false);
+          return;
+        }
+
+        // 2. Buscar IDs dos alunos deste coach
+        const { data: coachAlunosData, error: coachAlunosError } = await supabaseClient
+          .from('coach_alunos')
+          .select('aluno_id')
+          .eq('coach_id', coachId);
+
+        if (coachAlunosError) throw coachAlunosError;
+
+        const alunosIds = (coachAlunosData || []).map(ca => ca.aluno_id);
+
+        if (alunosIds.length === 0) {
+          // Coach não tem alunos, zerar tudo
+          setTotalAlunos(0);
+          setAtivos(0);
+          setInadimplentes(0);
+          setReceitaTotal(0);
+          setAlunosSemValor(0);
+          setReceitaPorPlano({});
+          setAlunosPorPlano({});
+          setReceitaMensal(0);
+          setReceitaMulti(0);
+          setLoading(false);
+          return;
+        }
+
+        // 3. Queries filtradas pelos alunos deste coach
         const { count: totalCount } = await supabaseClient
           .from('profiles')
           .select('id', { count: 'exact' })
-          .eq('role', 'aluno');
+          .eq('role', 'aluno')
+          .in('id', alunosIds);
 
         const { count: ativosCount } = await supabaseClient
           .from('profiles')
           .select('id', { count: 'exact' })
           .eq('role', 'aluno')
-          .eq('status_pagamento', 'pago');
+          .eq('status_pagamento', 'pago')
+          .in('id', alunosIds);
 
         const { count: inadimplenteCount } = await supabaseClient
           .from('profiles')
           .select('id', { count: 'exact' })
           .eq('role', 'aluno')
-          .neq('status_pagamento', 'pago');
+          .neq('status_pagamento', 'pago')
+          .in('id', alunosIds);
 
         const { data: valoresData, error: valoresError } = await supabaseClient
           .from('profiles')
           .select('valor_plano, tipo_plano')
           .eq('role', 'aluno')
-          .eq('status_pagamento', 'pago');
+          .eq('status_pagamento', 'pago')
+          .in('id', alunosIds);
 
         if (valoresError) throw valoresError;
 
@@ -108,7 +149,7 @@ export default function RelatoriosPage() {
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 pt-16 md:pt-24">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-[0.2em] uppercase mb-4">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl text-slate-900 tracking-[0.2em] uppercase mb-4">
             RELATÓRIOS
             <span className="block text-brand-purple text-lg tracking-[0.3em] mt-2">Financeiro & Performance</span>
           </h1>
@@ -122,30 +163,30 @@ export default function RelatoriosPage() {
 
         {loading ? (
           <div className="flex items-center justify-center p-12 md:p-20 bg-white rounded-2xl shadow-xl shadow-slate-200/50">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-purple"></div>
+            <DumbbellLoader />
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
               <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 flex flex-col items-center text-center">
-                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-2">Total Alunos</p>
-                <p className="text-slate-900 text-4xl md:text-5xl font-black">{totalAlunos}</p>
+                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] mb-2">Total Alunos</p>
+                <p className="text-slate-900 text-4xl md:text-5xl">{totalAlunos}</p>
               </div>
               <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 flex flex-col items-center text-center hover:scale-[1.02] transition-transform">
-                <p className="text-green-500 text-[10px] uppercase tracking-[0.2em] font-black mb-2">Alunos Pagos</p>
-                <p className="text-green-600 text-4xl md:text-5xl font-black">{ativos}</p>
+                <p className="text-green-500 text-[10px] uppercase tracking-[0.2em] mb-2">Alunos Pagos</p>
+                <p className="text-green-600 text-4xl md:text-5xl">{ativos}</p>
               </div>
               <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 flex flex-col items-center text-center hover:scale-[1.02] transition-transform">
-                <p className="text-red-500 text-[10px] uppercase tracking-[0.2em] font-black mb-2">Pendentes</p>
-                <p className="text-red-600 text-4xl md:text-5xl font-black">{inadimplentes}</p>
+                <p className="text-red-500 text-[10px] uppercase tracking-[0.2em] mb-2">Pendentes</p>
+                <p className="text-red-600 text-4xl md:text-5xl">{inadimplentes}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
               <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-purple/5 rounded-bl-[100px] transition-all group-hover:scale-110"></div>
-                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-3 md:mb-4">Receita Total Bruta</p>
-                <p className="text-brand-purple text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter">
+                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] mb-3 md:mb-4">Receita Total Bruta</p>
+                <p className="text-brand-purple text-4xl md:text-5xl lg:text-6xl tracking-tighter">
                   {receitaTotal !== null
                     ? receitaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                     : '—'}
@@ -158,15 +199,15 @@ export default function RelatoriosPage() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-slate-400 text-[10px] uppercase tracking-wider font-bold mt-4 md:mt-6 flex items-center gap-2">
+                  <p className="text-slate-400 text-[10px] uppercase tracking-wider mt-4 md:mt-6 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    Baseado em status "Pago"
+                    Baseado em status"Pago"
                   </p>
                 )}
               </div>
 
               <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50">
-                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-4 md:mb-6">Distribuição por Plano</p>
+                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] mb-4 md:mb-6">Distribuição por Plano</p>
                 <div className="space-y-4">
                   {[
                     { label: 'Mensal', count: alunosPorPlano.mensal || 0, color: 'bg-brand-purple' },
@@ -176,9 +217,9 @@ export default function RelatoriosPage() {
                     <div key={item.label} className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl hover:bg-slate-100 transition-colors">
                       <div className="flex items-center gap-4">
                         <span className={`w-3 h-3 rounded-full ${item.color} shadow-sm`}></span>
-                        <span className="font-black text-slate-700 text-xs uppercase tracking-widest">{item.label}</span>
+                        <span className="text-slate-700 text-xs uppercase tracking-widest">{item.label}</span>
                       </div>
-                      <span className="font-black text-slate-900 text-lg">{item.count} <span className="text-[10px] text-slate-400 uppercase font-bold ml-1">UN</span></span>
+                      <span className="text-slate-900 text-lg">{item.count} <span className="text-[10px] text-slate-400 uppercase ml-1">UN</span></span>
                     </div>
                   ))}
                 </div>
@@ -188,7 +229,7 @@ export default function RelatoriosPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:gap-8">
               {/* Gráfico de Receita */}
               <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 h-[350px] md:h-[450px] flex flex-col">
-                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-6 md:mb-10">Faturamento Realizado (R$)</p>
+                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] mb-6 md:mb-10">Faturamento Realizado (R$)</p>
                 <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -218,7 +259,7 @@ export default function RelatoriosPage() {
 
               {/* Gráfico de Alunos */}
               <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 h-[350px] md:h-[450px] flex flex-col">
-                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-6 md:mb-10">Adesão por Categoria</p>
+                <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] mb-6 md:mb-10">Adesão por Categoria</p>
                 <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -233,7 +274,7 @@ export default function RelatoriosPage() {
                           boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
                           padding: '16px'
                         }}
-                        labelClassName="font-black text-slate-900 border-b border-slate-100 mb-2 pb-2 block uppercase tracking-widest text-[10px]"
+                        labelClassName="text-slate-900 border-b border-slate-100 mb-2 pb-2 block uppercase tracking-widest text-[10px]"
                         itemStyle={{ color: '#7C3AED', fontWeight: 'bold' }}
                       />
                       <Bar dataKey="alunos" name="Alunos" fill="#7C3AED" radius={[12, 12, 12, 12]} barSize={40} />
@@ -244,35 +285,35 @@ export default function RelatoriosPage() {
             </div>
 
             <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50">
-              <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black mb-6 md:mb-8 text-center md:text-left">Resumo Financeiro Estratégico</p>
+              <p className="text-slate-400 text-[10px] uppercase tracking-[0.2em] mb-6 md:mb-8 text-center md:text-left">Resumo Financeiro Estratégico</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
                 <div className="space-y-6">
-                  <p className="text-[10px] text-brand-purple font-black uppercase tracking-[0.3em] pl-2 border-l-4 border-brand-purple">Composição de Carteira</p>
+                  <p className="text-[10px] text-brand-purple uppercase tracking-[0.3em] pl-2 border-l-4 border-brand-purple">Composição de Carteira</p>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-4 bg-slate-50 rounded-3xl">
-                      <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Planos Mensais</span>
-                      <span className="text-slate-900 font-black text-lg">{(receitaPorPlano.mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span className="text-slate-500 text-xs uppercase tracking-wider">Planos Mensais</span>
+                      <span className="text-slate-900 text-lg">{(receitaPorPlano.mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                     <div className="flex justify-between items-center p-4 bg-slate-50 rounded-3xl">
-                      <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Planos Trimestrais</span>
-                      <span className="text-slate-900 font-black text-lg">{(receitaPorPlano.trimestral || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span className="text-slate-500 text-xs uppercase tracking-wider">Planos Trimestrais</span>
+                      <span className="text-slate-900 text-lg">{(receitaPorPlano.trimestral || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                     <div className="flex justify-between items-center p-4 bg-slate-50 rounded-3xl">
-                      <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Planos Semestrais</span>
-                      <span className="text-slate-900 font-black text-lg">{(receitaPorPlano.semestral || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span className="text-slate-500 text-xs uppercase tracking-wider">Planos Semestrais</span>
+                      <span className="text-slate-900 text-lg">{(receitaPorPlano.semestral || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-6">
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] pl-2 border-l-4 border-slate-200">Previsão de Fluxo</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-[0.3em] pl-2 border-l-4 border-slate-200">Previsão de Fluxo</p>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-4 bg-brand-purple/5 rounded-3xl border border-brand-purple/10">
-                      <span className="text-brand-purple text-xs font-bold uppercase tracking-wider">Recorrência Mensal</span>
-                      <span className="text-brand-purple font-black text-xl">{(receitaMensal ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span className="text-brand-purple text-xs uppercase tracking-wider">Recorrência Mensal</span>
+                      <span className="text-brand-purple text-xl">{(receitaMensal ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                     <div className="flex justify-between items-center p-4 bg-slate-50 rounded-3xl">
-                      <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Receita LTV (Planos Longos)</span>
-                      <span className="text-slate-900 font-black text-lg">{(receitaMulti ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span className="text-slate-500 text-xs uppercase tracking-wider">Receita LTV (Planos Longos)</span>
+                      <span className="text-slate-900 text-lg">{(receitaMulti ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                   </div>
                 </div>

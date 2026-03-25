@@ -27,11 +27,38 @@ export default function AdminRankingPage() {
       setLoading(true);
       setError(null);
       
+      // 1. Buscar ID do coach autenticado
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const coachId = authData?.user?.id;
+
+      if (!coachId) {
+        setError('Sessão inválida');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Buscar IDs dos alunos deste coach
+      const { data: coachAlunosData, error: coachAlunosError } = await supabaseClient
+        .from('coach_alunos')
+        .select('aluno_id')
+        .eq('coach_id', coachId);
+
+      if (coachAlunosError) throw coachAlunosError;
+
+      const alunosIds = (coachAlunosData || []).map(ca => ca.aluno_id);
+
+      if (alunosIds.length === 0) {
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Buscar apenas os alunos deste coach
       const { data, error: fetchError } = await supabaseClient
         .from('profiles')
         .select('id, coaching_reference, email, ultimo_checkin, avatar_url, role')
         .eq('role', 'aluno')
-        // Order by latest check-in first. If multiple have the same, secondary sort can be anything.
+        .in('id', alunosIds)
         .order('ultimo_checkin', { ascending: false, nullsFirst: false });
 
       if (fetchError) throw fetchError;
@@ -49,7 +76,7 @@ export default function AdminRankingPage() {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+          <h1 className="text-3xl md:text-4xl text-slate-900 tracking-tight mb-2">
             Ranking de <span className="text-brand-purple">Frequência</span>
           </h1>
           <p className="text-slate-500 font-medium">Classificação baseada nos check-ins mais recentes dos atletas</p>
@@ -65,14 +92,14 @@ export default function AdminRankingPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 md:py-32 gap-4 text-slate-400">
             <Loader2 size={40} className="animate-spin text-brand-purple" />
-            <p className="text-xs font-black uppercase tracking-[0.3em]">Calculando posições...</p>
+            <p className="text-xs uppercase tracking-[0.3em]">Calculando posições...</p>
           </div>
         ) : profiles.length === 0 ? (
           <div className="bg-white rounded-2xl p-16 md:p-24 border border-slate-100 flex flex-col items-center justify-center text-center">
             <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center text-slate-200 mb-6">
               <Star size={40} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Nenhum atleta listado</h2>
+            <h2 className="text-2xl text-slate-900 mb-2">Nenhum atleta listado</h2>
             <p className="text-slate-500 max-w-sm">O ranking será preenchido conforme os alunos realizarem check-ins nos treinos.</p>
           </div>
         ) : (
@@ -80,9 +107,9 @@ export default function AdminRankingPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">POSIÇÃO</th>
-                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">ALUNO</th>
-                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">ÚTIMA ATIVIDADE</th>
+                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] text-slate-400 uppercase tracking-widest">POSIÇÃO</th>
+                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] text-slate-400 uppercase tracking-widest">ALUNO</th>
+                  <th className="px-4 md:px-8 py-4 md:py-6 text-[10px] text-slate-400 uppercase tracking-widest">ÚTIMA ATIVIDADE</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -97,7 +124,7 @@ export default function AdminRankingPage() {
                           {index === 0 && <Trophy className="text-yellow-500" size={20} />}
                           {index === 1 && <Medal className="text-slate-400" size={20} />}
                           {index === 2 && <Medal className="text-amber-600" size={20} />}
-                          <span className={`text-lg font-black ${isTop3 ? 'text-slate-900' : 'text-slate-400'}`}>
+                          <span className={`text-lg ${isTop3 ? 'text-slate-900' : 'text-slate-400'}`}>
                             {index + 1}º
                           </span>
                         </div>
@@ -114,10 +141,10 @@ export default function AdminRankingPage() {
                             )}
                           </div>
                           <div>
-                            <span className={`block font-bold truncate max-w-50 ${isTop3 ? 'text-slate-900 text-base' : 'text-slate-600 text-sm'}`}>
+                            <span className={`block truncate max-w-50 ${isTop3 ? 'text-slate-900 text-base' : 'text-slate-600 text-sm'}`}>
                                 {displayName}
                             </span>
-                            {isTop3 && <span className="text-[9px] font-black text-brand-purple uppercase tracking-tight">Elite Performance</span>}
+                            {isTop3 && <span className="text-[9px] text-brand-purple uppercase tracking-tight"></span>}
                           </div>
                         </div>
                       </td>

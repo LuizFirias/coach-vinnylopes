@@ -23,7 +23,8 @@ import {
   AlertCircle,
   Dumbbell,
   Edit2,
-  Apple
+  Apple,
+  Trophy
 } from "lucide-react";
 
 interface Profile {
@@ -43,7 +44,7 @@ interface Profile {
 
 interface Foto {
   id: string;
-  tipo: string;
+  posicao: string;
   url_foto: string;
   data_upload: string;
 }
@@ -81,6 +82,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [changingCoach, setChangingCoach] = useState(false);
   const [currentCoachId, setCurrentCoachId] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [ultimaAtividade, setUltimaAtividade] = useState<string | null>(null);
+  const [pontosTotais, setPontosTotais] = useState<number>(0);
 
   useEffect(() => {
     load();
@@ -140,20 +143,30 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         setEditDataInicio(prof.data_inicio ? new Date(prof.data_inicio).toISOString().slice(0, 10) : "");
       }
 
-      const { data: fotosData } = await supabaseClient
+      const { data: fotosData, error: fotosError } = await supabaseClient
         .from("fotos_evolucao")
-        .select("id, tipo, url_foto, data_upload")
+        .select("id, posicao, url_foto, data_upload")
         .eq("aluno_id", id)
         .order("data_upload", { ascending: false })
         .limit(10);
       
+      if (fotosError) {
+        console.error("Erro ao buscar fotos:", fotosError);
+      }
+      
+      console.log("Fotos encontradas:", fotosData?.length || 0, fotosData);
+      
       // Assinar URLs das fotos para o coach
       const fotosAssinadas = await Promise.all((fotosData || []).map(async (f: any) => {
-        const pathParts = f.url_foto.split('/evolucao-fotos/');
-        const filePath = pathParts.length > 1 ? pathParts[1] : f.url_foto;
-        const { data: signedData } = await supabaseClient.storage.from('evolucao-fotos').createSignedUrl(filePath, 3600);
+        // url_foto agora contém apenas o fileName, não a URL completa
+        console.log("Tentando assinar foto:", f.url_foto);
+        const { data: signedData, error: signError } = await supabaseClient.storage.from('evolucao-fotos').createSignedUrl(f.url_foto, 3600);
+        if (signError) {
+          console.error("Erro ao assinar URL:", signError, "para arquivo:", f.url_foto);
+        }
         return { ...f, url_foto: signedData?.signedUrl || f.url_foto };
       }));
+      console.log("Fotos assinadas:", fotosAssinadas.length, fotosAssinadas);
       setFotos(fotosAssinadas);
 
       const { data: treinosData } = await supabaseClient
@@ -182,7 +195,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       setFichas((fichasData || []) as FichaTreino[]);
 
       const { data: medidasData } = await supabaseClient
-        .from("medidas")
+        .from("medidas_aluno")
         .select("id, peso, data_medicao")
         .eq("aluno_id", id)
         .order("data_medicao", { ascending: true });
@@ -197,10 +210,21 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       
       // Assinar URLs dos PDFs de nutrição
       const planosAssinados = await Promise.all((planosData || []).map(async (p: any) => {
-        const pathParts = p.pdf_url.split('/plano-alimentar/');
-        const filePath = pathParts.length > 1 ? pathParts[1] : p.pdf_url;
-        const { data: signedData } = await supabaseClient.storage.from('plano-alimentar').createSignedUrl(filePath, 3600);
-        return { ...p, pdf_url: signedData?.signedUrl || p.pdf_url };
+        // Support both url_pdf (new) and pdf_url (legacy) field names
+        const pdfPath = p.url_pdf || p.pdf_url;
+        if (!pdfPath) {
+          console.error('PDF path not found for plan:', p.id);
+          return p;
+        }
+        
+        const pathParts = pdfPath.split('/plano_alimentar/');
+        const filePath = pathParts.length > 1 ? pathParts[1] : pdfPath;
+        const { data: signedData } = await supabaseClient.storage.from('plano_alimentar').createSignedUrl(filePath, 3600);
+        return { 
+          ...p, 
+          pdf_url: signedData?.signedUrl || pdfPath,
+          original_path: pdfPath // Keep original path for deletion
+        };
       }));
       setPlanosAlimentares(planosAssinados);
 
@@ -219,6 +243,48 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         setCurrentCoachId(prof.coach_id);
         setSelectedNewCoach(prof.coach_id);
       }
+
+      // Buscar última atividade (fichas concluídas + check-ins manuais)
+      const { data: ultimaFicha } = await supabaseClient
+        .from('historico_treinos')
+        .select('data_conclusao')
+        .eq('aluno_id', id)
+        .order('data_conclusao', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const { data: ultimoCheckin } = await supabaseClient
+        .from('treinos_manuais')
+        .select('data_treino')
+        .eq('aluno_id', id)
+        .eq('concluido', true)
+        .order('data_treino', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Determinar qual é mais recente
+      let dataUltimaAtividade: string | null = null;
+      if (ultimaFicha && ultimoCheckin) {
+        const dataFicha = new Date(ultimaFicha.data_conclusao);
+        const dataCheckin = new Date(ultimoCheckin.data_treino);
+        dataUltimaAtividade = dataFicha > dataCheckin 
+          ? ultimaFicha.data_conclusao 
+          : ultimoCheckin.data_treino;
+      } else if (ultimaFicha) {
+        dataUltimaAtividade = ultimaFicha.data_conclusao;
+      } else if (ultimoCheckin) {
+        dataUltimaAtividade = ultimoCheckin.data_treino;
+      }
+      setUltimaAtividade(dataUltimaAtividade);
+
+      // Buscar pontos totais do aluno
+      const { data: pontuacaoData } = await supabaseClient
+        .from('pontuacao_alunos')
+        .select('total_pontos')
+        .eq('aluno_id', id)
+        .maybeSingle();
+      
+      setPontosTotais(pontuacaoData?.total_pontos || 0);
     } catch (err: any) {
       setError(err?.message || String(err));
     }
@@ -371,11 +437,16 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
     try {
       // 1. Deletar do Storage
-      const pathParts = pdfUrl.split('/plano-alimentar/');
+      if (!pdfUrl) {
+        console.error('PDF URL is undefined');
+        throw new Error('URL do PDF não encontrada');
+      }
+      
+      const pathParts = pdfUrl.split('/plano_alimentar/');
       const filePath = pathParts.length > 1 ? pathParts[1] : pdfUrl;
       
       const { error: storageError } = await supabaseClient.storage
-        .from("plano-alimentar")
+        .from("plano_alimentar")
         .remove([filePath]);
       
       if (storageError) console.error("Erro ao remover do storage:", storageError);
@@ -402,6 +473,18 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     setError(null);
     
     try {
+      const dataInicio = new Date(editDataInicio);
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      dataInicio.setHours(0, 0, 0, 0);
+      
+      // Validação de segurança: impedir datas passadas (proteção backend)
+      if (dataInicio < hoje) {
+        setError("⚠️ A data de início não pode ser anterior à data atual");
+        setSavingProfile(false);
+        return;
+      }
+      
       let dataExpiracao = new Date(editDataInicio);
       switch (editPlano) {
         case "mensal":
@@ -425,7 +508,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           status_pagamento: editStatus,
           tipo_plano: editPlano,
           valor_plano: Number.isFinite(valorPlanoNumber) ? valorPlanoNumber : null,
-          data_inicio: new Date(editDataInicio).toISOString(),
+          data_inicio: dataInicio.toISOString(),
           data_expiracao: dataExpiracao.toISOString(),
         })
         .eq("id", id);
@@ -455,7 +538,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <ArrowLeft size={20} className="text-zinc-500 group-hover:text-white group-hover:-translate-x-1 transition-all" />
               </button>
               <div>
-                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight italic uppercase">Dossiê do <span className="text-iron-red">Atleta</span></h1>
+                <h1 className="text-2xl md:text-3xl  text-white tracking-tight  uppercase">Dossiê do <span className="text-iron-red">Atleta</span></h1>
                 <p className="text-zinc-500 text-sm font-medium">Controle completo de performance e adesão.</p>
               </div>
           </div>
@@ -463,7 +546,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <div className="flex items-center gap-3 md:gap-4">
             <button
               onClick={() => setEditingProfile(!editingProfile)}
-              className="px-4 md:px-6 py-3 md:py-4 bg-iron-gray text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-white/5 border border-white/5 transition-all shadow-xl flex items-center gap-3"
+              className="px-4 md:px-6 py-3 md:py-4 bg-iron-gray text-white text-[10px]  uppercase tracking-[0.2em] rounded-2xl hover:bg-white/5 border border-white/5 transition-all shadow-xl flex items-center gap-3"
             >
               <Settings className={`w-4 h-4 ${editingProfile && 'rotate-90'} transition-transform`} />
               Configurações
@@ -471,7 +554,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <button 
               onClick={handleDelete}
               disabled={deleting}
-              className="px-4 md:px-6 py-3 md:py-4 bg-iron-red/10 text-iron-red text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl border border-iron-red/20 hover:bg-iron-red hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-neon-red"
+              className="px-4 md:px-6 py-3 md:py-4 bg-iron-red/10 text-iron-red text-[10px]  uppercase tracking-[0.2em] rounded-2xl border border-iron-red/20 hover:bg-iron-red hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-neon-red"
             >
               <Trash2 size={16} />
               {deleting ? "Arquivando..." : "Desativar"}
@@ -480,7 +563,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {error && (
-          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-3xl text-red-600 text-xs font-bold flex items-center gap-4 animate-in fade-in">
+          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-3xl text-red-600 text-xs  flex items-center gap-4 animate-in fade-in">
             <AlertCircle size={18} />
             {error}
           </div>
@@ -500,10 +583,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     <div className="absolute inset-0 rounded-[35px] border border-iron-gold/20 group-hover/avatar:scale-110 transition-transform opacity-0 group-hover/avatar:opacity-100"></div>
                   </div>
                   <div>
-                    <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter uppercase italic leading-none mb-4">
+                    <h2 className="text-3xl md:text-5xl  text-white tracking-tighter uppercase  leading-none mb-3">
                        {profile.coaching_reference || 'Protocolo Sem Nome'}
                     </h2>
-                    <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] ${
+                    <p className="text-xs text-zinc-400 mb-4">{profile.email || 'Email não cadastrado'}</p>
+                    <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full text-[10px]  uppercase tracking-[0.2em] ${
                       profile.status_pagamento === 'pago' 
                         ? 'bg-iron-gold/10 text-iron-gold border border-iron-gold/20' 
                         : 'bg-red-500/10 text-red-500 border border-red-500/20'
@@ -514,70 +598,75 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 md:gap-y-10 gap-x-12 md:gap-x-16">
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4 text-zinc-500">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
-                        <CreditCard size={18} className="text-iron-gold" />
+                <div className="grid grid-cols-2 gap-4 md:gap-6">
+                    <div className="flex items-center gap-3 text-zinc-500">
+                      <div className="w-8 h-8 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
+                        <CreditCard size={16} className="text-iron-gold" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Categoria do Plano</span>
-                        <span className="text-base font-bold text-white uppercase italic tracking-tight">{profile.tipo_plano || 'Nenhum'}</span>
+                        <span className="text-[9px]  uppercase tracking-wider text-zinc-600">Plano</span>
+                        <span className="text-sm  text-white uppercase  tracking-tight">{profile.tipo_plano || 'Nenhum'}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-zinc-500">
-                       <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
-                        <DollarSign size={18} className="text-iron-gold" />
+                    
+                    <div className="flex items-center gap-3 text-zinc-500">
+                       <div className="w-8 h-8 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
+                        <DollarSign size={16} className="text-iron-gold" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Ticket de Investimento</span>
-                        <span className="text-base font-bold text-white tracking-tight">
+                        <span className="text-[9px]  uppercase tracking-wider text-zinc-600">Ticket</span>
+                        <span className="text-sm  text-white tracking-tight">
                           {profile.valor_plano?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || '—'}
                         </span>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4 text-zinc-500">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
-                        <Calendar size={18} className="text-iron-gold" />
+                    <div className="flex items-center gap-3 text-zinc-500">
+                      <div className="w-8 h-8 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
+                        <Calendar size={16} className="text-iron-gold" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Janela de Renovação</span>
-                        <span className="text-base font-bold text-white tracking-tight">
+                        <span className="text-[9px]  uppercase tracking-wider text-zinc-600">Renovação</span>
+                        <span className="text-sm  text-white tracking-tight">
                           {profile.data_expiracao ? new Date(profile.data_expiracao).toLocaleDateString('pt-BR') : 'A definir'}
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-zinc-500">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
-                        <Clock size={18} className="text-iron-gold" />
+                    
+                    <div className="flex items-center gap-3 text-zinc-500">
+                      <div className="w-8 h-8 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
+                        <Clock size={16} className="text-iron-gold" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Última Atividade</span>
-                        <span className="text-base font-bold text-white tracking-tight uppercase italic">
-                          {profile.ultimo_checkin ? new Date(profile.ultimo_checkin).toLocaleDateString('pt-BR') : 'Offline'}
+                        <span className="text-[9px]  uppercase tracking-wider text-zinc-600">Última Atividade</span>
+                        <span className="text-sm  text-white tracking-tight uppercase ">
+                          {ultimaAtividade ? new Date(ultimaAtividade).toLocaleDateString('pt-BR') : 'Nenhuma'}
                         </span>
                       </div>
                     </div>
-                  </div>
+                    
+                    <div className="flex items-center gap-3 text-zinc-500">
+                      <div className="w-8 h-8 rounded-xl bg-zinc-900 flex items-center justify-center border border-white/5">
+                        <Trophy size={16} className="text-iron-gold" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px]  uppercase tracking-wider text-zinc-600">Pontos</span>
+                        <span className="text-sm  text-iron-gold tracking-tight font-bold">
+                          {pontosTotais} pts
+                        </span>
+                      </div>
+                    </div>
                 </div>
               </div>
 
               {/* Action Side */}
-              <div className="lg:w-80 flex flex-col gap-6">
-                  <div className="p-6 bg-zinc-900/50 rounded-3xl border border-white/5 group-hover:border-iron-gold/20 transition-all">
-                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-3">Vínculo Direto</p>
-                    <p className="text-xs font-bold text-zinc-400 truncate tracking-tight">{profile.email || 'Não informado'}</p>
-                  </div>
-
+              <div className="lg:w-64 flex flex-col gap-6">
                   <button
                     onClick={() => setEditingProfile(!editingProfile)}
-                    className="w-full py-5 bg-iron-gold text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:scale-105 transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(212,175,55,0.1)]"
+                    className="w-full py-5 bg-iron-gold text-black text-[10px]  uppercase tracking-[0.3em] rounded-2xl hover:scale-105 transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(212,175,55,0.1)]"
                   >
                     <Settings size={18} className={`${editingProfile && 'rotate-90'} transition-transform`} />
-                    {editingProfile ? 'Cancelar Gestão' : 'Gerenciar Protocolo'}
+                    {editingProfile ? 'Cancelar Gestão' : 'Gerenciar Plano'}
                   </button>
               </div>
             </div>
@@ -588,11 +677,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <form onSubmit={handleSaveProfile} className="space-y-8 md:space-y-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Status Financeiro</label>
+                      <label className="text-[10px]  uppercase tracking-widest text-zinc-500 ml-1">Status Financeiro</label>
                       <select
                         value={editStatus}
                         onChange={(e) => setEditStatus(e.target.value)}
-                        className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white font-bold text-sm focus:ring-2 focus:ring-iron-gold transition-all appearance-none cursor-pointer"
+                        className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white  text-sm focus:ring-2 focus:ring-iron-gold transition-all appearance-none cursor-pointer"
                       >
                         <option value="pago">SITUAÇÃO: PAGO</option>
                         <option value="pendente">SITUAÇÃO: PENDENTE</option>
@@ -601,11 +690,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Periodicidade</label>
+                      <label className="text-[10px]  uppercase tracking-widest text-zinc-500 ml-1">Periodicidade</label>
                       <select
                         value={editPlano}
                         onChange={(e) => setEditPlano(e.target.value)}
-                        className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white font-bold text-sm focus:ring-2 focus:ring-iron-gold transition-all appearance-none cursor-pointer"
+                        className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white  text-sm focus:ring-2 focus:ring-iron-gold transition-all appearance-none cursor-pointer"
                       >
                         <option value="mensal">PLANO: MENSAL (30D)</option>
                         <option value="trimestral">PLANO: TRIMESTRAL (90D)</option>
@@ -614,33 +703,35 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Valor Contratado (R$)</label>
+                      <label className="text-[10px]  uppercase tracking-widest text-zinc-500 ml-1">Valor Contratado (R$)</label>
                       <input
                         type="text"
                         inputMode="decimal"
                         value={editValorPlano}
                         onChange={(e) => setEditValorPlano(e.target.value)}
                         placeholder="Ex: 149,90"
-                        className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white font-bold text-sm focus:ring-2 focus:ring-iron-gold transition-all"
+                        className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white  text-sm focus:ring-2 focus:ring-iron-gold transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-3 max-w-md">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Data de Início do Novo Ciclo</label>
+                    <label className="text-[10px]  uppercase tracking-widest text-zinc-500 ml-1">Data de Início do Novo Ciclo</label>
                     <input
                       type="date"
                       value={editDataInicio}
                       onChange={(e) => setEditDataInicio(e.target.value)}
-                      className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-iron-gold font-black text-sm focus:ring-2 focus:ring-iron-gold transition-all"
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-iron-gold  text-sm focus:ring-2 focus:ring-iron-gold transition-all"
                       required
                     />
+                    <p className="text-[9px] text-zinc-600 ml-1">⚠️ Apenas datas a partir de hoje para evitar planos já vencidos</p>
                   </div>
 
                   <button
                     type="submit"
                     disabled={savingProfile}
-                    className="px-12 py-5 bg-iron-gold text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-xl hover:scale-105 transition-all disabled:opacity-50"
+                    className="px-12 py-5 bg-iron-gold text-black text-[10px]  uppercase tracking-[0.3em] rounded-2xl shadow-xl hover:scale-105 transition-all disabled:opacity-50"
                   >
                     {savingProfile ? 'Sincronizando...' : 'Confirmar Atualização'}
                   </button>
@@ -651,14 +742,14 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         )}
 
         {/* Orientações do Coach */}
-        <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl mb-8 md:mb-12 relative overflow-hidden group">
-          <div className="flex items-center gap-4 mb-6">
+        <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl mb-4 md:mb-6 relative overflow-hidden group">
+          <div className="flex items-center gap-4 mb-4">
             <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
               <FileText size={20} />
             </div>
             <div>
-              <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Notas do Especialista</h3>
-              <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Orientações Internas (Privado)</p>
+              <h3 className="text-lg md:text-xl  text-white tracking-tight uppercase ">Notas do Especialista</h3>
+              <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">Orientações Internas (Privado)</p>
             </div>
           </div>
           
@@ -682,30 +773,30 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             placeholder="Digite aqui observações estratégicas, ajustes de dieta ou feedback de evolução que apenas você poderá ver..."
             className="w-full h-32 bg-zinc-900/50 border border-white/10 rounded-2xl p-6 text-zinc-300 text-sm focus:outline-none focus:border-iron-gold/40 transition-all resize-none antialiased"
           />
-          <p className="mt-3 text-[9px] text-zinc-600 font-bold uppercase tracking-widest text-right">Auto-save ao sair do campo</p>
+          <p className="mt-3 text-[9px] text-zinc-600  uppercase tracking-widest text-right">Auto-save ao sair do campo</p>
         </div>
 
         {/* Seção de Mudança de Coach - Apenas Super Admin */}
         {isSuperAdmin && (
-        <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl mb-8 md:mb-12 relative overflow-hidden group">
-          <div className="flex items-center gap-4 mb-8">
+        <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl mb-4 md:mb-6 relative overflow-hidden group">
+          <div className="flex items-center gap-4 mb-4">
             <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
               <User size={20} />
             </div>
             <div>
-              <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Tutor Responsável</h3>
-              <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Transferência de Coach</p>
+              <h3 className="text-lg md:text-xl  text-white tracking-tight uppercase ">Tutor Responsável</h3>
+              <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">Transferência de Coach</p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Atribuir a Novo Coach</label>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-[10px]  uppercase tracking-widest text-zinc-500">Atribuir a Novo Coach</label>
               <select
                 value={selectedNewCoach || ""}
                 onChange={(e) => setSelectedNewCoach(e.target.value || null)}
                 disabled={changingCoach}
-                className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white font-bold text-sm focus:ring-2 focus:ring-iron-gold transition-all appearance-none cursor-pointer disabled:opacity-50"
+                className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-white  text-sm focus:ring-2 focus:ring-iron-gold transition-all appearance-none cursor-pointer disabled:opacity-50"
               >
                 <option value="">Selecione um coach...</option>
                 {coaches.map((coach) => (
@@ -719,7 +810,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <button
               onClick={handleChangeCoach}
               disabled={changingCoach || !selectedNewCoach || selectedNewCoach === currentCoachId}
-              className="w-full py-4 bg-iron-gold text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(212,175,55,0.1)]"
+              className="w-full py-4 bg-iron-gold text-black text-[10px]  uppercase tracking-[0.3em] rounded-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(212,175,55,0.1)]"
             >
               {changingCoach ? 'Transferindo...' : 'Confirmar Transferência'}
             </button>
@@ -727,275 +818,248 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-8 md:mb-12">
-           {/* Upload de Nutrição */}
-          <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl flex flex-col h-full relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
-            
-            <div className="flex items-center gap-4 mb-8 relative z-10">
+        {/* Fichas Digitais */}
+        <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl mb-4 md:mb-6 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-iron-gold/5 rounded-full -ml-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
+          
+          <div className="flex items-center justify-between mb-4 relative z-10">
+            <div className="flex items-center gap-4">
               <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
-                <Apple size={20} />
+                <Dumbbell size={20} />
               </div>
               <div>
-                <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Plano <span className="text-iron-gold">Alimentar</span></h3>
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Uploads de PDF</p>
+                <h3 className="text-lg md:text-xl  text-white tracking-tight uppercase ">Fichas <span className="text-iron-gold">Digitais</span></h3>
+                <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">Treinos Estruturados</p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/admin/treinos/nova-ficha')}
+              className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-iron-gold/10 hover:bg-iron-gold/20 text-iron-gold border border-iron-gold/20 hover:border-iron-gold/40 transition-all flex items-center justify-center shrink-0"
+              title="Criar nova ficha"
+            >
+              <span className="text-2xl leading-none mb-1">+</span>
+            </button>
+          </div>
+
+          <div className="relative z-10">
+            {fichas.length > 0 ? (
+              <div className="space-y-2">
+                <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                  {fichas.map((ficha) => (
+                    <div key={ficha.id} className="flex items-center justify-between p-3 rounded-2xl bg-zinc-900/50 border border-white/5 group/ficha hover:border-iron-gold/30 transition-all">
+                      <div className="flex items-center gap-3 overflow-hidden flex-1">
+                        <div className="w-8 h-8 rounded-xl bg-iron-gold/10 flex items-center justify-center shrink-0">
+                          <Dumbbell size={14} className="text-iron-gold" />
+                        </div>
+                        <div className="overflow-hidden flex-1">
+                          <p className="text-[11px]  text-white uppercase tracking-tight truncate">
+                            {ficha.nome_rotina}
+                          </p>
+                          <p className="text-[9px] text-zinc-500  uppercase tracking-widest mt-1">
+                            {new Date(ficha.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <button
+                          onClick={() => router.push(`/admin/aluno/${id}/ficha/${ficha.id}`)}
+                          className="p-2 bg-iron-gold/10 text-iron-gold rounded-xl hover:bg-iron-gold/20 transition-colors"
+                          title="Editar ficha"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFicha(ficha.id)}
+                          className="p-2 text-zinc-700 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                          title="Desativar ficha"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[9px] text-zinc-600  uppercase tracking-widest text-center mt-4 pt-4 border-t border-white/5">
+                  {fichas.length} Ficha{fichas.length !== 1 ? 's' : ''} Ativa{fichas.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            ) : (
+              <div className="h-32 flex flex-col items-center justify-center text-center text-zinc-600">
+                <Dumbbell size={32} className="text-zinc-800 mb-3 opacity-50" />
+                <p className="text-[10px]  uppercase tracking-widest">Sem Fichas Digitais</p>
+                <p className="text-[9px] text-zinc-700 mt-1">Crie fichas em Gestão de Treinos</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Upload de Treino (Protocolo PDF) */}
+        <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl mb-4 md:mb-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
+          
+          <div className="flex items-center gap-4 mb-4 relative z-10">
+            <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
+              <FileText size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-xl  text-white tracking-tight uppercase ">Protocolo de Treino</h3>
+              <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">Enviar PDF Individual</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleUploadPdf} className="space-y-2 md:space-y-3 relative z-10">
+            <div className="group/input relative">
+              <input 
+                type="file" 
+                accept="application/pdf" 
+                onChange={handlePdfChange} 
+                className="w-full px-4 md:px-6 py-5.5 md:py-6 bg-zinc-900/50 border-2 border-dashed border-white/10 rounded-2xl text-zinc-500 text-xs  text-center file:hidden cursor-pointer hover:bg-black hover:border-iron-gold/30 transition-all"
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-zinc-500 group-hover/input:text-iron-gold transition-colors">
+                <Upload size={18} className="mb-0" />
+                <span className="max-w-[90%] truncate">{pdfFile ? pdfFile.name : 'Selecione o arquivo PDF'}</span>
               </div>
             </div>
 
-            <button
-              onClick={() => setUploadNutritionOpen(true)}
-              className="w-full py-4 md:py-5 bg-iron-gold text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.1)] mb-6 relative z-10"
-            >
-              <Upload size={16} />
-              Adicionar Plano Alimentar
-            </button>
-
-            {/* Lista de Planos Alimentares */}
-            {planosAlimentares.length > 0 && (
-              <div className="space-y-3 relative z-10">
-                <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-4">Planos Ativos</h4>
-                <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-2">
-                  {planosAlimentares.map((p) => (
-                    <div key={p.id} className="flex items-start justify-between p-3 bg-zinc-900/50 rounded-xl border border-white/5 group/item">
-                      <div className="flex-1 overflow-hidden">
-                        <div className="flex items-center gap-3 mb-1">
-                          <Apple size={14} className="text-iron-gold shrink-0" />
-                          <span className="text-[10px] font-bold text-white truncate">{p.nome_arquivo}</span>
-                        </div>
-                        {p.descricao && (
-                          <p className="text-[9px] text-zinc-500 truncate ml-[22px]">{p.descricao}</p>
-                        )}
-                        <p className="text-[8px] text-zinc-600 ml-[22px] mt-1">
-                          {new Date(p.criado_em).toLocaleDateString('pt-BR')}
-                        </p>
+            {/* Lista de Treinos Enviados */}
+            {treinosPdf.length > 0 && (
+              <div className="space-y-3 mb-3">
+                <h4 className="text-[10px]  text-zinc-600 uppercase tracking-widest mb-2">Protocolos Ativos</h4>
+                <div className="max-h-40 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                  {treinosPdf.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-xl border border-white/5 group/item">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <FileText size={14} className="text-iron-gold shrink-0" />
+                        <span className="text-[10px]  text-zinc-400 truncate tracking-tight">{t.nome_arquivo}</span>
                       </div>
-                      <div className="flex items-center gap-2 ml-2 shrink-0">
-                        <a
-                          href={p.pdf_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 text-zinc-500 hover:text-iron-gold transition-colors"
-                        >
-                          <FileText size={12} />
-                        </a>
-                        <button
-                          onClick={() => handleDeleteNutritionPlan(p.id, p.pdf_url)}
-                          className="p-2 text-zinc-700 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
+                      <button 
+                        onClick={() => handleDeleteTreino(t.id, t.url_pdf)}
+                        className="p-2 text-zinc-700 hover:text-red-500 transition-colors shrink-0"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {planosAlimentares.length === 0 && (
-              <div className="flex-1 flex items-center justify-center text-center p-6 relative z-10">
-                <div>
-                  <Apple size={32} className="text-zinc-800 mx-auto mb-3" />
-                  <p className="text-zinc-600 text-[10px] font-black uppercase tracking-widest">Nenhum plano enviado ainda</p>
-                </div>
-              </div>
-            )}
+            <button 
+              type="submit" 
+              disabled={uploading || !pdfFile}
+              className="w-full py-4 md:py-5 bg-iron-gold text-black text-[10px]  uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] transition-all disabled:opacity-30 disabled:scale-100 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.1)]"
+            >
+              {uploading ? 'Processando...' : 'Publicar Protocolo PDF'}
+            </button>
+          </form>
+        </div>
+
+        {/* Upload de Nutrição (Plano Alimentar) */}
+        <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl mb-4 md:mb-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
+          
+          <div className="flex items-center gap-4 mb-4 relative z-10">
+            <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
+              <Apple size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-xl  text-white tracking-tight uppercase ">Plano <span className="text-iron-gold">Alimentar</span></h3>
+              <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">Uploads de PDF</p>
+            </div>
           </div>
 
-           {/* Upload de Treino */}
-          <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl flex flex-col h-full relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
-            
-            <div className="flex items-center gap-4 mb-8 relative z-10">
-              <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
-                <FileText size={20} />
-              </div>
-              <div>
-                <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Protocolo de Treino</h3>
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Enviar PDF Individual</p>
-              </div>
-            </div>
+          <button
+            onClick={() => setUploadNutritionOpen(true)}
+            className="w-full py-4 md:py-5 bg-iron-gold text-black text-[10px]  uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.1)] mb-3 relative z-10"
+          >
+            <Upload size={16} />
+            Adicionar Plano Alimentar
+          </button>
 
-            <form onSubmit={handleUploadPdf} className="space-y-4 md:space-y-6 flex-1 flex flex-col justify-between relative z-10">
-              <div className="group/input relative">
-                <input 
-                  type="file" 
-                  accept="application/pdf" 
-                  onChange={handlePdfChange} 
-                  className="w-full px-4 md:px-6 py-8 md:py-12 bg-zinc-900/50 border-2 border-dashed border-white/10 rounded-2xl text-zinc-500 text-xs font-bold text-center file:hidden cursor-pointer hover:bg-black hover:border-iron-gold/30 transition-all"
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-zinc-500 group-hover/input:text-iron-gold transition-colors">
-                  <Upload size={24} className="mb-2" />
-                  <span className="max-w-[80%] truncate">{pdfFile ? pdfFile.name : 'Selecione o arquivo PDF'}</span>
-                </div>
-              </div>
-
-              {/* Lista de Treinos Enviados */}
-              {treinosPdf.length > 0 && (
-                <div className="space-y-3 mb-6">
-                  <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-4">Protocolos Ativos</h4>
-                  <div className="max-h-40 overflow-y-auto pr-2 custom-scrollbar space-y-2">
-                    {treinosPdf.map((t) => (
-                      <div key={t.id} className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-xl border border-white/5 group/item">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <FileText size={14} className="text-iron-gold shrink-0" />
-                          <span className="text-[10px] font-bold text-zinc-400 truncate tracking-tight">{t.nome_arquivo}</span>
-                        </div>
-                        <button 
-                          onClick={() => handleDeleteTreino(t.id, t.url_pdf)}
-                          className="p-2 text-zinc-700 hover:text-red-500 transition-colors shrink-0"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+          {/* Lista de Planos Alimentares */}
+          {planosAlimentares.length > 0 && (
+            <div className="space-y-3 relative z-10">
+              <h4 className="text-[10px]  text-zinc-600 uppercase tracking-widest mb-2">Planos Ativos</h4>
+              <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                {planosAlimentares.map((p) => (
+                  <div key={p.id} className="flex items-start justify-between p-3 bg-zinc-900/50 rounded-xl border border-white/5 group/item">
+                    <div className="flex-1 overflow-hidden">
+                      <div className="flex items-center gap-3 mb-1">
+                        <Apple size={14} className="text-iron-gold shrink-0" />
+                        <span className="text-[10px]  text-white truncate">{p.nome_arquivo}</span>
                       </div>
-                    ))}
+                      {p.descricao && (
+                        <p className="text-[9px] text-zinc-500 truncate ml-[22px]">{p.descricao}</p>
+                      )}
+                      <p className="text-[8px] text-zinc-600 ml-[22px] mt-1">
+                        {new Date(p.criado_em).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                      <a
+                        href={p.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-zinc-500 hover:text-iron-gold transition-colors"
+                      >
+                        <FileText size={12} />
+                      </a>
+                      <button
+                        onClick={() => handleDeleteNutritionPlan(p.id, p.original_path || p.url_pdf || p.pdf_url)}
+                        className="p-2 text-zinc-700 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              <button 
-                type="submit" 
-                disabled={uploading || !pdfFile}
-                className="w-full py-4 md:py-5 bg-iron-gold text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] transition-all disabled:opacity-30 disabled:scale-100 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.1)]"
-              >
-                {uploading ? 'Processando...' : 'Publicar Protocolo PDF'}
-              </button>
-            </form>
-          </div>
-
-          {/* Fichas Digitais */}
-          <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl flex flex-col h-full relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-iron-gold/5 rounded-full -ml-16 -mt-16 blur-3xl group-hover:bg-iron-gold/10 transition-colors"></div>
-            
-            <div className="flex items-center gap-4 mb-8 relative z-10">
-              <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
-                <Dumbbell size={20} />
+                ))}
               </div>
+            </div>
+          )}
+
+          {planosAlimentares.length === 0 && (
+            <div className="flex items-center justify-center text-center p-6 relative z-10 h-32">
               <div>
-                <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Fichas <span className="text-iron-gold">Digitais</span></h3>
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Treinos Estruturados</p>
+                <Apple size={32} className="text-zinc-800 mx-auto mb-3" />
+                <p className="text-zinc-600 text-[10px]  uppercase tracking-widest">Nenhum plano enviado ainda</p>
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="relative z-10 flex-1">
-              {fichas.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-3">
-                    {fichas.map((ficha) => (
-                      <div key={ficha.id} className="flex items-center justify-between p-4 rounded-2xl bg-zinc-900/50 border border-white/5 group/ficha hover:border-iron-gold/30 transition-all">
-                        <div className="flex items-center gap-4 overflow-hidden flex-1">
-                          <div className="w-10 h-10 rounded-xl bg-iron-gold/10 flex items-center justify-center shrink-0">
-                            <Dumbbell size={16} className="text-iron-gold" />
-                          </div>
-                          <div className="overflow-hidden flex-1">
-                            <p className="text-[11px] font-black text-white uppercase tracking-tight truncate">
-                              {ficha.nome_rotina}
-                            </p>
-                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mt-1">
-                              {new Date(ficha.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <button
-                            onClick={() => router.push(`/admin/aluno/${id}/ficha/${ficha.id}`)}
-                            className="p-2 bg-iron-gold/10 text-iron-gold rounded-xl hover:bg-iron-gold/20 transition-colors"
-                            title="Editar ficha"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteFicha(ficha.id)}
-                            className="p-2 text-zinc-700 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                            title="Desativar ficha"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest text-center mt-4 pt-4 border-t border-white/5">
-                    {fichas.length} Ficha{fichas.length !== 1 ? 's' : ''} Ativa{fichas.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-              ) : (
-                <div className="h-32 flex flex-col items-center justify-center text-center text-zinc-600">
-                  <Dumbbell size={32} className="text-zinc-800 mb-3 opacity-50" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Sem Fichas Digitais</p>
-                  <p className="text-[9px] text-zinc-700 mt-1">Crie fichas em Gestão de Treinos</p>
-                </div>
-              )}
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
           {/* Gráfico de Evolução */}
-          <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl relative overflow-hidden group">
+          <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl relative overflow-hidden group">
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-iron-gold/5 rounded-full -ml-16 -mb-16 blur-3xl opacity-50"></div>
             
-            <div className="flex items-center gap-4 mb-8 relative z-10">
+            <div className="flex items-center gap-4 mb-4 relative z-10">
               <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
                 <Activity size={20} />
               </div>
               <div>
-                <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Dinâmica de Carga</h3>
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Acompanhamento Biométrico</p>
+                <h3 className="text-lg md:text-xl  text-white tracking-tight uppercase ">Dinâmica de Carga</h3>
+                <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">Acompanhamento Biométrico</p>
               </div>
             </div>
 
             <div className="relative z-10">
               {medidas.length > 1 ? (
-                <div className="w-full h-44 md:h-52 bg-zinc-900/50 rounded-2xl flex items-center justify-center border border-white/5 border-dashed relative group/chart">
+                <div className="w-full h-36 md:h-44 bg-zinc-900/50 rounded-2xl flex items-center justify-center border border-white/5 border-dashed relative group/chart">
                   <div className="flex flex-col items-center gap-3">
                     <LineChart size={32} className="text-zinc-800 group-hover/chart:text-iron-gold/20 transition-colors" />
-                    <p className="text-zinc-600 text-[10px] font-black uppercase tracking-widest">DNA de Evolução Ativo</p>
+                    <p className="text-zinc-600 text-[10px]  uppercase tracking-widest">DNA de Evolução Ativo</p>
                   </div>
                 </div>
               ) : (
-                <div className="h-44 md:h-52 flex flex-col items-center justify-center text-center p-6 md:p-8 bg-zinc-900/30 rounded-2xl border border-white/5">
+                <div className="h-36 md:h-44 flex flex-col items-center justify-center text-center p-4 md:p-6 bg-zinc-900/30 rounded-2xl border border-white/5">
                   <AlertCircle size={32} className="text-zinc-800 mb-4" />
-                  <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest leading-loose">
+                  <p className="text-zinc-500 text-[10px]  uppercase tracking-widest leading-loose">
                     Dados Insuficientes.<br/>O aluno requer registros.
                   </p>
                 </div>
               )}
             </div>
           </div>
-        </div>
-
-        {/* Notas do Especialista */}
-        <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl relative overflow-hidden group mb-12">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
-                <FileText size={20} />
-              </div>
-              <div>
-                <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Orientações do Especialista</h3>
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Notas Privadas do Coach</p>
-              </div>
-            </div>
-
-            <textarea
-              value={profile?.orientacoes || ""}
-              onChange={(e) => setProfile(prev => prev ? { ...prev, orientacoes: e.target.value } : null)}
-              onBlur={async () => {
-                if (!profile) return;
-                try {
-                  await supabaseClient
-                    .from("profiles")
-                    .update({ orientacoes: profile.orientacoes })
-                    .eq("id", id);
-                } catch (err) {
-                  console.error("Erro ao salvar orientações:", err);
-                }
-              }}
-              placeholder="Escreva aqui observações, pontos de atenção ou notas técnicas sobre a evolução do atleta..."
-              className="w-full h-48 bg-zinc-900/50 border border-white/5 rounded-2xl p-6 text-white text-sm focus:outline-none focus:border-iron-gold/30 transition-all resize-none placeholder:text-zinc-700 font-medium"
-            />
-            <div className="mt-4 flex justify-end">
-              <p className="text-[9px] text-zinc-700 font-black uppercase tracking-widest flex items-center gap-2">
-                <ShieldCheck size={10} className="text-iron-gold" /> Salvamento Automático Ativo
-              </p>
-            </div>
         </div>
 
         {/* Galeria de Evolução */}
@@ -1005,39 +1069,51 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               <ImageIcon size={20} />
             </div>
             <div>
-              <h3 className="text-lg md:text-xl font-black text-white tracking-tight uppercase italic">Linha do Tempo Visual</h3>
-              <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Evolução Fisiológica</p>
+              <h3 className="text-lg md:text-xl  text-white tracking-tight uppercase ">Linha do Tempo Visual</h3>
+              <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">Evolução Fisiológica</p>
             </div>
           </div>
 
           {fotos.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {fotos.map((f) => (
-                <div key={f.id} className="group bg-zinc-900/40 rounded-3xl overflow-hidden shadow-2xl border border-white/5 hover:border-iron-gold/30 transition-all duration-500">
-                  <div className="relative aspect-3/4 bg-zinc-950 overflow-hidden">
-                    <img src={f.url_foto} alt={f.tipo} className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000" />
-                    <div className="absolute inset-0 bg-linear-to-t from-black via-transparent to-transparent opacity-60" />
-                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-                        <span className="text-[8px] font-black text-white uppercase tracking-widest">{f.tipo}</span>
+            <div className="relative">
+              {/* Carrossel horizontal com scroll */}
+              <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-iron-gold/20 scrollbar-track-transparent">
+                {fotos.map((f) => (
+                  <div key={f.id} className="group shrink-0 w-72 md:w-80 bg-zinc-900/40 rounded-3xl overflow-hidden shadow-2xl border border-white/5 hover:border-iron-gold/30 transition-all duration-500 snap-center">
+                    <div className="relative aspect-3/4 bg-zinc-950 overflow-hidden">
+                      <img src={f.url_foto} alt={f.posicao} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-1000" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black via-transparent to-transparent opacity-60" />
+                      <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                          <span className="text-[8px]  text-white uppercase tracking-widest">{f.posicao}</span>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="text-zinc-500 text-[10px]  uppercase tracking-widest flex items-center gap-2">
+                         <Calendar size={12} className="text-iron-gold" />
+                         {new Date(f.data_upload).toLocaleDateString('pt-BR', { 
+                            day: '2-digit', 
+                            month: 'long', 
+                            year: 'numeric'
+                         })}
+                      </div>
                     </div>
                   </div>
-                  <div className="p-6">
-                    <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                       <Calendar size={12} className="text-iron-gold" />
-                       {new Date(f.data_upload).toLocaleDateString('pt-BR', { 
-                          day: '2-digit', 
-                          month: 'long', 
-                          year: 'numeric'
-                       })}
-                    </div>
-                  </div>
+                ))}
+              </div>
+              
+              {/* Indicador de scroll */}
+              {fotos.length > 3 && (
+                <div className="mt-4 text-center">
+                  <p className="text-zinc-600 text-[8px] uppercase tracking-widest">
+                    ← Arraste para visualizar todas ({fotos.length} fotos) →
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           ) : (
             <div className="bg-zinc-900/20 rounded-[40px] p-12 md:p-24 text-center border border-dashed border-white/5">
                <ImageIcon size={48} className="text-zinc-800 mx-auto mb-6" />
-               <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.4em]">Aguardando Capturas</p>
+               <p className="text-zinc-600 text-[10px]  uppercase tracking-[0.4em]">Aguardando Capturas</p>
             </div>
           )}
         </div>

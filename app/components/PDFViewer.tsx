@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useEffect } from "react";
-import { X, ExternalLink, FileText, ArrowLeft, Smartphone } from "lucide-react";
+import React, { useState, useEffect } from"react";
+import { X, ExternalLink, FileText, ArrowLeft, Smartphone } from"lucide-react";
+import DumbbellLoader from"./DumbbellLoader";
 
 interface PDFViewerProps {
   url: string;
@@ -42,10 +43,10 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
               <FileText size={18} />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm md:text-base font-black text-white uppercase tracking-tight leading-none truncate">
+              <h3 className="text-sm md:text-base text-white uppercase tracking-tight leading-none truncate">
                 {title}
               </h3>
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">Protocolo Oficial</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5">Protocolo Oficial</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -77,7 +78,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
                 <Smartphone size={32} className="text-[#D4AF37]" />
               </div>
               <div>
-                <p className="text-white font-black uppercase tracking-widest text-sm mb-2">PDF Aberto</p>
+                <p className="text-white uppercase tracking-widest text-sm mb-2">PDF Aberto</p>
                 <p className="text-zinc-500 text-xs leading-relaxed">
                   O protocolo foi aberto no leitor do seu dispositivo.
                 </p>
@@ -86,11 +87,11 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 bg-[#D4AF37] text-black font-black uppercase tracking-widest text-xs rounded-xl"
+                className="px-6 py-3 bg-[#D4AF37] text-black uppercase tracking-widest text-xs rounded-xl"
               >
                 Abrir novamente
               </a>
-              <button onClick={onClose} className="text-zinc-600 text-xs uppercase tracking-widest font-bold">
+              <button onClick={onClose} className="text-zinc-600 text-xs uppercase tracking-widest">
                 Fechar
               </button>
             </div>
@@ -99,8 +100,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
             <>
               {loading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10 bg-zinc-950">
-                  <div className="w-10 h-10 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin"></div>
-                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Carregando Documento...</p>
+                  <DumbbellLoader text="Carregando Documento..." />
                 </div>
               )}
               <iframe
@@ -116,14 +116,14 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
 
         {/* Footer */}
         <div className="p-3 border-t border-white/5 bg-black/40 flex items-center justify-between shrink-0">
-          <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+          <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em]">
             Exibição segura • Coach Vinny Protocol
           </p>
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest hover:underline"
+            className="text-[9px] text-[#D4AF37] uppercase tracking-widest hover:underline"
           >
             Abrir completo ↗
           </a>
