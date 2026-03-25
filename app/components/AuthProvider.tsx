@@ -62,11 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Função para atualizar role (com validação cruzada)
   const refreshRole = useCallback(async () => {
-    if (initializingRef.current) {
-      console.log('[AuthProvider] ⏭️ Ignorando refresh - inicialização em andamento');
-      return;
-    }
-
     console.log('[AuthProvider] 🔄 Refresh de role solicitado');
     
     try {
