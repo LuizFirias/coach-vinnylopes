@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from"react";
 import { useRouter } from"next/navigation";
@@ -53,11 +53,14 @@ export default function AlunoDashboardPage() {
 
   useEffect(() => {
     const fetchDashboard = async () => {
+      console.log('[Dashboard] ?? Iniciando fetchDashboard...');
       try {
         const session = await getSafeSession();
+        console.log('[Dashboard] ? Session obtida:', session?.user?.id);
         const user = session?.user;
 
         if (!user) {
+          console.log('[Dashboard] ? Sem usu�rio, redirecionando...');
           router.push("/login");
           return;
         }
@@ -65,42 +68,50 @@ export default function AlunoDashboardPage() {
         const userId = user.id;
         setUserId(userId);
 
-        // Buscar informações do perfil
+        console.log('[Dashboard] ?? Buscando profile para userId:', userId);
+        // Buscar informa��es do perfil
         const { data: profileData } = await supabaseClient
           .from("profiles")
           .select("full_name, role, first_access_completed, date_of_birth, coach_id")
           .eq("id", userId)
           .single();
 
+        console.log('[Dashboard] ? Profile encontrado:', profileData);
+
         if (profileData?.coach_id) setCoachId(profileData.coach_id);
 
         if (profileData?.role ==="coach" || profileData?.role ==="super_admin") {
+          console.log('[Dashboard] ?? Redirecionando coach/admin...');
           router.push("/admin/alunos");
           return;
         }
 
         // ===== NOVO: Detectar primeiro acesso =====
-        // Se aluno e não completou onboarding, redireciona
+        // Se aluno e n�o completou onboarding, redireciona
         if (profileData?.role ==="aluno" && !profileData?.first_access_completed) {
+          console.log('[Dashboard] ?? Redirecionando para onboarding...');
           router.push("/aluno/onboarding");
           return;
         }
 
         // ===== NOVO: Verificar dados incompletos =====
-        // Se aluno já acessou mas não tem date_of_birth preenchida
+        // Se aluno j� acessou mas n�o tem date_of_birth preenchida
         if (profileData?.role ==="aluno" && profileData?.first_access_completed && !profileData?.date_of_birth) {
+          console.log('[Dashboard] ?? Dados incompletos detectados');
           setIncompleteData(true);
         }
 
         setUserName(profileData?.full_name || user.email?.split("@")[0] ||"Aluno");
 
-        // Buscar treinos concluídos
+        console.log('[Dashboard] ?? Buscando estat�sticas...');
+
+        // Buscar treinos conclu�dos
         const { count: treinosCount } = await supabaseClient
           .from("historico_treinos")
           .select("*", { count:"exact", head: true })
           .eq("aluno_id", userId);
 
-        // Buscar último treino
+        // Buscar �ltimo treino
         const { data: ultimoTreinoData } = await supabaseClient
           .from("historico_treinos")
           .select("data_conclusao")
@@ -128,8 +139,8 @@ export default function AlunoDashboardPage() {
         setStats({
           treinosConcluidos: treinosCount || 0,
           ultimoTreino: ultimoTreinoData?.data_conclusao || null,
-          gorduraCorporal: medidaData?.gordura_corporal || null,
-          peso: medidaData?.peso || null,
+          gorduraCorporal: medidaData?.gordura_corporal ?? null,
+          peso: medidaData?.peso ?? null,
           proximoTreino: null,
           fichasTreino: fichasCount || 0,
         });
@@ -158,18 +169,20 @@ export default function AlunoDashboardPage() {
           setParceiros(parceirosData || []);
         }
 
+        console.log('[Dashboard] ? Todos os dados carregados, setLoading(false)');
         setLoading(false);
       } catch (err) {
-        console.error("Erro ao carregar dashboard:", err);
+        console.error("[Dashboard] ? Erro ao carregar dashboard:", err);
         setLoading(false);
       }
     };
 
+    console.log('[Dashboard] ?? useEffect montado, executando fetchDashboard...');
     fetchDashboard();
-  }, [router]);
+  }, []);
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return"—";
+    if (!dateString) return"�";
     const date = new Date(dateString);
     return date.toLocaleDateString("pt-BR");
   };
@@ -188,7 +201,7 @@ export default function AlunoDashboardPage() {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      // Verificar se já existe check-in para hoje
+      // Verificar se j� existe check-in para hoje
       const { data: existing } = await supabaseClient
         .from('treinos_manuais')
         .select('id, pontos_earn')
@@ -198,10 +211,10 @@ export default function AlunoDashboardPage() {
         .maybeSingle();
 
       if (existing) {
-        // Já existe check-in para hoje
+        // J� existe check-in para hoje
         setCheckinFeito(true);
         setCheckinPontos(existing.pontos_earn || 20);
-        console.log('[Checkin] Treino já marcado para hoje');
+        console.log('[Checkin] Treino j� marcado para hoje');
         return;
       }
 
@@ -219,9 +232,9 @@ export default function AlunoDashboardPage() {
         .single();
 
       if (error) {
-        // Se for erro de duplicação (constraint violation), considerar como sucesso
+        // Se for erro de duplica��o (constraint violation), considerar como sucesso
         if (error.code === '23505') {
-          console.log('[Checkin] Constraint violation - treino já marcado');
+          console.log('[Checkin] Constraint violation - treino j� marcado');
           setCheckinFeito(true);
           setCheckinPontos(20);
           return;
@@ -276,8 +289,8 @@ export default function AlunoDashboardPage() {
             <div className="flex-1">
               <h3 className="text-sm text-orange-200 mb-1">Dados Incompletos</h3>
               <p className="text-xs text-orange-100/80 mb-4">
-                Detectamos que sua data de nascimento não foi preenchida. Para um melhor planejamento, 
-                por favor atualize seu perfil com essa informação.
+                Detectamos que sua data de nascimento n�o foi preenchida. Para um melhor planejamento, 
+                por favor atualize seu perfil com essa informa��o.
               </p>
               <Link href="/aluno/perfil" className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs rounded-lg transition-colors">
                 Atualizar Perfil
@@ -292,7 +305,7 @@ export default function AlunoDashboardPage() {
           <WeeklyAgenda />
         </div>
 
-        {/* Check-in diário */}
+        {/* Check-in di�rio */}
         <div className="mb-12">
           {checkinFeito ? (
             <div className="flex items-center gap-4 bg-green-500/10 border border-green-500/30 rounded-xl px-6 py-4">
@@ -308,7 +321,7 @@ export default function AlunoDashboardPage() {
             </div>
           ) : (
             <div className="flex items-center justify-between bg-[#0F0F0F] border border-[#1a1a1a] rounded-xl px-6 py-4">
-              <p className="text-sm text-white uppercase tracking-tight">Já treinou hoje?</p>
+              <p className="text-sm text-white uppercase tracking-tight">J� treinou hoje?</p>
               <button
                 onClick={handleCheckin}
                 disabled={checkinSaving}
@@ -333,7 +346,7 @@ export default function AlunoDashboardPage() {
               </div>
               <div>
                 <h3 className="text-sm text-white uppercase tracking-tight">Feedback do Treino de Hoje</h3>
-                <p className="text-[9px] text-zinc-600 uppercase tracking-widest">Apenas seu coach poderá ver</p>
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest">Apenas seu coach poder� ver</p>
               </div>
             </div>
             <textarea
@@ -384,7 +397,7 @@ export default function AlunoDashboardPage() {
             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
               <Dumbbell size={32} className="text-white" />
             </div>
-            <p className="text-[8px] text-zinc-600 uppercase tracking-widest mb-2">Treinos Concluídos</p>
+            <p className="text-[8px] text-zinc-600 uppercase tracking-widest mb-2">Treinos Conclu�dos</p>
             <p className="text-2xl text-white leading-none">{stats.treinosConcluidos}</p>
           </div>
 
@@ -394,7 +407,7 @@ export default function AlunoDashboardPage() {
             </div>
             <p className="text-[8px] text-zinc-600 uppercase tracking-widest mb-2">Peso Atual</p>
             <div className="flex items-baseline gap-1">
-              <p className="text-2xl text-white leading-none">{stats.peso?.toFixed(1) ||"--"}</p>
+              <p className="text-2xl text-white leading-none">{stats.peso?.toFixed(1) ?? "--"}</p>
               <span className="text-[9px] text-zinc-600">KG</span>
             </div>
           </div>
@@ -405,7 +418,7 @@ export default function AlunoDashboardPage() {
             </div>
             <p className="text-[8px] text-zinc-600 uppercase tracking-widest mb-2">Gordura</p>
             <div className="flex items-baseline gap-1">
-              <p className="text-2xl text-[#D4AF37] leading-none">{stats.gorduraCorporal?.toFixed(1) ||"--"}</p>
+              <p className="text-2xl text-[#D4AF37] leading-none">{stats.gorduraCorporal?.toFixed(1) ?? "--"}</p>
               <span className="text-[9px] text-[#D4AF37]/50">%</span>
             </div>
           </div>
@@ -428,7 +441,7 @@ export default function AlunoDashboardPage() {
               </div>
               <div>
                 <h3 className="text-base md:text-xl text-white uppercase tracking-tight">Iniciar Treino</h3>
-                <p className="text-[10px] md:text-xs text-zinc-500 font-medium mt-0.5">Acesse sua rotina técnica e execute hoje.</p>
+                <p className="text-[10px] md:text-xs text-zinc-500 font-medium mt-0.5">Acesse sua rotina t�cnica e execute hoje.</p>
               </div>
             </div>
             <ArrowRight size={16} className="text-zinc-800 group-hover:text-white transition-colors" />
@@ -440,7 +453,7 @@ export default function AlunoDashboardPage() {
                 <Ruler size={18} />
               </div>
               <div>
-                <h3 className="text-base md:text-xl text-white uppercase tracking-tight">Registro de Evolução</h3>
+                <h3 className="text-base md:text-xl text-white uppercase tracking-tight">Registro de Evolu��o</h3>
                 <p className="text-[10px] md:text-xs text-zinc-500 font-medium mt-0.5">Atualize seu peso e acompanhe seus ganhos.</p>
               </div>
             </div>
@@ -453,7 +466,7 @@ export default function AlunoDashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-sm text-white tracking-widest uppercase">Parceiros</h2>
-              <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-tighter">Benefícios exclusivos para você</p>
+              <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-tighter">Benef�cios exclusivos para voc�</p>
             </div>
             {parceiros.length > 1 && (
               <div className="flex gap-2">
@@ -476,7 +489,7 @@ export default function AlunoDashboardPage() {
           {parceiros.length === 0 ? (
             <div className="bg-[#0F0F0F] border border-[#1a1a1a] rounded-xl px-6 py-8 text-center">
               <p className="text-[10px] text-zinc-700 uppercase tracking-[0.3em]">Aguarde novidades</p>
-              <p className="text-[9px] text-zinc-800 mt-1">Em breve seu coach adicionará parceiros exclusivos</p>
+              <p className="text-[9px] text-zinc-800 mt-1">Em breve seu coach adicionar� parceiros exclusivos</p>
             </div>
           ) : (
             <div className="overflow-hidden">
@@ -543,3 +556,4 @@ export default function AlunoDashboardPage() {
     </div>
   );
 }
+

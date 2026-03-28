@@ -45,7 +45,7 @@ export default function NovoAlunoPage() {
     };
 
     checkRole();
-  }, [router]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -192,3 +192,4 @@ export default function NovoAlunoPage() {
     </div>
   );
 }
+

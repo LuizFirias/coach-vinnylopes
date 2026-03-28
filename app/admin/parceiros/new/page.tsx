@@ -66,6 +66,14 @@ export default function NovoParceiroPage() {
     setLoading(true);
 
     try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const coachId = authData?.user?.id;
+      if (!coachId) {
+        setError("Sessão inválida. Faça login novamente.");
+        setLoading(false);
+        return;
+      }
+
       const uploadedUrls: string[] = [];
       for (const file of imageFiles) {
         const fileName = `${Date.now()}_${file.name}`;
@@ -99,6 +107,7 @@ export default function NovoParceiroPage() {
           link_desconto: linkDesconto.trim(),
           logo_url: logoUrl,
           imagens: uploadedUrls,
+          coach_id: coachId,
         });
 
       if (dbError) {

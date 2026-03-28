@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from"react";
 import { useRouter } from"next/navigation";
@@ -26,7 +26,7 @@ export default function OnboardingPage() {
           return;
         }
 
-        // Verifica se aluno e se ainda não completou onboarding
+        // Verifica se aluno e se ainda n�o completou onboarding
         const { data: profileData, error: profileError } = await supabaseClient
           .from("profiles")
           .select("role, first_access_completed, coaching_reference, full_name")
@@ -44,16 +44,16 @@ export default function OnboardingPage() {
           return;
         }
 
-        // Se já completou onboarding, ir para dashboard
+        // Se j� completou onboarding, ir para dashboard
         if (profileData.first_access_completed && profileData.full_name) {
           router.replace("/aluno/dashboard");
           return;
         }
 
-        // Salva o nome de referência do coach para exibir
+        // Salva o nome de refer�ncia do coach para exibir
         setCoachName(profileData.coaching_reference);
 
-        // Se full_name já existe (caso raro), preenche o formulário
+        // Se full_name j� existe (caso raro), preenche o formul�rio
         if (profileData.full_name) {
           setFullName(profileData.full_name);
         }
@@ -63,7 +63,7 @@ export default function OnboardingPage() {
     };
 
     checkAccess();
-  }, [router]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -86,7 +86,7 @@ export default function OnboardingPage() {
       const user = authData?.user;
 
       if (authError || !user) {
-        setError("Sessão expirada. Faça login novamente");
+        setError("Sess�o expirada. Fa�a login novamente");
         return;
       }
 
@@ -134,7 +134,7 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      {/* Conteúdo principal */}
+      {/* Conte�do principal */}
       <div className="max-w-md mx-auto px-4 py-8">
         {/* Card de boas-vindas */}
         <div className="bg-gradient-to-b from-gray-900 to-black border border-gray-800 rounded-lg p-8 mb-8">
@@ -146,17 +146,17 @@ export default function OnboardingPage() {
             <p className="text-gray-400 text-sm">
               {coachName && (
                 <>
-                  Seu coach <span className="text-iron-gold">{coachName}</span> já criou sua conta.
+                  Seu coach <span className="text-iron-gold">{coachName}</span> j� criou sua conta.
                   <br />
                   <br />
                 </>
               )}
-              Agora precisamos de algumas informações seus para que você possa começar.
+              Agora precisamos de algumas informa��es seus para que voc� possa come�ar.
             </p>
           </div>
         </div>
 
-        {/* Formulário */}
+        {/* Formul�rio */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-900/20 border border-red-700/50 text-red-200 px-4 py-3 rounded-lg text-sm">
@@ -174,11 +174,11 @@ export default function OnboardingPage() {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="João Silva Santos"
+              placeholder="Jo�o Silva Santos"
               className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-iron-gold focus:ring-1 focus:ring-iron-gold/50 transition"
               disabled={loading}
             />
-            <p className="text-gray-500 text-xs mt-1">Este é seu nome verdadeiro, visível para você e para o ranking.</p>
+            <p className="text-gray-500 text-xs mt-1">Este � seu nome verdadeiro, vis�vel para voc� e para o ranking.</p>
           </div>
 
           {/* Campo: Data de Nascimento */}
@@ -194,24 +194,25 @@ export default function OnboardingPage() {
               className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-iron-gold focus:ring-1 focus:ring-iron-gold/50 transition"
               disabled={loading}
             />
-            <p className="text-gray-500 text-xs mt-1">Necessário para cálculos de idade e planejamento.</p>
+            <p className="text-gray-500 text-xs mt-1">Necess�rio para c�lculos de idade e planejamento.</p>
           </div>
 
-          {/* Botão de Submissão */}
+          {/* Bot�o de Submiss�o */}
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-gradient-to-r from-iron-gold to-yellow-500 hover:from-yellow-500 hover:to-iron-gold disabled:opacity-50 disabled:cursor-not-allowed text-black py-4 rounded-lg uppercase tracking-wider transition"
           >
-            {loading ?"Salvando..." :"Começar Meu Treino"}
+            {loading ?"Salvando..." :"Come�ar Meu Treino"}
           </button>
         </form>
 
         {/* Footer */}
         <p className="text-center text-gray-600 text-xs mt-8 uppercase tracking-wider">
-          Essas informações são protegidas e acessíveis apenas por você e seu coach
+          Essas informa��es s�o protegidas e acess�veis apenas por voc� e seu coach
         </p>
       </div>
     </div>
   );
 }
+

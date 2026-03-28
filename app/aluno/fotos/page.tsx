@@ -9,6 +9,7 @@ interface Foto {
   id: string;
   posicao: 'frente' | 'lado' | 'costas';
   url_foto: string;
+  original_path: string; // caminho real no storage (antes de assinar)
   data_upload: string;
 }
 
@@ -68,6 +69,7 @@ export default function FotosPage() {
             
           return {
             ...foto,
+            original_path: foto.url_foto, // preservar caminho original
             url_foto: signedData?.signedUrl || foto.url_foto
           };
         }));
@@ -173,6 +175,7 @@ export default function FotosPage() {
             
           return {
             ...foto,
+            original_path: foto.url_foto, // preservar caminho original
             url_foto: signedData?.signedUrl || foto.url_foto
           };
         }));
@@ -199,10 +202,11 @@ export default function FotosPage() {
     
     setDeletingPhotoId(foto.id);
     try {
-      // Deletar o arquivo do storage
+      // Deletar o arquivo do storage (usar caminho original, não signed URL)
+      const storagePath = foto.original_path || foto.url_foto;
       const { error: storageError } = await supabaseClient.storage
         .from('evolucao-fotos')
-        .remove([foto.url_foto]);
+        .remove([storagePath]);
 
       if (storageError) {
         console.error('Erro ao deletar arquivo do storage:', storageError);

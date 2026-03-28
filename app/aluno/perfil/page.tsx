@@ -74,7 +74,7 @@ export default function AlunoPerfil() {
     };
 
     fetchProfile();
-  }, [router]);
+  }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -398,3 +398,4 @@ export default function AlunoPerfil() {
     </div>
   );
 }
+

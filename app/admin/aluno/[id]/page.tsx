@@ -180,7 +180,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         const pathParts = t.url_pdf.split('/treinos-pdf/');
         const filePath = pathParts.length > 1 ? pathParts[1] : t.url_pdf;
         const { data: signedData } = await supabaseClient.storage.from('treinos-pdf').createSignedUrl(filePath, 3600);
-        return { ...t, url_pdf: signedData?.signedUrl || t.url_pdf };
+        return { ...t, original_url_pdf: t.url_pdf, url_pdf: signedData?.signedUrl || t.url_pdf };
       }));
       setTreinosPdf(treinosAssinados);
 
@@ -933,7 +933,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         <span className="text-[10px]  text-zinc-400 truncate tracking-tight">{t.nome_arquivo}</span>
                       </div>
                       <button 
-                        onClick={() => handleDeleteTreino(t.id, t.url_pdf)}
+                        onClick={() => handleDeleteTreino(t.id, t.original_url_pdf || t.url_pdf)}
                         className="p-2 text-zinc-700 hover:text-red-500 transition-colors shrink-0"
                       >
                         <Trash2 size={12} />

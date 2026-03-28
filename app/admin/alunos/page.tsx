@@ -45,7 +45,7 @@ export default function AdminAlunosPage() {
     }
 
     fetchData();
-  }, [authLoading, user]);
+  }, [authLoading, user?.id]);
 
   const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
@@ -237,3 +237,4 @@ export default function AdminAlunosPage() {
     </div>
   );
 }
+

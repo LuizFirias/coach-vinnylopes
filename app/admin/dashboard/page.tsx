@@ -8,7 +8,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     router.replace("/admin/alunos");
-  }, [router]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-coach-black p-8 pt-8">
@@ -18,3 +18,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

@@ -533,14 +533,14 @@ export default function NovaFichaCoachPage() {
             case 'Peso & Repetições':
             case 'Peso Corporal com Peso Acrescido':
               row.push(
-                serie.peso_sugerido || '-',
-                serie.reps_sugerido || '-',
+                serie.peso_sugerido ?? '-',
+                serie.reps_sugerido ?? '-',
                 serie.tecnica || '-'
               );
               break;
             case 'Repetições':
               row.push(
-                serie.reps_sugerido || '-',
+                serie.reps_sugerido ?? '-',
                 serie.tecnica || '-'
               );
               break;
@@ -553,28 +553,28 @@ export default function NovaFichaCoachPage() {
             case 'Duração e Peso':
               row.push(
                 serie.tempo_sugerido || '-',
-                serie.peso_sugerido || '-',
+                serie.peso_sugerido ?? '-',
                 serie.tecnica || '-'
               );
               break;
             case 'Distância e Duração':
               row.push(
-                serie.distancia_sugerida || '-',
+                serie.distancia_sugerida ?? '-',
                 serie.tempo_sugerido || '-',
                 serie.tecnica || '-'
               );
               break;
             case 'Peso e Distância':
               row.push(
-                serie.peso_sugerido || '-',
-                serie.distancia_sugerida || '-',
+                serie.peso_sugerido ?? '-',
+                serie.distancia_sugerida ?? '-',
                 serie.tecnica || '-'
               );
               break;
             default:
               row.push(
-                serie.peso_sugerido || '-',
-                serie.reps_sugerido || '-',
+                serie.peso_sugerido ?? '-',
+                serie.reps_sugerido ?? '-',
                 serie.tecnica || '-'
               );
           }
@@ -677,7 +677,7 @@ export default function NovaFichaCoachPage() {
     try {
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
-      if (!coachId) return;
+      if (!coachId) { setSaving(false); alert('Sessão expirada. Faça login novamente.'); router.push('/login'); return; }
 
       const estrutura = {
         exercicios: exerciciosFicha.map((ex) => ({
@@ -689,10 +689,10 @@ export default function NovaFichaCoachPage() {
           observacoes: ex.observacoes ||"",
           series: ex.series.map((s) => ({
             ordem: s.ordem,
-            peso_atual: s.peso_sugerido || null,
-            reps: s.reps_sugerido || null,
-            tempo: s.tempo_sugerido || null,
-            distancia: s.distancia_sugerida || null,
+            peso_atual: s.peso_sugerido ?? null,
+            reps: s.reps_sugerido ?? null,
+            tempo: s.tempo_sugerido ?? null,
+            distancia: s.distancia_sugerida ?? null,
             tecnica: s.tecnica || null,
           })),
         })),

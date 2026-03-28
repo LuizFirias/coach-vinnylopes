@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -49,7 +49,7 @@ export default function AlunoTreinosPage() {
         const { data: authData, error: authError } = await supabaseClient.auth.getUser();
 
         if (authError || !authData.user) {
-          setError('Sessão expirada. Faça login novamente.');
+          setError('Sess�o expirada. Fa�a login novamente.');
           setLoading(false);
           return;
         }
@@ -77,17 +77,17 @@ export default function AlunoTreinosPage() {
           setUserId(userId);
           setFichas(fichasData || []);
           
-          // Gerar URLs assinadas para cada PDF pois o bucket é privado
+          // Gerar URLs assinadas para cada PDF pois o bucket � privado
           const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: any) => {
             // Extrair o path do arquivo da URL antiga (que continha o publicUrl)
-            // Se já tivermos o path no banco seria melhor, mas podemos extrair o path relativo do bucket
+            // Se j� tivermos o path no banco seria melhor, mas podemos extrair o path relativo do bucket
             // Como salvamos como"aluno_id/timestamp_nome.pdf", vamos extrair
             const pathParts = pdf.url_pdf.split('/treinos-pdf/');
             const filePath = pathParts.length > 1 ? pathParts[1] : pdf.url_pdf;
 
             const { data: signedData } = await supabaseClient.storage
               .from('treinos-pdf')
-              .createSignedUrl(filePath, 3600); // Link válido por 1 hora
+              .createSignedUrl(filePath, 3600); // Link v�lido por 1 hora
 
             return {
               ...pdf,
@@ -106,7 +106,7 @@ export default function AlunoTreinosPage() {
     };
 
     fetchTreinos();
-  }, [router]);
+  }, []);
 
   const formatarData = (dataString: string) => {
     try {
@@ -143,7 +143,7 @@ export default function AlunoTreinosPage() {
               <h1 className="text-4xl md:text-5xl text-white tracking-tight mb-2 uppercase">
                 Minhas <span className="text-[#D4AF37]">Rotinas</span>
               </h1>
-              <p className="text-zinc-500 font-medium text-sm border-l-2 border-[#D4AF37] pl-4">Seu cronograma técnico de treinamento.</p>
+              <p className="text-zinc-500 font-medium text-sm border-l-2 border-[#D4AF37] pl-4">Seu cronograma t�cnico de treinamento.</p>
             </div>
             
             {fichas.length + treinosPdf.length > 0 && (
@@ -161,7 +161,7 @@ export default function AlunoTreinosPage() {
 
           {error && (
             <div className="bg-red-500/10 text-red-500 p-6 rounded-3xl border border-red-500/20 mb-10 text-sm">
-              🚨 {error}
+              ?? {error}
             </div>
           )}
 
@@ -218,10 +218,10 @@ export default function AlunoTreinosPage() {
                     <div 
                       key={pdf.id} 
                       onClick={() => {
-                        // ===== VERIFICAÇÃO DE SEGURANÇA =====
+                        // ===== VERIFICA��O DE SEGURAN�A =====
                         if (pdf.aluno_id !== userId) {
                           console.error('[SECURITY] Tentativa de acessar PDF de treino de outro aluno bloqueada');
-                          alert('Erro de segurança: PDF não encontrado');
+                          alert('Erro de seguran�a: PDF n�o encontrado');
                           return;
                         }
                         setSelectedPdf(pdf);
@@ -259,7 +259,7 @@ export default function AlunoTreinosPage() {
                 </div>
                 <h3 className="text-2xl text-white mb-2 uppercase tracking-tight">Nenhum treino ativo</h3>
                 <p className="max-w-xs text-zinc-500 font-medium mb-10">
-                  Seu Coach ainda não atribuiu uma rotina de treinos para o seu perfil.
+                  Seu Coach ainda n�o atribuiu uma rotina de treinos para o seu perfil.
                 </p>
               </div>
             )}
@@ -278,3 +278,4 @@ export default function AlunoTreinosPage() {
     </SubscriptionGuard>
   );
 }
+

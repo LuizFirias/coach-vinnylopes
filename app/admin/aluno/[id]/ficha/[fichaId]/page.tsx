@@ -78,7 +78,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         observacoes: ex.observacoes || "",
         series: (ex.series || []).map(s => ({
           ...s,
-          reps_sugerido: s.reps_sugerido ?? 0,
+          reps_sugerido: s.reps_sugerido ?? (s as any).reps ?? "",
           tecnica: s.tecnica || "",
         })),
       }));
@@ -320,7 +320,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
               observacoes: ex.observacoes || "",
               series: ex.series.map(s => ({
                 ordem: s.ordem,
-                reps_sugerido: s.reps_sugerido,
+                reps: s.reps_sugerido ?? null,
                 tecnica: s.tecnica || null,
               })),
             })),

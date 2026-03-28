@@ -8,8 +8,7 @@ export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     storage: typeof window !== 'undefined' ? localStorage : undefined,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
+    detectSessionInUrl: false,
   },
   global: {
     headers: {

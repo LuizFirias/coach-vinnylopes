@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, FormEvent, ChangeEvent, Suspense } from"react";
+import React, { useState, useEffect, FormEvent, ChangeEvent, Suspense } from"react";
 import Image from"next/image";
 import { supabaseClient } from"@/lib/supabaseClient";
 import { useRouter, useSearchParams } from"next/navigation";
@@ -19,6 +19,26 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [logoFailed, setLogoFailed] = useState(false);
+
+  // Se já há sessão ativa, redirecionar para a dashboard correta
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session?.user) return;
+
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+
+      const role = profile?.role || "aluno";
+      if (role === "coach") router.replace("/admin/alunos");
+      else if (role === "super_admin") router.replace("/super-admin");
+      else router.replace("/aluno/treinos");
+    };
+    checkExistingSession();
+  }, []);
 
   // ... (keeping existing logic for handleEmailChange, handlePasswordChange, handleLogin)
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {

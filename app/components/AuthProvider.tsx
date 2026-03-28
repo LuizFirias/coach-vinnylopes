@@ -166,14 +166,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem('user_id');
           console.log('[AuthProvider] 👋 Usuário deslogado');
         } else if (event === 'SIGNED_IN' && session?.user) {
-          // Apenas atualizar se for um novo login
-          const roleFromDb = await fetchRoleFromDatabase(session.user.id);
-          if (mounted && roleFromDb) {
-            setUser(session.user);
-            setUserRole(roleFromDb);
-            localStorage.setItem('user_role', roleFromDb);
-            localStorage.setItem('user_id', session.user.id);
-          }
+          // Só atualiza se for um usuário DIFERENTE (evita re-render ao restaurar sessão)
+          setUser(prevUser => {
+            if (prevUser?.id === session.user.id) return prevUser; // mesmo usuário, mantém referência estável
+            return session.user;
+          });
+          // Só busca role se não tiver ainda
+          setUserRole(prevRole => {
+            if (prevRole) return prevRole; // já tem role, não re-busca
+            // Busca em background sem bloquear
+            fetchRoleFromDatabase(session.user.id).then(roleFromDb => {
+              if (mounted && roleFromDb) {
+                setUserRole(roleFromDb);
+                localStorage.setItem('user_role', roleFromDb);
+                localStorage.setItem('user_id', session.user.id);
+              }
+            });
+            return prevRole;
+          });
+        } else if (event === 'TOKEN_REFRESHED') {
+          // TOKEN_REFRESHED: completamente silencioso, não atualiza nenhum estado
+          console.log('[AuthProvider] 🔄 Token renovado silenciosamente');
         }
       }
     );
