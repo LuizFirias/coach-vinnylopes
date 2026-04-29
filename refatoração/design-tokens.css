@@ -1,0 +1,377 @@
+/**
+ * design-tokens.css
+ * ────────────────────────────────────────────────────────────────
+ * Tokens de design para Next.js (App Router).
+ * Fonte de verdade: DESIGN-SPEC.md §2
+ *
+ * Setup em Next.js:
+ *   1. Copiar este arquivo para `app/design-tokens.css`
+ *   2. Importar no topo de `app/globals.css`:
+ *
+ *      @import './design-tokens.css';
+ *
+ *      @tailwind base;
+ *      @tailwind components;
+ *      @tailwind utilities;
+ *
+ *   3. Importar globals.css em `app/layout.tsx`:
+ *
+ *      import './globals.css';
+ *
+ * As fontes (Inter + JetBrains Mono) são carregadas via next/font no
+ * layout.tsx (não usar @import de Google Fonts — pior performance).
+ * ────────────────────────────────────────────────────────────────
+ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════════
+     SURFACES (background layers — do mais escuro pro mais claro)
+     ═══════════════════════════════════════════════════════════ */
+  --surface-0:        #0A0A0B;   /* background base do app */
+  --surface-1:        #121214;   /* cards primários */
+  --surface-2:        #1A1A1D;   /* cards aninhados, hover */
+  --surface-3:        #232327;   /* inputs, divisores ativos */
+  --surface-4:        #2D2D32;   /* skeleton loaders */
+
+  /* ═══════════════════════════════════════════════════════════
+     TEXT
+     ═══════════════════════════════════════════════════════════ */
+  --text-primary:     #F5F5F7;   /* títulos, dado principal */
+  --text-secondary:   #B8B8BD;   /* labels, body padrão */
+  --text-tertiary:    #7A7A82;   /* metadata, hints */
+  --text-disabled:    #4A4A50;   /* estados desabilitados */
+
+  /* ═══════════════════════════════════════════════════════════
+     BORDERS
+     ═══════════════════════════════════════════════════════════ */
+  --border-subtle:    rgba(255, 255, 255, 0.06);
+  --border-default:   rgba(255, 255, 255, 0.10);
+  --border-strong:    rgba(255, 255, 255, 0.18);
+
+  /* ═══════════════════════════════════════════════════════════
+     BRAND (dourado refinado — uso ≤10% da tela)
+     ═══════════════════════════════════════════════════════════ */
+  --brand-primary:    #D4A437;
+  --brand-hover:      #E1B548;
+  --brand-pressed:    #B88B25;
+  --brand-subtle:     rgba(212, 164, 55, 0.12);
+  --brand-border:     rgba(212, 164, 55, 0.32);
+
+  /* Texto sobre dourado: usar este, não branco */
+  --text-on-brand:    #1A1A1D;
+
+  /* ═══════════════════════════════════════════════════════════
+     SEMANTIC COLORS (estado, nunca decoração)
+     ═══════════════════════════════════════════════════════════ */
+  --success:          #2EB872;   /* PR, série ok, streak */
+  --success-subtle:   rgba(46, 184, 114, 0.12);
+  --success-border:   rgba(46, 184, 114, 0.40);
+
+  --warning:          #E8A33B;   /* deload, atenção */
+  --warning-subtle:   rgba(232, 163, 59, 0.12);
+
+  --danger:           #E5484D;   /* erro, exclusão */
+  --danger-subtle:    rgba(229, 72, 77, 0.12);
+  --danger-border:    rgba(229, 72, 77, 0.40);
+
+  --info:             #3B82F6;   /* info, recovery, sync */
+  --info-subtle:      rgba(59, 130, 246, 0.12);
+
+  /* ═══════════════════════════════════════════════════════════
+     SHADOWS & GLOWS (elevação dark mode)
+     ═══════════════════════════════════════════════════════════ */
+  --elev-0:           none;
+  --elev-1:           0 1px 2px rgba(0, 0, 0, 0.30);
+  --elev-2:           0 4px 12px rgba(0, 0, 0, 0.45);
+  --elev-3:           0 12px 32px rgba(0, 0, 0, 0.55);
+
+  --glow-brand:       0 0 24px rgba(212, 164, 55, 0.25);
+  --glow-success:     0 0 24px rgba(46, 184, 114, 0.30);
+  --pr-glow:          0 0 20px rgba(46, 184, 114, 0.40);
+
+  --focus-ring:       0 0 0 2px rgba(212, 164, 55, 0.50);
+
+  /* ═══════════════════════════════════════════════════════════
+     TYPOGRAPHY
+     ═══════════════════════════════════════════════════════════ */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Escala (mobile-first, base 16px) */
+  --text-2xs:    11px;
+  --text-xs:     12px;
+  --text-sm:     14px;
+  --text-base:   16px;
+  --text-lg:     18px;
+  --text-xl:     20px;
+  --text-2xl:    24px;
+  --text-3xl:    30px;
+  --text-4xl:    36px;
+  --text-5xl:    48px;
+
+  /* Pesos */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* Line height */
+  --leading-tight:   1.15;
+  --leading-snug:    1.35;
+  --leading-normal:  1.50;
+  --leading-relaxed: 1.65;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.02em;
+  --tracking-caps:   0.08em;
+
+  /* ═══════════════════════════════════════════════════════════
+     SPACING (8pt grid)
+     ═══════════════════════════════════════════════════════════ */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Padding lateral global do app */
+  --gutter:   var(--space-4);
+
+  /* ═══════════════════════════════════════════════════════════
+     BORDER RADIUS
+     ═══════════════════════════════════════════════════════════ */
+  --radius-sm:    6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+
+  /* ═══════════════════════════════════════════════════════════
+     ANIMATIONS
+     ═══════════════════════════════════════════════════════════ */
+  --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-instant: 100ms;
+  --duration-fast:    180ms;
+  --duration-normal:  240ms;
+  --duration-slow:    400ms;
+
+  /* ═══════════════════════════════════════════════════════════
+     LAYOUT
+     ═══════════════════════════════════════════════════════════ */
+  --bottom-nav-height: 64px;
+  --header-height:     56px;
+  --touch-target-min:  48px;
+  --max-width-mobile:  428px;  /* iPhone Pro Max baseline */
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL RESETS — mobile-first
+   ═══════════════════════════════════════════════════════════ */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Inter alternates */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+
+/* Inputs não dão zoom no iOS quando font-size >= 16px */
+input,
+textarea,
+select {
+  font-size: var(--text-base);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITY CLASSES (opcional — se não estiver usando Tailwind)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Texto */
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary  { color: var(--text-tertiary); }
+.text-success   { color: var(--success); }
+.text-danger    { color: var(--danger); }
+.text-brand     { color: var(--brand-primary); }
+
+/* Microlabel CAPS (uso restrito, ≤2 palavras) */
+.label-caps {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Número em mono (KPI, timer, peso) */
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Card padrão */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.card-primary {
+  background: var(--surface-2);
+  border-color: var(--brand-border);
+}
+
+.card-interactive {
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              transform var(--duration-instant) var(--ease-out);
+}
+
+.card-interactive:hover {
+  background: var(--surface-2);
+}
+
+.card-interactive:active {
+  transform: scale(0.99);
+}
+
+/* Botão primário */
+.btn-primary {
+  background: var(--brand-primary);
+  color: var(--text-on-brand);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  border: none;
+  min-height: var(--touch-target-min);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-primary:hover {
+  background: var(--brand-hover);
+  box-shadow: var(--glow-brand);
+}
+
+.btn-primary:active {
+  background: var(--brand-pressed);
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--surface-3);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  /* resto igual ao primário */
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  min-height: var(--touch-target-min);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+}
+
+/* Input padrão */
+.input {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font-size: var(--text-base);
+  width: 100%;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.input-error {
+  border-color: var(--danger);
+}
+
+/* Skeleton loader */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-1) 0%,
+    var(--surface-2) 50%,
+    var(--surface-1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}

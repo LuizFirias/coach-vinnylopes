@@ -74,9 +74,10 @@ export default function NovoParceiroPage() {
         return;
       }
 
-      const uploadedUrls: string[] = [];
+      // Salva apenas paths no banco (host resolvido na exibição)
+      const uploadedPaths: string[] = [];
       for (const file of imageFiles) {
-        const fileName = `${Date.now()}_${file.name}`;
+        const fileName = `${coachId}/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabaseClient.storage
           .from("parceiros-logos")
           .upload(fileName, file, {
@@ -88,15 +89,10 @@ export default function NovoParceiroPage() {
           throw uploadError;
         }
 
-        const { data: publicUrlData } = supabaseClient
-          .storage
-          .from("parceiros-logos")
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(publicUrlData.publicUrl);
+        uploadedPaths.push(fileName);
       }
 
-      const logoUrl = uploadedUrls[0] || null;
+      const logoPath = uploadedPaths[0] || null;
 
       const { error: dbError } = await supabaseClient
         .from("parceiros")
@@ -105,8 +101,8 @@ export default function NovoParceiroPage() {
           descricao: descricao.trim(),
           cupom: cupom.trim(),
           link_desconto: linkDesconto.trim(),
-          logo_url: logoUrl,
-          imagens: uploadedUrls,
+          logo_url: logoPath,
+          imagens: uploadedPaths,
           coach_id: coachId,
         });
 

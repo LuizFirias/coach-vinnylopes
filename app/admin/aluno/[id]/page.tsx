@@ -3,7 +3,9 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { extractStoragePath, getSignedStorageUrl } from "@/lib/storageUrls";
 import UploadNutritionPlan from "@/app/components/UploadNutritionPlan";
+import { getTodayBrazil } from '@/lib/dateUtils';
 import { 
   ArrowLeft, 
   User, 
@@ -24,7 +26,8 @@ import {
   Dumbbell,
   Edit2,
   Apple,
-  Trophy
+  Trophy,
+  Ruler
 } from "lucide-react";
 
 interface Profile {
@@ -177,10 +180,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       
       // Assinar URLs dos PDFs para visualização do coach
       const treinosAssinados = await Promise.all((treinosData || []).map(async (t: any) => {
-        const pathParts = t.url_pdf.split('/treinos-pdf/');
-        const filePath = pathParts.length > 1 ? pathParts[1] : t.url_pdf;
-        const { data: signedData } = await supabaseClient.storage.from('treinos-pdf').createSignedUrl(filePath, 3600);
-        return { ...t, original_url_pdf: t.url_pdf, url_pdf: signedData?.signedUrl || t.url_pdf };
+        const signed = await getSignedStorageUrl('treinos-pdf', t.url_pdf, 3600);
+        return { ...t, original_url_pdf: t.url_pdf, url_pdf: signed || t.url_pdf };
       }));
       setTreinosPdf(treinosAssinados);
 
@@ -196,9 +197,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
       const { data: medidasData } = await supabaseClient
         .from("medidas_aluno")
-        .select("id, peso, data_medicao")
+        .select("id, peso, peitoral, cintura, braco_esquerdo, braco_direito, coxa_esquerda, coxa_direita, panturrilha_direita, data_medicao, gordura_corporal")
         .eq("aluno_id", id)
-        .order("data_medicao", { ascending: true });
+        .order("data_medicao", { ascending: false });
       setMedidas(medidasData || []);
 
       // Carregar planos alimentares
@@ -216,13 +217,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           console.error('PDF path not found for plan:', p.id);
           return p;
         }
-        
-        const pathParts = pdfPath.split('/plano_alimentar/');
-        const filePath = pathParts.length > 1 ? pathParts[1] : pdfPath;
-        const { data: signedData } = await supabaseClient.storage.from('plano_alimentar').createSignedUrl(filePath, 3600);
-        return { 
-          ...p, 
-          pdf_url: signedData?.signedUrl || pdfPath,
+
+        const signed = await getSignedStorageUrl('plano_alimentar', pdfPath, 3600);
+        return {
+          ...p,
+          pdf_url: signed || pdfPath,
           original_path: pdfPath // Keep original path for deletion
         };
       }));
@@ -302,17 +301,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     setError(null);
     try {
       const fileName = `${id}/${Date.now()}_${pdfFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabaseClient.storage
+      const { error: uploadError } = await supabaseClient.storage
         .from("treinos-pdf")
         .upload(fileName, pdfFile, { cacheControl: "3600", upsert: false });
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabaseClient.storage.from("treinos-pdf").getPublicUrl(fileName);
-      const urlPdf = publicUrlData.publicUrl;
-
+      // Salva APENAS o path no banco (bucket treinos-pdf é privado, URL é assinada na exibição)
       const { error: dbError } = await supabaseClient.from("treinos_alunos").insert({
         aluno_id: id,
-        url_pdf: urlPdf,
+        url_pdf: fileName,
         nome_arquivo: pdfFile.name,
         data_upload: new Date().toISOString(),
       });
@@ -335,10 +332,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     if (!window.confirm("Remover este arquivo de treino permanentemente?")) return;
     
     try {
-      // 1. Deletar do Storage
-      const pathParts = urlPdf.split('/treinos-pdf/');
-      const filePath = pathParts.length > 1 ? pathParts[1] : urlPdf;
-      
+      // 1. Deletar do Storage (suporta path novo ou URL legada)
+      const filePath = extractStoragePath('treinos-pdf', urlPdf) || urlPdf;
+
       const { error: storageError } = await supabaseClient.storage
         .from("treinos-pdf")
         .remove([filePath]);
@@ -721,7 +717,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       type="date"
                       value={editDataInicio}
                       onChange={(e) => setEditDataInicio(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={getTodayBrazil()}
                       className="w-full px-6 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-iron-gold  text-sm focus:ring-2 focus:ring-iron-gold transition-all"
                       required
                     />
@@ -1028,6 +1024,87 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
+          {/* Histórico de Medidas */}
+          <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl relative overflow-hidden group lg:col-span-2">
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-iron-gold/5 rounded-full -mr-16 -mb-16 blur-3xl opacity-50"></div>
+            
+            <div className="flex items-center gap-4 mb-4 relative z-10">
+              <div className="p-3 bg-iron-gold/10 rounded-2xl text-iron-gold">
+                <Ruler size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg md:text-xl text-white tracking-tight uppercase">Histórico de Medidas</h3>
+                <p className="text-zinc-500 text-[10px] uppercase tracking-widest">Evolução Completa do Aluno</p>
+              </div>
+            </div>
+
+            <div className="relative z-10">
+              {medidas.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-white/5">
+                        <th className="text-left p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Data</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Peso (kg)</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">% Gordura</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Peitoral (cm)</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Cintura (cm)</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Braço E (cm)</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Braço D (cm)</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Coxa E (cm)</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Coxa D (cm)</th>
+                        <th className="text-center p-2 text-zinc-500 uppercase tracking-widest text-[9px]">Panturrilha (cm)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {medidas.map((m: any, idx: number) => (
+                        <tr key={m.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="p-2 text-white">
+                            {new Date(m.data_medicao).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="p-2 text-center text-iron-gold font-semibold">
+                            {m.peso?.toFixed(1) || '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.gordura_corporal ? `${m.gordura_corporal.toFixed(1)}%` : '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.peitoral?.toFixed(1) || '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.cintura?.toFixed(1) || '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.braco_esquerdo?.toFixed(1) || '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.braco_direito?.toFixed(1) || '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.coxa_esquerda?.toFixed(1) || '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.coxa_direita?.toFixed(1) || '-'}
+                          </td>
+                          <td className="p-2 text-center text-white">
+                            {m.panturrilha_direita?.toFixed(1) || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="h-36 md:h-44 flex flex-col items-center justify-center text-center p-4 md:p-6 bg-zinc-900/30 rounded-2xl border border-white/5">
+                  <AlertCircle size={32} className="text-zinc-800 mb-4" />
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-widest leading-loose">
+                    Nenhuma medida registrada ainda.<br/>Peça ao aluno para adicionar suas medidas.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Gráfico de Evolução */}
           <div className="bg-black rounded-3xl p-3 md:p-5 border border-white/5 shadow-2xl relative overflow-hidden group">
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-iron-gold/5 rounded-full -ml-16 -mb-16 blur-3xl opacity-50"></div>

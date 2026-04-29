@@ -223,41 +223,51 @@ export async function POST(req: Request) {
     // ===== 6.5. VINCULAR ALUNO AO COACH (coach_alunos) =====
     console.log("[INVITE] 🔗 Vinculando aluno ao coach em coach_alunos...");
 
-    const { error: linkError } = await adminClient
+    // Primeiro verificar se o vínculo já existe
+    const { data: existingLink } = await adminClient
       .from("coach_alunos")
-      .upsert({
-        coach_id: userId,
-        aluno_id: newUserId,
-      }, {
-        onConflict: "coach_id,aluno_id",
-        ignoreDuplicates: true,
-      });
+      .select("id")
+      .eq("coach_id", userId)
+      .eq("aluno_id", newUserId)
+      .maybeSingle();
 
-    if (linkError) {
-      console.error("[INVITE] ❌❌ ERRO AO VINCULAR COACH-ALUNO:", {
-        message: linkError.message,
-        details: linkError.details,
-        hint: linkError.hint,
-        code: linkError.code,
-        fullError: JSON.stringify(linkError, null, 2)
-      });
+    if (!existingLink) {
+      // Vínculo não existe, criar novo
+      const { error: linkError } = await adminClient
+        .from("coach_alunos")
+        .insert({
+          coach_id: userId,
+          aluno_id: newUserId,
+        });
 
-      // Best-effort rollback: evita deixar usuário "solto" sem aparecer para o coach
-      try {
-        await adminClient.from("profiles").delete().eq("id", newUserId);
-      } catch (e) {
-        console.warn("[INVITE] ⚠️ Falha ao remover profile no rollback:", e);
+      if (linkError) {
+        console.error("[INVITE] ❌❌ ERRO AO VINCULAR COACH-ALUNO:", {
+          message: linkError.message,
+          details: linkError.details,
+          hint: linkError.hint,
+          code: linkError.code,
+          fullError: JSON.stringify(linkError, null, 2)
+        });
+
+        // Best-effort rollback: evita deixar usuário "solto" sem aparecer para o coach
+        try {
+          await adminClient.from("profiles").delete().eq("id", newUserId);
+        } catch (e) {
+          console.warn("[INVITE] ⚠️ Falha ao remover profile no rollback:", e);
+        }
+        try {
+          await adminClient.auth.admin.deleteUser(newUserId);
+        } catch (e) {
+          console.warn("[INVITE] ⚠️ Falha ao remover auth user no rollback:", e);
+        }
+
+        return NextResponse.json({
+          error: "Usuário criado, mas falhou ao vincular ao coach. Verifique a tabela coach_alunos e RLS.",
+          details: linkError.message,
+        }, { status: 400 });
       }
-      try {
-        await adminClient.auth.admin.deleteUser(newUserId);
-      } catch (e) {
-        console.warn("[INVITE] ⚠️ Falha ao remover auth user no rollback:", e);
-      }
-
-      return NextResponse.json({
-        error: "Usuário criado, mas falhou ao vincular ao coach. Verifique a tabela coach_alunos e RLS.",
-        details: linkError.message,
-      }, { status: 400 });
+    } else {
+      console.log("[INVITE] ℹ️ Vínculo coach-aluno já existe, reutilizando.");
     }
 
     console.log("[INVITE] ✓ Vínculo coach_alunos criado/confirmado.");

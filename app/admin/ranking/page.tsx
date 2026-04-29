@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getPublicStorageUrl } from '@/lib/storageUrls';
 
 interface Profile {
   id: string;
@@ -133,7 +134,7 @@ export default function AdminRankingPage() {
                         <div className="flex items-center gap-4">
                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden border-2 ${isTop3 ? 'border-brand-purple/20 shadow-lg shadow-brand-purple/5' : 'border-slate-100'}`}>
                             {p.avatar_url ? (
-                              <img src={p.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                              <img src={getPublicStorageUrl('avatars', p.avatar_url) || ''} alt={displayName} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-400">
                                 <User size={20} />

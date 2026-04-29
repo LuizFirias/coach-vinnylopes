@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from"react";
 import { supabaseClient } from"@/lib/supabaseClient";
-import { 
-  User, 
-  Mail, 
-  Camera, 
-  CheckCircle, 
-  AlertCircle, 
+import { getPublicStorageUrl, extractStoragePath } from"@/lib/storageUrls";
+import {
+  User,
+  Mail,
+  Camera,
+  CheckCircle,
+  AlertCircle,
   ArrowLeft,
   ShieldCheck,
   Save,
@@ -107,18 +108,15 @@ export default function SuperAdminPerfilPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabaseClient.storage
-        .from("avatars")
-        .getPublicUrl(fileName);
-
+      // Salvar APENAS o path no banco
       const { error: updateError } = await supabaseClient
         .from("profiles")
-        .update({ avatar_url: publicUrlData.publicUrl })
+        .update({ avatar_url: fileName })
         .eq("id", user.id);
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(publicUrlData.publicUrl);
+      setAvatarUrl(fileName);
       setMessage({ type:"success", text:"Identidade visual atualizada!" });
     } catch (err: any) {
       setMessage({ type:"error", text: err.message ||"Erro ao fazer upload" });
@@ -177,7 +175,7 @@ export default function SuperAdminPerfilPage() {
               <div className="relative group">
                 <div className="w-48 h-48 rounded-[64px] bg-black border-4 border-[#1a1a1a] overflow-hidden shadow-2xl relative transform transition-transform duration-700 group-hover:scale-[1.05] group-hover:border-[#D4AF37]/50">
                   {avatarUrl ? (
-                    <Image src={avatarUrl} alt="Avatar Master" fill className="object-cover" />
+                    <Image src={getPublicStorageUrl('avatars', avatarUrl) || ''} alt="Avatar Master" fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-black text-zinc-900">
                       <User size={80} strokeWidth={1} />

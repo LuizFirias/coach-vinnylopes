@@ -17,8 +17,16 @@ export const useAuth = (): UseAuthReturn => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        // Get current session with timeout to prevent hanging
+        const sessionPromise = supabaseClient.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session request timeout')), 5000)
+        );
+
+        const { data: { session }, error: sessionError } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
 
         if (sessionError) {
           // Handle refresh token errors specifically
@@ -36,6 +44,21 @@ export const useAuth = (): UseAuthReturn => {
         setUser(session?.user || null);
       } catch (err: any) {
         console.error('Auth initialization error:', err);
+        
+        // If it's a network/fetch error, clear session and redirect to login
+        if (err.message?.includes('Failed to fetch') || err.message?.includes('timeout')) {
+          console.warn('Network error or timeout, clearing session');
+          await supabaseClient.auth.signOut({ scope: 'local' });
+          setUser(null);
+          setError(null);
+          
+          // Redirect to login if not already there
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
+          return;
+        }
+        
         setError(err instanceof Error ? err : new Error(String(err)));
         setUser(null);
       } finally {

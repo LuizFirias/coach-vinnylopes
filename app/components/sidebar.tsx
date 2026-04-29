@@ -74,9 +74,9 @@ export default function Sidebar() {
   return (
     <>
       {/* Sidebar for Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-20 bg-black border-r border-iron-divider flex-col py-8 items-center z-60 shadow-2xl">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-20 bg-bg-base border-r border-border-subtle flex-col py-8 items-center z-60 shadow-2xl">
         <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="mb-10 group cursor-pointer">
-          <div className="w-14 h-14 bg-[#0F0F0F] rounded-2xl flex items-center justify-center shadow-xl border border-[#1a1a1a] group-hover:border-[#D4AF37]/30 group-hover:scale-105 transition-all overflow-hidden">
+          <div className="w-14 h-14 bg-bg-card rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-gold-default/40 group-hover:scale-105 transition-all overflow-hidden">
             <Image src="/logo.png" alt="Coach Vinny" width={44} height={44} className="object-contain" />
           </div>
         </Link>
@@ -90,14 +90,14 @@ export default function Sidebar() {
                   key={m.href}
                   href={m.href}
                   title={m.name}
-                  className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all group relative ${
-                    isActive ? 'text-[#D4AF37]' : 'text-zinc-500 hover:text-[#D4AF37]/80 hover:bg-white/5'
+                  className={`w-14 h-14 rounded-lg flex items-center justify-center transition-all group relative ${
+                    isActive ? 'text-gold-light' : 'text-text-disabled hover:text-gold-light/60 hover:bg-gold-default/5'
                   }`}
                 >
-                   {isActive && <div className="absolute left-0 w-1 h-6 bg-[#D4AF37] rounded-r-full" />}
-                   <Icon size={22} className={`${!isActive && 'group-hover:scale-110'} transition-transform ${isActive ? 'fill-[#D4AF37]/20 stroke-[2.5px]' : 'stroke-[1.5px]'}`} />
+                   {isActive && <div className="absolute left-0 w-1 h-6 bg-gold-light rounded-r-full" />}
+                   <Icon size={22} className={`${!isActive && 'group-hover:scale-110'} transition-transform ${isActive ? 'fill-gold-light/20 stroke-[2.5px]' : 'stroke-[1.5px]'}`} />
                    {!isActive && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-[#0F0F0F]/95 backdrop-blur-xl text-white text-[10px] uppercase tracking-wider rounded-xl opacity-0 group-hover:opacity-100 border border-[#1a1a1a] pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
+                      <div className="absolute left-full ml-4 px-3 py-2 bg-bg-card/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
                         {m.name}
                       </div>
                    )}
@@ -108,10 +108,11 @@ export default function Sidebar() {
 
         <button
           onClick={async () => {
-             await supabaseClient.auth.signOut();
-             window.location.href = '/login';
+            try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+            localStorage.clear();
+            window.location.href = '/login';
           }}
-          className="mt-4 w-14 h-14 rounded-2xl flex items-center justify-center text-zinc-600 hover:text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-all group"
+          className="mt-4 w-14 h-14 rounded-lg flex items-center justify-center text-text-disabled hover:text-gold-light hover:bg-gold-default/10 transition-all group"
           title="Sair"
         >
            <LogOut size={22} />
@@ -137,14 +138,14 @@ export default function Sidebar() {
       </div>
 
       {/* Drawer Menu - Mobile Only */}
-      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-black shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-[#1a1a1a] ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
+      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         <div className="p-6 pb-4 flex items-center justify-between">
-          <div className="w-11 h-11 bg-[#0F0F0F] rounded-xl flex items-center justify-center shadow-lg border border-[#1a1a1a] overflow-hidden">
+          <div className="w-11 h-11 bg-bg-card rounded-lg flex items-center justify-center shadow-lg border border-border-subtle overflow-hidden">
             <Image src="/logo.png" alt="Coach Vinny" width={36} height={36} className="object-contain" />
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="w-10 h-10 flex items-center justify-center bg-white/5 text-zinc-500 hover:text-[#D4AF37] rounded-xl transition-all"
+            className="w-10 h-10 flex items-center justify-center bg-bg-card text-text-secondary hover:text-gold-light rounded-lg transition-all"
             aria-label="Fechar"
           >
             <X size={20} />
@@ -152,13 +153,13 @@ export default function Sidebar() {
         </div>
 
         <div className="px-5 mt-3 mb-6">
-           <div className="p-4 bg-[#0F0F0F] rounded-2xl border border-[#1a1a1a] flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center border border-[#1a1a1a]">
-                 <User size={15} className="text-[#D4AF37]" />
+           <div className="p-4 bg-bg-card rounded-lg border border-border-subtle flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-bg-elevated flex items-center justify-center border border-border-subtle">
+                 <User size={15} className="text-gold-light" />
               </div>
               <div className="flex flex-col">
-                 <span className="text-[8px] text-zinc-600 uppercase tracking-wider leading-none mb-1">Acesso</span>
-                 <span className="text-[9px] text-white uppercase tracking-wide">
+                 <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mb-1">Acesso</span>
+                 <span className="text-[9px] text-text-primary uppercase tracking-wide">
                     {userRole?.replace('_', ' ') || 'Carregando...'}
                  </span>
               </div>
@@ -173,13 +174,13 @@ export default function Sidebar() {
               <Link
                 key={m.href}
                 href={m.href}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-[10px] uppercase tracking-wide transition-all group ${
-                  isActive ? 'bg-iron-red text-white shadow-lg shadow-iron-red/20' : 'text-zinc-500 hover:text-iron-red hover:bg-white/5'
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] uppercase tracking-widest transition-all group ${
+                  isActive ? 'bg-gold-default text-black shadow-lg shadow-gold-default/20' : 'text-text-secondary hover:text-gold-light hover:bg-gold-default/5'
                 }`}
                 onClick={() => setOpen(false)}
               >
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border ${
-                  isActive ? 'bg-white/10 border-white/10' : 'bg-white/5 border-white/5'
+                  isActive ? 'bg-gold-light/20 border-gold-light/30' : 'bg-bg-elevated border-border-subtle'
                 }`}>
                   <Icon size={16} />
                 </div>
@@ -195,7 +196,7 @@ export default function Sidebar() {
                 await supabaseClient.auth.signOut();
                 window.location.href = '/login';
               }}
-              className="w-full h-12 bg-iron-red text-white rounded-2xl flex items-center justify-center gap-2 text-[9px] uppercase tracking-wider hover:bg-red-600 transition-all active:scale-95 shadow-neon-red"
+              className="w-full h-12 bg-danger text-white rounded-lg flex items-center justify-center gap-2 text-[9px] uppercase tracking-widest hover:bg-danger/80 transition-all active:scale-95 shadow-lg shadow-danger/20"
             >
               <LogOut size={16} />
               Sair

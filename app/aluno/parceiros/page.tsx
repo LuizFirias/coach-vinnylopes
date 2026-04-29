@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getPublicStorageUrl } from '@/lib/storageUrls';
 import { 
   ShoppingBag, 
   Tag, 
@@ -148,7 +149,7 @@ export default function ParceirosPage() {
                     <div key={idx} className="min-w-full h-full relative p-4">
                       <div className="w-full h-full rounded-[40px] overflow-hidden relative border-8 border-white shadow-inner bg-white">
                         <Image
-                          src={img}
+                          src={getPublicStorageUrl('parceiros-logos', img) || ''}
                           alt={`${parceiro.nome_marca} view ${idx + 1}`}
                           fill
                           className="object-contain transition-transform duration-700 group-hover:scale-105"

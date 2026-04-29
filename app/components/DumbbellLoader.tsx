@@ -11,10 +11,10 @@ export default function DumbbellLoader({ size = 48, text }: DumbbellLoaderProps)
       <Dumbbell
         size={size}
         strokeWidth={1.5}
-        className="text-iron-gold animate-spin"
+        className="text-gold-light animate-spin"
       />
       {text && (
-        <span className="uppercase tracking-widest text-[10px] text-zinc-500">
+        <span className="label-small text-text-secondary">
           {text}
         </span>
       )}

@@ -159,7 +159,8 @@ export default function ResponsiveNav() {
         <div className="py-8 w-full px-3 border-t border-white-[0.03] flex flex-col items-center gap-4">
           <button
             onClick={async () => {
-              await supabaseClient.auth.signOut();
+              try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+              localStorage.clear();
               window.location.href = '/login';
             }}
             title="Sair"
@@ -232,7 +233,8 @@ export default function ResponsiveNav() {
           <div className="mt-auto px-2 pb-6">
             <button
               onClick={async () => {
-                await supabaseClient.auth.signOut();
+                try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+                localStorage.clear();
                 window.location.href = '/login';
               }}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-xs font-medium text-zinc-500 border border-white-[0.05]"

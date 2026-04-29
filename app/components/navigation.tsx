@@ -91,7 +91,8 @@ export default function Navigation() {
           {/* Botão Sair */}
           <button
             onClick={async () => {
-              await supabaseClient.auth.signOut();
+              try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+              localStorage.clear();
               window.location.href = '/login';
             }}
             className="flex items-center gap-3 px-6 py-5 mt-10 rounded-2xl bg-red-50 text-red-600 text-[10px] uppercase tracking-[0.3em] hover:bg-red-100 transition-all"

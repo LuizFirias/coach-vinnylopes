@@ -123,14 +123,14 @@ export default function BottomNav() {
   const navItems = userRole === 'coach' || userRole === 'super_admin' ? coachNavItems : studentNavItems;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-black/95 backdrop-blur-xl border-t border-white/10 safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-bg-base/95 backdrop-blur-xl border-t border-border-subtle safe-area-inset-bottom">
       {/* Scrollable container with fade effect on edges */}
       <div className="relative">
         {/* Left fade gradient */}
-        <div className="absolute left-0 top-0 bottom-0 w-8 bg-linear-to-r from-black/95 to-transparent z-10 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-8 bg-linear-to-r from-bg-base/95 to-transparent z-10 pointer-events-none" />
         
         {/* Right fade gradient */}
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-linear-to-l from-black/95 to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-linear-to-l from-bg-base/95 to-transparent z-10 pointer-events-none" />
         
         {/* Scrollable items */}
         <div className="flex items-center h-16 px-2 overflow-x-auto scrollbar-hide gap-1">
@@ -140,12 +140,12 @@ export default function BottomNav() {
               href={item.href}
               className={`flex flex-col items-center justify-center min-w-17.5 h-full px-2 transition-colors ${
                 item.isActive
-                  ? 'text-iron-gold'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'text-gold-light'
+                  : 'text-text-secondary hover:text-gold-light'
               }`}
             >
               <item.icon size={20} strokeWidth={item.isActive ? 2.5 : 2} />
-              <span className="text-[8px] mt-1 uppercase tracking-wider font-medium text-center leading-tight">
+              <span className="text-[8px] mt-1 uppercase tracking-widest font-medium text-center leading-tight">
                 {item.name}
               </span>
             </Link>

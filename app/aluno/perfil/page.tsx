@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getPublicStorageUrl, extractStoragePath } from '@/lib/storageUrls';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
@@ -123,12 +124,12 @@ export default function AlunoPerfil() {
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar_${userId}_${Date.now()}.${fileExt}`;
 
-      // Deletar avatar antigo se existir
+      // Deletar avatar antigo se existir (suporta tanto path quanto URL legada)
       if (avatarUrl) {
         try {
-          const oldFileName = avatarUrl.split('/avatars/').pop();
-          if (oldFileName) {
-            await supabaseClient.storage.from('avatars').remove([oldFileName]);
+          const oldPath = extractStoragePath('avatars', avatarUrl);
+          if (oldPath) {
+            await supabaseClient.storage.from('avatars').remove([oldPath]);
           }
         } catch (err) {
           console.log('Avatar antigo não encontrado ou já deletado');
@@ -144,20 +145,15 @@ export default function AlunoPerfil() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabaseClient.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const newAvatarUrl = publicUrlData.publicUrl;
-
+      // Salvar APENAS o path no banco (host é resolvido na exibição)
       const { error: updateError } = await supabaseClient
         .from('profiles')
-        .update({ avatar_url: newAvatarUrl })
+        .update({ avatar_url: fileName })
         .eq('id', userId);
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(newAvatarUrl);
+      setAvatarUrl(fileName);
       setMessage({ type: 'success', text: 'Foto atualizada com sucesso!' });
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
@@ -169,11 +165,13 @@ export default function AlunoPerfil() {
 
   const handleSignOut = async () => {
     try {
-      await supabaseClient.auth.signOut();
-      await fetch('/api/session', { method: 'DELETE' });
-      router.push('/login');
+      await supabaseClient.auth.signOut({ scope: 'local' });
     } catch (err) {
-      console.error('Erro ao fazer logout:', err);
+      console.warn('signOut error (ignorado):', err);
+    } finally {
+      localStorage.clear();
+      try { await fetch('/api/session', { method: 'DELETE' }); } catch {}
+      window.location.href = '/login';
     }
   };
 
@@ -211,7 +209,7 @@ export default function AlunoPerfil() {
                   <div className="w-40 h-40 rounded-3xl overflow-hidden bg-black border border-[#1a1a1a] relative shadow-2xl">
                     {avatarUrl ? (
                       <img
-                        src={avatarUrl}
+                        src={getPublicStorageUrl('avatars', avatarUrl) || ''}
                         alt="Avatar"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
@@ -248,15 +246,6 @@ export default function AlunoPerfil() {
 
                <button
                   type="button"
-                  onClick={() => setChangePasswordModalOpen(true)}
-                  className="w-full py-5 bg-brand-purple/10 text-brand-purple rounded-2xl text-[10px] uppercase tracking-[0.3em] hover:bg-brand-purple/20 border border-brand-purple/20 transition-all flex items-center justify-center gap-3 mb-3"
-                >
-                  <Lock size={16} />
-                  Trocar Senha
-                </button>
-
-               <button
-                  type="button"
                   onClick={handleSignOut}
                   className="w-full py-5 bg-black text-zinc-700 rounded-2xl text-[10px] uppercase tracking-[0.3em] hover:bg-red-500/10 hover:text-red-500 border border-[#1a1a1a] transition-all flex items-center justify-center gap-4"
                 >
@@ -267,9 +256,9 @@ export default function AlunoPerfil() {
           </div>
 
           {/* Settings Side */}
-          <div className="lg:col-span-2 space-y-10">
-            <div className="bg-[#0F0F0F] border border-[#1a1a1a] rounded-3xl p-10 shadow-2xl">
-               <h3 className="text-[11px] text-white mb-10 flex items-center gap-4 uppercase tracking-[0.3em]">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-[#0F0F0F] border border-[#1a1a1a] rounded-3xl p-6 shadow-2xl">
+               <h3 className="text-[11px] text-white mb-6 flex items-center gap-4 uppercase tracking-[0.3em]">
                   <div className="w-8 h-8 rounded-lg bg-[#D4AF37] flex items-center justify-center text-black">
                     <UserCircle size={16} strokeWidth={3} />
                   </div>
@@ -278,50 +267,50 @@ export default function AlunoPerfil() {
 
                {message && (
                   <div
-                    className={`mb-10 p-6 rounded-2xl flex items-center gap-4 text-[10px] uppercase tracking-widest ${
+                    className={`mb-6 p-4 rounded-2xl flex items-center gap-3 text-[10px] uppercase tracking-widest ${
                       message.type === 'success'
                         ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
                         : 'bg-red-500/10 text-red-500 border border-red-500/20'
                     }`}
                   >
-                    {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                    {message.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                     {message.text}
                   </div>
                 )}
 
-               <form onSubmit={handleUpdateProfile} className="space-y-8">
-                  <div className="space-y-8">
-                    <div className="space-y-3">
+               <form onSubmit={handleUpdateProfile} className="space-y-5">
+                  <div className="space-y-5">
+                    <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">NOME</label>
                       <input
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full bg-black border border-[#1a1a1a] text-white px-8 py-5 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
+                        className="w-full bg-black border border-[#1a1a1a] text-white px-6 py-3 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-900"
                         required
                         placeholder="Ex: João Vitor Performance"
                       />
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">E-MAIL DE ACESSO</label>
                       <div className="relative">
                         <input
                           type="email"
                           value={email}
                           disabled
-                          className="w-full bg-black/40 border border-[#1a1a1a] text-zinc-700 px-8 py-5 rounded-2xl text-sm font-medium cursor-not-allowed"
+                          className="w-full bg-black/40 border border-[#1a1a1a] text-zinc-700 px-6 py-3 rounded-2xl text-sm font-medium cursor-not-allowed"
                         />
                         <Mail size={18} className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-900" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="pt-6">
+                  <div className="pt-4">
                     <button
                       type="submit"
                       disabled={updating}
-                      className="w-full md:w-auto px-10 py-3 bg-[#D4AF37] text-black text-[11px] uppercase tracking-[0.3em] rounded-2xl hover:bg-white transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap3 active:scale-95"
+                      className="w-full md:w-auto px-8 py-2.5 bg-[#D4AF37] text-black text-[11px] uppercase tracking-[0.3em] rounded-2xl hover:bg-white transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95"
                     >
                       {updating ? <Loader2 className="animate-spin w-4 h-4" /> : <Save size={16} strokeWidth={3} />}
                       Salvar
@@ -333,7 +322,7 @@ export default function AlunoPerfil() {
             {/* Password Change Button */}
             <button
               onClick={() => setChangePasswordModalOpen(true)}
-              className="w-full bg-[#0F0F0F] border border-[#1a1a1a] hover:border-[#D4AF37]/30 rounded-3xl p-10 shadow-2xl transition-all group"
+              className="w-full bg-[#0F0F0F] border border-[#1a1a1a] hover:border-[#D4AF37]/30 rounded-3xl p-6 shadow-2xl transition-all group"
             >
               <div className="flex items-center gap-4 text-left">
                 <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-black transition-all">
@@ -349,7 +338,7 @@ export default function AlunoPerfil() {
             {/* Update Date of Birth Button */}
             <button
               onClick={() => setDateOfBirthModalOpen(true)}
-              className="w-full bg-[#0F0F0F] border border-[#1a1a1a] hover:border-[#D4AF37]/30 rounded-3xl p-10 shadow-2xl transition-all group"
+              className="w-full bg-[#0F0F0F] border border-[#1a1a1a] hover:border-[#D4AF37]/30 rounded-3xl p-6 shadow-2xl transition-all group"
             >
               <div className="flex items-center gap-4 text-left">
                 <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-black transition-all">
@@ -363,18 +352,18 @@ export default function AlunoPerfil() {
             </button>
 
             {/* Technical Support Card */}
-            <div className="p-10 rounded-3xl bg-[#0F0F0F] border border-[#1a1a1a] text-white backdrop-blur-sm relative group cursor-pointer hover:border-[#D4AF37]/30 transition-all shadow-2xl">
+            <div className="p-6 rounded-3xl bg-[#0F0F0F] border border-[#1a1a1a] text-white backdrop-blur-sm relative group cursor-pointer hover:border-[#D4AF37]/30 transition-all shadow-2xl">
                <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/5 flex items-center justify-center text-[#D4AF37] border border-[#D4AF37]/10 shadow-lg">
-                      <AlertCircle size={22} />
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/5 flex items-center justify-center text-[#D4AF37] border border-[#D4AF37]/10 shadow-lg">
+                      <AlertCircle size={16} />
                     </div>
                     <div>
-                       <h4 className="text-lg tracking-tight uppercase">Suporte Técnico</h4>
+                       <h4 className="text-[11px] tracking-tight uppercase">Suporte Técnico</h4>
                        <p className="text-zinc-600 text-[10px] uppercase tracking-widest mt-1">Acionar equipe de desenvolvimento</p>
                     </div>
                   </div>
-                  <ChevronRight size={18} className="text-zinc-800 group-hover:text-iron-gold group-hover:translate-x-1 transition-all" />
+                  <ChevronRight size={16} className="text-zinc-800 group-hover:text-iron-gold group-hover:translate-x-1 transition-all" />
                </div>
             </div>
           </div>

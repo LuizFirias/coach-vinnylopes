@@ -566,7 +566,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
         {/* Modal Adicionar Exercício */}
         {showAddExercicioModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-black rounded-3xl border border-white/5 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
               {/* Header Modal */}
               <div className="sticky top-0 bg-black border-b border-white/5 p-6 flex items-center justify-between">

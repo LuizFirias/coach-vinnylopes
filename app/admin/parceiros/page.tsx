@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getPublicStorageUrl } from '@/lib/storageUrls';
 
 interface Parceiro {
   id: string;
@@ -92,20 +93,17 @@ export default function ParceirosAdminPage() {
     setFormError(null);
 
     try {
-      const uploadedUrls: string[] = [];
+      // Salva apenas paths no banco (host resolvido na exibição)
+      const uploadedPaths: string[] = [];
       for (const file of imageFiles) {
-        const fileName = `${Date.now()}_${file.name}`;
+        const fileName = `${coachId}/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabaseClient.storage
           .from('parceiros-logos')
           .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabaseClient.storage
-          .from('parceiros-logos')
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(publicUrlData.publicUrl);
+        uploadedPaths.push(fileName);
       }
 
       const { error: dbError } = await supabaseClient
@@ -115,8 +113,8 @@ export default function ParceirosAdminPage() {
           descricao,
           cupom,
           link_desconto: linkDesconto,
-          logo_url: uploadedUrls[0] || null,
-          imagens: uploadedUrls,
+          logo_url: uploadedPaths[0] || null,
+          imagens: uploadedPaths,
           coach_id: coachId,
         });
 
@@ -160,23 +158,20 @@ export default function ParceirosAdminPage() {
     setFormError(null);
 
     try {
-      let uploadedUrls: string[] = [];
+      // Salva apenas paths no banco (host resolvido na exibição)
+      const uploadedPaths: string[] = [];
 
       // Fazer upload de novas imagens, se houver
       if (imageFiles.length > 0) {
         for (const file of imageFiles) {
-          const fileName = `${Date.now()}_${file.name}`;
+          const fileName = `${coachId}/${Date.now()}_${file.name}`;
           const { error: uploadError } = await supabaseClient.storage
             .from("parceiros-logos")
             .upload(fileName, file);
 
           if (uploadError) throw uploadError;
 
-          const { data: publicUrlData } = supabaseClient.storage
-            .from("parceiros-logos")
-            .getPublicUrl(fileName);
-
-          uploadedUrls.push(publicUrlData.publicUrl);
+          uploadedPaths.push(fileName);
         }
       }
 
@@ -189,9 +184,9 @@ export default function ParceirosAdminPage() {
       };
 
       // Se há novas imagens, atualizar
-      if (uploadedUrls.length > 0) {
-        updateData.logo_url = uploadedUrls[0];
-        updateData.imagens = uploadedUrls;
+      if (uploadedPaths.length > 0) {
+        updateData.logo_url = uploadedPaths[0];
+        updateData.imagens = uploadedPaths;
       }
 
       // Buscar token de autorização
@@ -303,7 +298,7 @@ export default function ParceirosAdminPage() {
                 <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center mb-6 border border-slate-100 shadow-sm">
                   {parceiro.logo_url ? (
                     <img
-                      src={parceiro.logo_url}
+                      src={getPublicStorageUrl('parceiros-logos', parceiro.logo_url) || ''}
                       alt={parceiro.nome_marca}
                       className="w-full h-full object-contain p-2"
                     />

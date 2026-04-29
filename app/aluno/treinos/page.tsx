@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
+import { getSignedStorageUrl } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import { 
   Dumbbell, 
@@ -46,15 +48,16 @@ export default function AlunoTreinosPage() {
   useEffect(() => {
     const fetchTreinos = async () => {
       try {
-        const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+        const session = await getSafeSession();
+        const user = session?.user;
 
-        if (authError || !authData.user) {
-          setError('Sess�o expirada. Fa�a login novamente.');
+        if (!user) {
+          setError('Sessão expirada. Faça login novamente.');
           setLoading(false);
           return;
         }
 
-        const userId = authData.user.id;
+        const userId = user.id;
 
         // Buscar fichas estruturadas
         const { data: fichasData, error: fichasError } = await supabaseClient
@@ -71,35 +74,27 @@ export default function AlunoTreinosPage() {
           .eq('aluno_id', userId)
           .order('data_upload', { ascending: false });
 
-        if (fichasError || pdfsError) {
-          setError('Erro ao carregar treinos');
-        } else {
-          setUserId(userId);
-          setFichas(fichasData || []);
-          
-          // Gerar URLs assinadas para cada PDF pois o bucket � privado
-          const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: any) => {
-            // Extrair o path do arquivo da URL antiga (que continha o publicUrl)
-            // Se j� tivermos o path no banco seria melhor, mas podemos extrair o path relativo do bucket
-            // Como salvamos como"aluno_id/timestamp_nome.pdf", vamos extrair
-            const pathParts = pdf.url_pdf.split('/treinos-pdf/');
-            const filePath = pathParts.length > 1 ? pathParts[1] : pdf.url_pdf;
-
-            const { data: signedData } = await supabaseClient.storage
-              .from('treinos-pdf')
-              .createSignedUrl(filePath, 3600); // Link v�lido por 1 hora
-
-            return {
-              ...pdf,
-              url_pdf: signedData?.signedUrl || pdf.url_pdf
-            };
-          }));
-
-          setTreinosPdf(pdfsComLinks);
+        if (fichasError) {
+          console.error('[Treinos] Erro ao buscar fichas:', fichasError);
         }
-        
+        if (pdfsError) {
+          console.error('[Treinos] Erro ao buscar PDFs:', pdfsError);
+        }
+
+        setUserId(userId);
+        setFichas(fichasData || []);
+
+        // Gerar URLs assinadas para cada PDF pois o bucket é privado
+        const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: any) => {
+          const signed = await getSignedStorageUrl('treinos-pdf', pdf.url_pdf, 3600);
+          return { ...pdf, url_pdf: signed || pdf.url_pdf };
+        }));
+
+        setTreinosPdf(pdfsComLinks);
+
         setLoading(false);
       } catch (err) {
+        console.error('[Treinos] Erro ao carregar treinos:', err);
         setError('Erro ao conectar com o servidor');
         setLoading(false);
       }
@@ -143,7 +138,7 @@ export default function AlunoTreinosPage() {
               <h1 className="text-4xl md:text-5xl text-white tracking-tight mb-2 uppercase">
                 Minhas <span className="text-[#D4AF37]">Rotinas</span>
               </h1>
-              <p className="text-zinc-500 font-medium text-sm border-l-2 border-[#D4AF37] pl-4">Seu cronograma t�cnico de treinamento.</p>
+              <p className="text-zinc-500 font-medium text-sm border-l-2 border-[#D4AF37] pl-4">Seu cronograma técnico de treinamento.</p>
             </div>
             
             {fichas.length + treinosPdf.length > 0 && (
@@ -170,34 +165,36 @@ export default function AlunoTreinosPage() {
             {/* Rotinas Estruturadas */}
             {fichas.length > 0 && (
               <section>
-                <h2 className="text-[10px] text-zinc-600 uppercase tracking-[0.3em] mb-6 flex items-center gap-4">
-                   Rotinas Interativas <div className="h-[1px] flex-1 bg-white/5"></div>
+                <h2 className="label-overline text-gold-light mb-8 flex items-center gap-3">
+                   <div className="w-2 h-8 bg-gold-default rounded-full"></div>
+                   Rotinas Interativas
                 </h2>
                 <div className="flex flex-col gap-4">
                   {fichas.map((ficha) => (
                     <div 
                       key={ficha.id} 
                       onClick={() => router.push(`/aluno/treinos/ficha?id=${ficha.id}`)}
-                      className="group bg-black/40 rounded-2xl p-6 border border-[#1a1a1a] shadow-2xl hover:border-[#D4AF37]/30 transition-all duration-300 cursor-pointer flex items-center justify-between"
+                      className="group bg-gold-default/10 border border-gold-default/30 rounded-lg p-6 shadow-xl shadow-gold-default/10 hover:border-gold-light/50 hover:shadow-gold-default/20 hover:bg-gold-default/15 transition-all duration-300 cursor-pointer flex items-center justify-between"
                     >
                       <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 bg-[#0F0F0F] rounded-xl flex items-center justify-center border border-[#1a1a1a] group-hover:border-[#D4AF37]/20 transition-all">
-                          <Dumbbell className="text-zinc-700 group-hover:text-[#D4AF37] transition-colors" size={24} />
+                        <div className="w-14 h-14 bg-gold-default/20 rounded-lg flex items-center justify-center border border-gold-default/40 group-hover:bg-gold-default/30 transition-all">
+                          <Dumbbell className="text-gold-light" size={24} />
                         </div>
 
                         <div>
-                          <h3 className="text-xl text-[#D4AF37] leading-tight group-hover:text-white transition-colors">
+                          <h3 className="heading-h3 text-gold-light leading-tight">
                             {ficha.nome_rotina}
                           </h3>
+                          <p className="label-small text-text-secondary mt-1">Estruturada Interativa</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-6">
                         <div className="hidden sm:flex flex-col items-end">
-                          <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Digital</span>
-                          <span className="text-xs text-white uppercase">{formatarData(ficha.criado_em)}</span>
+                          <span className="label-small text-text-secondary">Digital</span>
+                          <span className="text-xs text-text-primary uppercase font-600">{formatarData(ficha.criado_em)}</span>
                         </div>
-                        <div className="w-10 h-10 bg-[#0F0F0F] rounded-xl flex items-center justify-center text-zinc-600 group-hover:text-white group-hover:bg-[#D4AF37] transition-all">
+                        <div className="w-10 h-10 bg-gold-default/20 rounded-lg flex items-center justify-center text-gold-light group-hover:bg-gold-light group-hover:text-black transition-all">
                           <ChevronRight size={20} />
                         </div>
                       </div>
@@ -210,40 +207,39 @@ export default function AlunoTreinosPage() {
             {/* PDFs */}
             {treinosPdf.length > 0 && (
               <section>
-                <h2 className="text-[10px] text-zinc-600 uppercase tracking-[0.3em] mb-6 flex items-center gap-4">
-                   Fichas PDF (Protocolos) <div className="h-[1px] flex-1 bg-white/5"></div>
+                <h2 className="label-overline text-text-secondary mb-8 flex items-center gap-3">
+                   <div className="w-2 h-8 bg-border-subtle rounded-full"></div>
+                   Fichas PDF (Protocolos)
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {treinosPdf.map((pdf) => (
                     <div 
                       key={pdf.id} 
                       onClick={() => {
-                        // ===== VERIFICA��O DE SEGURAN�A =====
+                        // ===== VERIFICAÇÃO DE SEGURANÇA =====
                         if (pdf.aluno_id !== userId) {
                           console.error('[SECURITY] Tentativa de acessar PDF de treino de outro aluno bloqueada');
-                          alert('Erro de seguran�a: PDF n�o encontrado');
+                          alert('Erro de segurança: PDF não encontrado');
                           return;
                         }
                         setSelectedPdf(pdf);
                       }}
-                      className="group bg-black/60 rounded-2xl p-5 border border-white/5 hover:border-[#D4AF37]/40 transition-all duration-500 cursor-pointer flex items-center gap-4 relative overflow-hidden"
+                      className="group bg-bg-card border border-border-subtle rounded-lg p-5 hover:border-border-default hover:shadow-lg hover:shadow-gold-default/5 transition-all duration-300 cursor-pointer flex items-center gap-4 relative overflow-hidden"
                     >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-[#D4AF37]/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-[#D4AF37]/10 transition-colors"></div>
-                      
-                      <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-xl flex items-center justify-center text-[#D4AF37] shrink-0 border border-[#D4AF37]/20">
+                      <div className="w-12 h-12 bg-bg-elevated rounded-lg flex items-center justify-center text-text-secondary group-hover:text-gold-light shrink-0 border border-border-subtle group-hover:border-gold-default/30 transition-all">
                         <FileCheck size={22} />
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm text-white uppercase tracking-tight truncate">
+                        <h3 className="text-sm text-text-primary uppercase tracking-tight truncate font-600">
                           {pdf.nome_arquivo.replace('.pdf', '')}
                         </h3>
-                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                        <p className="label-small text-text-secondary">
                           Enviado em {formatarData(pdf.data_upload)}
                         </p>
                       </div>
 
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-zinc-600 group-hover:text-white group-hover:bg-[#D4AF37]/20 transition-all shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-bg-elevated flex items-center justify-center text-gold-light group-hover:text-gold-highlight group-hover:bg-gold-default/10 transition-all shrink-0 border border-border-subtle group-hover:border-gold-default/30">
                          <Search size={14} />
                       </div>
                     </div>
@@ -259,7 +255,7 @@ export default function AlunoTreinosPage() {
                 </div>
                 <h3 className="text-2xl text-white mb-2 uppercase tracking-tight">Nenhum treino ativo</h3>
                 <p className="max-w-xs text-zinc-500 font-medium mb-10">
-                  Seu Coach ainda n�o atribuiu uma rotina de treinos para o seu perfil.
+                  Seu Coach ainda não atribuiu uma rotina de treinos para o seu perfil.
                 </p>
               </div>
             )}

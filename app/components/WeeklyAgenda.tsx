@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from"react";
 import { Dumbbell, Plus, X, Check, FileText, Moon, ChevronRight, Loader2, Pencil } from"lucide-react";
-import { supabaseClient } from"@/lib/supabaseClient";import { getSafeSession } from '@/lib/authErrorHandler';import AddManualWorkoutModal from"./AddManualWorkoutModal";
+import { supabaseClient } from"@/lib/supabaseClient";
+import { getSafeSession } from '@/lib/authErrorHandler';
+import { extractStoragePath, getSignedStorageUrl } from '@/lib/storageUrls';
+import AddManualWorkoutModal from"./AddManualWorkoutModal";
+import { getTodayBrazil } from '@/lib/dateUtils';
 
 interface WorkoutOption {
   id: string;
@@ -252,8 +256,7 @@ export default function WeeklyAgenda() {
           // segurança extra: garantir apenas PDFs do aluno logado
           .filter((p: any) => p.aluno_id === user.id)
           .map((p: any) => {
-            const pathParts = p.url_pdf.split('/treinos-pdf/');
-            const filePath = pathParts.length > 1 ? pathParts[1] : p.url_pdf;
+            const filePath = extractStoragePath('treinos-pdf', p.url_pdf) || p.url_pdf;
             return { id: p.id, name: p.nome_arquivo, type: 'pdf' as const, url: filePath };
           }),
       ];
@@ -269,12 +272,8 @@ export default function WeeklyAgenda() {
         for (const item of agendaData) {
           let finalUrl = item.treinos_alunos?.url_pdf;
           if (item.treino_pdf_id && finalUrl) {
-            const pathParts = finalUrl.split('/treinos-pdf/');
-            const filePath = pathParts.length > 1 ? pathParts[1] : finalUrl;
-            const { data: signedData } = await supabaseClient.storage
-              .from('treinos-pdf')
-              .createSignedUrl(filePath, 3600);
-            finalUrl = signedData?.signedUrl || finalUrl;
+            const signed = await getSignedStorageUrl('treinos-pdf', finalUrl, 3600);
+            finalUrl = signed || finalUrl;
           }
           agendaMap[item.dia_semana] = {
             ...item,
@@ -300,7 +299,7 @@ export default function WeeklyAgenda() {
       try {
         const session = await getSafeSession();
         if (!session?.user) return;
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getTodayBrazil();
         const { data: existing } = await supabaseClient
           .from('treinos_manuais')
           .select('id')
@@ -369,7 +368,7 @@ export default function WeeklyAgenda() {
 
       // Se for o dia de hoje e não for descanso, registrar check-in
       if (day === new Date().getDay() && workout !== 'rest') {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getTodayBrazil();
         const { data: existing } = await supabaseClient
           .from('treinos_manuais')
           .select('id')
@@ -399,7 +398,7 @@ export default function WeeklyAgenda() {
   };
 
   if (loading) return (
-    <div className="h-32 flex items-center justify-center text-zinc-500 animate-pulse uppercase text-[10px] tracking-widest">
+    <div className="h-20 flex items-center justify-center text-text-secondary animate-pulse uppercase text-[10px] tracking-widest">
       Carregando Agenda...
     </div>
   );
@@ -409,12 +408,12 @@ export default function WeeklyAgenda() {
       <div className="w-full">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-sm text-white tracking-widest uppercase">Agenda Semanal</h2>
-            <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-tighter">Organize sua rotina de elite</p>
+            <h2 className="heading-h3 text-text-primary tracking-widest">Agenda Semanal</h2>
+            <p className="label-small text-text-secondary">Organize sua rotina de elite</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-7 gap-2">
           {dayLabels.map((label, dayIdx) => {
             const entry = agenda[dayIdx];
 
@@ -422,30 +421,30 @@ export default function WeeklyAgenda() {
               <button
                 key={dayIdx}
                 onClick={() => setEditingDay(dayIdx)}
-                className={`flex flex-col h-16 rounded-xl border relative transition-all duration-300 text-left cursor-pointer group
+                className={`flex flex-col min-h-20 rounded-md border relative transition-all duration-300 text-left cursor-pointer group
                   ${entry?.is_rest_day
-                    ? 'bg-zinc-900/20 border-white/5 opacity-60'
+                    ? 'bg-bg-card border-border-subtle opacity-60'
                     : entry?.workout_name
-                      ? 'bg-black border-[#D4AF37]/30 shadow-[0_4px_20px_rgba(212,175,55,0.06)] hover:border-[#D4AF37]/50'
-                      : 'bg-black border-white/5 hover:border-white/20'}
+                      ? 'bg-bg-card border-gold-default/40 shadow-lg shadow-gold-default/5 hover:border-gold-default/60'
+                      : 'bg-bg-card border-border-default hover:border-border-subtle'}
                 `}
               >
                 {/* Header */}
-                <div className="px-2.5 pt-2 flex justify-between items-center w-full">
-                  <span className="text-[9px] text-[#D4AF37] tracking-widest">{label}</span>
-                  <Plus size={9} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
+                <div className="px-3 pt-2.5 flex justify-between items-center w-full">
+                  <span className="label-small text-gold-light">{label}</span>
+                  <Plus size={12} className="text-text-disabled group-hover:text-text-secondary transition-colors" />
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 px-2.5 pb-2 flex flex-col justify-center overflow-hidden">
+                <div className="flex-1 px-3 pb-2.5 flex flex-col justify-center overflow-hidden">
                   {entry?.is_rest_day ? (
-                    <span className="text-[8px] text-zinc-700 uppercase tracking-[0.15em]">Off</span>
+                    <span className="text-[9px] text-text-disabled uppercase tracking-widest">Off</span>
                   ) : entry?.workout_name ? (
-                    <span className="text-[8px] text-white uppercase tracking-tighter leading-tight line-clamp-1 block">
+                    <span className="text-[9px] text-text-primary uppercase tracking-tight leading-tight line-clamp-2 block">
                       {entry.workout_name}
                     </span>
                   ) : (
-                    <span className="text-[7px] text-zinc-800 uppercase tracking-widest">+</span>
+                    <span className="text-[10px] text-text-disabled uppercase tracking-widest">+</span>
                   )}
                 </div>
               </button>

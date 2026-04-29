@@ -3,6 +3,7 @@
 import { useEffect, useState } from"react";
 import { useRouter } from"next/navigation";
 import { supabaseClient } from"@/lib/supabaseClient";
+import { getPublicStorageUrl, extractStoragePath } from"@/lib/storageUrls";
 import { LogOut, Camera, Lock } from"lucide-react";
 import ChangePasswordModal from"@/app/components/ChangePasswordModal";
 import DumbbellLoader from"@/app/components/DumbbellLoader";
@@ -67,10 +68,12 @@ export default function CoachPerfilPage() {
 
   const handleLogout = async () => {
     try {
-      await supabaseClient.auth.signOut();
-      router.push("/login");
-    } catch (err: any) {
-      setError("Erro ao fazer logout");
+      await supabaseClient.auth.signOut({ scope: 'local' });
+    } catch (err) {
+      console.warn('signOut error (ignorado):', err);
+    } finally {
+      localStorage.clear();
+      window.location.href = '/login';
     }
   };
 
@@ -93,29 +96,26 @@ export default function CoachPerfilPage() {
         // Nome único com timestamp para evitar conflitos
         const fileName = `avatar_${authData.user.id}_${Date.now()}.${fileExt}`;
 
-        // Deletar avatar antigo se existir
+        // Deletar avatar antigo se existir (suporta path ou URL legada)
         if (profile?.avatar_url) {
           try {
-            const oldFileName = profile.avatar_url.split('/avatars/').pop();
-            if (oldFileName) {
-              await supabaseClient.storage.from("avatars").remove([oldFileName]);
+            const oldPath = extractStoragePath('avatars', profile.avatar_url);
+            if (oldPath) {
+              await supabaseClient.storage.from("avatars").remove([oldPath]);
             }
           } catch (err) {
             console.log('Avatar antigo não encontrado ou já deletado');
           }
         }
 
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+        const { error: uploadError } = await supabaseClient.storage
           .from("avatars")
           .upload(fileName, avatarFile, { cacheControl:"3600", upsert: false });
 
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabaseClient.storage
-          .from("avatars")
-          .getPublicUrl(fileName);
-
-        uploadedAvatarUrl = publicUrlData.publicUrl;
+        // Salvar APENAS o path no banco
+        uploadedAvatarUrl = fileName;
         setUploadingAvatar(false);
       }
 
@@ -198,10 +198,10 @@ export default function CoachPerfilPage() {
               <div className="relative group">
                 <div className="w-24 h-24 rounded-2xl overflow-hidden bg-black border border-[#1a1a1a] relative shadow-2xl">
                   {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt="Avatar" 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                    <img
+                      src={getPublicStorageUrl('avatars', avatarUrl) || ''}
+                      alt="Avatar"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-zinc-900 text-3xl">

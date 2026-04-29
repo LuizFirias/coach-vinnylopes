@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from"react";
 import { X, Plus, Clock } from"lucide-react";
 import { supabaseClient } from"@/lib/supabaseClient";
+import { getTodayBrazil, getTodayBrazilDate, toBrazilDateString } from '@/lib/dateUtils';
 
 interface AddManualWorkoutModalProps {
   isOpen: boolean;
@@ -109,8 +110,7 @@ export default function AddManualWorkoutModal({
     }
 
     // Validate date: cannot add workouts for future dates
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayBrazilDate();
     const workoutDate = new Date(date);
     workoutDate.setHours(0, 0, 0, 0);
 
@@ -135,7 +135,7 @@ export default function AddManualWorkoutModal({
         tipo_treino: workoutType,
         duracao_minutos: durationMinutes,
         descricao: descricao || null,
-        data_treino: date.toISOString().split("T")[0],
+        data_treino: toBrazilDateString(date),
         concluido: concluido,
       });
 
@@ -314,8 +314,7 @@ Ex: Corrida no parque..."
 
           {/* Past Date Warning */}
           {(() => {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const today = getTodayBrazilDate();
             const workoutDate = new Date(date);
             workoutDate.setHours(0, 0, 0, 0);
             const isPastDate = workoutDate < today;

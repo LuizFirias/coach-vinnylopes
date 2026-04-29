@@ -100,12 +100,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Você não tem permissão para deletar este parceiro" }, { status: 403 });
     }
 
-    // Se tiver imagens, deletar do storage
+    // Se tiver imagens, deletar do storage (suporta path novo ou URL legada)
     if (parceiro?.imagens) {
-      const paths = parceiro.imagens.map((url: string) => {
-        const matches = url.match(/\/storage\/v1\/object\/public\/parceiros-logos\/(.+)/);
-        return matches ? matches[1] : null;
-      }).filter(Boolean);
+      const paths = parceiro.imagens.map((value: string) => {
+        if (!value) return null;
+        if (!value.startsWith('http')) return value; // já é path
+        // URL legada — extrai o path
+        const publicMatch = value.match(/\/storage\/v1\/object\/public\/parceiros-logos\/(.+?)(\?.*)?$/);
+        if (publicMatch) return publicMatch[1];
+        const signedMatch = value.match(/\/storage\/v1\/object\/sign\/parceiros-logos\/(.+?)(\?.*)?$/);
+        if (signedMatch) return signedMatch[1];
+        return null;
+      }).filter(Boolean) as string[];
 
       if (paths.length > 0) {
         await supabaseAdmin.storage
