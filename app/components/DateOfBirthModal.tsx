@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { 
-  X, 
-  Calendar, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2
-} from 'lucide-react';
+import {
+  X,
+  Calendar,
+  CheckCircle,
+  WarningCircle,
+  CircleNotch
+} from '@phosphor-icons/react';
 
 interface DateOfBirthModalProps {
   isOpen: boolean;
@@ -96,7 +96,7 @@ export default function DateOfBirthModal({
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
-            <Calendar size={24} strokeWidth={2} />
+            <Calendar size={24} />
           </div>
           <div>
             <h2 className="text-xl text-white uppercase tracking-tight">
@@ -118,9 +118,9 @@ export default function DateOfBirthModal({
             }`}
           >
             {message.type === 'success' ? (
-              <CheckCircle2 size={16} />
+              <CheckCircle size={16} />
             ) : (
-              <AlertCircle size={16} />
+              <WarningCircle size={16} />
             )}
             {message.text}
           </div>
@@ -159,7 +159,7 @@ export default function DateOfBirthModal({
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <CircleNotch className="w-4 h-4 animate-spin" />
                   Atualizando...
                 </>
               ) : (

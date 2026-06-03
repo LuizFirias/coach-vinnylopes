@@ -5,9 +5,9 @@
 
 import { createClient } from '@/lib/supabase/server';
 
-export async function deleteAccountAction() {
+export async function deleteAccountAction(accessToken: string) {
   try {
-    const supabase = createClient();
+    const supabase = createClient(accessToken);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

@@ -1,57 +1,74 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap');
+@import './design-tokens.css';
 @import "tailwindcss";
 
-/* Prevent zoom on mobile devices */
+/* Keep touch-action to eliminate double-tap zoom delay */
 html {
   touch-action: manipulation;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
-:root {
-  /* ── NEW DESIGN TOKENS ── */
-  
-  /* Backgrounds */
-  --bg-base: #070707;
-  --bg-surface: #111111;
-  --bg-card: #1A1A1A;
-  --bg-elevated: #222222;
-  
-  /* Brand Gold */
-  --gold-default: #B8972A;
-  --gold-light: #D4AF47;
-  --gold-highlight: #EDD06B;
-  --gold-bg: rgba(184, 151, 42, 0.15);
-  
-  /* Text */
-  --text-primary: #F2F2F2;
-  --text-secondary: #A0A0A0;
-  --text-disabled: #555555;
-  
-  /* Borders & Status */
-  --border-subtle: #2C2C2C;
-  --border-default: #3A3A3A;
-  --success: #27AE60;
-  --danger: #C0392B;
-  --warn: #E67E22;
-  --neutral: #888888;
-  
-  /* Legacy vars for compatibility */
-  --background: #070707;
-  --foreground: #F2F2F2;
-  --divider: #2C2C2C;
-  --gold: #B8972A;
+/* Force dark color-scheme on all native select elements so the OS-rendered
+   dropdown popup uses dark system colors (black bg / white text) instead of
+   the default light popup that makes options unreadable on dark backgrounds. */
+select {
+  color-scheme: dark;
+}
+
+/* Explicitly override option colors — color-scheme alone uses OS gray tones
+   on Windows Chrome which can still be unreadable on dark UIs. */
+select option {
+  background-color: #111111;
+  color: #f2f2f2;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #1f1a09;
+  color: #d4af37;
 }
 
 @theme inline {
-  --color-background: var(--bg-base);
+  --color-background: var(--surface-0);
   --color-foreground: var(--text-primary);
-  --color-iron-black: #070707;
-  --color-iron-gray: #111111;
-  --color-iron-red: #C0392B;
-  --color-iron-gold: #B8972A;
-  --color-iron-divider: #2C2C2C;
-  --color-brand-purple: #B8972A;
+
+  /* ── Design System v2 (sprint-1) ── */
+  /* Surfaces */
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+
+  /* Brand */
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-pressed: var(--brand-pressed);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-border: var(--brand-border);
+  --color-text-on-brand: var(--text-on-brand);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-disabled: var(--text-disabled);
+
+  /* Semantic */
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-border: var(--danger-border);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
 
   /* Spacing scale (4pt base) */
   --space-1: 4px;
@@ -79,9 +96,10 @@ html {
 }
 
 body {
-  background: var(--bg-base);
+  background: var(--surface-0);
   color: var(--text-primary);
-  font-family: 'Sora', system-ui, sans-serif;
+  font-family: var(--font-sans);
+  overscroll-behavior: none;
 }
 
 /* Explicit z-index utilities (Tailwind v4 default scale stops at z-50) */
@@ -89,6 +107,32 @@ body {
 .z-70  { z-index: 70; }
 .z-100 { z-index: 100; }
 .z-101 { z-index: 101; }
+
+/* iOS anti-zoom: font-size mínimo 16px em inputs */
+input[type="email"],
+input[type="password"],
+input[type="text"],
+input[type="number"],
+input[type="search"],
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+/* Safe-area page container */
+.page-container {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(var(--nav-height) + var(--nav-safe-area) + 16px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  min-height: 100dvh;
+}
+
+/* Scrollable areas */
+.scrollable-area {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
 
 .card-iron {
     background: var(--bg-card);
@@ -115,38 +159,38 @@ body {
     background: var(--bg-elevated);
 }
 
-/* ── TYPOGRAPHY ── */
 .heading-h1 {
-  font-family: 'DM Serif Display', serif;
+  font-family: var(--font-sans);
   font-size: clamp(32px, 6vw, 48px);
+  font-weight: 700;
   line-height: 1.05;
   color: var(--text-primary);
 }
 
 .heading-h2 {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .heading-h3 {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .label-overline {
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 4px;
   text-transform: uppercase;
-  color: var(--gold-default);
+  color: var(--color-gold);
 }
 
 .label-small {
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 3px;
   text-transform: uppercase;
@@ -154,7 +198,7 @@ body {
 }
 
 .body-text {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 300;
   line-height: 1.6;
@@ -162,69 +206,67 @@ body {
 }
 
 .metric-value {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   font-size: 36px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .btn-primary {
-  background: var(--gold-default);
+  background: var(--color-gold);
   color: #000;
   border: none;
   padding: 12px 24px;
   border-radius: var(--radius-md);
   font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   width: 100%;
   transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-  background: var(--gold-light);
+  background: var(--color-gold-light);
 }
 
 .btn-primary:active {
-  background: var(--gold-default);
+  background: var(--color-gold);
   transform: scale(0.97);
 }
 
 .btn-secondary {
   background: transparent;
   color: var(--text-primary);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--color-border-strong);
   padding: 11px 24px;
   border-radius: var(--radius-md);
   font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   width: 100%;
   transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background: var(--bg-elevated);
-  border-color: var(--gold-default);
+  background: var(--surface-3);
+  border-color: var(--color-gold);
 }
 
 /* ── INPUT FIELD ── */
 .input-field {
   width: 100%;
   box-sizing: border-box;
-  background: var(--bg-elevated);
+  background: var(--surface-3);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   padding: 12px 16px;
   border-radius: var(--radius-md);
-  font-family: 'Sora', sans-serif;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: 16px;
   transition: all 0.2s ease;
 }
 
@@ -248,7 +290,7 @@ body {
 }
 
 .metric-card .label {
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 3px;
   color: var(--text-secondary);
@@ -257,14 +299,14 @@ body {
 }
 
 .metric-card .value {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   font-size: 36px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .metric-card .unit {
-  font-family: 'Sora', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 300;
   color: var(--text-secondary);
@@ -276,7 +318,7 @@ body {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 4px;
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 1px;
@@ -367,4 +409,27 @@ body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Custom scrollbar styling */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thumb-border-subtle::-webkit-scrollbar-thumb {
+  background-color: var(--border-subtle);
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-border-subtle::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-default);
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background-color: transparent;
 }

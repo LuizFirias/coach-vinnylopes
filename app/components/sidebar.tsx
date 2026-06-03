@@ -6,30 +6,31 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
-import { 
-  Dumbbell, 
-  Utensils, 
-  Ruler, 
-  Camera, 
-  Handshake, 
-  Trophy, 
-  User, 
-  LogOut, 
-  Menu, 
+import {
+  Barbell,
+  ForkKnife,
+  Ruler,
+  Camera,
+  Handshake,
+  Trophy,
+  User,
+  SignOut,
+  List,
   X,
   Users,
-  LayoutDashboard,
-  ShieldAlert,
-  Settings,
-  Apple,
+  SquaresFour,
+  ShieldWarning,
+  Gear,
+  AppleLogo,
   BookOpen,
-  MessageCircle
-} from 'lucide-react';
+  ChatCircle,
+  ChartBar
+} from '@phosphor-icons/react';
 
 const menuItems = [
-  { name: 'Dashboard', href: '/aluno/dashboard', icon: LayoutDashboard },
-  { name: 'Treinos', href: '/aluno/treinos', icon: Dumbbell },
-  { name: 'Plano Alimentar', href: '/aluno/plano-alimentar', icon: Utensils },
+  { name: 'Dashboard', href: '/aluno/dashboard', icon: SquaresFour },
+  { name: 'Treinos', href: '/aluno/treinos', icon: Barbell },
+  { name: 'Plano Alimentar', href: '/aluno/plano-alimentar', icon: ForkKnife },
   { name: 'Medidas', href: '/aluno/medidas', icon: Ruler },
   { name: 'Fotos', href: '/aluno/fotos', icon: Camera },
   { name: 'Ranking', href: '/aluno/ranking', icon: Trophy },
@@ -39,17 +40,18 @@ const menuItems = [
 const coachMenuItems = [
   { name: 'Painel Alunos', href: '/admin/alunos', icon: Users },
   { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
-  { name: 'Treinos Gerais', href: '/admin/treinos', icon: Dumbbell },
-  { name: 'Nutrição', href: '/admin/nutricao', icon: Apple },
-  { name: 'Feedbacks', href: '/admin/feedbacks', icon: MessageCircle },
+  { name: 'Treinos Gerais', href: '/admin/treinos', icon: Barbell },
+  { name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
+  { name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
   { name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
   { name: 'Ranking Geral', href: '/admin/ranking', icon: Trophy },
+  { name: 'Relatórios', href: '/admin/relatorios', icon: ChartBar },
   { name: 'Meu Perfil', href: '/admin/perfil', icon: User },
 ];
 
 const superAdminMenuItems = [
-  { name: 'Master Control', href: '/super-admin', icon: ShieldAlert },
-  { name: 'Perfil Master', href: '/super-admin/perfil', icon: Settings },
+  { name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
+  { name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
 ];
 
 export default function Sidebar() {
@@ -76,7 +78,7 @@ export default function Sidebar() {
       {/* Sidebar for Desktop */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-20 bg-bg-base border-r border-border-subtle flex-col py-8 items-center z-60 shadow-2xl">
         <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="mb-10 group cursor-pointer">
-          <div className="w-14 h-14 bg-bg-card rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-gold-default/40 group-hover:scale-105 transition-all overflow-hidden">
+          <div className="w-14 h-14 bg-surface-1 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden">
             <Image src="/logo.png" alt="Coach Vinny" width={44} height={44} className="object-contain" />
           </div>
         </Link>
@@ -91,13 +93,13 @@ export default function Sidebar() {
                   href={m.href}
                   title={m.name}
                   className={`w-14 h-14 rounded-lg flex items-center justify-center transition-all group relative ${
-                    isActive ? 'text-gold-light' : 'text-text-disabled hover:text-gold-light/60 hover:bg-gold-default/5'
+                    isActive ? 'text-brand' : 'text-text-disabled hover:text-brand/60 hover:bg-brand/5'
                   }`}
                 >
-                   {isActive && <div className="absolute left-0 w-1 h-6 bg-gold-light rounded-r-full" />}
-                   <Icon size={22} className={`${!isActive && 'group-hover:scale-110'} transition-transform ${isActive ? 'fill-gold-light/20 stroke-[2.5px]' : 'stroke-[1.5px]'}`} />
+                   {isActive && <div className="absolute left-0 w-1 h-6 bg-brand rounded-r-full" />}
+                   <Icon size={22} weight={isActive ? 'fill' : 'regular'} className={`${!isActive && 'group-hover:scale-110'} transition-transform`} />
                    {!isActive && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-bg-card/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
+                      <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
                         {m.name}
                       </div>
                    )}
@@ -112,10 +114,10 @@ export default function Sidebar() {
             localStorage.clear();
             window.location.href = '/login';
           }}
-          className="mt-4 w-14 h-14 rounded-lg flex items-center justify-center text-text-disabled hover:text-gold-light hover:bg-gold-default/10 transition-all group"
+          className="mt-4 w-14 h-14 rounded-lg flex items-center justify-center text-text-disabled hover:text-brand hover:bg-brand/10 transition-all group"
           title="Sair"
         >
-           <LogOut size={22} />
+           <SignOut size={22} />
         </button>
       </aside>
 
@@ -125,7 +127,7 @@ export default function Sidebar() {
         onClick={() => setOpen(true)}
         className="hidden"
       >
-        <Menu size={22} className="text-[#D4AF37]" />
+        <List size={22} className="text-brand" />
       </button>
 
       {/* Drawer Overlay - Mobile Only */}
@@ -140,12 +142,12 @@ export default function Sidebar() {
       {/* Drawer Menu - Mobile Only */}
       <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         <div className="p-6 pb-4 flex items-center justify-between">
-          <div className="w-11 h-11 bg-bg-card rounded-lg flex items-center justify-center shadow-lg border border-border-subtle overflow-hidden">
+          <div className="w-11 h-11 bg-surface-1 rounded-lg flex items-center justify-center shadow-lg border border-border-subtle overflow-hidden">
             <Image src="/logo.png" alt="Coach Vinny" width={36} height={36} className="object-contain" />
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="w-10 h-10 flex items-center justify-center bg-bg-card text-text-secondary hover:text-gold-light rounded-lg transition-all"
+            className="w-10 h-10 flex items-center justify-center bg-surface-1 text-text-secondary hover:text-brand rounded-lg transition-all"
             aria-label="Fechar"
           >
             <X size={20} />
@@ -153,9 +155,9 @@ export default function Sidebar() {
         </div>
 
         <div className="px-5 mt-3 mb-6">
-           <div className="p-4 bg-bg-card rounded-lg border border-border-subtle flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-bg-elevated flex items-center justify-center border border-border-subtle">
-                 <User size={15} className="text-gold-light" />
+           <div className="p-4 bg-surface-1 rounded-lg border border-border-subtle flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center border border-border-subtle">
+                 <User size={15} className="text-brand" />
               </div>
               <div className="flex flex-col">
                  <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mb-1">Acesso</span>
@@ -175,14 +177,14 @@ export default function Sidebar() {
                 key={m.href}
                 href={m.href}
                 className={`flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] uppercase tracking-widest transition-all group ${
-                  isActive ? 'bg-gold-default text-black shadow-lg shadow-gold-default/20' : 'text-text-secondary hover:text-gold-light hover:bg-gold-default/5'
+                  isActive ? 'bg-brand text-black shadow-lg shadow-brand/20' : 'text-text-secondary hover:text-brand hover:bg-brand/5'
                 }`}
                 onClick={() => setOpen(false)}
               >
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border ${
-                  isActive ? 'bg-gold-light/20 border-gold-light/30' : 'bg-bg-elevated border-border-subtle'
+                  isActive ? 'bg-brand/20 border-brand/30' : 'bg-surface-2 border-border-subtle'
                 }`}>
-                  <Icon size={16} />
+                  <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
                 </div>
                 {m.name}
               </Link>
@@ -198,7 +200,7 @@ export default function Sidebar() {
               }}
               className="w-full h-12 bg-danger text-white rounded-lg flex items-center justify-center gap-2 text-[9px] uppercase tracking-widest hover:bg-danger/80 transition-all active:scale-95 shadow-lg shadow-danger/20"
             >
-              <LogOut size={16} />
+              <SignOut size={16} />
               Sair
             </button>
         </div>

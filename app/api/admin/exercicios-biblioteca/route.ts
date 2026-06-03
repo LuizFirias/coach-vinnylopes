@@ -105,6 +105,8 @@ export async function POST(req: Request) {
         equipamento,
         musculos_secundarios: musculosSecundarios,
         tipo_exercicio: tipoExercicio,
+        coach_id: userId,
+        tipo: "privado",
       })
       .select("id, nome, grupo_muscular, equipamento, tipo_exercicio")
       .single();

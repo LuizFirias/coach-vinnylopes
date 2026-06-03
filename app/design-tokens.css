@@ -27,11 +27,11 @@
   /* ═══════════════════════════════════════════════════════════
      SURFACES (background layers — do mais escuro pro mais claro)
      ═══════════════════════════════════════════════════════════ */
-  --surface-0:        #0A0A0B;   /* background base do app */
-  --surface-1:        #121214;   /* cards primários */
-  --surface-2:        #1A1A1D;   /* cards aninhados, hover */
-  --surface-3:        #232327;   /* inputs, divisores ativos */
-  --surface-4:        #2D2D32;   /* skeleton loaders */
+  --surface-0:        #08080A;   /* background base do app */
+  --surface-1:        #15151A;   /* cards primários (+7 pontos vs base) */
+  --surface-2:        #1F1F25;   /* cards aninhados, hover */
+  --surface-3:        #2A2A32;   /* inputs, divisores ativos */
+  --surface-4:        #353540;   /* skeleton loaders, elevado */
 
   /* ═══════════════════════════════════════════════════════════
      TEXT
@@ -155,6 +155,50 @@
   --radius-full: 9999px;
 
   /* ═══════════════════════════════════════════════════════════
+     REFACTORING DOC ALIASES (--color-* names)
+     ═══════════════════════════════════════════════════════════ */
+  --color-gold:           #D4A017;
+  --color-gold-dark:      #B8860B;
+  --color-gold-light:     #F5C842;
+  --color-gold-muted:     rgba(212, 160, 23, 0.15);
+
+  --color-bg-primary:     var(--surface-0);
+  --color-bg-secondary:   var(--surface-1);
+  --color-bg-card:        var(--surface-2);
+  --color-bg-card-hover:  var(--surface-3);
+  --color-bg-input:       var(--surface-2);
+
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:     var(--text-tertiary);
+
+  --color-border-default: var(--border-subtle);
+  --color-border-gold:    rgba(212, 160, 23, 0.3);
+  --color-border-strong:  var(--border-default);
+
+  --color-success:        var(--success);
+  --color-danger:         var(--danger);
+  --color-success-muted:  var(--success-subtle);
+  --color-danger-muted:   var(--danger-subtle);
+
+  /* nav */
+  --nav-height:       64px;
+  --nav-safe-area:    env(safe-area-inset-bottom, 0px);
+  --tap-min:          44px;
+
+  /* ═══════════════════════════════════════════════════════════
+     LEGACY COMPAT (old --bg-* and --gold-* names still used)
+     ═══════════════════════════════════════════════════════════ */
+  --bg-base:         var(--surface-0);
+  --bg-surface:      var(--surface-1);
+  --bg-card:         var(--surface-2);
+  --bg-elevated:     var(--surface-3);
+  --gold-default:    var(--brand-primary);
+  --gold-light:      var(--brand-hover);
+  --gold-highlight:  #EDD06B;
+  --gold-bg:         var(--brand-subtle);
+
+  /* ═══════════════════════════════════════════════════════════
      ANIMATIONS
      ═══════════════════════════════════════════════════════════ */
   --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
@@ -175,7 +219,7 @@
   --max-width-mobile:  428px;  /* iPhone Pro Max baseline */
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    GLOBAL RESETS — mobile-first
    ═══════════════════════════════════════════════════════════ */
 
@@ -272,6 +316,35 @@ select {
 }
 
 .card-interactive:active {
+  transform: scale(0.99);
+}
+
+/* Card com elevação real — usar para destacar item primário */
+.card-elevated {
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--elev-2);
+}
+
+.card-elevated-interactive {
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--elev-2);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.card-elevated-interactive:hover {
+  background: var(--surface-3);
+  border-color: var(--brand-border);
+  box-shadow: var(--elev-3);
+}
+
+.card-elevated-interactive:active {
   transform: scale(0.99);
 }
 

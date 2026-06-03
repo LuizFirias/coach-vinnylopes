@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, FormEvent, ChangeEvent, Suspense } from"react";
-import Image from"next/image";
-import { supabaseClient } from"@/lib/supabaseClient";
-import { useRouter, useSearchParams } from"next/navigation";
-import { AlertCircle, LogIn, Eye, EyeOff, ShieldCheck } from"lucide-react";
-import PWAInstall from"../components/PWAInstall";
-import DumbbellLoader from"../components/DumbbellLoader";
-import { motion, AnimatePresence } from"framer-motion";
+import React, { useState, useEffect, FormEvent, ChangeEvent, Suspense } from "react";
+import Image from "next/image";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { useRouter, useSearchParams } from "next/navigation";
+import { WarningCircle, SignIn, Eye, EyeSlash, ShieldCheck, ChatCircle, Fingerprint } from "@phosphor-icons/react";
+import PWAInstall from "../components/PWAInstall";
+import DumbbellLoader from "../components/DumbbellLoader";
+import { motion, AnimatePresence } from "framer-motion";
 
 function LoginForm() {
   const router = useRouter();
@@ -20,18 +20,40 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [logoFailed, setLogoFailed] = useState(false);
 
-  // Se já há sessão ativa, redirecionar para a dashboard correta
+  const [mode, setMode] = useState<"login" | "recovery">("login");
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoverySent, setRecoverySent] = useState(false);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+
+  const [biometriaDisponivel, setBiometriaDisponivel] = useState(false);
+
   useEffect(() => {
+    // Se Supabase redirecionar para /login com tokens de recovery, reencaminhar para /reset-password
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      const queryParams = new URLSearchParams(window.location.search);
+      const code = queryParams.get('code');
+
+      if (hashParams.get('type') === 'recovery' && hashParams.get('access_token')) {
+        router.replace(`/reset-password${window.location.hash}`);
+        return;
+      }
+      if (code) {
+        router.replace(`/reset-password?code=${code}`);
+        return;
+      }
+    }
+
     const checkExistingSession = async () => {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session?.user) return;
-
       const { data: profile } = await supabaseClient
         .from("profiles")
         .select("role")
         .eq("id", session.user.id)
         .single();
-
       const role = profile?.role || "aluno";
       if (role === "coach") router.replace("/admin/alunos");
       else if (role === "super_admin") router.replace("/super-admin");
@@ -40,21 +62,44 @@ function LoginForm() {
     checkExistingSession();
   }, []);
 
-  // ... (keeping existing logic for handleEmailChange, handlePasswordChange, handleLogin)
-  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-    setError(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        .then(available => setBiometriaDisponivel(available))
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => { setEmail(e.target.value); setError(null); };
+  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(null); };
+
+  const handleRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryLoading(true);
+    setRecoveryError(null);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: recoveryEmail }),
+      });
+      if (!res.ok) throw new Error("Erro ao enviar");
+      setRecoverySent(true);
+    } catch {
+      setRecoveryError("Não foi possível enviar o e-mail. Verifique o endereço.");
+    } finally {
+      setRecoveryLoading(false);
+    }
   };
 
-  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-    setError(null);
+  const handleBiometria = async () => {
+    // Biometria completa requer integração backend com WebAuthn
+    // Por ora, redireciona para login normal com foco no email
+    alert('Para usar biometria, faça login uma vez com email e senha. Nas próximas vezes, o dispositivo oferecerá autenticação biométrica.');
   };
 
   const handleSupportClick = () => {
-    if (typeof window !== 'undefined') {
-      window.open('https://wa.me/556781232717', '_blank');
-    }
+    if (typeof window !== "undefined") window.open("https://wa.me/556781232717", "_blank");
   };
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -63,10 +108,7 @@ function LoginForm() {
     setError(null);
 
     try {
-      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (authError) {
         setError("Credenciais inválidas. Verifique seu e-mail e senha.");
@@ -75,10 +117,9 @@ function LoginForm() {
       }
 
       if (data?.session && data.user) {
-        // Ensure session is properly stored in browser storage
-        if (typeof window !== 'undefined' && data.session.access_token && data.session.refresh_token) {
+        if (typeof window !== "undefined" && data.session.access_token && data.session.refresh_token) {
           try {
-            localStorage.setItem('sb-auth-token', JSON.stringify({
+            localStorage.setItem("sb-auth-token", JSON.stringify({
               access_token: data.session.access_token,
               refresh_token: data.session.refresh_token,
               expires_at: data.session.expires_at,
@@ -103,8 +144,8 @@ function LoginForm() {
 
         try {
           await fetch("/api/session", {
-            method:"POST",
-            headers: {"Content-Type":"application/json" },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               access_token: data.session.access_token,
               refresh_token: data.session.refresh_token,
@@ -116,67 +157,64 @@ function LoginForm() {
         }
 
         const from = searchParams?.get("from");
-        const role = profileData?.role ||"aluno";
-        
-        let defaultRoute ="/aluno/treinos";
-        if (role ==="coach") defaultRoute ="/admin/alunos";
-        if (role ==="super_admin") defaultRoute ="/super-admin";
+        const role = profileData?.role || "aluno";
 
-        const allowAdmin = role ==="coach" || role ==="super_admin";
+        let defaultRoute = "/aluno/treinos";
+        if (role === "coach") defaultRoute = "/admin/alunos";
+        if (role === "super_admin") defaultRoute = "/super-admin";
+
+        const allowAdmin = role === "coach" || role === "super_admin";
 
         if (from) {
           const isAlunoRoute = from.startsWith("/aluno");
           const isAdminRoute = from.startsWith("/admin");
           const isSuperAdminRoute = from.startsWith("/super-admin");
-
-          if ((isAlunoRoute && role ==="aluno") || ((isAdminRoute || isSuperAdminRoute) && allowAdmin)) {
+          if ((isAlunoRoute && role === "aluno") || ((isAdminRoute || isSuperAdminRoute) && allowAdmin)) {
             router.push(from);
             return;
           }
         }
 
-        // Check if first access (never changed password)
-        if (role ==="aluno") {
+        if (role === "aluno") {
           const { data: userData } = await supabaseClient.auth.getUser();
           if (userData.user?.user_metadata?.first_login !== false) {
-             router.push("/aluno/perfil?firstAccess=true");
-             return;
+            router.push("/aluno/perfil?firstAccess=true");
+            return;
           }
         }
 
         router.push(defaultRoute);
       }
-    } catch (err) {
+    } catch {
       setError("Erro ao processar login. Tente novamente.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 font-sans antialiased overflow-hidden">
-      {/* Background Decorativo Sutil */}
+    <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center px-6 antialiased overflow-hidden">
+      {/* Glow decorativo */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-[#D4AF37]/5 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-[#D4AF37]/5 rounded-full blur-[120px]" />
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-brand/5 rounded-full blur-[120px]" />
+        <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-brand/5 rounded-full blur-[120px]" />
       </div>
 
       <PWAInstall />
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease:"easeOut" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
         className="w-full max-w-[400px] flex flex-col items-center relative z-10"
       >
-        
-        {/* Header Section */}
-        <div className="flex flex-col items-center text-center mb-12">
+        {/* Logo */}
+        <div className="flex flex-col items-center text-center mb-10">
           {!logoFailed ? (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="mb-8"
+              className="mb-6"
             >
               <Image
                 src="/logo.png"
@@ -189,105 +227,210 @@ function LoginForm() {
               />
             </motion.div>
           ) : (
-            <div className="mb-8 flex flex-col items-center">
-              <div className="w-20 h-20 bg-[#0F0F0F] border border-[#1a1a1a] rounded-2xl flex items-center justify-center mb-4 shadow-xl">
-                 <ShieldCheck className="text-[#D4AF37] w-10 h-10" />
+            <div className="mb-6 flex flex-col items-center">
+              <div className="w-20 h-20 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center mb-4 shadow-elev-1">
+                <ShieldCheck className="text-brand w-10 h-10" />
               </div>
-              <h1 className="text-2xl text-white tracking-[0.2em] uppercase">COACH VINNY</h1>
+              <h1 className="text-2xl font-bold text-text-primary tracking-[0.2em] uppercase">COACH VINNY</h1>
             </div>
           )}
-          
-          <p className="text-zinc-500 text-xs font-medium uppercase tracking-[0.2em] max-w-[280px] leading-relaxed">
+          <p className="text-xs text-text-tertiary uppercase tracking-[0.2em] max-w-[280px] leading-relaxed">
             Plataforma Exclusiva de <br />
-            <span className="text-[#D4AF37]">Alta Performance</span>
+            <span className="text-brand font-semibold">Alta Performance</span>
           </p>
         </div>
 
-        {/* Login Card */}
-        <div className="w-full bg-zinc-900/40 backdrop-blur-2xl border border-white/10 p-10 rounded-[40px] shadow-[0_0_80px_rgba(0,0,0,0.8)] relative overflow-hidden">
-          <form onSubmit={handleLogin} className="space-y-8 relative z-10">
-            
-            <div className="space-y-3">
-              <label className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 ml-1">E-mail de acesso</label>
-              <input
-                type="email"
-                value={email}
-                onChange={handleEmailChange}
-                placeholder="seu@email.com"
-                required
-                className="w-full h-16 bg-black/40 border border-white/10 text-white px-7 rounded-2xl text-sm placeholder:text-zinc-800 focus:outline-none focus:border-iron-gold/40 transition-all font-medium shadow-inner antialiased"
-              />
-            </div>
+        {/* Card */}
+        <div className="w-full bg-surface-1/80 backdrop-blur-xl border border-border-subtle shadow-elev-2 p-8 rounded-[32px] relative overflow-hidden">
+          <AnimatePresence mode="wait">
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">Senha privada</label>
-              </div>
-              <div className="relative group">
-                <input
-                  type={showPassword ?"text" :"password"}
-                  value={password}
-                  onChange={handlePasswordChange}
-                  placeholder="••••••••"
-                  required
-                  className="w-full h-16 bg-black/40 border border-white/10 text-white px-7 rounded-2xl text-sm placeholder:text-zinc-800 focus:outline-none focus:border-iron-gold/40 transition-all font-medium shadow-inner antialiased"
-                />
+            {/* ── Recuperar senha ── */}
+            {mode === "recovery" && (
+              <motion.div
+                key="recovery"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-5 relative z-10"
+              >
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-text-primary mb-1">Recuperar senha</p>
+                  <p className="text-xs text-text-tertiary leading-relaxed">
+                    Digite seu e-mail e enviaremos um link para criar uma nova senha.
+                  </p>
+                </div>
+
+                {recoverySent ? (
+                  <div className="bg-brand-subtle border border-brand-border text-brand px-4 py-3 rounded-2xl text-xs font-semibold text-center">
+                    E-mail enviado! Verifique sua caixa de entrada.
+                  </div>
+                ) : (
+                  <form onSubmit={handleRecovery} className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">
+                        E-mail de acesso
+                      </label>
+                      <input
+                        type="email"
+                        value={recoveryEmail}
+                        onChange={(e) => { setRecoveryEmail(e.target.value); setRecoveryError(null); }}
+                        placeholder="seu@email.com"
+                        required
+                        className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                      />
+                    </div>
+
+                    <AnimatePresence>
+                      {recoveryError && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-2xl text-xs flex items-center gap-2 overflow-hidden"
+                        >
+                          <WarningCircle className="w-4 h-4 flex-shrink-0" />
+                          {recoveryError}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <button
+                      type="submit"
+                      disabled={recoveryLoading}
+                      className="w-full h-13 bg-brand text-text-on-brand rounded-2xl text-xs font-semibold tracking-caps uppercase shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {recoveryLoading
+                        ? <div className="w-4 h-4 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
+                        : "Enviar link de recuperação"}
+                    </button>
+                  </form>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-700 hover:text-white transition-colors p-1"
+                  onClick={() => { setMode("login"); setRecoverySent(false); setRecoveryError(null); }}
+                  className="w-full text-text-tertiary text-2xs uppercase tracking-caps hover:text-text-secondary transition-colors pt-1"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  ← Voltar ao login
                 </button>
-              </div>
-            </div>
+              </motion.div>
+            )}
 
-            <div className="pt-2">
-              <AnimatePresence mode="wait">
-                {error && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height:"auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="bg-red-500/10 border border-red-500/20 text-red-500 px-5 py-4 rounded-2xl text-[10px] uppercase tracking-widest mb-6 flex items-center gap-3 overflow-hidden"
-                  >
-                    <AlertCircle size={16} className="shrink-0" />
-                    <span>{error}</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-14 bg-linear-to-b from-[#F9E29B] via-iron-gold to-iron-gold-dark text-black rounded-2xl uppercase tracking-[0.2em] text-[11px] hover:brightness-110 hover:scale-[1.01] active:scale-95 transition-all duration-500 shadow-[0_8px_32px_rgba(212,175,55,0.2)] border border-white/20 flex items-center justify-center gap-4 disabled:opacity-50 antialiased"
+            {/* ── Login ── */}
+            {mode === "login" && (
+              <motion.form
+                key="login"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                onSubmit={handleLogin}
+                className="space-y-5 relative z-10"
               >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    Acessar Agora <LogIn size={18} strokeWidth={2.5} />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+                <div className="space-y-2">
+                  <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">
+                    E-mail de acesso
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={handleEmailChange}
+                    placeholder="seu@email.com"
+                    required
+                    className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center ml-1">
+                    <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">
+                      Senha
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => { setMode("recovery"); setRecoveryEmail(email); }}
+                      className="text-xs text-text-tertiary hover:text-brand uppercase tracking-caps transition-colors"
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={handlePasswordChange}
+                      placeholder="••••••••"
+                      required
+                      className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 pr-14 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
+                    >
+                      {showPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <AnimatePresence mode="wait">
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-2xl text-xs flex items-center gap-2 overflow-hidden mb-4"
+                      >
+                        <WarningCircle className="w-4 h-4 flex-shrink-0" />
+                        <span>{error}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-13 bg-brand text-text-on-brand rounded-2xl text-xs font-semibold uppercase tracking-caps shadow-sm shadow-brand/30 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="w-4 h-4 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
+                    ) : (
+                      <>Acessar Agora <SignIn className="w-4 h-4"  /></>
+                    )}
+                  </button>
+                </div>
+              </motion.form>
+            )}
+
+          </AnimatePresence>
+
+          {biometriaDisponivel && mode === 'login' && (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              type="button"
+              onClick={handleBiometria}
+              className="w-full flex items-center justify-center gap-2 h-12 bg-transparent border border-border-strong rounded-2xl text-text-secondary text-sm hover:border-brand/40 hover:text-text-primary transition-all mt-3"
+            >
+              <Fingerprint className="w-5 h-5" />
+              Entrar com biometria
+            </motion.button>
+          )}
         </div>
 
         {/* Footer */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="mt-12 text-center"
+          className="mt-10 text-center"
         >
-          <button 
+          <button
             onClick={handleSupportClick}
-            className="text-zinc-700 text-[10px] uppercase tracking-[0.4em] hover:text-iron-gold transition-all duration-300 flex items-center gap-3"
+            className="text-text-disabled text-xs hover:text-brand transition-colors flex items-center gap-2 mx-auto"
           >
-            <span className="w-8 h-[1px] bg-zinc-900" />
-            Suporte Técnico
-            <span className="w-8 h-[1px] bg-zinc-900" />
+            <ChatCircle className="w-3.5 h-3.5" />
+            Precisa de ajuda? Fale com o suporte
           </button>
         </motion.div>
 
@@ -299,7 +442,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <DumbbellLoader />
       </div>
     }>

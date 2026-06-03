@@ -106,7 +106,7 @@ const getPasswordResetNotificationHtml = (fullName, email) => `
                 Se você tiver qualquer dúvida ou problema para acessar, entre em contato com o suporte.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria de Elite
+                © 2026 Coach Vinny - Consultoria de Profissional
               </p>
             </td>
           </tr>

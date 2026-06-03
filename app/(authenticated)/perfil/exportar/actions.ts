@@ -1,14 +1,14 @@
 // app/(authenticated)/perfil/exportar/actions.ts
 // Server Action para exportar dados — chama export_user_data() do Supabase
-// Retorna JSON para download como arquivo
+// Retorna JSON string para o client fazer download como arquivo
 
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 
-export async function exportUserDataAction() {
+export async function exportUserDataAction(accessToken: string) {
   try {
-    const supabase = createClient();
+    const supabase = createClient(accessToken);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -27,15 +27,10 @@ export async function exportUserDataAction() {
       return { success: false, error: 'Sem dados para exportar' };
     }
 
-    // Converter para blob JSON
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    // Retornar URL e filename para o client fazer download
+    // Retornar os dados como string JSON — o client cria o Blob e inicia o download
     return {
       success: true,
-      blobUrl: url,
+      json: JSON.stringify(data, null, 2),
       filename: `meus-dados-${new Date().toISOString().split('T')[0]}.json`,
     };
   } catch (err) {

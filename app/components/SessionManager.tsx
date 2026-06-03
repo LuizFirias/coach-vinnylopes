@@ -6,22 +6,25 @@ import { usePathname } from 'next/navigation';
 
 /**
  * SessionManager - Gerencia renovação de sessão
- * 
+ *
  * O autoRefreshToken do Supabase já cuida da renovação automática.
- * Este componente apenas garante que sessões expiradas redirecionem para login.
+ * Este componente apenas garante que sessões expiradas redirecionem para login,
+ * exceto durante treinos ativos (para não interromper execução em background).
  */
 export default function SessionManager() {
   const pathname = usePathname();
   const lastRefreshAttempt = useRef<number>(0);
 
   useEffect(() => {
-    // Não executar em rotas públicas
-    if (pathname === '/login' || pathname === '/') return;
+    // Não executar em rotas públicas ou de reset de senha
+    if (pathname === '/login' || pathname === '/' || pathname === '/reset-password') return;
 
-    // Ao voltar para a aba, apenas verificar se sessão ainda é válida
-    // sem forçar refresh (o autoRefreshToken já faz isso)
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') return;
+
+      // Não redirecionar se há treino ativo em andamento
+      const hasActiveTreino = Object.keys(localStorage).some(k => k.startsWith('treino_ativo_'));
+      if (hasActiveTreino) return;
 
       // Cooldown de 5 minutos entre verificações
       const timeSinceLastAttempt = Date.now() - lastRefreshAttempt.current;

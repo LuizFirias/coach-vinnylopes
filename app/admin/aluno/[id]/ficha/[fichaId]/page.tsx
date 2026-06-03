@@ -3,15 +3,20 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { ArrowLeft, Save, Plus, Trash2, X, FileDown, Loader2 } from "lucide-react";
+import { ArrowLeft, FloppyDisk, Plus, Trash, X, FileArrowDown, CircleNotch, CaretUp, CaretDown } from "@phosphor-icons/react";
 import Link from "next/link";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils/cn";
+import TimeInput from "@/app/components/TimeInput";
 
 interface Serie {
   ordem: number;
   reps_sugerido: number | string;
   tecnica?: string;
+  tecnica_extra?: string;
 }
 
 interface Exercicio {
@@ -34,10 +39,15 @@ interface Ficha {
   aluno_id: string;
 }
 
+const fieldCls = "w-full px-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all";
+
+const TECNICAS_BASE_EDIT = ["", "WS", "FS", "TS"];
+const TECNICAS_EXTRA_OPCOES_EDIT = ["", "Cluster Set", "Drop Set", "Bi-Set", "Super Set", "Repetições Parciais", "Isometria"];
+
 export default function EditarFichaPage({ params }: { params: Promise<{ id: string; fichaId: string }> }) {
   const router = useRouter();
   const { id, fichaId } = use(params);
-  
+
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,7 +65,6 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
   const loadData = async () => {
     try {
-      // Buscar a ficha
       const { data: fichaData, error: fichaError } = await supabaseClient
         .from("fichas_treino")
         .select("*")
@@ -71,8 +80,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
       const fichaTyped = fichaData as Ficha;
       setFicha(fichaTyped);
       setNomeFicha(fichaTyped.nome_rotina || "");
-      
-      // Normalizar exercícios
+
       const exerciciosNormalizados = (fichaTyped.configuracao?.exercicios || []).map(ex => ({
         ...ex,
         observacoes: ex.observacoes || "",
@@ -80,12 +88,17 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           ...s,
           reps_sugerido: s.reps_sugerido ?? (s as any).reps ?? "",
           tecnica: s.tecnica || "",
+          tecnica_extra: (s as any).tecnica_extra
+            || ((s as any).cluster ? "Cluster Set" : null)
+            || ((s as any).drop_set ? "Drop Set" : null)
+            || ((s as any).bi_set ? "Bi-Set" : null)
+            || ((s as any).isometria ? "Isometria" : null)
+            || "",
         })),
       }));
-      
+
       setExercicios(exerciciosNormalizados);
 
-      // Buscar catálogo de exercícios
       const { data: catalogoData } = await supabaseClient
         .from("exercicios_biblioteca")
         .select("id, nome, grupo_muscular, video_url")
@@ -109,14 +122,18 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
     setExercicios(exercicios.filter((_, i) => i !== idx));
   };
 
+  const handleMoveExercicio = (idx: number, direction: -1 | 1) => {
+    const next = idx + direction;
+    if (next < 0 || next >= exercicios.length) return;
+    const updated = [...exercicios];
+    [updated[idx], updated[next]] = [updated[next], updated[idx]];
+    setExercicios(updated);
+  };
+
   const handleAddSerie = (exercicioIdx: number) => {
     const updated = [...exercicios];
     const novaOrdem = Math.max(...(updated[exercicioIdx].series.map(s => s.ordem) || [0])) + 1;
-    updated[exercicioIdx].series.push({
-      ordem: novaOrdem,
-      reps_sugerido: "12",
-      tecnica: "",
-    });
+    updated[exercicioIdx].series.push({ ordem: novaOrdem, reps_sugerido: "12", tecnica: "", tecnica_extra: "" });
     setExercicios(updated);
   };
 
@@ -131,16 +148,10 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
       id: catalogExercicio.id,
       nome: catalogExercicio.nome,
       grupo_muscular: catalogExercicio.grupo_muscular,
-      descanso: "60s",
+      descanso: "01:00",
       video_url: catalogExercicio.video_url,
       observacoes: "",
-      series: [
-        {
-          ordem: 1,
-          reps_sugerido: "12",
-          tecnica: "",
-        },
-      ],
+      series: [{ ordem: 1, reps_sugerido: "12", tecnica: "", tecnica_extra: "" }],
     };
     setExercicios([...exercicios, newExercicio]);
     setShowAddExercicioModal(false);
@@ -150,6 +161,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
   const filteredCatalogo = catalogoExercicios.filter(ex =>
     ex.nome.toLowerCase().includes(searchExercicio.toLowerCase())
   );
+
   const handleExportarPDF = async () => {
     if (!nomeFicha.trim() || exercicios.length === 0) {
       setError("Preencha os dados da ficha antes de exportar");
@@ -162,7 +174,6 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
       const coachId = authData?.user?.id;
       if (!coachId) throw new Error('Sessão inválida');
 
-      // Buscar nome do aluno
       const { data: alunoData } = await supabaseClient
         .from('profiles')
         .select('coaching_reference, email')
@@ -171,14 +182,8 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
       const nomeAluno = alunoData?.coaching_reference || alunoData?.email || 'Aluno';
 
-      // Criar PDF
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-      // Cabeçalho
       doc.setFontSize(20);
       doc.setTextColor(40, 40, 40);
       doc.text('FICHA DE TREINO', 105, 20, { align: 'center' });
@@ -191,71 +196,57 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
       doc.text(`Atleta: ${nomeAluno}`, 20, 40);
       doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 46);
 
-      // Linha divisória
       doc.setDrawColor(200, 200, 200);
       doc.line(20, 50, 190, 50);
 
       let currentY = 58;
 
-      // Processar cada exercício
       exercicios.forEach((exercicio, index) => {
-        // Verificar se precisa de nova página
-        if (currentY > 250) {
-          doc.addPage();
-          currentY = 20;
-        }
+        if (currentY > 250) { doc.addPage(); currentY = 20; }
 
-        // Nome do exercício
         doc.setFontSize(12);
-        doc.setTextColor(212, 175, 55); // Dourado
+        doc.setTextColor(212, 175, 55);
         doc.text(`${index + 1}. ${exercicio.nome}`, 20, currentY);
         currentY += 6;
 
-        // Link do vídeo (se existir)
         if (exercicio.video_url) {
           doc.setFontSize(8);
-          doc.setTextColor(70, 130, 180); // Azul
+          doc.setTextColor(70, 130, 180);
           doc.textWithLink('🎥 Vídeo demonstrativo', 20, currentY, { url: exercicio.video_url });
           currentY += 5;
         }
 
-        // Descanso e observações
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
-        if (exercicio.descanso) {
-          doc.text(`Descanso: ${exercicio.descanso}`, 20, currentY);
-          currentY += 5;
-        }
+        if (exercicio.descanso) { doc.text(`Descanso: ${exercicio.descanso}`, 20, currentY); currentY += 5; }
         if (exercicio.observacoes) {
           const obsLines = doc.splitTextToSize(`Obs: ${exercicio.observacoes}`, 170);
           doc.text(obsLines, 20, currentY);
           currentY += (obsLines.length * 5);
         }
 
-        // Tabela de séries
-        const tableData = exercicio.series.map((serie) => [
-          serie.ordem,
-          '-', // Anterior (vazio)
-          '-', // Peso (vazio para aluno preencher)
-          serie.reps_sugerido || '-',
-          serie.tecnica || '-'
-        ]);
+        const hasTecnica = exercicio.series.some(s => !!(s as any).tecnica?.trim());
+        const hasTecnicaExtra = exercicio.series.some(s => !!(s as any).tecnica_extra?.trim());
+
+        const tableData = exercicio.series.map((serie) => {
+          const tec = serie.tecnica || '-';
+          const row: any[] = [serie.ordem, '-', serie.reps_sugerido || '-'];
+          if (hasTecnica) row.push(tec);
+          if (hasTecnicaExtra) row.push((serie as any).tecnica_extra || '-');
+          return row;
+        });
+
+        const headers = ['Série', 'Peso (kg)', 'Reps'];
+        if (hasTecnica) headers.push('TÉC');
+        if (hasTecnicaExtra) headers.push('Técnica Extra');
 
         autoTable(doc, {
           startY: currentY,
-          head: [['Série', 'Anterior', 'Peso (kg)', 'Reps', 'Técnica']],
+          head: [headers],
           body: tableData,
           theme: 'grid',
-          headStyles: {
-            fillColor: [212, 175, 55],
-            textColor: [0, 0, 0],
-            fontSize: 9,
-            fontStyle: 'bold'
-          },
-          bodyStyles: {
-            fontSize: 9,
-            textColor: [60, 60, 60]
-          },
+          headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0], fontSize: 9, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 9, textColor: [60, 60, 60] },
           margin: { left: 20 },
           tableWidth: 170
         });
@@ -263,22 +254,15 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         currentY = (doc as any).lastAutoTable.finalY + 10;
       });
 
-      // Converter PDF para Blob
       const pdfBlob = doc.output('blob');
       const fileName = `${id}/${Date.now()}_${nomeFicha.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
 
-      // Upload para storage
       const { error: uploadError } = await supabaseClient.storage
         .from('treinos-pdf')
-        .upload(fileName, pdfBlob, {
-          contentType: 'application/pdf',
-          cacheControl: '3600',
-          upsert: false
-        });
+        .upload(fileName, pdfBlob, { contentType: 'application/pdf', cacheControl: '3600', upsert: false });
 
       if (uploadError) throw uploadError;
 
-      // Registrar no banco
       const { error: dbError } = await supabaseClient
         .from('treinos_alunos')
         .insert({
@@ -291,14 +275,14 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
       if (dbError) throw dbError;
 
-      alert('✅ PDF exportado com sucesso e salvo no acervo do aluno!');
+      alert('PDF exportado com sucesso e salvo no acervo do aluno!');
     } catch (err: any) {
-      console.error('Erro ao exportar PDF:', err);
       setError('Erro ao exportar PDF: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setExportingPDF(false);
     }
   };
+
   const handleSalvar = async () => {
     if (!nomeFicha.trim()) {
       setError("Nome da ficha é obrigatório");
@@ -322,6 +306,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                 ordem: s.ordem,
                 reps: s.reps_sugerido ?? null,
                 tecnica: s.tecnica || null,
+                tecnica_extra: (s as any).tecnica_extra || null,
               })),
             })),
           },
@@ -329,7 +314,6 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         .eq("id", fichaId);
 
       if (error) throw error;
-
       router.push(`/admin/aluno/${id}`);
     } catch (err: any) {
       setError(err.message || "Erro ao salvar ficha");
@@ -340,59 +324,58 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black p-6 flex items-center justify-center">
-        <p className="text-zinc-400 text-sm  uppercase tracking-widest">Carregando ficha...</p>
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+        <DumbbellLoader text="Carregando ficha..." />
       </div>
     );
   }
 
   if (!ficha) {
     return (
-      <div className="min-h-screen bg-black p-6">
-        <Link href={`/admin/aluno/${id}`} className="text-iron-gold  text-[10px] uppercase tracking-widest inline-flex items-center gap-2 mb-6">
+      <div className="min-h-screen bg-surface-0 p-6">
+        <Link href={`/admin/aluno/${id}`} className="text-brand text-2xs uppercase tracking-caps inline-flex items-center gap-2 mb-6">
           <ArrowLeft size={14} /> Voltar
         </Link>
-        <p className="text-red-500 ">Ficha não encontrada</p>
+        <p className="text-danger">Ficha não encontrada</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-6 lg:p-10 lg:pl-28">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
+      <div className="max-w-4xl mx-auto">
+
         {/* Header */}
         <div className="mb-8">
-          <Link 
-            href={`/admin/aluno/${id}`} 
-            className="inline-flex items-center gap-2 text-iron-gold  text-[10px] uppercase tracking-widest mb-4 hover:gap-3 transition-all"
+          <Link
+            href={`/admin/aluno/${id}`}
+            className="inline-flex items-center gap-2 text-brand text-2xs uppercase tracking-caps mb-4 hover:gap-3 transition-all"
           >
             <ArrowLeft size={14} /> Voltar para Perfil
           </Link>
-          <h1 className="text-4xl md:text-5xl  text-white tracking-tighter uppercase mb-2">
-            Editar <span className="text-zinc-500">Ficha Digital</span>
+          <h1 className="text-3xl font-bold text-text-primary tracking-tight uppercase mb-1">
+            Editar Ficha Digital
           </h1>
-          <p className="text-zinc-400 font-medium">Modifique os exercícios e cargas da ficha</p>
+          <p className="text-sm text-text-secondary">Modifique os exercícios e cargas da ficha</p>
         </div>
 
         {error && (
-          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-400 text-sm  flex items-center justify-between">
+          <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
+            <button onClick={() => setError(null)} className="shrink-0">
               <X size={16} />
             </button>
           </div>
         )}
 
         {/* Nome da Ficha */}
-        <div className="bg-black rounded-3xl p-6 md:p-10 border border-white/5 shadow-2xl mb-8">
-          <label className="text-[10px]  text-zinc-600 uppercase tracking-widest mb-3 block">
-            Nome da Ficha
-          </label>
+        <div className="bg-surface-1 rounded-2xl p-6 border border-border-subtle shadow-elev-1 mb-6">
+          <label className="text-2xs uppercase tracking-caps text-text-tertiary mb-3 block">Nome da Ficha</label>
           <input
             type="text"
             value={nomeFicha}
             onChange={(e) => setNomeFicha(e.target.value)}
-            className="w-full px-4 py-3 bg-zinc-900/50 border border-white/10 rounded-2xl text-white  focus:outline-none focus:border-iron-gold/40 transition-all"
+            className={fieldCls}
             placeholder="Ex: Quadríceps Pesado"
           />
         </div>
@@ -400,122 +383,159 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         {/* Exercícios */}
         <div className="space-y-4">
           {exercicios.map((ex, exIdx) => (
-            <div key={ex.id} className="bg-zinc-900/30 border border-white/5 rounded-3xl p-6 md:p-8">
+            <div key={ex.id} className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-6">
               {/* Header do Exercício */}
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-5">
                 <div className="flex-1">
-                  <h3 className="text-lg  text-white mb-2">{ex.nome}</h3>
-                  <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">{ex.grupo_muscular || 'Exercício'}</p>
+                  <h3 className="text-base font-semibold text-text-primary mb-1">{ex.nome}</h3>
+                  <p className="text-text-tertiary text-2xs uppercase tracking-caps">{ex.grupo_muscular || 'Exercício'}</p>
                 </div>
-                <button
-                  onClick={() => handleRemoveExercicio(exIdx)}
-                  className="p-2 text-zinc-700 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleMoveExercicio(exIdx, -1)}
+                    disabled={exIdx === 0}
+                    className="p-2 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-3 rounded-lg transition-colors"
+                    title="Mover para cima"
+                  >
+                    <CaretUp size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleMoveExercicio(exIdx, 1)}
+                    disabled={exIdx === exercicios.length - 1}
+                    className="p-2 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-3 rounded-lg transition-colors"
+                    title="Mover para baixo"
+                  >
+                    <CaretDown size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleRemoveExercicio(exIdx)}
+                    className="p-2 text-text-disabled hover:text-danger hover:bg-danger-subtle rounded-xl transition-colors ml-1"
+                  >
+                    <Trash size={16} />
+                  </button>
+                </div>
               </div>
 
-              {/* Observações */}
-              <div className="space-y-3 mb-6 pb-6 border-b border-white/5">
-                <label className="text-[9px] uppercase tracking-[0.3em] text-zinc-600">Observações para o Aluno</label>
-                <textarea
-                  value={ex.observacoes || ""}
-                  onChange={(e) => {
-                    const updated = [...exercicios];
-                    updated[exIdx].observacoes = e.target.value;
-                    setExercicios(updated);
-                  }}
-                  placeholder="Ex: Manter o core contraído, não arquear as costas, respirar na descida..."
-                  className="w-full px-4 py-3 bg-zinc-900/50 border border-white/10 rounded-xl text-white font-medium focus:outline-none focus:border-iron-gold/40 resize-none"
-                  rows={3}
-                />
-                <p className="text-[8px] text-zinc-600">Apenas o aluno desta ficha poderá ver essas observações</p>
+              {/* Descanso + Observações */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 pb-5 border-b border-border-subtle">
+                <div className="space-y-2">
+                  <label className="text-2xs uppercase tracking-caps text-text-tertiary">Descanso entre Séries</label>
+                  <TimeInput
+                    value={ex.descanso || "01:00"}
+                    onChange={(v) => {
+                      const updated = [...exercicios];
+                      updated[exIdx].descanso = v;
+                      setExercicios(updated);
+                    }}
+                    className={cn(fieldCls, "text-center")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-2xs uppercase tracking-caps text-text-tertiary">Observações para o Aluno</label>
+                  <textarea
+                    value={ex.observacoes || ""}
+                    onChange={(e) => {
+                      const updated = [...exercicios];
+                      updated[exIdx].observacoes = e.target.value;
+                      setExercicios(updated);
+                    }}
+                    placeholder="Ex: Manter o core contraído, não arquear as costas..."
+                    className={cn(fieldCls, "resize-none")}
+                    rows={3}
+                  />
+                </div>
               </div>
 
               {/* Séries */}
-              <div className="space-y-3 mb-4">
-                {ex.series.map((serie, serieIdx) => (
-                  <div key={serieIdx}>
-                    {/* Layout Mobile */}
-                    <div className="md:hidden bg-black/50 rounded-2xl border border-white/5 p-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="w-8 h-8 rounded-lg bg-iron-gold/10 flex items-center justify-center text-iron-gold text-[10px]">
-                          {serie.ordem}
-                        </div>
-                        <button
-                          onClick={() => handleRemoveSerie(exIdx, serieIdx)}
-                          className="p-2 text-zinc-700 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label className="text-[8px] uppercase tracking-wider text-zinc-600 px-1">Reps</label>
-                          <input
-                            type="text"
-                            value={serie.reps_sugerido}
-                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)}
-                            placeholder="12 ou 3x4"
-                            className="w-full h-11 px-3 py-2.5 bg-zinc-900 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-iron-gold/40 text-center"
-                          />
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <label className="text-[8px] uppercase tracking-wider text-zinc-600 px-1">Técnica</label>
-                          <select
-                            value={serie.tecnica || ""}
-                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                            className="w-full h-11 px-3 py-2.5 bg-zinc-900 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-iron-gold/40"
-                          >
-                            <option value="">-</option>
-                            <option value="WS">WS</option>
-                            <option value="FS">FS</option>
-                            <option value="TS">TS</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Layout Desktop */}
-                    <div className="hidden md:flex items-center gap-4 p-4 bg-black/50 rounded-2xl border border-white/5">
-                      <div className="w-8 h-8 rounded-lg bg-iron-gold/10 flex items-center justify-center text-iron-gold text-[10px]">
-                        {serie.ordem}
-                      </div>
+              <div className="space-y-2 mb-4">
+                {/* Desktop — scrollable table */}
+                <div className="hidden md:block overflow-x-auto">
+                  {/* Header */}
+                  <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
+                    <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">#</span>
+                    <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Reps</span>
+                    <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70">TÉC</span>
+                    <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70"></span>
+                    <span></span>
+                  </div>
+                  {ex.series.map((serie, serieIdx) => (
+                    <div key={serieIdx} className="grid gap-1 bg-surface-3 border border-border-subtle p-1.5 rounded-xl mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
+                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-subtle text-brand text-xs font-semibold">{serie.ordem}</div>
                       <input
                         type="text"
                         value={serie.reps_sugerido}
                         onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)}
-                        placeholder="12 ou 3x4"
-                        className="w-20 h-10 px-3 py-2 bg-zinc-900 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-iron-gold/40 text-center"
+                        placeholder="12"
+                        className="w-full h-7 px-2 bg-surface-2 border border-border-default rounded-lg text-text-primary text-xs focus:outline-none focus:border-brand/40 text-center"
                       />
-                      <span className="text-zinc-500 text-[12px]">reps</span>
+                      {/* TÉC */}
                       <select
-                        value={serie.tecnica || ""}
+                        value={(serie as any).tecnica ?? ''}
                         onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                        className="w-20 h-10 px-3 py-2 bg-zinc-900 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-iron-gold/40"
+                        className="w-full h-7 px-1 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
                       >
-                        <option value="">Téc</option>
-                        <option value="WS">WS</option>
-                        <option value="FS">FS</option>
-                        <option value="TS">TS</option>
+                        {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
                       </select>
-                      <button
-                        onClick={() => handleRemoveSerie(exIdx, serieIdx)}
-                        className="ml-auto p-2 text-zinc-700 hover:text-red-500 transition-colors"
+                      {/* Técnica Extra */}
+                      <select
+                        value={(serie as any).tecnica_extra ?? ''}
+                        onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
+                        className="w-full h-7 px-1 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
                       >
-                        <Trash2 size={14} />
+                        {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                      </select>
+                      <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="flex items-center justify-center text-text-disabled hover:text-danger transition-colors">
+                        <Trash size={14} />
                       </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mobile */}
+                {ex.series.map((serie, serieIdx) => (
+                  <div key={serieIdx} className="md:hidden bg-surface-3 rounded-xl border border-border-subtle p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-8 h-8 rounded-lg bg-brand-subtle flex items-center justify-center text-brand text-xs font-semibold">{serie.ordem}</div>
+                      <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="p-1.5 text-text-disabled hover:text-danger transition-colors"><Trash size={14} /></button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-2xs uppercase tracking-caps text-text-tertiary px-1">Reps</label>
+                        <input type="text" value={serie.reps_sugerido} onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)} placeholder="12" className={cn(fieldCls, "text-center")} />
+                      </div>
+                    </div>
+                    <div className="border-t border-border-subtle/50 pt-2">
+                      <p className="text-2xs font-semibold uppercase tracking-caps text-brand/70 mb-1.5">Técnicas</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className="space-y-0.5">
+                          <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">TÉC</label>
+                          <select
+                            value={(serie as any).tecnica ?? ''}
+                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
+                            className="w-full h-8 px-2 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                          >
+                            {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-0.5">
+                          <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">Técnica Extra</label>
+                          <select
+                            value={(serie as any).tecnica_extra ?? ''}
+                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
+                            className="w-full h-8 px-2 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                          >
+                            {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Adicionar Série */}
               <button
                 onClick={() => handleAddSerie(exIdx)}
-                className="w-full py-2 text-[10px]  uppercase tracking-[0.2em] text-iron-gold border border-iron-gold/30 rounded-lg hover:bg-iron-gold/5 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2 text-2xs uppercase tracking-caps text-brand border border-brand-border rounded-lg hover:bg-brand-subtle transition-colors flex items-center justify-center gap-2"
               >
                 <Plus size={14} /> Adicionar Série
               </button>
@@ -523,103 +543,104 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           ))}
         </div>
 
-        {/* Adicionar Exercício do Catálogo */}
+        {/* Adicionar Exercício */}
         <button
           onClick={() => setShowAddExercicioModal(true)}
-          className="w-full py-4 px-6 bg-zinc-900/50 border-2 border-dashed border-iron-gold/30 rounded-3xl text-iron-gold text-[10px]  uppercase tracking-[0.2em] hover:bg-iron-gold/5 hover:border-iron-gold/50 transition-all flex items-center justify-center gap-3 mb-8"
+          className="w-full mt-4 py-4 px-6 bg-brand-subtle border-2 border-dashed border-brand-border rounded-2xl text-brand text-2xs uppercase tracking-caps hover:bg-brand/10 transition-all flex items-center justify-center gap-3"
         >
           <Plus size={16} /> Adicionar Exercício do Catálogo
         </button>
 
         {exercicios.length === 0 && (
-          <div className="bg-zinc-900/20 rounded-3xl p-12 text-center border border-dashed border-white/5 mb-8">
-            <p className="text-zinc-600 text-[10px]  uppercase tracking-[0.4em]">Nenhum exercício nesta ficha</p>
+          <div className="mt-4 bg-surface-2 rounded-2xl p-12 text-center border border-dashed border-border-subtle">
+            <p className="text-text-disabled text-2xs uppercase tracking-caps">Nenhum exercício nesta ficha</p>
           </div>
         )}
 
-        {/* Botão Salvar */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-12">
-          <button
+        {/* Botões de ação */}
+        <div className="flex flex-col sm:flex-row gap-3 mt-8">
+          <Button
+            type="button"
+            variant="secondary"
             onClick={handleExportarPDF}
-            disabled={exportingPDF}
-            className="flex-1 py-4 bg-slate-700 text-white text-[10px] uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+            loading={exportingPDF}
+            leftIcon={<FileArrowDown size={16} />}
+            fullWidth
           >
-            {exportingPDF ? <Loader2 className="animate-spin" size={16} /> : <FileDown size={16} />}
-            {exportingPDF ? "Exportando..." : "Exportar PDF"}
-          </button>
-          <button
+            Exportar PDF
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
             onClick={handleSalvar}
-            disabled={saving}
-            className="flex-1 py-4 bg-iron-gold text-black text-[10px]  uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.1)]"
+            loading={saving}
+            leftIcon={<FloppyDisk size={16} />}
+            fullWidth
           >
-            <Save size={16} />
-            {saving ? "Salvando..." : "Salvar Alterações"}
-          </button>
-          <button
+            Salvar Alterações
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
             onClick={() => router.push(`/admin/aluno/${id}`)}
-            className="flex-1 py-4 bg-zinc-900 text-white text-[10px]  uppercase tracking-[0.3em] rounded-2xl border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3"
+            leftIcon={<X size={16} />}
+            fullWidth
           >
-            <X size={16} />
             Cancelar
-          </button>
+          </Button>
         </div>
 
         {/* Modal Adicionar Exercício */}
         {showAddExercicioModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-black rounded-3xl border border-white/5 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              {/* Header Modal */}
-              <div className="sticky top-0 bg-black border-b border-white/5 p-6 flex items-center justify-between">
-                <h2 className="text-2xl  text-white uppercase">Adicionar Exercício</h2>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-0/80 backdrop-blur-sm">
+            <div className="bg-surface-1 rounded-2xl border border-border-default shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="sticky top-0 bg-surface-1 border-b border-border-subtle p-5 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary uppercase tracking-tight">Adicionar Exercício</h2>
                 <button
-                  onClick={() => {
-                    setShowAddExercicioModal(false);
-                    setSearchExercicio("");
-                  }}
-                  className="text-zinc-400 hover:text-white transition-colors"
+                  onClick={() => { setShowAddExercicioModal(false); setSearchExercicio(""); }}
+                  className="text-text-tertiary hover:text-text-primary transition-colors"
                 >
-                  <X size={24} />
+                  <X size={20} />
                 </button>
               </div>
 
-              {/* Search */}
-              <div className="p-6 border-b border-white/5">
+              <div className="p-5 border-b border-border-subtle">
                 <input
                   type="text"
                   placeholder="Buscar exercício..."
                   value={searchExercicio}
                   onChange={(e) => setSearchExercicio(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-900/50 border border-white/10 rounded-xl text-white  focus:outline-none focus:border-iron-gold/40 transition-all"
+                  className={fieldCls}
                 />
               </div>
 
-              {/* Lista de Exercícios */}
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border-subtle">
                 {filteredCatalogo.length > 0 ? (
                   filteredCatalogo.map((exCatalogo) => {
                     const jáAdicionado = exercicios.some(e => e.id === exCatalogo.id);
                     return (
-                      <div key={exCatalogo.id} className="p-6 hover:bg-zinc-900/30 transition-colors flex items-center justify-between">
-                        <div className="flex-1">
-                          <h3 className="text-white mb-1">{exCatalogo.nome}</h3>
-                          <p className="text-zinc-500 text-[10px]  uppercase tracking-widest">
+                      <div key={exCatalogo.id} className="p-5 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-text-primary text-sm font-medium truncate">{exCatalogo.nome}</h3>
+                          <p className="text-text-tertiary text-2xs uppercase tracking-caps mt-0.5">
                             {exCatalogo.grupo_muscular || 'Exercício'}
                           </p>
                         </div>
-                        <button
+                        <Button
+                          variant="primary"
+                          size="sm"
                           onClick={() => handleAddExercicio(exCatalogo)}
                           disabled={jáAdicionado}
-                          className="px-6 py-2 bg-iron-gold text-black  text-[10px] uppercase tracking-widest rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                          leftIcon={<Plus size={14} />}
                         >
-                          <Plus size={14} />
-                          {jáAdicionado ? "Já Adicionado" : "Adicionar"}
-                        </button>
+                          {jáAdicionado ? "Adicionado" : "Adicionar"}
+                        </Button>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="p-12 text-center text-zinc-500">
-                    <p className="uppercase tracking-widest text-[10px]">Nenhum exercício encontrado</p>
+                  <div className="p-12 text-center">
+                    <p className="text-text-disabled text-2xs uppercase tracking-caps">Nenhum exercício encontrado</p>
                   </div>
                 )}
               </div>

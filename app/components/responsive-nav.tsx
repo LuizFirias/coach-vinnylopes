@@ -5,25 +5,25 @@ import { usePathname } from 'next/navigation';
 import Link from"next/link";
 import Image from"next/image";
 import { supabaseClient } from"@/lib/supabaseClient";import { getSafeSession } from '@/lib/authErrorHandler';import {
-  Menu,
+  List,
   X,
-  Dumbbell,
-  Utensils,
-  TrendingUp,
+  Barbell,
+  ForkKnife,
+  TrendUp,
   Camera,
   Users,
   Trophy,
-  BarChart3,
+  ChartBar,
   Handshake,
   User,
   ShieldCheck,
-  Apple,
-} from"lucide-react";
+  AppleLogo,
+} from "@phosphor-icons/react";
 
 const menuItems = [
-  { name:"TREINOS", href:"/aluno/treinos", icon: Dumbbell },
-  { name:"PLANO ALIMENTAR", href:"/aluno/plano-alimentar", icon: Utensils },
-  { name:"MEDIDAS", href:"/aluno/medidas", icon: TrendingUp },
+  { name:"TREINOS", href:"/aluno/treinos", icon: Barbell },
+  { name:"PLANO ALIMENTAR", href:"/aluno/plano-alimentar", icon: ForkKnife },
+  { name:"MEDIDAS", href:"/aluno/medidas", icon: TrendUp },
   { name:"FOTOS", href:"/aluno/fotos", icon: Camera },
   { name:"PARCEIROS", href:"/aluno/parceiros", icon: Users },
   { name:"RANKING", href:"/aluno/ranking", icon: Trophy },
@@ -32,10 +32,11 @@ const menuItems = [
 
 const coachMenuItems = [
   { name:"ALUNOS", href:"/admin/alunos", icon: Users },
-  { name:"TREINOS", href:"/admin/treinos", icon: Dumbbell },
-  { name:"NUTRIÇÃO", href:"/admin/nutricao", icon: Apple },
+  { name:"TREINOS", href:"/admin/treinos", icon: Barbell },
+  { name:"NUTRIÇÃO", href:"/admin/nutricao", icon: AppleLogo },
   { name:"PARCEIROS", href:"/admin/parceiros", icon: Handshake },
   { name:"RANKING", href:"/admin/ranking", icon: Trophy },
+  { name:"RELATÓRIOS", href:"/admin/relatorios", icon: ChartBar },
   { name:"PERFIL", href:"/admin/perfil", icon: User },
 ];
 
@@ -87,13 +88,13 @@ export default function ResponsiveNav() {
   return (
     <>
       {/* Mobile Header (hidden on desktop) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-iron-black/80 backdrop-blur-xl border-b border-white/[0.03] px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-surface-0/80 backdrop-blur-xl border-b border-white/[0.03] px-4">
         <div className="flex items-center justify-between h-full">
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.03] border border-white/[0.05] active:scale-95 transition-all"
           >
-            <Menu size={20} className="text-zinc-400" />
+            <List size={20} className="text-zinc-400" />
           </button>
           <div className="flex-1 flex justify-center items-center">
             {!logoFailed ? (
@@ -109,7 +110,7 @@ export default function ResponsiveNav() {
                 />
             ) : (
               <h1 className="text-[11px] tracking-widest text-white text-center">
-                VINNY LOPES <span className="text-iron-gold">COACH</span>
+                VINNY LOPES <span className="text-brand">COACH</span>
               </h1>
             )}
           </div>
@@ -118,10 +119,10 @@ export default function ResponsiveNav() {
       </header>
 
       {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-20 bg-iron-black border-r border-white-[0.03] flex-col z-40 items-center">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-20 bg-surface-0 border-r border-white-[0.03] flex-col z-40 items-center">
         {/* Sidebar Header */}
         <div className="py-10 flex flex-col items-center">
-          <div className="w-10 h-10 bg-iron-gold rounded-lg flex items-center justify-center shadow-lg shadow-iron-gold/5 group cursor-pointer">
+          <div className="w-10 h-10 bg-brand rounded-lg flex items-center justify-center shadow-lg shadow-brand/5 group cursor-pointer">
             <span className="text-black text-xs">CV</span>
           </div>
         </div>
@@ -137,15 +138,15 @@ export default function ResponsiveNav() {
                 href={item.href}
                 title={item.name}
                 className={`group flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all duration-300 ${
-                  isActive 
-                    ?"bg-white/[0.05] text-iron-gold" 
+                  isActive
+                    ?"bg-white/[0.05] text-brand"
                     :"text-zinc-600 hover:text-white hover:bg-white/[0.02]"
                 }`}
               >
                 <Icon
                   size={20}
-                  strokeWidth={isActive ? 2 : 1.5}
-                  className={isActive ?"text-iron-gold" :"text-zinc-600 group-hover:text-zinc-300"}
+                  weight={isActive ? "fill" : "regular"}
+                  className={isActive ?"text-brand" :"text-zinc-600 group-hover:text-zinc-300"}
                 />
                 <span className="text-[8px] uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
                   {item.name.split(' ')[0]}
@@ -164,9 +165,9 @@ export default function ResponsiveNav() {
               window.location.href = '/login';
             }}
             title="Sair"
-            className="w-10 h-10 flex items-center justify-center rounded-lg text-zinc-600 hover:text-iron-red hover:bg-iron-red/10 transition-all"
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-zinc-600 hover:text-danger hover:bg-danger/10 transition-all"
           >
-            <X size={18} strokeWidth={2} />
+            <X size={18} />
           </button>
         </div>
       </aside>
@@ -186,7 +187,7 @@ export default function ResponsiveNav() {
 
       {/* Mobile Drawer */}
       <aside
-        className={`lg:hidden fixed left-0 top-0 h-screen w-72 bg-iron-black border-r border-white-[0.03] z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`lg:hidden fixed left-0 top-0 h-screen w-72 bg-surface-0 border-r border-white-[0.03] z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
           mobileMenuOpen ?"translate-x-0" :"-translate-x-full"
         }`}
       >
@@ -213,16 +214,16 @@ export default function ResponsiveNav() {
                 key={item.href}
                 href={item.href}
                 className={`group flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                  isActive 
-                    ?"bg-white/[0.05] text-iron-gold" 
+                  isActive
+                    ?"bg-white/[0.05] text-brand"
                     :"text-zinc-400 hover:text-white hover:bg-white/[0.02]"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <Icon
                   size={18}
-                  strokeWidth={isActive ? 2 : 1.5}
-                  className={isActive ?"text-iron-gold" :"text-zinc-500 group-hover:text-zinc-300"}
+                  weight={isActive ? "fill" : "regular"}
+                  className={isActive ?"text-brand" :"text-zinc-500 group-hover:text-zinc-300"}
                 />
                 <span>{item.name}</span>
               </Link>

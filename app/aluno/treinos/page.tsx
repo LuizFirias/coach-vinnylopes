@@ -1,26 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getSignedStorageUrl } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
-import { 
-  Dumbbell, 
-  FileText, 
-  Calendar, 
-  ArrowRight, 
-  ChevronRight, 
-  Clock,
-  Layout,
-  Search,
-  ArrowLeft,
-  FileCheck
-} from 'lucide-react';
-import Link from 'next/link';
+import { Barbell, FileText, MagnifyingGlass, ArrowRight } from '@phosphor-icons/react';
 import PDFViewer from '@/app/components/PDFViewer';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import Link from 'next/link';
 
 interface TreinoPDF {
   id: string;
@@ -34,10 +22,14 @@ interface FichaTreino {
   id: string;
   nome_rotina: string;
   criado_em: string;
+  configuracao?: {
+    exercicios?: Array<{
+      nome: string;
+    }>;
+  };
 }
 
 export default function AlunoTreinosPage() {
-  const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [fichas, setFichas] = useState<FichaTreino[]>([]);
   const [treinosPdf, setTreinosPdf] = useState<TreinoPDF[]>([]);
@@ -50,52 +42,35 @@ export default function AlunoTreinosPage() {
       try {
         const session = await getSafeSession();
         const user = session?.user;
+        if (!user) { setError('Sessão expirada. Faça login novamente.'); setLoading(false); return; }
 
-        if (!user) {
-          setError('Sessão expirada. Faça login novamente.');
-          setLoading(false);
-          return;
-        }
+        const uid = user.id;
 
-        const userId = user.id;
-
-        // Buscar fichas estruturadas
-        const { data: fichasData, error: fichasError } = await supabaseClient
+        const { data: fichasData } = await supabaseClient
           .from('fichas_treino')
-          .select('*')
-          .eq('aluno_id', userId)
+          .select('id, nome_rotina, criado_em, configuracao')
+          .eq('aluno_id', uid)
           .eq('ativo', true)
           .order('criado_em', { ascending: false });
 
-        // Buscar PDFs
-        const { data: pdfsData, error: pdfsError } = await supabaseClient
+        const { data: pdfsData } = await supabaseClient
           .from('treinos_alunos')
           .select('id, aluno_id, url_pdf, nome_arquivo, data_upload')
-          .eq('aluno_id', userId)
+          .eq('aluno_id', uid)
           .order('data_upload', { ascending: false });
 
-        if (fichasError) {
-          console.error('[Treinos] Erro ao buscar fichas:', fichasError);
-        }
-        if (pdfsError) {
-          console.error('[Treinos] Erro ao buscar PDFs:', pdfsError);
-        }
-
-        setUserId(userId);
+        setUserId(uid);
         setFichas(fichasData || []);
 
-        // Gerar URLs assinadas para cada PDF pois o bucket é privado
         const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: any) => {
           const signed = await getSignedStorageUrl('treinos-pdf', pdf.url_pdf, 3600);
           return { ...pdf, url_pdf: signed || pdf.url_pdf };
         }));
 
         setTreinosPdf(pdfsComLinks);
-
-        setLoading(false);
-      } catch (err) {
-        console.error('[Treinos] Erro ao carregar treinos:', err);
+      } catch {
         setError('Erro ao conectar com o servidor');
+      } finally {
         setLoading(false);
       }
     };
@@ -103,175 +78,148 @@ export default function AlunoTreinosPage() {
     fetchTreinos();
   }, []);
 
-  const formatarData = (dataString: string) => {
-    try {
-      const data = new Date(dataString);
-      return new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      }).format(data);
-    } catch {
-      return dataString;
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-iron-black flex items-center justify-center p-6">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <DumbbellLoader text="Carregando treinos..." />
       </div>
     );
   }
 
+  const total = fichas.length + treinosPdf.length;
+
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-iron-black p-4 md:p-6 lg:p-10 lg:pl-28 font-sans">
-        <div className="max-w-6xl mx-auto pb-16 md:pb-20">
-          
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-12">
-            <div>
-              <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-[#D4AF37] text-[10px] uppercase tracking-widest mb-4 hover:ml-1 transition-all">
-                <ArrowLeft size={12} /> Dashboard
-              </Link>
-              <h1 className="text-4xl md:text-5xl text-white tracking-tight mb-2 uppercase">
-                Minhas <span className="text-[#D4AF37]">Rotinas</span>
-              </h1>
-              <p className="text-zinc-500 font-medium text-sm border-l-2 border-[#D4AF37] pl-4">Seu cronograma técnico de treinamento.</p>
-            </div>
-            
-            {fichas.length + treinosPdf.length > 0 && (
-              <div className="bg-black px-6 py-4 rounded-2xl border border-[#1a1a1a] shadow-2xl flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-xl flex items-center justify-center text-[#D4AF37]">
-                  <Layout size={18} />
-                </div>
-                <div>
-                  <p className="text-[10px] text-zinc-600 uppercase tracking-widest leading-none mb-1">Total</p>
-                  <p className="text-xl text-white leading-none">{fichas.length + treinosPdf.length} Protocolos</p>
-                </div>
-              </div>
-            )}
-          </div>
+      <div className="min-h-screen bg-surface-0 pb-28 lg:pl-28">
+
+        {/* Header */}
+        <div className="px-4 pt-8 pb-5 max-w-2xl mx-auto">
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Minhas Rotinas</h1>
+          <p className="text-xs text-text-tertiary mt-0.5">Seu cronograma técnico de treinamento</p>
+        </div>
+
+        <div className="px-4 max-w-2xl mx-auto flex flex-col gap-5">
 
           {error && (
-            <div className="bg-red-500/10 text-red-500 p-6 rounded-3xl border border-red-500/20 mb-10 text-sm">
-              ?? {error}
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+              {error}
             </div>
           )}
 
-          {/* Fichas e PDFs Grid */}
-          <div className="space-y-12">
-            {/* Rotinas Estruturadas */}
-            {fichas.length > 0 && (
-              <section>
-                <h2 className="label-overline text-gold-light mb-8 flex items-center gap-3">
-                   <div className="w-2 h-8 bg-gold-default rounded-full"></div>
-                   Rotinas Interativas
-                </h2>
-                <div className="flex flex-col gap-4">
-                  {fichas.map((ficha) => (
-                    <div 
-                      key={ficha.id} 
-                      onClick={() => router.push(`/aluno/treinos/ficha?id=${ficha.id}`)}
-                      className="group bg-gold-default/10 border border-gold-default/30 rounded-lg p-6 shadow-xl shadow-gold-default/10 hover:border-gold-light/50 hover:shadow-gold-default/20 hover:bg-gold-default/15 transition-all duration-300 cursor-pointer flex items-center justify-between"
+          {/* Fichas interativas */}
+          {fichas.length > 0 && (
+            <section>
+              <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3 flex items-center gap-2">
+                <span className="w-1 h-4 bg-brand rounded-full inline-block" />
+                Rotinas Interativas
+              </p>
+              <div className="flex flex-col gap-2">
+                {fichas.map(ficha => {
+                  const exercicios = (ficha.configuracao?.exercicios ?? [])
+                    .map(ex => ex.nome)
+                    .filter(Boolean) as string[];
+
+                  return (
+                    <Link
+                      key={ficha.id}
+                      href={`/aluno/treinos/${ficha.id}/executar`}
+                      className="w-full bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/30 rounded-2xl p-4 flex items-start gap-3.5 transition-all active:scale-[0.99] group"
                     >
-                      <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 bg-gold-default/20 rounded-lg flex items-center justify-center border border-gold-default/40 group-hover:bg-gold-default/30 transition-all">
-                          <Dumbbell className="text-gold-light" size={24} />
-                        </div>
-
-                        <div>
-                          <h3 className="heading-h3 text-gold-light leading-tight">
-                            {ficha.nome_rotina}
-                          </h3>
-                          <p className="label-small text-text-secondary mt-1">Estruturada Interativa</p>
-                        </div>
+                      <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Barbell size={16} className="text-brand" />
                       </div>
-
-                      <div className="flex items-center gap-6">
-                        <div className="hidden sm:flex flex-col items-end">
-                          <span className="label-small text-text-secondary">Digital</span>
-                          <span className="text-xs text-text-primary uppercase font-600">{formatarData(ficha.criado_em)}</span>
-                        </div>
-                        <div className="w-10 h-10 bg-gold-default/20 rounded-lg flex items-center justify-center text-gold-light group-hover:bg-gold-light group-hover:text-black transition-all">
-                          <ChevronRight size={20} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* PDFs */}
-            {treinosPdf.length > 0 && (
-              <section>
-                <h2 className="label-overline text-text-secondary mb-8 flex items-center gap-3">
-                   <div className="w-2 h-8 bg-border-subtle rounded-full"></div>
-                   Fichas PDF (Protocolos)
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {treinosPdf.map((pdf) => (
-                    <div 
-                      key={pdf.id} 
-                      onClick={() => {
-                        // ===== VERIFICAÇÃO DE SEGURANÇA =====
-                        if (pdf.aluno_id !== userId) {
-                          console.error('[SECURITY] Tentativa de acessar PDF de treino de outro aluno bloqueada');
-                          alert('Erro de segurança: PDF não encontrado');
-                          return;
-                        }
-                        setSelectedPdf(pdf);
-                      }}
-                      className="group bg-bg-card border border-border-subtle rounded-lg p-5 hover:border-border-default hover:shadow-lg hover:shadow-gold-default/5 transition-all duration-300 cursor-pointer flex items-center gap-4 relative overflow-hidden"
-                    >
-                      <div className="w-12 h-12 bg-bg-elevated rounded-lg flex items-center justify-center text-text-secondary group-hover:text-gold-light shrink-0 border border-border-subtle group-hover:border-gold-default/30 transition-all">
-                        <FileCheck size={22} />
-                      </div>
-
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm text-text-primary uppercase tracking-tight truncate font-600">
-                          {pdf.nome_arquivo.replace('.pdf', '')}
-                        </h3>
-                        <p className="label-small text-text-secondary">
-                          Enviado em {formatarData(pdf.data_upload)}
+                        <div className="flex items-center justify-between mb-0.5">
+                          <p className="text-sm font-bold text-text-primary uppercase tracking-tight truncate pr-2">
+                            {ficha.nome_rotina}
+                          </p>
+                          <ArrowRight size={15} className="text-text-tertiary shrink-0 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                        <p className="text-2xs text-text-tertiary mb-2">
+                          {exercicios.length > 0
+                            ? `${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''}`
+                            : 'Sem exercícios'}
+                          {' · '}
+                          {new Date(ficha.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                         </p>
+                        {exercicios.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {exercicios.slice(0, 3).map((nome, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-surface-2 rounded-lg text-2xs text-text-secondary">
+                                {nome.length > 14 ? nome.slice(0, 14) + '…' : nome}
+                              </span>
+                            ))}
+                            {exercicios.length > 3 && (
+                              <span className="px-2 py-0.5 text-2xs text-text-disabled">+{exercicios.length - 3}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-
-                      <div className="w-8 h-8 rounded-lg bg-bg-elevated flex items-center justify-center text-gold-light group-hover:text-gold-highlight group-hover:bg-gold-default/10 transition-all shrink-0 border border-border-subtle group-hover:border-gold-default/30">
-                         <Search size={14} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {fichas.length === 0 && treinosPdf.length === 0 && (
-              <div className="bg-iron-gray rounded-[50px] p-24 text-center border border-dashed border-white/10 shadow-2xl flex flex-col items-center">
-                <div className="w-24 h-24 bg-white/5 rounded-[40px] flex items-center justify-center text-zinc-800 mb-8 border border-white/5">
-                  <Search size={40} />
-                </div>
-                <h3 className="text-2xl text-white mb-2 uppercase tracking-tight">Nenhum treino ativo</h3>
-                <p className="max-w-xs text-zinc-500 font-medium mb-10">
-                  Seu Coach ainda não atribuiu uma rotina de treinos para o seu perfil.
-                </p>
+                    </Link>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </div>
+            </section>
+          )}
 
-        {/* Modal PDF Viewer */}
-        {selectedPdf && (
-          <PDFViewer 
-            url={selectedPdf.url_pdf} 
-            title={selectedPdf.nome_arquivo} 
-            onClose={() => setSelectedPdf(null)} 
-          />
-        )}
+          {/* PDFs */}
+          {treinosPdf.length > 0 && (
+            <section>
+              <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3 flex items-center gap-2">
+                <span className="w-1 h-4 bg-border-subtle rounded-full inline-block" />
+                Fichas PDF
+              </p>
+              <div className="flex flex-col gap-2">
+                {treinosPdf.map(pdf => (
+                  <button
+                    key={pdf.id}
+                    onClick={() => {
+                      if (pdf.aluno_id !== userId) return;
+                      setSelectedPdf(pdf);
+                    }}
+                    className="w-full text-left bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 p-4 rounded-2xl transition-all active:scale-[0.99] flex items-center gap-3.5 group"
+                  >
+                    <div className="w-11 h-11 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary shrink-0 group-hover:border-brand/30 transition-colors">
+                      <FileText size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-text-primary truncate group-hover:text-brand transition-colors">
+                        {pdf.nome_arquivo.replace('.pdf', '')}
+                      </p>
+                      <p className="text-xs text-text-tertiary mt-0.5">
+                        Enviado em {new Date(pdf.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <div className="w-7 h-7 rounded-xl bg-surface-3 group-hover:bg-surface-2 flex items-center justify-center text-text-tertiary shrink-0 transition-colors">
+                      <MagnifyingGlass size={13} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Empty state */}
+          {total === 0 && (
+            <div className="text-center py-24 bg-surface-1 border border-dashed border-border-subtle rounded-2xl shadow-elev-1">
+              <Barbell size={32} className="text-text-disabled mx-auto mb-3" />
+              <p className="text-text-disabled text-xs uppercase tracking-caps">Nenhum treino ativo.</p>
+              <p className="text-xs text-text-tertiary mt-2 max-w-xs mx-auto">
+                Seu coach ainda não atribuiu uma rotina de treinos para o seu perfil.
+              </p>
+            </div>
+          )}
+
+        </div>
       </div>
+
+      {selectedPdf && (
+        <PDFViewer
+          url={selectedPdf.url_pdf}
+          title={selectedPdf.nome_arquivo}
+          onClose={() => setSelectedPdf(null)}
+        />
+      )}
     </SubscriptionGuard>
   );
 }
-

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from"react";
-import { X, Plus, Clock } from"lucide-react";
+import { X, Plus, Clock } from "@phosphor-icons/react";
 import { supabaseClient } from"@/lib/supabaseClient";
 import { getTodayBrazil, getTodayBrazilDate, toBrazilDateString } from '@/lib/dateUtils';
 
@@ -181,7 +181,7 @@ export default function AddManualWorkoutModal({
             <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2">
               Data do Treino
             </p>
-            <p className="text-sm text-iron-gold">
+            <p className="text-sm text-brand">
               {date.toLocaleDateString("pt-BR", {
                 weekday:"long",
                 day:"2-digit",
@@ -205,7 +205,7 @@ export default function AddManualWorkoutModal({
                 }}
                 className={`p-4 rounded-xl text-sm uppercase tracking-tight transition-all ${
                   workoutType ==="musculacao"
-                    ?"bg-iron-gold text-black ring-2 ring-iron-gold/50"
+                    ?"bg-brand text-black ring-2 ring-brand/50"
                     :"bg-zinc-800 text-white hover:bg-zinc-700"
                 }`}
               >
@@ -216,7 +216,7 @@ export default function AddManualWorkoutModal({
                 onClick={() => setWorkoutType("cardio")}
                 className={`p-4 rounded-xl text-sm uppercase tracking-tight transition-all ${
                   workoutType ==="cardio"
-                    ?"bg-iron-gold text-black ring-2 ring-iron-gold/50"
+                    ?"bg-brand text-black ring-2 ring-brand/50"
                     :"bg-zinc-800 text-white hover:bg-zinc-700"
                 }`}
               >
@@ -278,33 +278,33 @@ Ex: Corrida no parque..."
 
           {/* Points Info */}
           {workoutType && (
-            <div className="bg-iron-gold/10 border border-iron-gold/30 rounded-lg p-4">
+            <div className="bg-brand/10 border border-brand/30 rounded-lg p-4">
               <p className="text-[10px] text-zinc-400 uppercase tracking-widest mb-2">
                 Pontuação
               </p>
               <div className="space-y-1">
                 {workoutType ==="musculacao" ? (
                   <p className="text-sm text-white">
-                    Musculação = <span className="text-iron-gold">20 pts</span>
+                    Musculação = <span className="text-brand">20 pts</span>
                   </p>
                 ) : (
                   <>
                     <p className="text-[9px] text-zinc-400">Cardio:</p>
                     <p className="text-[9px] text-zinc-300">
-                      10-19 min = <span className="text-iron-gold">10 pts</span>
+                      10-19 min = <span className="text-brand">10 pts</span>
                     </p>
                     <p className="text-[9px] text-zinc-300">
-                      20-49 min = <span className="text-iron-gold">20 pts</span>
+                      20-49 min = <span className="text-brand">20 pts</span>
                     </p>
                     <p className="text-[9px] text-zinc-300">
-                      50+ min = <span className="text-iron-gold">30 pts</span>
+                      50+ min = <span className="text-brand">30 pts</span>
                     </p>
                   </>
                 )}
               </div>
               {concluido && estimatedPoints > 0 && (
-                <div className="mt-3 pt-3 border-t border-iron-gold/20">
-                  <p className="text-sm text-iron-gold">
+                <div className="mt-3 pt-3 border-t border-brand/20">
+                  <p className="text-sm text-brand">
                     ✓ +{estimatedPoints} pontos no ranking
                   </p>
                 </div>
@@ -335,7 +335,7 @@ Ex: Corrida no parque..."
           <button
             type="submit"
             disabled={!workoutType || loading}
-            className="w-full bg-iron-gold hover:bg-iron-gold/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+            className="w-full bg-brand hover:bg-brand/90 disabled:bg-zinc-700 disabled:cursor-not-allowed text-black text-sm uppercase tracking-tight py-3 rounded-lg transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

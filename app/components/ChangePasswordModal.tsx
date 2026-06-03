@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { 
-  X, 
-  Lock, 
-  CheckCircle2, 
-  AlertCircle, 
-  Eye, 
-  EyeOff, 
-  Loader2,
+import {
+  X,
+  Lock,
+  CheckCircle,
+  WarningCircle,
+  Eye,
+  EyeSlash,
+  CircleNotch,
   Check,
-  HelpCircle
-} from 'lucide-react';
+  Question
+} from '@phosphor-icons/react';
 import Link from 'next/link';
 
 interface ChangePasswordModalProps {
@@ -142,9 +142,9 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
                 : 'bg-red-50 border border-red-100'
             }`}>
               {message.type === 'success' ? (
-                <CheckCircle2 className="text-green-600 mt-0.5 shrink-0" size={16} />
+                <CheckCircle className="text-green-600 mt-0.5 shrink-0" size={16} />
               ) : (
-                <AlertCircle className="text-red-600 mt-0.5 shrink-0" size={16} />
+                <WarningCircle className="text-red-600 mt-0.5 shrink-0" size={16} />
               )}
               <p className={`text-sm font-medium ${
                 message.type === 'success' ? 'text-green-600' : 'text-red-600'
@@ -171,7 +171,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showCurrentPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
@@ -192,7 +192,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
                 onClick={() => setShowNewPassword(!showNewPassword)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showNewPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
@@ -272,14 +272,14 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showConfirmPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
               </button>
               {confirmPassword && (
                 <div className="absolute right-9 top-1/2 -translate-y-1/2">
                   {passwordsMatch ? (
                     <Check className="text-green-600" size={16} />
                   ) : (
-                    <AlertCircle className="text-red-600" size={16} />
+                    <WarningCircle className="text-red-600" size={16} />
                   )}
                 </div>
               )}
@@ -288,7 +288,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
 
           {/* Esqueci Minha Senha */}
           <div className="flex items-center justify-center gap-1.5 p-2 bg-blue-50 rounded-lg border border-blue-100">
-            <HelpCircle size={14} className="text-blue-600 shrink-0" />
+            <Question size={14} className="text-blue-600 shrink-0" />
             <p className="text-[9px] text-blue-600 font-medium">
               Esqueceu a senha?{' '}
               <Link 
@@ -319,7 +319,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
           >
             {loading ? (
               <>
-                <Loader2 className="animate-spin" size={14} />
+                <CircleNotch className="animate-spin" size={14} />
                 ATUALIZANDO...
               </>
             ) : (

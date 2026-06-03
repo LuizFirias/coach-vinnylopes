@@ -26,8 +26,9 @@ if (typeof window !== 'undefined') {
     }
 
     // If session is null and we're not on login page, redirect
+    // Guard against network-error-triggered SIGNED_OUT (token refresh fails when offline)
     if (event === 'SIGNED_OUT' && !window.location.pathname.includes('/login')) {
-      // Clear any stale data
+      if (!navigator.onLine) return;
       localStorage.removeItem('sb-auth-token');
       window.location.href = '/login';
     }

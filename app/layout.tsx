@@ -1,4 +1,5 @@
 import './globals.css';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
 import SessionManager from './components/SessionManager';
@@ -7,6 +8,18 @@ import SuppressHydrationWarnings from './components/SuppressHydrationWarnings';
 import BottomNav from './components/BottomNav';
 import { AuthProvider } from './components/AuthProvider';
 import { Metadata, Viewport } from 'next';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-mono',
+});
 
 export const metadata: Metadata = {
   title: 'COACH VINNY | High Performance',
@@ -27,9 +40,6 @@ export const viewport: Viewport = {
   themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
-  minimumScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
   interactiveWidget: 'resizes-content',
 };
@@ -40,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning>
+    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -69,7 +79,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-iron-black text-white overflow-x-hidden min-h-screen" suppressHydrationWarning>
+      <body className="bg-surface-0 text-text-primary overflow-x-hidden min-h-screen" suppressHydrationWarning>
         <SuppressHydrationWarnings />
         <ChromeExtensionFix />
         <AuthProvider>

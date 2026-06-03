@@ -1,12 +1,13 @@
 ﻿"use client";
 
 import React, { useEffect, useState } from"react";
-import { Dumbbell, Plus, X, Check, FileText, Moon, ChevronRight, Loader2, Pencil } from"lucide-react";
+import { Barbell, X, Check, FileText, Moon, CircleNotch, PencilSimple } from "@phosphor-icons/react";
 import { supabaseClient } from"@/lib/supabaseClient";
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { extractStoragePath, getSignedStorageUrl } from '@/lib/storageUrls';
 import AddManualWorkoutModal from"./AddManualWorkoutModal";
 import { getTodayBrazil } from '@/lib/dateUtils';
+import { cn } from '@/lib/utils/cn';
 
 interface WorkoutOption {
   id: string;
@@ -108,7 +109,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
               }`}
             >
               <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] shrink-0">
-                <Pencil size={16} />
+                <PencilSimple size={16} />
               </div>
               <div className="text-left flex-1">
                 <p className="text-xs md:text-sm text-white uppercase tracking-tight">Treino Livre</p>
@@ -146,7 +147,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
                     }`}
                   >
                     <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-green-500/10 flex items-center justify-center text-green-400 shrink-0">
-                      <Dumbbell size={16} />
+                      <Barbell size={16} />
                     </div>
                     <div className="text-left flex-1 min-w-0">
                       <p className="text-xs md:text-sm text-white uppercase tracking-tight truncate">{w.name}</p>
@@ -208,7 +209,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
             disabled={selected === null || saving}
             className="flex-1 py-3 md:py-4 bg-[#D4AF37] hover:bg-[#D4AF37]/90 disabled:opacity-40 text-black text-[10px] md:text-[11px] uppercase tracking-widest rounded-xl md:rounded-2xl transition-all flex items-center justify-center gap-2"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            {saving ? <CircleNotch size={14} className="animate-spin" /> : <Check size={14} />}
             Confirmar
           </button>
         </div>
@@ -403,54 +404,56 @@ export default function WeeklyAgenda() {
     </div>
   );
 
+  const todayIdx = new Date().getDay();
+
   return (
     <>
-      <div className="w-full">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="heading-h3 text-text-primary tracking-widest">Agenda Semanal</h2>
-            <p className="label-small text-text-secondary">Organize sua rotina de elite</p>
-          </div>
-        </div>
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {dayLabels.map((label, dayIdx) => {
+          const entry = agenda[dayIdx];
+          const isToday = dayIdx === todayIdx;
 
-        <div className="grid grid-cols-7 gap-2">
-          {dayLabels.map((label, dayIdx) => {
-            const entry = agenda[dayIdx];
-
-            return (
-              <button
-                key={dayIdx}
-                onClick={() => setEditingDay(dayIdx)}
-                className={`flex flex-col min-h-20 rounded-md border relative transition-all duration-300 text-left cursor-pointer group
-                  ${entry?.is_rest_day
-                    ? 'bg-bg-card border-border-subtle opacity-60'
+          return (
+            <button
+              key={dayIdx}
+              onClick={() => setEditingDay(dayIdx)}
+              className={cn(
+                'flex flex-col items-center gap-1.5 min-w-[64px] flex-shrink-0 rounded-xl border p-2.5 transition-all',
+                isToday
+                  ? 'bg-brand/10 border-brand/40'
+                  : entry?.is_rest_day
+                    ? 'bg-surface-1 border-border-subtle opacity-50'
                     : entry?.workout_name
-                      ? 'bg-bg-card border-gold-default/40 shadow-lg shadow-gold-default/5 hover:border-gold-default/60'
-                      : 'bg-bg-card border-border-default hover:border-border-subtle'}
-                `}
-              >
-                {/* Header */}
-                <div className="px-3 pt-2.5 flex justify-between items-center w-full">
-                  <span className="label-small text-gold-light">{label}</span>
-                  <Plus size={12} className="text-text-disabled group-hover:text-text-secondary transition-colors" />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 px-3 pb-2.5 flex flex-col justify-center overflow-hidden">
-                  {entry?.is_rest_day ? (
-                    <span className="text-[9px] text-text-disabled uppercase tracking-widest">Off</span>
-                  ) : entry?.workout_name ? (
-                    <span className="text-[9px] text-text-primary uppercase tracking-tight leading-tight line-clamp-2 block">
-                      {entry.workout_name}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-text-disabled uppercase tracking-widest">+</span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                      ? 'bg-surface-1 border-border-subtle hover:border-border-default'
+                      : 'bg-surface-1 border-dashed border-border-default hover:border-brand/20'
+              )}
+            >
+              <span className={cn(
+                'text-2xs font-semibold uppercase tracking-caps',
+                isToday ? 'text-brand' : 'text-text-tertiary'
+              )}>
+                {label}
+              </span>
+              {entry?.is_rest_day ? (
+                <span className="text-[10px] text-text-disabled leading-tight">Off</span>
+              ) : entry?.workout_name ? (
+                <span className="text-[10px] font-medium text-text-primary leading-tight text-center w-full truncate block px-0.5">
+                  {entry.workout_name.length > 7 ? entry.workout_name.slice(0, 7) + '…' : entry.workout_name}
+                </span>
+              ) : (
+                <span className="text-[10px] text-text-disabled">+</span>
+              )}
+              <div className={cn(
+                'w-1.5 h-1.5 rounded-full',
+                entry?.is_rest_day
+                  ? 'bg-border-default'
+                  : entry?.workout_name
+                    ? isToday ? 'bg-brand' : 'bg-brand/50'
+                    : 'bg-border-subtle'
+              )} />
+            </button>
+          );
+        })}
       </div>
 
       {/* Modal de configuração do dia */}

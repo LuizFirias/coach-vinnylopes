@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
-
-import { PlusCircle, FileUp, CheckCircle2, AlertCircle, Loader2, Trash2, ArrowLeft, ChevronDown } from 'lucide-react';
-import Link from 'next/link';
+import { FileArrowUp, CircleNotch, Trash, PlusCircle, Barbell, CaretRight } from '@phosphor-icons/react';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Select } from '@/components/ui/Select';
+import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import DumbbellLoader from '@/app/components/DumbbellLoader';
 
 interface Aluno {
   id: string;
@@ -18,61 +21,36 @@ export default function TreinosPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [selectedAlunoId, setSelectedAlunoId] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [fetchingAlunos, setFetchingAlunos] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showPdfUpload, setShowPdfUpload] = useState(false);
 
-  // Buscar alunos ao montar o componente
   useEffect(() => {
     const fetchAlunos = async () => {
       try {
         const { data: authData } = await supabaseClient.auth.getUser();
         const coachId = authData?.user?.id;
+        if (!coachId) { setError('Sessão inválida'); setFetchingAlunos(false); return; }
 
-        if (!coachId) {
-          setError('Sessão inválida');
-          setFetchingAlunos(false);
-          return;
-        }
-
-        // Buscar IDs dos alunos do coach
         const { data: alunoLinks, error: linkError } = await supabaseClient
-          .from('coach_alunos')
-          .select('aluno_id')
-          .eq('coach_id', coachId);
+          .from('coach_alunos').select('aluno_id').eq('coach_id', coachId);
 
-        if (linkError) {
-          setError('Erro ao carregar alunos: ' + linkError.message);
-          setFetchingAlunos(false);
-          return;
-        }
+        if (linkError) { setError('Erro ao carregar alunos: ' + linkError.message); setFetchingAlunos(false); return; }
 
         const ids = alunoLinks?.map(link => link.aluno_id) || [];
-        if (ids.length === 0) {
-          setAlunos([]);
-          setFetchingAlunos(false);
-          return;
-        }
+        if (ids.length === 0) { setAlunos([]); setFetchingAlunos(false); return; }
 
-        // Buscar dados dos alunos
         const { data, error: fetchError } = await supabaseClient
-          .from('profiles')
-          .select('id, coaching_reference, email')
-          .in('id', ids)
-          .eq('arquivado', false)
-          .order('coaching_reference', { ascending: true });
+          .from('profiles').select('id, coaching_reference, email')
+          .in('id', ids).eq('arquivado', false).order('coaching_reference', { ascending: true });
 
-        if (fetchError) {
-          setError('Erro ao carregar alunos: ' + fetchError.message);
-          setFetchingAlunos(false);
-          return;
-        }
+        if (fetchError) { setError('Erro ao carregar alunos: ' + fetchError.message); setFetchingAlunos(false); return; }
 
         setAlunos(data || []);
         setFetchingAlunos(false);
-      } catch (err) {
+      } catch {
         setError('Erro ao conectar com o banco de dados');
         setFetchingAlunos(false);
       }
@@ -83,25 +61,11 @@ export default function TreinosPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        setError('Por favor, selecione um arquivo PDF');
-        setSelectedFile(null);
-        setFilePreview('');
-        return;
-      }
-
-      if (file.size > 50 * 1024 * 1024) {
-        setError('Arquivo muito grande. Máximo 50MB');
-        setSelectedFile(null);
-        setFilePreview('');
-        return;
-      }
-
-      setSelectedFile(file);
-      setFilePreview(file.name);
-      setError(null);
-    }
+    if (!file) return;
+    if (file.type !== 'application/pdf') { setError('Por favor, selecione um arquivo PDF'); return; }
+    if (file.size > 50 * 1024 * 1024) { setError('Arquivo muito grande. Máximo 50MB'); return; }
+    setSelectedFile(file);
+    setError(null);
   };
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -109,54 +73,37 @@ export default function TreinosPage() {
     setError(null);
     setSuccess(null);
 
-    if (!selectedAlunoId) {
-      setError('Por favor, selecione um aluno');
-      return;
-    }
-
-    if (!selectedFile) {
-      setError('Por favor, selecione um arquivo PDF');
-      return;
-    }
+    if (!selectedAlunoId) { setError('Por favor, selecione um aluno'); return; }
+    if (!selectedFile) { setError('Por favor, selecione um arquivo PDF'); return; }
 
     setLoading(true);
-
     try {
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
       if (!coachId) throw new Error('Sessão inválida');
 
       const fileName = `${selectedAlunoId}/${Date.now()}_${selectedFile.name}`;
-      
-      const { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from('treinos-pdf')
-        .upload(fileName, selectedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      const { error: uploadError } = await supabaseClient.storage
+        .from('treinos-pdf').upload(fileName, selectedFile, { cacheControl: '3600', upsert: false });
 
       if (uploadError) throw uploadError;
 
-      const { error: dbError } = await supabaseClient
-        .from('treinos_alunos')
-        .insert({
-          aluno_id: selectedAlunoId,
-          coach_id: coachId,
-          url_pdf: fileName,
-          nome_arquivo: selectedFile.name,
-          data_upload: new Date().toISOString(),
-        });
+      const { error: dbError } = await supabaseClient.from('treinos_alunos').insert({
+        aluno_id: selectedAlunoId,
+        coach_id: coachId,
+        url_pdf: fileName,
+        nome_arquivo: selectedFile.name,
+        data_upload: new Date().toISOString(),
+      });
 
       if (dbError) throw dbError;
 
-      setSuccess('Ficha de treino enviada com sucesso!');
+      setSuccess('PDF enviado com sucesso!');
       setSelectedFile(null);
-      setFilePreview('');
       setSelectedAlunoId('');
-      
+      setShowPdfUpload(false);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      console.error('Erro no upload:', err);
       setError('Erro ao realizar upload: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setLoading(false);
@@ -164,161 +111,142 @@ export default function TreinosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-6 lg:p-10 lg:pl-28">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 md:mb-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
-            <div>
-              <Link 
-                href="/admin/dashboard" 
-                className="inline-flex items-center gap-2 text-[#D4AF37] text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:gap-3 transition-all"
-              >
-                <ArrowLeft size={14} /> Painel de Controle
-              </Link>
-              <h1 className="text-4xl md:text-5xl text-white tracking-tighter mb-2 uppercase">
-                Gestão de <span className="text-zinc-500">Treinos</span>
-              </h1>
-              <p className="text-zinc-500 text-[10px] uppercase tracking-widest">Expedição de treinos técnicos para atletas</p>
-            </div>
-            
-            <button
-              onClick={() => router.push('/admin/treinos/nova-ficha')}
-              className="flex items-center gap-3 px-8 py-4 bg-[#D4AF37] text-black rounded-2xl text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-white transition-all active:scale-95"
-            >
-              <PlusCircle size={18} />
-              Nova Ficha Digital
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
+      <ScreenHeader
+        title="Gestão de Treinos"
+        subtitle="Expedição de treinos técnicos para atletas"
+      />
 
-        <div className="grid grid-cols-1 gap-6 md:gap-8">
-          {/* Form Container */}
-          <div className="bg-[#0F0F0F] rounded-3xl shadow-2xl p-8 md:p-12 border border-[#1a1a1a]">
-            <div className="flex items-center gap-4 mb-10 pb-6 border-b border-[#1a1a1a]">
-              <div className="w-14 h-14 rounded-2xl bg-black border border-[#1a1a1a] flex items-center justify-center text-[#D4AF37] shadow-lg">
-                <FileUp size={24} />
+      <div className="px-4 max-w-2xl space-y-4">
+
+        {error && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+            <div className="w-2 h-2 rounded-full bg-danger flex-shrink-0 animate-pulse" />
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-success-subtle border border-success-border text-success text-sm">
+            <div className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
+            {success}
+          </div>
+        )}
+
+        {/* ── Nova Ficha Digital — card principal ── */}
+        <button
+          onClick={() => router.push('/admin/treinos/nova-ficha')}
+          className="w-full text-left bg-brand/5 border-2 border-brand/20 hover:border-brand/40 hover:bg-brand/10 rounded-2xl p-6 transition-all group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-brand text-text-on-brand flex items-center justify-center shadow-sm shadow-brand/30 flex-shrink-0">
+                <Barbell size={26} />
               </div>
               <div>
-                <h2 className="text-2xl text-white uppercase tracking-tight">Upload de PDF</h2>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-loose">Sincronização imediata com o app do atleta</p>
+                <p className="text-base font-bold text-text-primary group-hover:text-brand transition-colors">Nova Ficha Digital</p>
+                <p className="text-xs text-text-tertiary mt-0.5">Séries, cargas, técnicas e vídeos em tempo real</p>
               </div>
             </div>
+            <CaretRight size={20} className="text-text-tertiary group-hover:text-brand group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </div>
+        </button>
 
-            {/* Mensagens */}
-            {error && (
-              <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 text-red-500 text-[10px] uppercase tracking-widest">
-                <AlertCircle size={18} />
-                {error}
+        {/* ── Upload PDF — card secundário ── */}
+        {!showPdfUpload ? (
+          <button
+            onClick={() => setShowPdfUpload(true)}
+            className="w-full text-left bg-surface-1 border border-border-subtle hover:border-border-default shadow-elev-1 rounded-2xl p-5 transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-tertiary group-hover:text-brand group-hover:border-brand/20 group-hover:bg-brand/5 transition-all flex-shrink-0">
+                  <FileArrowUp size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">Upload de PDF</p>
+                  <p className="text-xs text-text-tertiary mt-0.5">Enviar ficha em PDF para o acervo do atleta</p>
+                </div>
               </div>
-            )}
-
-            {success && (
-              <div className="mb-8 p-6 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-2xl flex items-center gap-4 text-[#D4AF37] text-[10px] uppercase tracking-widest">
-                <CheckCircle2 size={18} />
-                {success}
+              <CaretRight size={16} className="text-text-disabled group-hover:text-brand group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+            </div>
+          </button>
+        ) : (
+          <Card className="rounded-2xl shadow-elev-1">
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-border-subtle">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand">
+                  <FileArrowUp size={18} />
+                </div>
+                <div>
+                  <p className="font-semibold text-text-primary text-sm">Upload de PDF</p>
+                  <p className="text-xs text-text-tertiary mt-0.5">Sincronização imediata com o app do atleta</p>
+                </div>
               </div>
-            )}
+              <button
+                onClick={() => { setShowPdfUpload(false); setSelectedFile(null); setError(null); }}
+                className="text-xs text-text-tertiary hover:text-text-primary transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
 
             {fetchingAlunos ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-6 text-zinc-500">
-                <Loader2 size={40} className="animate-spin text-[#D4AF37]" />
-                <p className="text-[10px] uppercase tracking-widest tracking-[0.4em]">Indexando Atletas...</p>
+              <div className="flex items-center justify-center py-8">
+                <DumbbellLoader text="Carregando atletas..." />
               </div>
             ) : (
-              <form onSubmit={handleUpload} className="space-y-10">
-                {/* Select Aluno */}
-                <div className="space-y-4">
-                  <label htmlFor="aluno" className="inline-block text-[10px] uppercase tracking-[0.3em] text-zinc-700 ml-1">
-                    SELECIONE O ATLETA
-                  </label>
-                  <div className="relative group">
-                    <select
-                      id="aluno"
-                      value={selectedAlunoId}
-                      onChange={(e) => setSelectedAlunoId(e.target.value)}
-                      disabled={loading}
-                      className="w-full h-14 md:h-16 px-8 bg-black border border-[#1a1a1a] rounded-2xl text-white font-medium focus:outline-none focus:border-[#D4AF37] transition-all cursor-pointer disabled:opacity-50 appearance-none uppercase tracking-widest text-sm"
-                    >
-                      <option value="" className="bg-[#0F0F0F]">Aperte para escolher...</option>
-                      {alunos.map((aluno) => (
-                        <option key={aluno.id} value={aluno.id} className="bg-[#0F0F0F]">
-                            {aluno.coaching_reference || aluno.email}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-800">
-                      <ChevronDown size={20} />
-                    </div>
-                  </div>
-                </div>
+              <form onSubmit={handleUpload} className="flex flex-col gap-4">
+                <Select
+                  label="Selecione o Atleta"
+                  value={selectedAlunoId}
+                  onChange={setSelectedAlunoId}
+                  placeholder="Escolher atleta..."
+                  disabled={loading}
+                  options={alunos.map((a) => ({
+                    value: a.id,
+                    label: a.coaching_reference || a.email || a.id,
+                  }))}
+                />
 
-                {/* File Upload Area */}
-                <div className="space-y-4">
-                  <label className="inline-block text-[10px] uppercase tracking-[0.3em] text-zinc-700 ml-1">
-                    PROTOCOLAR ARQUIVO (PDF)
-                  </label>
-
+                <div className="flex flex-col gap-2">
+                  <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Arquivo PDF</label>
                   {!selectedFile ? (
-                    <label className="relative flex flex-col items-center justify-center w-full h-32 md:h-40 border-2 border-dashed border-[#1a1a1a] rounded-3xl bg-black/50 hover:bg-[#D4AF37]/5 hover:border-[#D4AF37]/30 transition-all cursor-pointer group shadow-2xl">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleFileChange}
-                        disabled={loading}
-                        className="hidden"
-                      />
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <div className="w-16 h-16 mb-4 rounded-2xl bg-black border border-[#1a1a1a] shadow-lg flex items-center justify-center text-zinc-500 group-hover:text-[#D4AF37] transition-colors">
-                          <FileUp size={28} />
-                        </div>
-                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Arraste ou clique para selecionar</p>
-                      </div>
+                    <label className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-border-default rounded-xl bg-surface-2 hover:bg-brand-subtle hover:border-brand-border transition-all cursor-pointer group">
+                      <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
+                      <FileArrowUp size={22} className="text-text-disabled group-hover:text-brand transition-colors mb-2" />
+                      <p className="text-xs text-text-tertiary">Arraste ou clique para selecionar</p>
                     </label>
                   ) : (
-                    <div className="relative p-6 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-3xl">
-                      <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 rounded-2xl bg-black border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] shadow-xl">
-                          <FileUp size={24} />
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                          <p className="text-sm text-white uppercase tracking-tighter truncate">{selectedFile.name}</p>
-                          <p className="text-[10px] text-[#D4AF37] uppercase tracking-widest">Documento Válido</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedFile(null); setFilePreview(''); }}
-                          className="w-12 h-12 flex items-center justify-center text-zinc-700 hover:text-red-500 bg-black rounded-xl border border-[#1a1a1a] transition-all"
-                        >
-                          <Trash2 size={20} />
-                        </button>
+                    <div className="flex items-center gap-4 p-4 bg-brand-subtle border border-brand-border rounded-xl">
+                      <div className="w-9 h-9 rounded-xl bg-surface-3 border border-brand-border flex items-center justify-center text-brand shrink-0">
+                        <FileArrowUp size={18} />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-text-primary font-medium truncate">{selectedFile.name}</p>
+                        <p className="text-xs text-brand">Documento válido</p>
+                      </div>
+                      <button type="button" onClick={() => setSelectedFile(null)} className="p-2 text-text-tertiary hover:text-danger transition-colors">
+                        <Trash size={16} />
+                      </button>
                     </div>
                   )}
                 </div>
 
-                {/* Submit button */}
-                <button
+                <Button
                   type="submit"
+                  variant="primary"
+                  loading={loading}
                   disabled={loading || !selectedAlunoId || !selectedFile}
-                  className="w-full h-16 md:h-20 bg-[#D4AF37] text-black rounded-3xl text-[12px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-[#D4AF37]/10 hover:bg-white transition-all active:scale-[0.98] disabled:opacity-30"
+                  fullWidth
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="animate-spin" size={20} />
-                      PROCESSANDO...
-                    </>
-                  ) : (
-                    <>
-                      PROTOCOLAR TREINO AGORA
-                    </>
-                  )}
-                </button>
+                  Protocolar Treino Agora
+                </Button>
               </form>
             )}
-          </div>
-        </div>
+          </Card>
+        )}
       </div>
     </div>
   );
 }
+

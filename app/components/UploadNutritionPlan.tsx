@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from"react";
-import { X, Upload, FileText, Loader2 } from"lucide-react";
+import { X, UploadSimple, FileText, CircleNotch } from "@phosphor-icons/react";
 import { supabaseClient } from"@/lib/supabaseClient";
 
 interface UploadNutritionPlanProps {
@@ -249,12 +249,12 @@ export default function UploadNutritionPlan({
           >
             {loading ? (
               <>
-                <Loader2 size={18} className="animate-spin" />
+                <CircleNotch size={18} className="animate-spin" />
                 Enviando...
               </>
             ) : (
               <>
-                <Upload size={18} />
+                <UploadSimple size={18} />
                 Enviar Plano
               </>
             )}

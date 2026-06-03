@@ -1,23 +1,22 @@
 "use client";
 
-import { useState, useEffect } from"react";
-import { supabaseClient } from"@/lib/supabaseClient";
-import { getPublicStorageUrl, extractStoragePath } from"@/lib/storageUrls";
+import { useState, useEffect } from "react";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { getPublicStorageUrl } from "@/lib/storageUrls";
 import {
   User,
-  Mail,
   Camera,
-  CheckCircle,
-  AlertCircle,
-  ArrowLeft,
   ShieldCheck,
-  Save,
-  Lock
-} from"lucide-react";
-import Link from"next/link";
-import Image from"next/image";
-import ChangePasswordModal from"@/app/components/ChangePasswordModal";
-import DumbbellLoader from"@/app/components/DumbbellLoader";
+  Lock,
+} from "@phosphor-icons/react";
+import Link from "next/link";
+import Image from "next/image";
+import ChangePasswordModal from "@/app/components/ChangePasswordModal";
+import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/utils/cn";
 
 export default function SuperAdminPerfilPage() {
   const [loading, setLoading] = useState(true);
@@ -26,7 +25,7 @@ export default function SuperAdminPerfilPage() {
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState<{ type:"success" |"error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
 
   useEffect(() => {
@@ -46,8 +45,8 @@ export default function SuperAdminPerfilPage() {
         .single();
 
       if (profile) {
-        setFullName(profile.full_name ||"");
-        setEmail(profile.email ||"");
+        setFullName(profile.full_name || "");
+        setEmail(profile.email || "");
         setAvatarUrl(profile.avatar_url);
       }
     } catch (err) {
@@ -74,9 +73,9 @@ export default function SuperAdminPerfilPage() {
 
       if (error) throw error;
 
-      setMessage({ type:"success", text:"Perfil Master atualizado!" });
+      setMessage({ type: "success", text: "Perfil atualizado com sucesso!" });
     } catch (err: any) {
-      setMessage({ type:"error", text: err.message ||"Erro ao salvar" });
+      setMessage({ type: "error", text: err.message || "Erro ao salvar" });
     } finally {
       setSaving(false);
     }
@@ -87,7 +86,7 @@ export default function SuperAdminPerfilPage() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      setMessage({ type:"error", text:"Arquivo muito grande. Máximo 2MB." });
+      setMessage({ type: "error", text: "Arquivo muito grande. Máximo 2MB." });
       return;
     }
 
@@ -108,7 +107,6 @@ export default function SuperAdminPerfilPage() {
 
       if (uploadError) throw uploadError;
 
-      // Salvar APENAS o path no banco
       const { error: updateError } = await supabaseClient
         .from("profiles")
         .update({ avatar_url: fileName })
@@ -117,9 +115,9 @@ export default function SuperAdminPerfilPage() {
       if (updateError) throw updateError;
 
       setAvatarUrl(fileName);
-      setMessage({ type:"success", text:"Identidade visual atualizada!" });
+      setMessage({ type: "success", text: "Foto atualizada!" });
     } catch (err: any) {
-      setMessage({ type:"error", text: err.message ||"Erro ao fazer upload" });
+      setMessage({ type: "error", text: err.message || "Erro ao fazer upload" });
     } finally {
       setUploading(false);
     }
@@ -127,162 +125,143 @@ export default function SuperAdminPerfilPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6">
-        <DumbbellLoader text="Autenticando Master..." />
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+        <DumbbellLoader text="Carregando..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black p-6 lg:p-12 lg:pl-28 font-sans">
-      <div className="max-w-4xl mx-auto pb-20">
-        
-        {/* Header Section */}
-        <header className="mb-12">
-            <Link href="/super-admin" className="inline-flex items-center gap-2 text-[#D4AF37] text-[10px] uppercase tracking-widest mb-6 hover:ml-1 transition-all">
-              <ArrowLeft size={14} /> Painel Executivo
-            </Link>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <h1 className="text-5xl text-white tracking-tighter leading-none mb-2 uppercase">
-                  Identidade <span className="text-zinc-500 tracking-tighter">Master</span>
-                </h1>
-                <p className="text-zinc-600 text-[10px] uppercase tracking-widest">Gestão da autoridade máxima da plataforma.</p>
-              </div>
-              <div className="hidden md:flex items-center gap-3 px-6 py-3 bg-[#0F0F0F] text-white rounded-2xl shadow-xl border border-[#1a1a1a]">
-                 <ShieldCheck size={18} className="text-[#D4AF37]" />
-                 <span className="text-[10px] uppercase tracking-widest">Acesso de Nível 50</span>
-              </div>
-            </div>
-        </header>
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
 
-        <div className="bg-[#0F0F0F] rounded-[48px] border border-[#1a1a1a] shadow-2xl overflow-hidden relative">
-          
-          <div className="p-12 lg:p-20 relative z-10">
-            {message && (
-              <div className={`mb-12 p-8 rounded-3xl border flex items-center gap-5 animate-in fade-in slide-in-from-top-4 ${
-                message.type ==="success" 
-                  ?"bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20" 
-                  :"bg-red-500/10 text-red-500 border-red-500/20"
-              }`}>
-                {message.type ==="success" ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
-                <p className="text-[10px] uppercase tracking-widest">{message.text}</p>
-              </div>
-            )}
-
-            {/* Avatar Central Unit */}
-            <div className="mb-20 flex flex-col items-center text-center">
-              <div className="relative group">
-                <div className="w-48 h-48 rounded-[64px] bg-black border-4 border-[#1a1a1a] overflow-hidden shadow-2xl relative transform transition-transform duration-700 group-hover:scale-[1.05] group-hover:border-[#D4AF37]/50">
-                  {avatarUrl ? (
-                    <Image src={getPublicStorageUrl('avatars', avatarUrl) || ''} alt="Avatar Master" fill className="object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-black text-zinc-900">
-                      <User size={80} strokeWidth={1} />
-                    </div>
-                  )}
-                  {uploading && (
-                    <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center">
-                      <div className="w-8 h-8 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin" />
-                    </div>
-                  )}
-                </div>
-                
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute -bottom-4 -right-4 w-16 h-16 bg-[#D4AF37] text-black rounded-3xl flex items-center justify-center cursor-pointer hover:bg-white hover:scale-110 transition-all shadow-2xl border-8 border-[#0F0F0F] group-hover:rotate-12"
-                >
-                  <Camera size={24} strokeWidth={2.5} />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploading}
-                    className="hidden"
-                    id="avatar-upload"
-                  />
-                </label>
-              </div>
-              <div className="mt-10">
-                 <h2 className="text-2xl text-white uppercase tracking-tighter">Avatar Executivo</h2>
-                 <p className="text-[10px] text-zinc-700 uppercase tracking-[0.4em] mt-2 shadow-inner">Indexado na Nuvem Criptografada</p>
-              </div>
-            </div>
-
-            {/* Profile Form */}
-            <form onSubmit={handleSave} className="space-y-12 max-w-xl mx-auto">
-              <div className="space-y-4">
-                <label className="text-[10px] text-zinc-800 uppercase tracking-[0.4em] ml-2">Assinatura Digital Master</label>
-                <div className="relative group">
-                  <div className="absolute left-8 top-1/2 -translate-y-1/2 text-zinc-800 group-focus-within:text-[#D4AF37] transition-colors">
-                    <User size={20} />
-                  </div>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Seu nome master"
-                    className="w-full pl-20 pr-10 py-6 bg-black border-2 border-[#1a1a1a] rounded-[28px] text-white focus:border-[#D4AF37] transition-all outline-none placeholder:text-zinc-900"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="text-[10px] text-zinc-800 uppercase tracking-[0.4em] ml-2">E-mail de Autoridade Máxima</label>
-                <div className="relative">
-                  <div className="absolute left-8 top-1/2 -translate-y-1/2 text-zinc-800">
-                    <Mail size={20} />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    disabled
-                    className="w-full pl-20 pr-10 py-6 bg-black border-2 border-[#1a1a1a] rounded-[28px] text-zinc-800 cursor-not-allowed"
-                  />
-                </div>
-                <p className="text-[9px] text-zinc-900 uppercase tracking-[0.3em] ml-2">Apenas leitura por protocolos de segurança avançados</p>
-              </div>
-
-              <div className="pt-10 flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  type="button"
-                  onClick={() => setChangePasswordModalOpen(true)}
-                  className="px-12 py-7 bg-brand-purple/10 text-brand-purple rounded-[32px] text-[12px] uppercase tracking-[0.5em] shadow-2xl hover:bg-brand-purple/20 transition-all duration-500 border border-brand-purple/20 flex items-center justify-center gap-5 active:scale-95"
-                >
-                  <Lock size={20} strokeWidth={2.5} />
-                  TROCAR SENHA
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="w-full sm:w-auto px-20 py-7 bg-[#D4AF37] text-black rounded-[32px] text-[12px] uppercase tracking-[0.5em] shadow-2xl hover:bg-white hover:-translate-y-1 transition-all duration-500 disabled:opacity-50 flex items-center justify-center gap-5 active:scale-95 group"
-                >
-                  {saving ? (
-                    <div className="w-5 h-5 border-3 border-black/20 border-t-black rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      AUTORIZAR MUDANÇA
-                      <Save size={20} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+      {/* Header */}
+      <header className="px-4 pt-6 pb-4">
+        <Link
+          href="/super-admin"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-text-tertiary hover:text-text-secondary transition-colors mb-4"
+        >
+          ← Painel Executivo
+        </Link>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-text-primary tracking-tight">Perfil Master</h1>
+            <p className="text-sm text-text-secondary mt-1">Gestão da autoridade máxima da plataforma</p>
           </div>
-          
-          {/* Decorative background element */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/5 rounded-bl-[120px] pointer-events-none blur-3xl" />
+          <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-brand-subtle border border-brand-border rounded-xl">
+            <ShieldCheck className="w-4 h-4 text-brand" />
+            <span className="text-xs font-semibold text-brand">Super Admin</span>
+          </div>
         </div>
+      </header>
 
-        <div className="mt-20 flex justify-center pb-20">
-           <div className="px-10 py-4 bg-[#0F0F0F] rounded-full border border-[#1a1a1a] flex items-center gap-4 shadow-2xl">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37] shadow-[0_0_15px_#D4AF37] animate-pulse" />
-              <span className="text-[10px] text-zinc-700 uppercase tracking-[0.4em]">Firewall Master Nível Ativo</span>
-           </div>
-        </div>
+      <div className="px-4 max-w-2xl flex flex-col gap-4">
+
+        {/* Feedback */}
+        {message && (
+          <div className={cn(
+            "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm",
+            message.type === "success"
+              ? "bg-success-subtle border-success-border text-success"
+              : "bg-danger-subtle border-danger-border text-danger"
+          )}>
+            <div className={cn(
+              "w-2 h-2 rounded-full flex-shrink-0",
+              message.type === "success" ? "bg-success" : "bg-danger animate-pulse"
+            )} />
+            {message.text}
+          </div>
+        )}
+
+        {/* Avatar card */}
+        <Card className="rounded-2xl shadow-elev-1">
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-surface-3 border border-border-default relative">
+                {avatarUrl ? (
+                  <Image
+                    src={getPublicStorageUrl("avatars", avatarUrl) || ""}
+                    alt="Avatar"
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-text-disabled">
+                    <User className="w-10 h-10" />
+                  </div>
+                )}
+                {uploading && (
+                  <div className="absolute inset-0 bg-surface-0/80 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <label className={cn(
+                "absolute -bottom-1.5 -right-1.5 w-9 h-9 rounded-xl cursor-pointer",
+                "bg-brand hover:bg-brand-hover active:bg-brand-pressed transition-colors",
+                "flex items-center justify-center text-text-on-brand shadow-lg"
+              )}>
+                <Camera className="w-4 h-4" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-text-primary">{fullName || "Super Admin"}</p>
+              <p className="text-xs text-text-tertiary mt-0.5">{email}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Form card */}
+        <Card className="rounded-2xl shadow-elev-1">
+          <form onSubmit={handleSave} className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Nome completo"
+                name="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Seu nome"
+              />
+              <Input
+                label="E-mail"
+                name="email"
+                type="email"
+                value={email}
+                disabled
+                helperText="Somente leitura"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-1">
+              <Button
+                type="button"
+                variant="secondary"
+                leftIcon={<Lock className="w-4 h-4" />}
+                onClick={() => setChangePasswordModalOpen(true)}
+                fullWidth
+              >
+                Trocar senha
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={saving}
+                fullWidth
+              >
+                Salvar alterações
+              </Button>
+            </div>
+          </form>
+        </Card>
       </div>
 
-      {/* Change Password Modal */}
       <ChangePasswordModal
         isOpen={changePasswordModalOpen}
         onClose={() => setChangePasswordModalOpen(false)}

@@ -76,7 +76,7 @@ export const getWelcomeEmailHtml = (fullName: string, email: string, temporaryPa
                 Recomendamos que você altere sua senha após o primeiro login para sua total segurança.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria de Elite
+                © 2026 Coach Vinny - Consultoria Profissional
               </p>
             </td>
           </tr>
@@ -139,7 +139,7 @@ export const getPasswordResetEmailHtml = (fullName: string, resetLink: string) =
                 Se você não solicitou esta alteração, ignore este e-mail. Seu acesso continuará seguro com sua senha atual.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria de Elite
+                © 2026 Coach Vinny - Consultoria de Profissional
               </p>
             </td>
           </tr>
@@ -224,7 +224,7 @@ export const getPasswordResetNotificationHtml = (fullName: string, email: string
                 Se você tiver qualquer dúvida ou problema para acessar, entre em contato com o suporte.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria de Elite
+                © 2026 Coach Vinny - Consultoria de Profissional
               </p>
             </td>
           </tr>

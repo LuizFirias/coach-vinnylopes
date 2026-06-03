@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from"react";
-import { X, ExternalLink, FileText, ArrowLeft, Smartphone } from"lucide-react";
+import { X, ArrowSquareOut, FileText, ArrowLeft, DeviceMobile } from "@phosphor-icons/react";
 import DumbbellLoader from"./DumbbellLoader";
 
 interface PDFViewerProps {
@@ -57,7 +57,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
               className="p-2 text-zinc-400 hover:text-white transition-colors"
               title="Abrir em nova aba"
             >
-              <ExternalLink size={18} />
+              <ArrowSquareOut size={18} />
             </a>
             <button
               onClick={onClose}
@@ -75,7 +75,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
           {isMobile ? (
             <div className="flex flex-col items-center justify-center gap-6 p-8 text-center">
               <div className="w-16 h-16 bg-[#D4AF37]/10 rounded-2xl flex items-center justify-center">
-                <Smartphone size={32} className="text-[#D4AF37]" />
+                <DeviceMobile size={32} className="text-[#D4AF37]" />
               </div>
               <div>
                 <p className="text-white uppercase tracking-widest text-sm mb-2">PDF Aberto</p>

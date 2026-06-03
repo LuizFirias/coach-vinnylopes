@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { MessageCircle, Calendar, User, Filter, Dumbbell, ArrowLeft, AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { ChatCircle, Calendar, Barbell, WarningCircle } from "@phosphor-icons/react";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { cn } from "@/lib/utils/cn";
 
 interface Feedback {
   id: string;
@@ -19,76 +19,57 @@ interface Feedback {
   ficha_nome?: string;
 }
 
+const AVATAR_COLORS = [
+  "from-amber-500/50 to-amber-700/30",
+  "from-orange-500/50 to-orange-700/30",
+  "from-yellow-500/50 to-yellow-700/30",
+  "from-brand/50 to-brand/20",
+];
+function avatarGrad(name: string) {
+  return AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+}
+
 export default function FeedbacksCoachPage() {
   const router = useRouter();
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'treino_completo' | 'treino_dia'>('todos');
 
-  useEffect(() => {
-    loadFeedbacks();
-  }, []);
+  useEffect(() => { loadFeedbacks(); }, []);
 
   const loadFeedbacks = async () => {
     try {
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
-      if (!coachId) {
-        router.push("/login");
-        return;
-      }
+      if (!coachId) { router.push("/login"); return; }
 
-      // Verificar se é coach
       const { data: profile } = await supabaseClient
-        .from("profiles")
-        .select("role")
-        .eq("id", coachId)
-        .single();
+        .from("profiles").select("role").eq("id", coachId).single();
 
       if (profile?.role !== "coach" && profile?.role !== "super_admin") {
-        router.push("/aluno/dashboard");
-        return;
+        router.push("/aluno/dashboard"); return;
       }
 
-      // Buscar feedbacks dos alunos do coach
       const { data: feedbacksData, error } = await supabaseClient
         .from("feedbacks_treinos")
-        .select(`
-          id,
-          aluno_id,
-          feedback,
-          tipo,
-          created_at,
-          ficha_id
-        `)
+        .select("id, aluno_id, feedback, tipo, created_at, ficha_id")
         .eq("coach_id", coachId)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Erro ao carregar feedbacks:", error);
-        setLoading(false);
-        return;
-      }
+      if (error) { setLoading(false); return; }
 
-      // Buscar informações dos alunos
       const alunoIds = [...new Set(feedbacksData?.map(f => f.aluno_id) || [])];
       const { data: alunosData } = await supabaseClient
-        .from("profiles")
-        .select("id, full_name, coaching_reference")
-        .in("id", alunoIds);
+        .from("profiles").select("id, full_name, coaching_reference").in("id", alunoIds);
 
-      // Buscar nomes das fichas
       const fichaIds = [...new Set(feedbacksData?.filter(f => f.ficha_id).map(f => f.ficha_id!) || [])];
       const { data: fichasData } = await supabaseClient
-        .from("fichas_treino")
-        .select("id, nome_rotina")
-        .in("id", fichaIds);
+        .from("fichas_treino").select("id, nome_rotina").in("id", fichaIds);
 
-      // Combinar dados
       const feedbacksCompletos = feedbacksData?.map(fb => ({
         ...fb,
-        aluno_nome: alunosData?.find(a => a.id === fb.aluno_id)?.full_name || "Desconhecido",
-        aluno_reference: alunosData?.find(a => a.id === fb.aluno_id)?.coaching_reference || "N/A",
+        aluno_nome: alunosData?.find(a => a.id === fb.aluno_id)?.full_name || "Atleta",
+        aluno_reference: alunosData?.find(a => a.id === fb.aluno_id)?.coaching_reference || null,
         ficha_nome: fichasData?.find(f => f.id === fb.ficha_id)?.nome_rotina || null,
       })) || [];
 
@@ -100,140 +81,124 @@ export default function FeedbacksCoachPage() {
     }
   };
 
-  const feedbacksFiltrados = filtroTipo === 'todos' 
-    ? feedbacks 
+  const feedbacksFiltrados = filtroTipo === 'todos'
+    ? feedbacks
     : feedbacks.filter(f => f.tipo === filtroTipo);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6 lg:pl-28">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-28">
         <DumbbellLoader text="Carregando feedbacks..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-6 lg:p-10 lg:pl-28 pb-20">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Header */}
-        <div className="mb-12">
-          <Link href="/admin/dashboard" className="inline-flex items-center gap-2 text-zinc-500 text-[10px] uppercase tracking-widest hover:text-white transition-all mb-6">
-            <ArrowLeft size={12} /> Voltar ao Dashboard
-          </Link>
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-[#0F0F0F] rounded-2xl flex items-center justify-center border border-[#1a1a1a]">
-              <MessageCircle size={24} className="text-[#D4AF37]" />
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl text-white tracking-tighter uppercase leading-none">
-                Feedbacks dos Alunos
-              </h1>
-              <p className="text-sm text-zinc-500 mt-2">Acompanhe o feedback de seus atletas</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-surface-0 pb-28 lg:pl-28">
 
-          {/* Filtros */}
-          <div className="flex items-center gap-3">
-            <Filter size={16} className="text-zinc-600" />
+      {/* Header */}
+      <div className="px-4 pt-8 pb-5 max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold text-text-primary tracking-tight">Feedbacks</h1>
+        <p className="text-xs text-text-tertiary mt-0.5">Retorno dos atletas</p>
+      </div>
+
+      <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4">
+
+        {/* Filtros — horizontal scroll */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
+          {([
+            { key: 'todos',           label: 'Todos',      count: feedbacks.length },
+            { key: 'treino_completo', label: 'Pós-Treino', count: feedbacks.filter(f => f.tipo === 'treino_completo').length },
+            { key: 'treino_dia',      label: 'Dashboard',  count: feedbacks.filter(f => f.tipo === 'treino_dia').length },
+          ] as const).map(({ key, label, count }) => (
             <button
-              onClick={() => setFiltroTipo('todos')}
-              className={`px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest transition-all ${
-                filtroTipo === 'todos' 
-                  ? 'bg-[#D4AF37] text-black' 
-                  : 'bg-[#0F0F0F] text-zinc-500 border border-[#1a1a1a] hover:text-white'
-              }`}
+              key={key}
+              onClick={() => setFiltroTipo(key)}
+              className={cn(
+                "shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-all",
+                filtroTipo === key
+                  ? "bg-brand text-text-on-brand shadow-glow-brand"
+                  : "bg-surface-2 border border-border-subtle text-text-secondary hover:text-text-primary hover:border-brand/30"
+              )}
             >
-              Todos ({feedbacks.length})
+              {label} <span className="opacity-70 tabular-nums">({count})</span>
             </button>
-            <button
-              onClick={() => setFiltroTipo('treino_completo')}
-              className={`px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest transition-all ${
-                filtroTipo === 'treino_completo' 
-                  ? 'bg-[#D4AF37] text-black' 
-                  : 'bg-[#0F0F0F] text-zinc-500 border border-[#1a1a1a] hover:text-white'
-              }`}
-            >
-              Pós-Treino ({feedbacks.filter(f => f.tipo === 'treino_completo').length})
-            </button>
-            <button
-              onClick={() => setFiltroTipo('treino_dia')}
-              className={`px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest transition-all ${
-                filtroTipo === 'treino_dia' 
-                  ? 'bg-[#D4AF37] text-black' 
-                  : 'bg-[#0F0F0F] text-zinc-500 border border-[#1a1a1a] hover:text-white'
-              }`}
-            >
-              Dashboard ({feedbacks.filter(f => f.tipo === 'treino_dia').length})
-            </button>
-          </div>
+          ))}
         </div>
 
-        {/* Lista de Feedbacks */}
+        {/* Lista */}
         {feedbacksFiltrados.length === 0 ? (
-          <div className="bg-[#0F0F0F] p-12 rounded-3xl shadow-2xl text-center border border-[#1a1a1a]">
-            <div className="w-20 h-20 bg-black rounded-2xl flex items-center justify-center mx-auto mb-8 border border-[#1a1a1a]">
-              <AlertCircle size={40} className="text-zinc-700" />
-            </div>
-            <h2 className="text-2xl text-white mb-2 uppercase tracking-tight">Nenhum Feedback</h2>
-            <p className="text-zinc-500 text-sm">
-              {filtroTipo === 'todos' 
-                ? 'Seus alunos ainda não enviaram feedbacks. Incentive-os a compartilhar suas experiências!' 
-                : `Não há feedbacks do tipo "${filtroTipo === 'treino_completo' ? 'Pós-Treino' : 'Dashboard'}" no momento.`
-              }
+          <div className="flex flex-col items-center py-16 text-center gap-3 bg-surface-2 border border-dashed border-border-subtle rounded-2xl">
+            <WarningCircle size={32} className="text-text-disabled" />
+            <p className="text-text-disabled text-xs uppercase tracking-caps">
+              {filtroTipo === 'todos' ? 'Nenhum feedback recebido.' : `Nenhum feedback "${filtroTipo === 'treino_completo' ? 'Pós-Treino' : 'Dashboard'}".`}
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {feedbacksFiltrados.map((feedback) => (
-              <div key={feedback.id} className="bg-[#0F0F0F] p-6 rounded-2xl border border-[#1a1a1a] hover:border-[#D4AF37]/30 transition-all">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#1a1a1a] shrink-0">
-                    <User size={20} className="text-[#D4AF37]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="text-white text-lg uppercase tracking-tight">{feedback.aluno_nome}</h3>
-                        <p className="text-[10px] text-zinc-600 uppercase tracking-widest">
-                          Ref: {feedback.aluno_reference}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1">
-                          {feedback.tipo === 'treino_completo' ? 'Pós-Treino' : 'Dashboard'}
-                        </p>
-                        <div className="flex items-center gap-2 text-zinc-500">
-                          <Calendar size={12} />
-                          <span className="text-[10px]">
-                            {new Date(feedback.created_at).toLocaleDateString('pt-BR', { 
-                              day: '2-digit', 
-                              month: 'short', 
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </div>
-                      </div>
+          <div className="flex flex-col gap-3">
+            {feedbacksFiltrados.map((feedback) => {
+              const name = feedback.aluno_nome || "?";
+              const initial = name[0].toUpperCase();
+
+              return (
+                <div
+                  key={feedback.id}
+                  className="bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 p-4 rounded-2xl transition-all"
+                >
+                  {/* Top row: avatar + name + badge + date */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl bg-gradient-to-br shrink-0 flex items-center justify-center font-bold text-sm text-white",
+                      avatarGrad(name)
+                    )}>
+                      {initial}
                     </div>
-                    
-                    {feedback.ficha_nome && (
-                      <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-black/50 rounded-lg border border-[#1a1a1a]">
-                        <Dumbbell size={14} className="text-[#D4AF37]" />
-                        <span className="text-[10px] text-zinc-400 uppercase tracking-widest">
-                          {feedback.ficha_nome}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-text-primary truncate leading-snug">{name}</p>
+                          {feedback.aluno_reference && (
+                            <p className="text-2xs text-text-tertiary">{feedback.aluno_reference}</p>
+                          )}
+                        </div>
+                        <span className={cn(
+                          "shrink-0 text-2xs font-semibold px-2.5 py-1 rounded-full",
+                          feedback.tipo === 'treino_completo'
+                            ? "bg-brand-subtle border border-brand-border text-brand"
+                            : "bg-surface-3 border border-border-subtle text-text-secondary"
+                        )}>
+                          {feedback.tipo === 'treino_completo' ? 'Pós-Treino' : 'Dashboard'}
                         </span>
                       </div>
-                    )}
-
-                    <div className="bg-black/30 p-4 rounded-xl border border-[#1a1a1a]">
-                      <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{feedback.feedback}</p>
                     </div>
                   </div>
+
+                  {/* Ficha reference */}
+                  {feedback.ficha_nome && (
+                    <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-surface-3 rounded-xl border border-border-subtle">
+                      <Barbell size={12} className="text-brand shrink-0" />
+                      <span className="text-xs text-text-secondary truncate">{feedback.ficha_nome}</span>
+                    </div>
+                  )}
+
+                  {/* Feedback bubble */}
+                  <div className="bg-surface-2 border border-border-subtle rounded-xl px-4 py-3 mb-3">
+                    <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{feedback.feedback}</p>
+                  </div>
+
+                  {/* Date */}
+                  <div className="flex items-center gap-1.5 text-text-disabled">
+                    <Calendar size={11} />
+                    <span className="text-xs">
+                      {new Date(feedback.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit', month: 'short', year: 'numeric'
+                      })}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

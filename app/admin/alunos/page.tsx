@@ -1,30 +1,62 @@
 "use client";
 
-import { useEffect, useState } from"react";
-import Link from"next/link";
-import { useRouter } from"next/navigation";
-import { supabaseClient } from"@/lib/supabaseClient";
-import { useAuth } from"@/app/components/AuthProvider";
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  Trash2, 
-  Calendar, 
-  ExternalLink,
-  ChevronRight,
-  Plus,
-  Filter,
-  Mail
-} from"lucide-react";
-import DumbbellLoader from"@/app/components/DumbbellLoader";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { useAuth } from "@/app/components/AuthProvider";
+import { MagnifyingGlass, Plus, Users, TrendUp, WarningCircle, CaretRight, Bell } from "@phosphor-icons/react";
+import { getPublicStorageUrl } from "@/lib/storageUrls";
+import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { cn } from "@/lib/utils/cn";
 
 interface ProfileRow {
   id: string;
   coaching_reference?: string | null;
   email?: string | null;
   status_pagamento?: string | null;
-  created_at?: string | null;
+  tipo_plano?: string | null;
+  ultimo_checkin?: string | null;
+  avatar_url?: string | null;
+  data_expiracao?: string | null;
+  arquivado?: boolean | null;
+}
+
+function diasRestantes(dataExpiracao: string | null | undefined): number | null {
+  if (!dataExpiracao) return null;
+  const diff = new Date(dataExpiracao).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function nivelAlerta(dias: number | null, tipoPLano: string | null | undefined): 'vencido' | 'mes' | 'semana' | null {
+  if (dias === null) return null;
+  if (dias < 0) return 'vencido';
+  const planoLongo = ['anual', 'semestral', 'trimestral'].includes(tipoPLano ?? '');
+  if (planoLongo && dias <= 30) return 'mes';
+  if (dias <= 7) return 'semana';
+  return null;
+}
+
+function timeAgo(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return "agora";
+  if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
+  const days = Math.floor(diff / 86400);
+  if (days === 1) return "ontem";
+  if (days < 30) return `${days} dias atrás`;
+  return `${Math.floor(days / 30)} meses atrás`;
+}
+
+const AVATAR_COLORS = [
+  "from-amber-500/50 to-amber-700/30",
+  "from-orange-500/50 to-orange-700/30",
+  "from-yellow-500/50 to-yellow-700/30",
+  "from-brand/50 to-brand/20",
+];
+
+function avatarGrad(name: string): string {
+  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
 
 export default function AdminAlunosPage() {
@@ -34,207 +66,295 @@ export default function AdminAlunosPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Aguardar autenticação completar antes de fazer queries
-    if (authLoading) return;
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    fetchData();
-  }, [authLoading, user?.id]);
-
-  const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
-    e.stopPropagation();
-    if (!window.confirm(`Tem certeza que deseja desativar (arquivar) o aluno ${name}? Ele perderá o acesso, mas o histórico será mantido.`)) {
-      return;
-    }
-
-    setDeletingId(id);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/admin/delete-student?id=${id}`, {
-        method:"DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ||"Falha ao remover aluno");
-      }
-
-      setRows(rows.filter(r => r.id !== id));
-    } catch (err: any) {
-      setError(err?.message || String(err));
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async (q = "") => {
     setLoading(true);
     setError(null);
     try {
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
+      if (!coachId) { setError("Sessão inválida"); return; }
 
-      if (!coachId) {
-        setError("Sessão inválida");
-        setLoading(false);
-        return;
-      }
+      const { data: links } = await supabaseClient
+        .from("coach_alunos").select("aluno_id").eq("coach_id", coachId);
 
-      let q = supabaseClient
-        .from("coach_alunos")
-        .select("aluno_id")
-        .eq("coach_id", coachId);
+      const ids = links?.map(l => l.aluno_id) ?? [];
+      if (ids.length === 0) { setRows([]); return; }
 
-      const { data: alunoIds, error: linkError } = await q;
-      if (linkError) {
-        console.error("[ADMIN ALUNOS] Erro ao buscar relação:", linkError);
-        setError("Erro ao carregar alunos");
-        setLoading(false);
-        return;
-      }
-
-      const ids = alunoIds?.map(link => link.aluno_id) || [];
-      if (ids.length === 0) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-
-      let q2 = supabaseClient
+      let qb = supabaseClient
         .from("profiles")
-        .select("id, coaching_reference, email, status_pagamento, created_at")
+        .select("id, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, arquivado")
         .in("id", ids)
-        .eq("arquivado", false)
-        .order("created_at", { ascending: false })
+        .order("arquivado", { ascending: true, nullsFirst: true })
+        .order("ultimo_checkin", { ascending: false, nullsFirst: false })
         .limit(200);
 
-      if (query.trim().length > 0) {
-        q2 = q2.or(`coaching_reference.ilike.%${query}%,email.ilike.%${query}%`);
+      if (q.trim()) {
+        qb = qb.or(`coaching_reference.ilike.%${q}%,email.ilike.%${q}%`);
       }
 
-      const { data, error: fetchError } = await q2;
-      if (fetchError) throw fetchError;
-
-      setRows((data as ProfileRow[]) || []);
-    } catch (err: any) {
-      setError(err?.message || String(err));
+      const { data, error: err } = await qb;
+      if (err) throw err;
+      setRows((data as ProfileRow[]) ?? []);
+    } catch (e: any) {
+      setError(e?.message ?? "Erro ao carregar");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { router.push("/login"); return; }
     fetchData();
-  };
+  }, [authLoading, user?.id]);
 
-  const formatDate = (value?: string | null) => {
-    if (!value) return"—";
-    const d = new Date(value);
-    return d.toLocaleDateString("pt-BR", {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
+  const inativos   = rows.filter(r => r.arquivado).length;
+  const ativos    = rows.filter(r => !r.arquivado && r.status_pagamento === "pago").length;
+  const pendentes = rows.filter(r => !r.arquivado && r.status_pagamento !== "pago").length;
+
+  const alertasMes = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'mes');
+  const alertasSemana = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'semana');
+  const alertasVencidos = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'vencido');
 
   return (
-    <div className="min-h-screen bg-black px-6 sm:px-8 lg:px-12 pt-20 lg:pt-10 pb-10 font-sans">
-      <div className="max-w-7xl mx-auto lg:pl-28">
-        
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+    <div className="min-h-screen bg-surface-0 pb-28 lg:pl-28">
+
+      {/* ── Header ── */}
+      <div className="px-4 pt-8 pb-5 max-w-2xl mx-auto">
+        <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] tracking-[0.3em] text-[#D4AF37] uppercase">Gestão de Performance</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl text-white tracking-tighter uppercase leading-none">Base de <span className="text-zinc-500">Atletas</span></h1>
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Base de Atletas</h1>
+            <p className="text-xs text-text-tertiary mt-0.5">Gestão de performance</p>
           </div>
-          
-          <Link
-            href="/admin/alunos/novo"
-            className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-[#D4AF37] text-black text-[11px] uppercase tracking-widest rounded-xl hover:bg-white transition-all active:scale-[0.98] shadow-lg shadow-[#D4AF37]/10"
+          <button
+            onClick={() => router.push("/admin/alunos/novo")}
+            className="w-10 h-10 rounded-xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand active:scale-90 transition-transform"
           >
-            <Plus size={18} strokeWidth={3} />
-            Novo Registro
-          </Link>
+            <Plus size={20} weight="bold" />
+          </button>
         </div>
+      </div>
 
-        {/* Search and Filters */}
-        <div className="mb-10 flex flex-col sm:flex-row gap-4">
-          <form onSubmit={handleSearch} className="relative flex-1 group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-[#D4AF37] transition-colors" size={18} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Localizar atleta por nome ou e-mail..."
-              className="w-full pl-14 pr-6 py-4 bg-[#0F0F0F] border border-[#1a1a1a] rounded-xl text-sm text-white placeholder:text-zinc-800 focus:outline-none focus:border-[#D4AF37]/50 transition-all font-medium"
-            />
-          </form>
-        </div>
+      <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4">
 
-        {error && (
-          <div className="mb-10 p-5 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl text-[#D4AF37] text-[10px] uppercase tracking-widest flex items-center gap-4">
-             <div className="w-2 h-2 rounded-full bg-[#D4AF37] animate-pulse" />
-             {error}
-          </div>
-        )}
-
-        {(authLoading || loading) ? (
-          <div className="flex items-center justify-center py-32 bg-[#0F0F0F] border border-[#1a1a1a] rounded-2xl">
-            <DumbbellLoader text="Sincronizando Base..." />
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="text-center py-32 bg-[#0F0F0F] border border-dashed border-[#1a1a1a] rounded-2xl">
-            <p className="text-zinc-600 text-xs uppercase tracking-widest">Nenhum atleta localizado.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {rows.map((r) => (
-              <div
-                key={r.id}
-                className="group bg-[#0F0F0F] border border-[#1a1a1a] hover:border-[#D4AF37]/30 p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between"
-                onClick={() => router.push(`/admin/aluno/${r.id}`)}
-              >
-                <div className="flex items-center gap-5">
-                  <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-zinc-700 border border-[#1a1a1a] transition-all group-hover:text-[#D4AF37] group-hover:border-[#D4AF37]/20 text-lg">
-                    {(r.coaching_reference || r.email ||"?")[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="text-lg text-white group-hover:text-[#D4AF37] transition-colors leading-tight">
-                      {r.coaching_reference ||"Sem Nome"}
-                    </h3>
-                    <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-1">{r.email}</p>
-                  </div>
+        {/* ── Stats bar ── */}
+        {!loading && rows.length > 0 && (
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: "Ativos",    value: ativos,    icon: TrendUp,  color: "text-success",        bg: "bg-success-subtle" },
+              { label: "Pendentes", value: pendentes, icon: WarningCircle, color: "text-warning",        bg: "bg-warning-subtle" },
+              { label: "Total",     value: rows.filter(r => !r.arquivado).length, icon: Users, color: "text-text-secondary", bg: "bg-surface-3" },
+              { label: "Inativos",  value: inativos,  icon: Users,       color: "text-text-disabled",  bg: "bg-surface-3"      },
+            ].map(({ label, value, icon: Icon, color, bg }) => (
+              <div key={label} className="bg-surface-2 rounded-2xl p-3.5 shadow-elev-1 border border-border-subtle flex flex-col gap-1.5">
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", bg)}>
+                  <Icon size={14} className={color} />
                 </div>
-                
-                <div className="flex items-center gap-10">
-                  <div className="hidden sm:flex flex-col items-end">
-                    <span className="text-[9px] text-zinc-700 uppercase tracking-tighter mb-1">Status</span>
-                    <span className={`text-[10px] px-3 py-1 rounded-full uppercase tracking-tighter ${
-                      r.status_pagamento === 'pago' ? 'bg-[#D4AF37]/10 text-[#D4AF37]' : 
-                      'bg-zinc-800 text-zinc-500'
-                    }`}>
-                      {r.status_pagamento ==="pago" ?"Ativo" :"Pendente"}
-                    </span>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-black border border-[#1a1a1a] flex items-center justify-center text-zinc-800 group-hover:text-white group-hover:bg-[#D4AF37] group-hover:border-transparent transition-all">
-                    <ChevronRight size={18} strokeWidth={3} />
-                  </div>
-                </div>
+                <p className="text-2xl font-bold text-text-primary leading-none tabular-nums">{value}</p>
+                <p className="text-2xs text-text-tertiary">{label}</p>
               </div>
             ))}
           </div>
         )}
+
+        {/* ── Alertas de vencimento ── */}
+        {!loading && alertasVencidos.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-danger/15 border border-danger/30">
+            <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-danger mb-1">Planos vencidos</p>
+              <div className="flex flex-wrap gap-1.5">
+                {alertasVencidos.map(r => {
+                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
+                  const dias = diasRestantes(r.data_expiracao);
+                  const diasVencidos = dias !== null ? Math.abs(dias) : 0;
+                  return (
+                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
+                      className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded-lg text-danger font-medium hover:bg-danger/30 transition-colors">
+                      {nome} · {diasVencidos === 0 ? 'venceu hoje' : diasVencidos === 1 ? 'venceu ontem' : `venceu há ${diasVencidos}d`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && alertasSemana.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-danger/10 border border-danger/20">
+            <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-danger mb-1">Planos a vencer em até 7 dias</p>
+              <div className="flex flex-wrap gap-1.5">
+                {alertasSemana.map(r => {
+                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
+                  const dias = diasRestantes(r.data_expiracao);
+                  return (
+                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
+                      className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded-lg text-danger font-medium hover:bg-danger/30 transition-colors">
+                      {nome} · {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && alertasMes.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+            <Bell className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-amber-300 mb-1">Planos longos a vencer em até 30 dias</p>
+              <div className="flex flex-wrap gap-1.5">
+                {alertasMes.map(r => {
+                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
+                  const dias = diasRestantes(r.data_expiracao);
+                  return (
+                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
+                      className="text-2xs px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-300 font-medium hover:bg-amber-500/30 transition-colors capitalize">
+                      {nome} · {r.tipo_plano} · {dias}d
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Search ── */}
+        <div className="relative">
+          <MagnifyingGlass size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-disabled pointer-events-none" />
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (!e.target.value.trim()) fetchData("");
+            }}
+            onKeyDown={(e) => e.key === "Enter" && fetchData(query)}
+            placeholder="Localizar atleta..."
+            suppressHydrationWarning
+            className="w-full pl-11 pr-4 py-3 bg-surface-2 border border-border-subtle rounded-2xl text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 shadow-elev-1 transition-all"
+          />
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* ── Athlete list ── */}
+        {(authLoading || loading) ? (
+          <div className="flex items-center justify-center py-24">
+            <DumbbellLoader text="Sincronizando base..." />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="text-center py-24 bg-surface-2 border border-dashed border-border-subtle rounded-2xl shadow-elev-1">
+            <Users size={32} className="text-text-disabled mx-auto mb-3" />
+            <p className="text-text-disabled text-xs uppercase tracking-caps">Nenhum atleta localizado.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {rows.map((r) => {
+              const name    = r.coaching_reference || r.email || "?";
+              const initial = name[0].toUpperCase();
+              const isAtivo = r.status_pagamento === "pago";
+              const isArquivado = !!r.arquivado;
+              const lastSeen = timeAgo(r.ultimo_checkin);
+              const dias = diasRestantes(r.data_expiracao);
+              const alerta = isArquivado ? null : nivelAlerta(dias, r.tipo_plano);
+
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => router.push(`/admin/aluno/${r.id}`)}
+                  className={cn(
+                    "w-full text-left shadow-elev-1 hover:shadow-elev-2 p-4 rounded-2xl transition-all active:scale-[0.99] flex items-center gap-3.5 group",
+                    isArquivado
+                      ? "bg-surface-2/50 border border-border-subtle opacity-60 hover:opacity-80"
+                      : alerta === 'vencido'
+                        ? "bg-danger/5 border border-danger/20 hover:border-danger/40 hover:bg-danger/10"
+                        : "bg-surface-1 border border-border-subtle hover:border-brand/25 hover:bg-surface-2"
+                  )}
+                >
+                  {/* Avatar */}
+                  <div className={cn(
+                    "w-11 h-11 rounded-2xl bg-gradient-to-br shrink-0 flex items-center justify-center font-bold text-lg text-white overflow-hidden",
+                    isArquivado ? "grayscale" : avatarGrad(name)
+                  )}>
+                    {r.avatar_url
+                      ? <img src={getPublicStorageUrl('avatars', r.avatar_url) ?? r.avatar_url} alt={name} className="w-full h-full object-cover" />
+                      : initial
+                    }
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={cn(
+                        "text-sm font-semibold truncate transition-colors",
+                        isArquivado ? "text-text-disabled" : alerta === 'vencido' ? "text-danger" : "text-text-primary group-hover:text-brand"
+                      )}>
+                        {name}
+                      </span>
+                      {isArquivado ? (
+                        <span className="shrink-0 text-2xs font-semibold uppercase tracking-caps px-1.5 py-0.5 rounded-md bg-surface-3 text-text-disabled border border-border-subtle">
+                          Desativado
+                        </span>
+                      ) : (
+                        <>
+                          <span className={cn(
+                            "shrink-0 w-1.5 h-1.5 rounded-full",
+                            isAtivo ? "bg-success" : "bg-warning"
+                          )} />
+                          {(alerta === 'vencido' || alerta === 'semana') && (
+                            <Bell className="w-3 h-3 text-danger flex-shrink-0" />
+                          )}
+                          {alerta === 'mes' && (
+                            <Bell className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
+                      {isArquivado ? (
+                        <span className="text-text-disabled">Clique para reativar</span>
+                      ) : (
+                        <>
+                          <span className="capitalize">{r.tipo_plano ?? "mensal"}</span>
+                          {alerta === 'vencido' && dias !== null && (
+                            <span className="text-danger font-semibold">· {Math.abs(dias) === 0 ? 'venceu hoje' : Math.abs(dias) === 1 ? 'venceu ontem' : `venceu há ${Math.abs(dias)}d`}</span>
+                          )}
+                          {alerta === 'semana' && dias !== null && (
+                            <span className="text-danger font-semibold">· vence em {dias <= 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
+                          )}
+                          {alerta === 'mes' && dias !== null && (
+                            <span className="text-amber-400 font-semibold">· {dias}d restantes</span>
+                          )}
+                          {!alerta && lastSeen && (
+                            <>
+                              <span className="text-text-disabled">·</span>
+                              <span>{lastSeen}</span>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Chevron */}
+                  <div className="w-7 h-7 rounded-xl bg-surface-3 group-hover:bg-brand group-hover:shadow-glow-brand flex items-center justify-center text-text-disabled group-hover:text-text-on-brand shrink-0 transition-all">
+                    <CaretRight size={14} weight="bold" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
-

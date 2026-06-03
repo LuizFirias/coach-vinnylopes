@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabaseClient } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -35,7 +36,13 @@ export default function ExcluirContaPage() {
     setErro(null);
 
     try {
-      const result = await deleteAccountAction();
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session?.access_token) {
+        setErro('Sessão inválida. Faça login novamente.');
+        return;
+      }
+
+      const result = await deleteAccountAction(session.access_token);
 
       if (result.success) {
         setStep(3);

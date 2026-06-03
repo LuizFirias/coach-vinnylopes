@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, LogOut } from 'lucide-react';
+import { List, X, SignOut } from '@phosphor-icons/react';
 import { supabaseClient } from '@/lib/supabaseClient';
 
 const menuItems = [
@@ -31,7 +31,7 @@ export default function Navigation() {
               onClick={() => setOpen(true)}
               className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100 hover:bg-brand-purple/5 hover:border-brand-purple/20 transition-all duration-300 lg:hidden"
             >
-              <Menu size={18} className="text-brand-purple" />
+              <List size={18} className="text-brand-purple" />
             </button>
             <h1 className="text-[10px] tracking-[0.3em] uppercase text-slate-900">
               VINNY LOPES <span className="text-brand-purple">COACH</span>
@@ -97,7 +97,7 @@ export default function Navigation() {
             }}
             className="flex items-center gap-3 px-6 py-5 mt-10 rounded-2xl bg-red-50 text-red-600 text-[10px] uppercase tracking-[0.3em] hover:bg-red-100 transition-all"
           >
-            <LogOut size={16} />
+            <SignOut size={16} />
             Sair da Plataforma
           </button>
         </nav>

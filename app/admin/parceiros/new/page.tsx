@@ -1,9 +1,13 @@
-﻿"use client";
+"use client";
 
-import { useMemo, useState, useEffect } from"react";
-import { supabaseClient } from"@/lib/supabaseClient";
-import { useRouter } from"next/navigation";
-import { ArrowLeft, Plus, Check, AlertCircle, ShoppingBag, Globe, Tag, Image as ImageIcon } from"lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Plus, Check, WarningCircle, ShoppingBag, Globe, Tag, Image } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { ScreenHeader } from "@/components/layout/ScreenHeader";
 
 export default function NovoParceiroPage() {
   const router = useRouter();
@@ -22,29 +26,16 @@ export default function NovoParceiroPage() {
   );
 
   useEffect(() => {
-    return () => {
-      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
+    return () => { imagePreviews.forEach((url) => URL.revokeObjectURL(url)); };
   }, [imagePreviews]);
 
   const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length > 5) {
-      setError("Selecione no máximo 5 imagens");
-      return;
-    }
-
+    if (files.length > 5) { setError("Selecione no máximo 5 imagens"); return; }
     for (const file of files) {
-      if (!file.type.startsWith("image/")) {
-        setError("Envie apenas imagens");
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        setError("Cada imagem deve ter no máximo 5MB");
-        return;
-      }
+      if (!file.type.startsWith("image/")) { setError("Envie apenas imagens"); return; }
+      if (file.size > 5 * 1024 * 1024) { setError("Cada imagem deve ter no máximo 5MB"); return; }
     }
-
     setError(null);
     setImageFiles(files);
   };
@@ -54,222 +45,175 @@ export default function NovoParceiroPage() {
     setError(null);
 
     if (!nomeProduto.trim() || !descricao.trim() || !cupom.trim() || !linkDesconto.trim()) {
-      setError("Preencha todos os campos");
-      return;
+      setError("Preencha todos os campos"); return;
     }
-
     if (imageFiles.length === 0) {
-      setError("Envie pelo menos 1 imagem (logo ou banner)");
-      return;
+      setError("Envie pelo menos 1 imagem (logo ou banner)"); return;
     }
 
     setLoading(true);
-
     try {
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
-      if (!coachId) {
-        setError("Sessão inválida. Faça login novamente.");
-        setLoading(false);
-        return;
-      }
+      if (!coachId) { setError("Sessão inválida. Faça login novamente."); setLoading(false); return; }
 
-      // Salva apenas paths no banco (host resolvido na exibição)
       const uploadedPaths: string[] = [];
       for (const file of imageFiles) {
         const fileName = `${coachId}/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabaseClient.storage
-          .from("parceiros-logos")
-          .upload(fileName, file, {
-            cacheControl:"3600",
-            upsert: false,
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
+          .from("parceiros-logos").upload(fileName, file, { cacheControl: "3600", upsert: false });
+        if (uploadError) throw uploadError;
         uploadedPaths.push(fileName);
       }
 
-      const logoPath = uploadedPaths[0] || null;
+      const { error: dbError } = await supabaseClient.from("parceiros").insert({
+        nome_marca: nomeProduto.trim(),
+        descricao: descricao.trim(),
+        cupom: cupom.trim(),
+        link_desconto: linkDesconto.trim(),
+        logo_url: uploadedPaths[0] || null,
+        imagens: uploadedPaths,
+        coach_id: coachId,
+      });
 
-      const { error: dbError } = await supabaseClient
-        .from("parceiros")
-        .insert({
-          nome_marca: nomeProduto.trim(),
-          descricao: descricao.trim(),
-          cupom: cupom.trim(),
-          link_desconto: linkDesconto.trim(),
-          logo_url: logoPath,
-          imagens: uploadedPaths,
-          coach_id: coachId,
-        });
-
-      if (dbError) {
-        throw dbError;
-      }
+      if (dbError) throw dbError;
 
       setSuccess("Parceiro cadastrado com sucesso!");
-      setNomeProduto("");
-      setDescricao("");
-      setCupom("");
-      setLinkDesconto("");
-      setImageFiles([]);
+      setNomeProduto(""); setDescricao(""); setCupom(""); setLinkDesconto(""); setImageFiles([]);
 
-      setTimeout(() => {
-        router.push("/admin/parceiros");
-      }, 2000);
+      setTimeout(() => { router.push("/admin/parceiros"); }, 2000);
     } catch (err: any) {
-      setError(err?.message ||"Erro ao processar a solicitação");
+      setError(err?.message || "Erro ao processar a solicitação");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-iron-black p-4 md:p-6 lg:p-12 lg:pl-28">
-      <div className="max-w-3xl mx-auto">
-        
-        <header className="mb-8 md:mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4 md:gap-6">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-3 text-zinc-500 hover:text-white transition-colors group px-4 py-2 bg-iron-gray rounded-xl border border-white/5 w-fit"
-          >
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] uppercase tracking-widest">Painel Anterior</span>
-          </button>
-        </header>
+  const fieldCls = "w-full px-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50";
 
-        <div className="mb-8 md:mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-iron-gray rounded-full shadow-sm mb-4 md:mb-6 border border-white/5">
-              <ShoppingBag className="w-4 h-4 text-iron-red" />
-              <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">Expansão de Benefícios</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl text-white tracking-tight mb-3 uppercase">Novo <span className="text-iron-red">Parceiro</span></h1>
-            <p className="text-zinc-500 text-sm font-medium">Cadastre novas marcas e cupons exclusivos para seus atletas.</p>
-        </div>
+  return (
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
+      <ScreenHeader
+        title="Novo Parceiro"
+        subtitle="Cadastre marcas e cupons exclusivos para seus atletas"
+      />
+
+      <div className="px-4 max-w-2xl flex flex-col gap-4">
 
         {error && (
-          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-iron-red/10 border border-iron-red/20 text-iron-red rounded-xl text-xs animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
-            <AlertCircle className="w-5 h-5 shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+            <WarningCircle size={16} className="shrink-0" />
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 rounded-xl text-xs animate-in fade-in slide-in-from-top-4 flex items-center gap-4">
-            <Check className="w-5 h-5 shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-success-subtle border border-success-border text-success text-sm">
+            <Check size={16} className="shrink-0" />
             {success}
           </div>
         )}
 
-        <div className="bg-iron-gray rounded-3xl p-6 md:p-10 lg:p-14 relative overflow-hidden shadow-2xl border border-white/5 group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-iron-red/5 rounded-bl-[120px] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-          
-          <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8 relative">
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Marca / Produto</label>
-              <input
-                type="text"
-                value={nomeProduto}
-                onChange={(e) => setNomeProduto(e.target.value)}
-                placeholder="Ex: Integral Médica"
-                disabled={loading}
-                className="w-full px-5 md:px-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
-                required
-              />
+        <Card className="rounded-2xl shadow-elev-1">
+          <div className="flex items-center gap-3 mb-5 pb-5 border-b border-border-subtle">
+            <div className="w-10 h-10 rounded-xl bg-danger-subtle border border-danger-border flex items-center justify-center text-danger">
+              <ShoppingBag size={18} />
             </div>
-
             <div>
-              <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Descrição da Oferta</label>
+              <p className="font-semibold text-text-primary">Expansão de Benefícios</p>
+              <p className="text-xs text-text-tertiary mt-0.5">Novas parcerias para seus atletas</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <Input
+              label="Marca / Produto"
+              name="nomeProduto"
+              type="text"
+              value={nomeProduto}
+              onChange={(e) => setNomeProduto(e.target.value)}
+              placeholder="Ex: Integral Médica"
+              disabled={loading}
+            />
+
+            <div className="flex flex-col gap-2">
+              <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Descrição da Oferta</label>
               <textarea
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 placeholder="Descreva as vantagens para os alunos..."
                 disabled={loading}
                 rows={3}
-                className="w-full px-5 md:px-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800 resize-none"
+                className="w-full px-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all resize-none disabled:opacity-50"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              <div>
-                <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Código do Cupom</label>
-                <div className="relative group">
-                  <Tag className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Código do Cupom</label>
+                <div className="relative">
+                  <Tag size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-disabled" />
                   <input
                     type="text"
                     value={cupom}
                     onChange={(e) => setCupom(e.target.value)}
                     placeholder="COACHVINNY15"
                     disabled={loading}
-                    className="w-full pl-12 md:pl-14 pr-5 md:pr-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
+                    className="w-full pl-10 pr-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50"
                     required
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-2 md:mb-3 ml-2">Link da Loja</label>
-                <div className="relative group">
-                  <Globe className="absolute left-5 md:left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-700 group-focus-within:text-iron-red transition-colors" />
+              <div className="flex flex-col gap-2">
+                <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Link da Loja</label>
+                <div className="relative">
+                  <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-disabled" />
                   <input
                     type="url"
                     value={linkDesconto}
                     onChange={(e) => setLinkDesconto(e.target.value)}
                     placeholder="https://..."
                     disabled={loading}
-                    className="w-full pl-12 md:pl-14 pr-5 md:pr-7 py-4 md:py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-medium text-sm focus:ring-2 focus:ring-iron-red focus:border-iron-red transition-all placeholder:text-zinc-800"
+                    className="w-full pl-10 pr-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50"
                     required
                   />
                 </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] uppercase tracking-[0.2em] text-zinc-600 mb-4 ml-2">Galeria de Imagens (Máx 5)</label>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            {/* Galeria */}
+            <div className="flex flex-col gap-3">
+              <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Galeria de Imagens (máx 5)</label>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className="aspect-square rounded-2xl overflow-hidden border border-white/10 shadow-lg relative group/img">
+                  <div key={index} className="aspect-square rounded-xl overflow-hidden border border-border-default relative group/img">
                     <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                       <ImageIcon className="text-white w-6 h-6" />
+                    <div className="absolute inset-0 bg-surface-0/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                      <Image className="text-text-primary w-5 h-5" />
                     </div>
                   </div>
                 ))}
                 {imageFiles.length < 5 && (
-                  <label className="aspect-square rounded-2xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center cursor-pointer hover:border-iron-red/30 hover:bg-white/5 transition-all group/add">
-                    <Plus className="text-zinc-700 group-hover:text-iron-red transition-colors" size={24} />
-                    <span className="text-[8px] text-zinc-600 uppercase tracking-widest mt-2 group-hover:text-white">Adicionar</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImagesChange}
-                      className="hidden"
-                      disabled={loading}
-                    />
+                  <label className="aspect-square rounded-xl border-2 border-dashed border-border-subtle flex flex-col items-center justify-center cursor-pointer hover:border-danger/30 hover:bg-danger-subtle transition-all group/add">
+                    <Plus size={20} className="text-text-disabled group-hover/add:text-danger transition-colors" />
+                    <span className="text-2xs text-text-disabled mt-1">Adicionar</span>
+                    <input type="file" multiple accept="image/*" onChange={handleImagesChange} className="hidden" disabled={loading} />
                   </label>
                 )}
               </div>
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="w-full py-5 md:py-6 bg-iron-red text-white text-xs uppercase tracking-[0.4em] rounded-2xl shadow-neon-red hover:bg-red-600 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-4"
+              variant="danger"
+              loading={loading}
+              fullWidth
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                  REGISTRANDO...
-                </>
-              ) : ("PUBLICAR PARCEIRO"
-              )}
-            </button>
+              Publicar Parceiro
+            </Button>
           </form>
-        </div>
+        </Card>
       </div>
     </div>
   );

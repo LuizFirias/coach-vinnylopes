@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { X } from"lucide-react";
+import { X } from "@phosphor-icons/react";
 import { extractYouTubeVideoId, isYouTubeShort } from"@/lib/youtubeUtils";
 
 interface YouTubePlayerProps {
@@ -16,10 +16,10 @@ export function YouTubePlayer({ videoUrl, onClose }: YouTubePlayerProps) {
     return (
       <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
-        <div className="relative bg-black w-full max-w-2xl rounded-2xl border border-iron-gold/20 overflow-hidden shadow-2xl shadow-iron-gold/10 p-8">
+        <div className="relative bg-black w-full max-w-2xl rounded-2xl border border-brand/20 overflow-hidden shadow-2xl shadow-brand/10 p-8">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-10 h-10 bg-black/50 text-iron-gold rounded-full flex items-center justify-center z-10 backdrop-blur-md hover:bg-iron-gold hover:text-black transition-all"
+            className="absolute top-4 right-4 w-10 h-10 bg-black/50 text-brand rounded-full flex items-center justify-center z-10 backdrop-blur-md hover:bg-brand hover:text-black transition-all"
           >
             <X size={20} />
           </button>
@@ -37,14 +37,14 @@ export function YouTubePlayer({ videoUrl, onClose }: YouTubePlayerProps) {
         className="absolute inset-0 bg-black/90 backdrop-blur-md"
         onClick={onClose}
       />
-      <div className={`relative bg-black rounded-2xl border-2 border-iron-gold/30 overflow-hidden shadow-2xl shadow-iron-gold/20 ${
+      <div className={`relative bg-black rounded-2xl border-2 border-brand/30 overflow-hidden shadow-2xl shadow-brand/20 ${
         isShort 
           ? 'w-full max-w-[380px] aspect-[9/16]' 
           : 'w-full max-w-4xl aspect-video'
       }`}>
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-10 h-10 bg-black/50 text-iron-gold rounded-full flex items-center justify-center z-10 backdrop-blur-md hover:bg-iron-gold hover:text-black transition-all"
+          className="absolute top-4 right-4 w-10 h-10 bg-black/50 text-brand rounded-full flex items-center justify-center z-10 backdrop-blur-md hover:bg-brand hover:text-black transition-all"
         >
           <X size={20} />
         </button>

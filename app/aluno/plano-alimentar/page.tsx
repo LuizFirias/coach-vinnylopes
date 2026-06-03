@@ -1,384 +1,501 @@
-﻿'use client';
+'use client';
 
-import SubscriptionGuard from '@/app/components/SubscriptionGuard';
-import UploadNutritionPlan from '@/app/components/UploadNutritionPlan';
-import PDFViewer from '@/app/components/PDFViewer';
-import { Utensils, ArrowLeft, Upload, FileText, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
 import { extractStoragePath } from '@/lib/storageUrls';
+import SubscriptionGuard from '@/app/components/SubscriptionGuard';
+import PDFViewer from '@/app/components/PDFViewer';
+import DumbbellLoader from '@/app/components/DumbbellLoader';
+import Link from 'next/link';
+import {
+  ArrowLeft, ForkKnife, FileText, Drop, Check, Plus, Minus, CaretDown, CaretUp,
+} from '@phosphor-icons/react';
+import { cn } from '@/lib/utils/cn';
 
-interface NutritionPlan {
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+interface Plano {
   id: string;
   aluno_id: string;
   nome_arquivo: string;
-  url_pdf: string;
   descricao: string | null;
   criado_em: string;
+  url_pdf: string;
 }
 
+interface Refeicao {
+  id: string;
+  plano_id: string;
+  nome: string;
+  horario_sugerido: string | null; // "HH:MM:SS"
+  ordem: number;
+  ingredientes: Ingrediente[];
+  observacoes: string | null;
+}
+
+interface Ingrediente {
+  nome: string;
+  quantidade?: string;
+  gramas?: number;
+}
+
+interface RegistroAgua {
+  id: string | null;
+  copos: number;
+  ml_por_copo: number;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function fmtHorario(t: string | null): string {
+  if (!t) return '';
+  return t.slice(0, 5); // "HH:MM"
+}
+
+function getTodayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
 export default function PlanoAlimentarPage() {
-  const [planos, setPlanos] = useState<NutritionPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('');
-  const [userRole, setUserRole] = useState<string | null>(null);
+
+  const [plano, setPlano] = useState<Plano | null>(null);
+  const [refeicoes, setRefeicoes] = useState<Refeicao[]>([]);
+  const [consumidosHoje, setConsumidosHoje] = useState<Set<string>>(new Set());
+  const [agua, setAgua] = useState<RegistroAgua>({ id: null, copos: 0, ml_por_copo: 250 });
+  const [metaCopos] = useState(8);
+
+  const [expandedRefeicao, setExpandedRefeicao] = useState<string | null>(null);
+  const [savingConsumido, setSavingConsumido] = useState<string | null>(null);
+  const [savingAgua, setSavingAgua] = useState(false);
+
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
-  const [selectedPdf, setSelectedPdf] = useState<{url: string, title: string} | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // ── Carregar ────────────────────────────────────────────────────────────────
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      if (!authData.user) {
-        setLoading(false);
-        return;
+      const session = await getSafeSession();
+      const user = session?.user;
+      if (!user) { setLoading(false); return; }
+
+      const uid = user.id;
+      setUserId(uid);
+      const today = getTodayISO();
+
+      // Plano mais recente
+      const { data: planoData } = await supabaseClient
+        .from('plano_alimentar_pdf')
+        .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
+        .eq('aluno_id', uid)
+        .order('criado_em', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!planoData) { setLoading(false); return; }
+      setPlano(planoData);
+
+      // Refeições do plano
+      const { data: refeicaoData } = await supabaseClient
+        .from('refeicoes_plano')
+        .select('id, plano_id, nome, horario_sugerido, ordem, ingredientes, observacoes')
+        .eq('plano_id', planoData.id)
+        .order('ordem', { ascending: true });
+
+      setRefeicoes(refeicaoData || []);
+
+      // Consumos de hoje
+      if (refeicaoData && refeicaoData.length > 0) {
+        const ids = refeicaoData.map((r: any) => r.id);
+        const { data: consumos } = await supabaseClient
+          .from('consumos_refeicao')
+          .select('refeicao_id')
+          .eq('aluno_id', uid)
+          .eq('data_consumo', today)
+          .in('refeicao_id', ids);
+
+        setConsumidosHoje(new Set((consumos || []).map((c: any) => c.refeicao_id)));
       }
 
-      setUserId(authData.user.id);
+      // Água de hoje
+      const { data: aguaData } = await supabaseClient
+        .from('registros_agua')
+        .select('id, copos, ml_por_copo')
+        .eq('aluno_id', uid)
+        .eq('data_registro', today)
+        .maybeSingle();
 
-      // Get user profile info
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('full_name, role')
-        .eq('id', authData.user.id)
-        .single();
-
-      if (profile) {
-        setUserName(profile.full_name || 'Aluno');
-        setUserRole(profile.role);
+      if (aguaData) {
+        setAgua({ id: aguaData.id, copos: aguaData.copos, ml_por_copo: aguaData.ml_por_copo });
       }
-
-      // If student, fetch their own plans
-      if (profile?.role === 'aluno') {
-        const { data: plans } = await supabaseClient
-          .from('plano_alimentar_pdf')
-          .select('*')
-          .eq('aluno_id', authData.user.id)
-          .order('criado_em', { ascending: false });
-
-        setPlanos(plans || []);
-      }
-      // If coach, they can upload via modal (no display list for now)
     } catch (err) {
-      console.error('Erro ao carregar planos:', err);
+      console.error('[PlanoAlimentar] Erro:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleOpenPdf = async (plano: NutritionPlan) => {
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ── Ações ───────────────────────────────────────────────────────────────────
+
+  const toggleRefeicao = async (refeicaoId: string) => {
+    if (!userId || savingConsumido) return;
+    setSavingConsumido(refeicaoId);
+
+    const today = getTodayISO();
+    const jaConsumido = consumidosHoje.has(refeicaoId);
+
     try {
-      // ===== VERIFICAÇÃO DE SEGURANÇA =====
-      if (plano.aluno_id !== userId) {
-        console.error('[SECURITY] Tentativa de acessar PDF de outro aluno bloqueada');
-        alert('Erro de segurança: PDF não encontrado');
-        return;
+      if (jaConsumido) {
+        await supabaseClient
+          .from('consumos_refeicao')
+          .delete()
+          .eq('aluno_id', userId)
+          .eq('refeicao_id', refeicaoId)
+          .eq('data_consumo', today);
+
+        setConsumidosHoje(prev => {
+          const next = new Set(prev);
+          next.delete(refeicaoId);
+          return next;
+        });
+      } else {
+        await supabaseClient
+          .from('consumos_refeicao')
+          .insert({ aluno_id: userId, refeicao_id: refeicaoId, data_consumo: today });
+
+        setConsumidosHoje(prev => new Set([...prev, refeicaoId]));
       }
-
-      // Extrair path para signed URL — suporta URLs completas legadas e paths novos
-      const filePath = extractStoragePath('plano_alimentar', plano.url_pdf) || plano.url_pdf;
-
-      console.log('[PDF] Plano ID:', plano.id);
-      console.log('[PDF] URL original do banco:', plano.url_pdf);
-      console.log('[PDF] Nome do arquivo:', plano.nome_arquivo);
-      console.log('[PDF] FilePath extraído para signed URL:', filePath);
-
-      // Tentar criar signed URL
-      const { data: signedData, error: signError } = await supabaseClient.storage
-        .from('plano_alimentar')
-        .createSignedUrl(filePath, 3600);
-
-      console.log('[PDF] Resposta do Supabase Storage:');
-      console.log('  - signedData:', signedData);
-      console.log('  - signError:', signError);
-
-      if (signError) {
-        console.error('[PDF] Erro ao criar signed URL:', signError);
-        
-        // Mensagem de erro mais específica
-        let errorMsg = 'Erro ao gerar link de acesso ao PDF.';
-        if (signError.message.includes('not found')) {
-          errorMsg = `O arquivo "${plano.nome_arquivo}" não foi encontrado no storage. O arquivo pode ter sido movido ou deletado. Entre em contato com seu coach.`;
-        } else if (signError.message.includes('permission')) {
-          errorMsg = 'Você não tem permissão para acessar este arquivo. Verifique suas configurações ou entre em contato com o suporte.';
-        }
-        
-        alert(`${errorMsg}\n\nDetalhes técnicos: ${signError.message}`);
-        return;
-      }
-
-      if (!signedData?.signedUrl) {
-        console.error('[PDF] signedData vazio - resposta inesperada do Supabase');
-        alert('Erro: Não foi possível gerar o link de acesso ao PDF. Tente novamente em alguns instantes.');
-        return;
-      }
-
-      console.log('[PDF] ✓ Signed URL gerada com sucesso');
-      console.log('[PDF] Abrindo PDF no viewer...');
-      setSelectedPdf({ url: signedData.signedUrl, title: plano.nome_arquivo });
-      setPdfViewerOpen(true);
-    } catch (err: any) {
-      console.error('[PDF] Erro completo:', err);
-      console.error('[PDF] Stack trace:', err.stack);
-      alert(`Erro inesperado ao abrir plano alimentar:\n${err.message || 'Erro desconhecido'}\n\nVerifique o console para mais detalhes.`);
+    } catch (err) {
+      console.error('[Consumo] Erro:', err);
+    } finally {
+      setSavingConsumido(null);
     }
   };
 
+  const updateAgua = async (delta: number) => {
+    if (!userId || savingAgua) return;
+    const next = Math.max(0, Math.min(20, agua.copos + delta));
+    if (next === agua.copos) return;
+
+    setSavingAgua(true);
+    const today = getTodayISO();
+
+    try {
+      if (agua.id) {
+        await supabaseClient
+          .from('registros_agua')
+          .update({ copos: next, atualizado_em: new Date().toISOString() })
+          .eq('id', agua.id);
+      } else {
+        const { data } = await supabaseClient
+          .from('registros_agua')
+          .insert({ aluno_id: userId, data_registro: today, copos: next, ml_por_copo: agua.ml_por_copo })
+          .select('id')
+          .single();
+        setAgua(a => ({ ...a, id: data?.id ?? null }));
+      }
+      setAgua(a => ({ ...a, copos: next }));
+    } catch (err) {
+      console.error('[Água] Erro:', err);
+    } finally {
+      setSavingAgua(false);
+    }
+  };
+
+  const openPdf = async () => {
+    if (!plano || !userId) return;
+    if (plano.aluno_id !== userId) return;
+
+    try {
+      const filePath = extractStoragePath('plano_alimentar', plano.url_pdf) || plano.url_pdf;
+      const { data, error } = await supabaseClient.storage
+        .from('plano_alimentar')
+        .createSignedUrl(filePath, 3600);
+
+      if (error || !data?.signedUrl) {
+        alert('Erro ao abrir PDF. Tente novamente.');
+        return;
+      }
+      setPdfUrl(data.signedUrl);
+      setPdfViewerOpen(true);
+    } catch (err) {
+      console.error('[PDF] Erro:', err);
+    }
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+        <DumbbellLoader text="Carregando nutrição..." />
+      </div>
+    );
+  }
+
+  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const refeicoesFeitasHoje = refeicoes.filter(r => consumidosHoje.has(r.id)).length;
+
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-bg-base p-4 md:p-6 lg:p-10 lg:pl-28 font-sans">
-        <div className="max-w-4xl mx-auto">
-          
-          <div className="mb-8 md:mb-12">
-            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-gold-light text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:ml-1 transition-all">
-              <ArrowLeft size={12} /> Voltar ao Painel
+      <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
+        <div className="max-w-2xl mx-auto flex flex-col gap-6">
+
+          {/* ── Header ── */}
+          <div>
+            <Link
+              href="/aluno/dashboard"
+              className="inline-flex items-center gap-1.5 text-brand text-2xs uppercase tracking-caps mb-4"
+            >
+              <ArrowLeft className="w-3 h-3" /> Dashboard
             </Link>
-            <h1 className="heading-h1 text-text-primary mb-2">
-              Plano <span className="text-gold-light">Alimentar</span>
-            </h1>
-            <p className="body-text text-text-secondary text-sm">Sua nutrição estratégica para resultados máximos.</p>
+            <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-0.5">
+              {hoje}
+            </p>
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Nutrição</h1>
           </div>
 
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-text-secondary">
-              <Loader2 size={40} className="animate-spin text-gold-light" />
-              <p className="label-small text-text-secondary">Carregando planos...</p>
-            </div>
-          ) : userRole === 'coach' ? (
-            // Coach view - can upload plans
-            <div className="bg-bg-card rounded-lg p-12 md:p-24 border border-border-subtle flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 md:w-24 md:h-24 bg-gold-default/10 rounded-lg md:rounded-xl flex items-center justify-center mx-auto mb-8 md:mb-10 text-gold-light shadow-lg shadow-gold-default/5">
-                <Utensils size={32} />
+          {/* ── Sem plano ── */}
+          {!plano && (
+            <div className="flex flex-col items-center text-center gap-4 px-4 py-8">
+              <div className="w-16 h-16 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center">
+                <ForkKnife className="w-8 h-8 text-brand" />
               </div>
-              
-              <h2 className="heading-h2 text-text-primary mb-4">
-                Gerenciar Planos Alimentares
-              </h2>
-              
-              <p className="max-w-sm mx-auto text-text-secondary font-300 leading-relaxed text-sm md:text-base mb-8">
-                Selecione um aluno para enviar seu plano alimentar personalizado.
-              </p>
-              
-              <button
-                onClick={() => setUploadModalOpen(true)}
-                className="btn-primary px-8 py-3 text-sm flex items-center gap-2"
-              >
-                <Upload size={18} />
-                Enviar Plano
-              </button>
-            </div>
-          ) : planos.length === 0 ? (
-            // Student view - no plans yet
-            <div className="bg-bg-card rounded-lg p-12 md:p-24 border border-border-subtle flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 md:w-24 md:h-24 bg-gold-default/10 rounded-lg md:rounded-xl flex items-center justify-center mx-auto mb-8 md:mb-10 text-gold-light shadow-lg shadow-gold-default/5">
-                <Utensils size={32} />
+              <div>
+                <h2 className="text-lg font-bold text-text-primary mb-2">Plano em preparação</h2>
+                <p className="text-sm text-text-secondary leading-relaxed max-w-xs mx-auto">
+                  Seu coach está preparando seu plano alimentar personalizado. Ele aparecerá aqui assim que for liberado.
+                </p>
               </div>
-              
-              <h2 className="heading-h2 text-text-primary mb-4">
-                Plano em Breve
-              </h2>
-              
-              <p className="max-w-sm mx-auto text-text-secondary font-300 leading-relaxed text-sm md:text-base">
-                Seu plano alimentar personalizado está sendo desenhado pelo coach e estará disponível em breve.
-              </p>
-              
-              <div className="mt-10 md:mt-12 pt-10 md:pt-12 border-t border-border-subtle flex justify-center">
-                 <div className="px-6 py-3 bg-bg-elevated rounded-lg flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-gold-light animate-pulse"></div>
-                    <span className="label-small text-text-secondary">Aguardando liberação do Coach</span>
-                 </div>
-              </div>
-            </div>
-          ) : (
-            // Student view - show plans
-            <div className="space-y-4">
-              {planos.map((plano) => (
-                <div
-                  key={plano.id}
-                  className="bg-bg-card border border-border-subtle rounded-lg p-6 hover:border-gold-default/40 hover:shadow-lg hover:shadow-gold-default/5 transition-all group"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-gold-default/10 flex items-center justify-center text-gold-light group-hover:scale-110 transition-transform">
-                      <FileText size={20} />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-text-primary mb-1 uppercase text-sm font-600 break-words">
-                        {plano.nome_arquivo.replace('.pdf', '')}
-                      </h3>
-                      {plano.descricao && (
-                        <p className="text-[9px] text-text-secondary mb-3">{plano.descricao}</p>
-                      )}
-                      <p className="label-small text-text-disabled">
-                        {new Date(plano.criado_em).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
 
-                    <button
-                      onClick={() => handleOpenPdf(plano)}
-                      className="bg-gold-default text-black rounded-lg px-4 py-2 text-xs flex items-center gap-2 whitespace-nowrap hover:bg-gold-light transition-all font-600 shrink-0"
-                    >
-                      <FileText size={14} />
-                      Visualizar
-                    </button>
+              {/* Dicas básicas enquanto aguarda */}
+              <div className="w-full mt-2 flex flex-col gap-2 text-left">
+                <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">Enquanto isso</p>
+                {[
+                  { icon: '💧', text: 'Beba pelo menos 35ml de água por kg corporal por dia' },
+                  { icon: '🥩', text: 'Priorize proteínas em todas as refeições' },
+                  { icon: '⏰', text: 'Mantenha intervalos regulares entre as refeições (3-4h)' },
+                  { icon: '🥗', text: 'Prefira alimentos naturais aos ultraprocessados' },
+                ].map((tip, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-surface-1 border border-border-subtle rounded-xl px-4 py-3">
+                    <span className="text-lg leading-tight mt-0.5 flex-shrink-0">{tip.icon}</span>
+                    <span className="text-sm text-text-secondary leading-relaxed">{tip.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {plano && (
+            <>
+              {/* ── Card do plano ── */}
+              <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-brand flex-shrink-0">
+                    <ForkKnife className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-text-primary truncate">
+                      {plano.nome_arquivo.replace('.pdf', '')}
+                    </p>
+                    <p className="text-xs text-text-tertiary">
+                      {new Date(plano.criado_em).toLocaleDateString('pt-BR')}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
+                <button
+                  onClick={openPdf}
+                  className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-surface-3 border border-border-subtle text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-border-default transition-colors flex-shrink-0"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Ver PDF
+                </button>
+              </div>
+
+              {/* ── Refeições de hoje ── */}
+              {refeicoes.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Refeições de hoje</p>
+                    <span className="text-xs text-text-tertiary">
+                      {refeicoesFeitasHoje} de {refeicoes.length} feitas
+                    </span>
+                  </div>
+
+                  {/* Barra de progresso */}
+                  <div className="h-1.5 bg-surface-3 rounded-full mb-4 overflow-hidden">
+                    <div
+                      className="h-full bg-brand rounded-full transition-all duration-300"
+                      style={{ width: refeicoes.length > 0 ? `${(refeicoesFeitasHoje / refeicoes.length) * 100}%` : '0%' }}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {refeicoes.map(r => {
+                      const feita = consumidosHoje.has(r.id);
+                      const expanded = expandedRefeicao === r.id;
+                      const temIngredientes = r.ingredientes && r.ingredientes.length > 0;
+
+                      return (
+                        <div
+                          key={r.id}
+                          className={cn(
+                            'rounded-2xl border transition-all duration-200',
+                            feita
+                              ? 'bg-success-subtle border-success-border shadow-elev-1'
+                              : 'bg-surface-1 border-border-subtle shadow-elev-1'
+                          )}
+                        >
+                          <div className="flex items-center gap-3 p-3">
+                            {/* Check button */}
+                            <button
+                              onClick={() => toggleRefeicao(r.id)}
+                              disabled={savingConsumido === r.id}
+                              className={cn(
+                                'w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                                feita
+                                  ? 'bg-success border-success text-white'
+                                  : 'border-border-default bg-surface-3 text-transparent hover:border-brand'
+                              )}
+                              aria-label={feita ? 'Desmarcar refeição' : 'Marcar como feita'}
+                            >
+                              <Check className="w-3.5 h-3.5" weight="bold" />
+                            </button>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className={cn(
+                                'text-sm font-semibold leading-tight',
+                                feita ? 'text-success line-through opacity-70' : 'text-text-primary'
+                              )}>
+                                {r.nome}
+                              </p>
+                              {r.horario_sugerido && (
+                                <p className="text-2xs text-text-tertiary mt-0.5">{fmtHorario(r.horario_sugerido)}</p>
+                              )}
+                            </div>
+
+                            {/* Expandir ingredientes */}
+                            {temIngredientes && (
+                              <button
+                                onClick={() => setExpandedRefeicao(expanded ? null : r.id)}
+                                className="w-8 h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary transition-colors"
+                                aria-label="Ver ingredientes"
+                              >
+                                {expanded ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Ingredientes expandidos */}
+                          {expanded && temIngredientes && (
+                            <div className="px-3 pb-3 pt-0 border-t border-border-subtle/50">
+                              <ul className="mt-2 space-y-1">
+                                {r.ingredientes.map((ing, i) => (
+                                  <li key={i} className="flex items-center justify-between text-xs text-text-secondary">
+                                    <span>{ing.nome}</span>
+                                    {(ing.quantidade || ing.gramas) && (
+                                      <span className="text-text-tertiary ml-2">
+                                        {ing.gramas ? `${ing.gramas}g` : ing.quantidade}
+                                      </span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                              {r.observacoes && (
+                                <p className="mt-2 text-xs text-text-tertiary italic border-t border-border-subtle/50 pt-2">
+                                  {r.observacoes}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* ── Água ── */}
+              <section className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Drop className="w-4 h-4 text-brand" />
+                    <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Hidratação</p>
+                  </div>
+                  <span className="text-xs text-text-tertiary">
+                    {agua.copos * agua.ml_por_copo}ml / {metaCopos * agua.ml_por_copo}ml
+                  </span>
+                </div>
+
+                {/* Copos visuais */}
+                <div className="flex gap-1.5 flex-wrap mb-4">
+                  {Array.from({ length: metaCopos }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => updateAgua(i < agua.copos ? -(agua.copos - i) : i + 1 - agua.copos)}
+                      disabled={savingAgua}
+                      className={cn(
+                        'w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all',
+                        i < agua.copos
+                          ? 'bg-brand/20 border-brand text-brand'
+                          : 'bg-surface-3 border-border-subtle text-text-tertiary'
+                      )}
+                      aria-label={`${i + 1} copo${i > 0 ? 's' : ''}`}
+                    >
+                      <Drop className="w-3.5 h-3.5" />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Controles +/- */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => updateAgua(-1)}
+                    disabled={savingAgua || agua.copos === 0}
+                    className="w-9 h-9 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary disabled:opacity-30 hover:text-text-primary transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <div className="flex-1 text-center">
+                    <span className="text-lg font-bold text-text-primary">{agua.copos}</span>
+                    <span className="text-xs text-text-tertiary ml-1">/ {metaCopos} copos</span>
+                  </div>
+                  <button
+                    onClick={() => updateAgua(1)}
+                    disabled={savingAgua || agua.copos >= metaCopos}
+                    className="w-9 h-9 rounded-xl bg-brand text-text-on-brand flex items-center justify-center disabled:opacity-30 shadow-sm shadow-brand/30 transition-opacity"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {agua.copos >= metaCopos && (
+                  <p className="mt-3 text-xs font-semibold text-brand text-center">
+                    Meta atingida! Excelente hidratação hoje.
+                  </p>
+                )}
+              </section>
+            </>
           )}
         </div>
       </div>
 
-      {/* Upload Modal - for coaches */}
-      {userRole === 'coach' && userId && (
-        <CoachSelectStudent
-          isOpen={uploadModalOpen}
-          onClose={() => setUploadModalOpen(false)}
-          coachId={userId}
-          onSelect={(alunoId, alunoName) => {
-            setUploadModalOpen(false);
-            // Open upload modal
-            setTimeout(() => {
-              const modal = document.getElementById(`upload-${alunoId}`);
-              if (modal) {
-                (modal as any).click();
-              }
-            }, 100);
-          }}
-        />
-      )}
-
       {/* PDF Viewer */}
-      {selectedPdf && pdfViewerOpen && (
+      {pdfViewerOpen && pdfUrl && plano && (
         <PDFViewer
-          url={selectedPdf.url}
-          title={selectedPdf.title}
-          onClose={() => {
-            setPdfViewerOpen(false);
-            setSelectedPdf(null);
-          }}
+          url={pdfUrl}
+          title={plano.nome_arquivo}
+          onClose={() => { setPdfViewerOpen(false); setPdfUrl(null); }}
         />
       )}
     </SubscriptionGuard>
-  );
-}
-
-// Componente para coach selecionar aluno
-function CoachSelectStudent({
-  isOpen,
-  onClose,
-  coachId,
-  onSelect,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  coachId: string;
-  onSelect: (alunoId: string, alunoName: string) => void;
-}) {
-  const [students, setStudents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
-  const [uploadModal, setUploadModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchStudents();
-    }
-  }, [isOpen]);
-
-  const fetchStudents = async () => {
-    try {
-      const { data } = await supabaseClient
-        .from('coach_alunos')
-        .select(`
-          aluno_id,
-          profiles!coach_alunos_aluno_id_fkey(full_name, id)
-        `)
-        .eq('coach_id', coachId);
-
-      setStudents(
-        (data || []).map((item: any) => ({
-          id: item.aluno_id,
-          name: item.profiles?.full_name || 'Aluno'
-        }))
-      );
-    } catch (err) {
-      console.error('Erro ao carregar alunos:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <>
-      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div className="relative w-full max-w-md bg-bg-card rounded-lg border border-border-default shadow-2xl shadow-gold-default/5 overflow-hidden">
-          <div className="flex items-center justify-between p-6 border-b border-border-subtle bg-bg-elevated">
-            <h2 className="heading-h3 text-text-primary">
-              Selecionar Aluno
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 bg-bg-card hover:bg-border-subtle rounded-lg text-text-secondary hover:text-text-primary transition-all"
-            >
-              <Utensils size={20} />
-            </button>
-          </div>
-
-          <div className="p-6">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 size={24} className="animate-spin text-gold-light" />
-              </div>
-            ) : students.length === 0 ? (
-              <p className="text-sm text-text-secondary text-center py-8">Nenhum aluno atribuído</p>
-            ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {students.map((student) => (
-                  <button
-                    key={student.id}
-                    onClick={() => {
-                      setSelectedStudent(student.id);
-                      setUploadModalOpen(true);
-                      onClose();
-                    }}
-                    className="w-full p-3 text-left rounded-lg bg-bg-elevated hover:bg-gold-default text-text-primary hover:text-black text-sm uppercase tracking-tight transition-all font-500"
-                  >
-                    {student.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Upload Modal */}
-      {selectedStudent && (
-        <UploadNutritionPlan
-          isOpen={uploadModal}
-          onClose={() => {
-            setUploadModalOpen(false);
-            setSelectedStudent(null);
-            onClose();
-          }}
-          alunoId={selectedStudent}
-          alunoName={students.find(s => s.id === selectedStudent)?.name || 'Aluno'}
-          onUploadSuccess={() => {
-            setUploadModalOpen(false);
-            setSelectedStudent(null);
-            onClose();
-          }}
-        />
-      )}
-    </>
   );
 }

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from 'react';
-import { Smartphone, Download, X } from 'lucide-react';
+import { DeviceMobile, DownloadSimple, X } from '@phosphor-icons/react';
 
 export default function PWAInstall() {
   const [show, setShow] = useState(false);
@@ -40,7 +40,7 @@ export default function PWAInstall() {
 
   return (
     <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 animate-slide-up">
-      <div className="bg-iron-gray border border-iron-gold/30 rounded-4xl p-6 shadow-2xl shadow-black">
+      <div className="bg-surface-1 border border-brand/30 rounded-4xl p-6 shadow-2xl shadow-black">
         <button 
           onClick={() => {
             setShow(false);
@@ -52,8 +52,8 @@ export default function PWAInstall() {
         </button>
 
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 bg-iron-gold rounded-2xl flex items-center justify-center shadow-lg shadow-iron-gold/20">
-            <Smartphone className="text-black" size={24} />
+          <div className="w-12 h-12 bg-brand rounded-2xl flex items-center justify-center shadow-lg shadow-brand/20">
+            <DeviceMobile className="text-black" size={24} />
           </div>
           <div>
             <h3 className="text-white uppercase tracking-wider text-sm">Instalar Aplicativo</h3>
@@ -66,22 +66,22 @@ export default function PWAInstall() {
             <div className="space-y-3">
               <div className="flex items-start gap-3 text-[11px] text-slate-300">
                 <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">1</div>
-                <p>Toque no ícone de <span className="text-iron-gold">Compartilhar</span> na barra inferior.</p>
+                <p>Toque no ícone de <span className="text-brand">Compartilhar</span> na barra inferior.</p>
               </div>
               <div className="flex items-start gap-3 text-[11px] text-slate-300">
                 <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">2</div>
-                <p>Role para baixo e selecione <span className="text-iron-gold">"Adicionar à Tela de Início"</span>.</p>
+                <p>Role para baixo e selecione <span className="text-brand">"Adicionar à Tela de Início"</span>.</p>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
               <div className="flex items-start gap-3 text-[11px] text-slate-300">
                 <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">1</div>
-                <p>Toque nos <span className="text-iron-gold">três pontos (⋮)</span> no canto superior do navegador.</p>
+                <p>Toque nos <span className="text-brand">três pontos (⋮)</span> no canto superior do navegador.</p>
               </div>
               <div className="flex items-start gap-3 text-[11px] text-slate-300">
                 <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">2</div>
-                <p>Selecione <span className="text-iron-gold">"Instalar aplicativo"</span> ou"Adicionar à tela inicial".</p>
+                <p>Selecione <span className="text-brand">"Instalar aplicativo"</span> ou"Adicionar à tela inicial".</p>
               </div>
             </div>
           )}

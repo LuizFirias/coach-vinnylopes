@@ -1,4 +1,4 @@
-﻿import { Dumbbell } from 'lucide-react';
+﻿import { Barbell } from '@phosphor-icons/react';
 
 interface DumbbellLoaderProps {
   size?: number;
@@ -8,13 +8,12 @@ interface DumbbellLoaderProps {
 export default function DumbbellLoader({ size = 48, text }: DumbbellLoaderProps) {
   return (
     <div className="flex flex-col items-center gap-4">
-      <Dumbbell
+      <Barbell
         size={size}
-        strokeWidth={1.5}
-        className="text-gold-light animate-spin"
+        className="text-brand animate-spin"
       />
       {text && (
-        <span className="label-small text-text-secondary">
+        <span className="text-xs text-text-secondary">
           {text}
         </span>
       )}
