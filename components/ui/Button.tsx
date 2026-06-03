@@ -1,0 +1,75 @@
+'use client';
+
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { cn } from '@/lib/utils/cn';
+
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonSize = 'sm' | 'md' | 'lg';
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  loading?: boolean;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
+  fullWidth?: boolean;
+}
+
+const variantClasses: Record<ButtonVariant, string> = {
+  primary:
+    'bg-brand text-text-on-brand hover:bg-brand-hover hover:shadow-glow-brand active:bg-brand-pressed',
+  secondary:
+    'bg-surface-3 text-text-primary border border-border hover:bg-surface-2',
+  ghost:
+    'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-2',
+  danger:
+    'bg-danger-subtle text-danger border border-danger-border hover:bg-danger hover:text-text-primary',
+};
+
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: 'h-10 px-4 text-sm',
+  md: 'h-12 px-5 text-base',
+  lg: 'h-14 px-6 text-lg',
+};
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = 'primary',
+    size = 'md',
+    loading = false,
+    leftIcon,
+    rightIcon,
+    fullWidth,
+    className,
+    children,
+    disabled,
+    ...rest
+  },
+  ref
+) {
+  return (
+    <button
+      ref={ref}
+      disabled={disabled || loading}
+      className={cn(
+        'inline-flex items-center justify-center gap-2 rounded-lg font-semibold',
+        'transition-all duration-fast ease-out',
+        'active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100',
+        'focus-visible:outline-none focus-visible:shadow-focus-ring',
+        variantClasses[variant],
+        sizeClasses[size],
+        fullWidth && 'w-full',
+        className
+      )}
+      {...rest}
+    >
+      {loading ? (
+        <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : (
+        leftIcon
+      )}
+      {children}
+      {!loading && rightIcon}
+    </button>
+  );
+});
