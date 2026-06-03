@@ -1,378 +1,284 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getPublicStorageUrl } from '@/lib/storageUrls';
-import { formatCount } from '@/lib/utils/pluralize';
-import { Trophy, Medal, Star, Zap, User, Loader2, Target, ArrowLeft, Clock } from 'lucide-react';
+import { getSafeSession } from '@/lib/authErrorHandler';
+import { Trophy, Lightning, ArrowLeft } from '@phosphor-icons/react';
 import Link from 'next/link';
+import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { cn } from '@/lib/utils/cn';
 
-interface RankingEntry {
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+interface LeaderboardEntry {
   aluno_id: string;
-  total_pontos: number;
   full_name: string | null;
+  coaching_reference: string | null;
   avatar_url: string | null;
+  pontos: number;
+  streak: number;
+  posicao: number;
 }
 
-interface Profile {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  avatar_url: string | null;
+// ─── Constantes ───────────────────────────────────────────────────────────────
+
+const COMO_GANHAR = [
+  { label: 'Treino concluído',       pts: '+20 pts' },
+  { label: 'Recorde pessoal batido', pts: '+10 pts' },
+  { label: 'Foto de evolução',       pts: '+5 pts'  },
+  { label: 'Medida registrada',      pts: '+3 pts'  },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getInitials(name: string | null): string {
+  if (!name) return 'A';
+  const parts = name.trim().split(' ').filter(Boolean);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function RankingPage() {
-  const [profiles, setProfiles] = useState<RankingEntry[]>([]);
-  const [userProfile, setUserProfile] = useState<{profile: Profile, points: number} | null>(null);
-  const [userPosition, setUserPosition] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRanking = async () => {
-      try {
-        setLoading(true);
-        
-        // Get current user first
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [minha, setMinha] = useState<LeaderboardEntry | null>(null);
+  const [atletasAtivos, setAtletasAtivos] = useState(0);
+  const [periodo, setPeriodo] = useState<'total' | 'mes_atual' | 'mes_anterior'>('total');
 
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+  // ── Carregar ────────────────────────────────────────────────────────────────
 
-        // Get user's profile and coach_id
-        const { data: meData, error: meError } = await supabaseClient
-          .from('profiles')
-          .select('id, full_name, email, avatar_url, coach_id, role')
-          .eq('id', user.id)
-          .single();
+  const fetchData = useCallback(async () => {
+    const session = await getSafeSession();
+    const user = session?.user;
+    if (!user) { setLoading(false); return; }
+    setUserId(user.id);
 
-        if (meError || !meData) {
-          throw new Error('Não foi possível carregar seu perfil');
-        }
+    try {
+      const agora = new Date();
+      let inicioPeriodo: string | null = null;
+      let fimPeriodo: string | null = null;
 
-        let mappedData: RankingEntry[] = [];
-        let currentProfile: {profile: Profile, points: number} | null = null;
-        let position: number | null = null;
-
-        // If user is a student, fetch only their coach's students
-        if (meData.role === 'aluno') {
-          const coachId = meData.coach_id;
-          
-          if (!coachId) {
-            setError('Você não está atribuído a nenhum coach ainda.');
-            setLoading(false);
-            return;
-          }
-
-          // Fetch all students of the same coach
-          const { data: coachStudents, error: coachError } = await supabaseClient
-            .from('coach_alunos')
-            .select('aluno_id')
-            .eq('coach_id', coachId);
-
-          if (coachError) throw coachError;
-
-          const alunoIds = (coachStudents || []).map(s => s.aluno_id);
-
-          if (alunoIds.length === 0) {
-            setProfiles([]);
-            setLoading(false);
-            return;
-          }
-
-          // Fetch points for all students
-          const { data: pontuacaoData, error: pontuacaoError } = await supabaseClient
-            .from('pontuacao_alunos')
-            .select('aluno_id, total_pontos')
-            .in('aluno_id', alunoIds);
-
-          if (pontuacaoError) throw pontuacaoError;
-
-          // Fetch profiles for all students
-          const { data: profilesData, error: profilesError } = await supabaseClient
-            .from('profiles')
-            .select('id, full_name, avatar_url')
-            .in('id', alunoIds);
-
-          if (profilesError) throw profilesError;
-
-          // Combine data
-          mappedData = (pontuacaoData || [])
-            .map((pontos) => {
-              const profile = (profilesData || []).find(p => p.id === pontos.aluno_id);
-              return {
-                aluno_id: pontos.aluno_id,
-                total_pontos: pontos.total_pontos || 0,
-                full_name: profile?.full_name || null,
-                avatar_url: profile?.avatar_url || null
-              };
-            })
-            .sort((a, b) => b.total_pontos - a.total_pontos);
-
-          // Get user's points
-          const { data: pointsData } = await supabaseClient
-            .from('pontuacao_alunos')
-            .select('total_pontos')
-            .eq('aluno_id', user.id)
-            .maybeSingle();
-
-          currentProfile = {
-            profile: meData as Profile,
-            points: pointsData?.total_pontos || 0
-          };
-
-          // Calculate user's position
-          const usersWithMorePoints = mappedData.filter(p => p.total_pontos > (pointsData?.total_pontos || 0)).length;
-          position = usersWithMorePoints + 1;
-        }
-        // If user is a coach, show their students
-        else if (meData.role === 'coach') {
-          const { data: coachStudents, error: coachError } = await supabaseClient
-            .from('coach_alunos')
-            .select('aluno_id')
-            .eq('coach_id', user.id);
-
-          if (coachError) throw coachError;
-
-          const alunoIds = (coachStudents || []).map(s => s.aluno_id);
-
-          if (alunoIds.length === 0) {
-            setProfiles([]);
-            setLoading(false);
-            return;
-          }
-
-          // Fetch points for all students
-          const { data: pontuacaoData, error: pontuacaoError } = await supabaseClient
-            .from('pontuacao_alunos')
-            .select('aluno_id, total_pontos')
-            .in('aluno_id', alunoIds);
-
-          if (pontuacaoError) throw pontuacaoError;
-
-          // Fetch profiles for all students
-          const { data: profilesData, error: profilesError } = await supabaseClient
-            .from('profiles')
-            .select('id, full_name, avatar_url')
-            .in('id', alunoIds);
-
-          if (profilesError) throw profilesError;
-
-          // Combine data
-          mappedData = (pontuacaoData || [])
-            .map((pontos) => {
-              const profile = (profilesData || []).find(p => p.id === pontos.aluno_id);
-              return {
-                aluno_id: pontos.aluno_id,
-                total_pontos: pontos.total_pontos || 0,
-                full_name: profile?.full_name || null,
-                avatar_url: profile?.avatar_url || null
-              };
-            })
-            .sort((a, b) => b.total_pontos - a.total_pontos);
-
-          currentProfile = {
-            profile: meData as Profile,
-            points: 0
-          };
-        }
-
-        // Resolver URL pública de cada avatar (suporta path novo e URL legada)
-        const processedData = mappedData.map((entry) => ({
-          ...entry,
-          avatar_url: getPublicStorageUrl('avatars', entry.avatar_url),
-        }));
-
-        setProfiles(processedData);
-        setUserProfile(currentProfile);
-        setUserPosition(position);
-      } catch (err) {
-        console.error('Erro ao buscar ranking:', err);
-        setError('Não foi possível carregar o ranking.');
-      } finally {
-        setLoading(false);
+      if (periodo !== 'total') {
+        const mesRef = periodo === 'mes_atual' ? agora : new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+        inicioPeriodo = new Date(mesRef.getFullYear(), mesRef.getMonth(), 1).toISOString();
+        fimPeriodo = new Date(mesRef.getFullYear(), mesRef.getMonth() + 1, 0, 23, 59, 59).toISOString();
       }
-    };
 
-    fetchRanking();
-  }, []);
+      const { data: rawEntries, error } = await supabaseClient.rpc('get_ranking_colegas', {
+        p_periodo: periodo,
+        p_inicio_periodo: inicioPeriodo,
+        p_fim_periodo: fimPeriodo,
+      });
+
+      if (error) console.error('[Ranking RPC]', error.message, error.code);
+
+      const entries: LeaderboardEntry[] = (rawEntries || []).map((r: any, idx: number) => ({
+        aluno_id: r.aluno_id,
+        full_name: r.full_name,
+        coaching_reference: r.coaching_reference,
+        avatar_url: getPublicStorageUrl('avatars', r.avatar_url),
+        pontos: r.pontos,
+        streak: r.streak,
+        posicao: idx + 1,
+      }));
+
+      setLeaderboard(entries);
+      setMinha(entries.find(e => e.aluno_id === user.id) ?? null);
+
+      // Atletas ativos na semana (filtrado pelo coach)
+      const { data: ativos } = await supabaseClient
+        .from('v_atletas_ativos_semana')
+        .select('quantidade')
+        .maybeSingle();
+
+      setAtletasAtivos(ativos?.quantidade ?? 0);
+    } catch (err) {
+      console.error('[Ranking]', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [periodo]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+        <DumbbellLoader text="Carregando ranking..." />
+      </div>
+    );
+  }
+
+  const isSolo = leaderboard.length <= 1;
+  const pontos = minha?.pontos ?? 0;
+  const posicao = minha?.posicao ?? null;
 
   return (
-    <div className="min-h-screen bg-bg-base p-4 md:p-6 lg:p-10 lg:pl-28">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
-          <div>
-            <Link href="/aluno/dashboard" className="inline-flex items-center gap-2 text-gold-light text-[9px] md:text-[10px] uppercase tracking-widest mb-3 md:mb-4 hover:gap-3 transition-all">
-              <ArrowLeft size={12} /> Voltar ao Painel
-            </Link>
-            <h1 className="heading-h1 text-text-primary mb-2">
-              Ranking de <span className="text-gold-light">Desempenho</span>
-            </h1>
-            <p className="body-text text-text-secondary text-sm">Os atletas mais dedicados da consultoria</p>
-          </div>
-          
-          {userProfile && (
-            <div className="bg-bg-card px-5 md:px-8 py-4 md:py-5 rounded-lg md:rounded-lg border border-border-subtle shadow-2xl shadow-gold-default/5 flex items-center gap-3 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-lg bg-gold-default/10 flex items-center justify-center text-gold-light">
-                <Zap size={20} />
-              </div>
-              <div>
-                <span className="block label-small text-text-secondary leading-none mb-1">Seus Pontos</span>
-                <span className="text-xl md:text-2xl text-text-primary font-700">{userProfile.points} pts</span>
-              </div>
-            </div>
-          )}
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
+      <div className="max-w-lg mx-auto flex flex-col gap-5">
 
-          {userPosition && (
-            <div className="bg-bg-card px-5 md:px-8 py-4 md:py-5 rounded-lg md:rounded-lg border border-border-subtle shadow-2xl shadow-gold-default/5 flex items-center gap-3 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-lg bg-danger/10 flex items-center justify-center text-danger">
-                <Target size={20} />
-              </div>
-              <div>
-                <span className="block label-small text-text-secondary leading-none mb-1">Sua Posição</span>
-                <span className="text-xl md:text-2xl text-text-primary font-700">#{userPosition}º</span>
-              </div>
+        {/* ── Header ── */}
+        <div>
+          <Link href="/aluno/dashboard" className="inline-flex items-center gap-1.5 text-brand text-2xs uppercase tracking-caps mb-4">
+            <ArrowLeft className="w-3 h-3" /> Dashboard
+          </Link>
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary tracking-tight">Ranking</h1>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                {isSolo
+                  ? periodo === 'total' ? 'Sua jornada completa' : periodo === 'mes_atual' ? 'Sua jornada este mês' : 'Sua jornada no mês anterior'
+                  : periodo === 'total'
+                    ? `${atletasAtivos} atleta${atletasAtivos !== 1 ? 's' : ''} ativo${atletasAtivos !== 1 ? 's' : ''} esta semana`
+                    : periodo === 'mes_atual'
+                      ? `Classificação deste mês`
+                      : `Classificação do mês anterior`}
+              </p>
             </div>
-          )}
+            {minha != null && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-brand/10 border border-brand/20 rounded-full">
+                <span className="text-xs">⚡</span>
+                <span className="text-xs font-bold text-brand">{pontos} pts</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-4 text-text-secondary">
-            <Loader2 size={40} className="animate-spin text-gold-light" />
-            <p className="label-small text-text-secondary">Calculando posições...</p>
-          </div>
-        ) : error ? (
-          <div className="mb-8 p-6 bg-danger/10 border border-danger/30 rounded-lg text-danger flex items-center gap-4 shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-danger/20 flex items-center justify-center text-danger font-bold">!</div>
-            {error}
-          </div>
-        ) : profiles.length === 0 ? (
-          <div className="bg-bg-card rounded-lg p-24 border border-border-subtle flex flex-col items-center justify-center text-center shadow-lg shadow-gold-default/5">
-            <div className="w-20 h-20 rounded-full bg-bg-elevated flex items-center justify-center text-text-disabled mb-6">
-              <Star size={40} />
-            </div>
-            <h2 className="heading-h2 text-text-primary mb-2">Ranking vazio</h2>
-            <p className="text-text-secondary max-w-sm">Comece a treinar para aparecer no topo do ranking!</p>
-          </div>
-        ) : (
-          <div className="space-y-8 md:space-y-12">
-            {/* Top 3 Visual */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 items-end">
-              {/* 2nd Place */}
-              {profiles[1] && (
-                <div className="order-2 md:order-1 bg-bg-card p-6 md:p-8 rounded-lg md:rounded-lg border border-border-subtle shadow-lg shadow-gold-default/5 flex flex-col items-center text-center relative group">
-                  <div className="absolute -top-3 md:-top-4 bg-bg-elevated text-text-secondary px-3 md:px-4 py-1 rounded-full text-[9px] md:text-[10px] uppercase tracking-widest">2º LUGAR</div>
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-border-subtle overflow-hidden mb-3 md:mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                    {profiles[1].avatar_url ? (
-                      <img src={profiles[1].avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-bg-elevated flex items-center justify-center text-gold-light"><User /></div>
-                    )}
-                  </div>
-                  <h3 className="text-text-primary truncate w-full text-sm md:text-base font-600">{profiles[1].full_name?.split(' ')[0] || 'Atleta'}</h3>
-                  <div className="mt-3 md:mt-4 flex items-center gap-2 text-text-secondary text-[9px] md:text-[10px] uppercase tracking-widest">
-                    <Zap size={12} /> {profiles[1].total_pontos} pts
-                  </div>
-                </div>
+        {/* ── Filtro de Período ── */}
+        <div className="flex border-b border-border-subtle">
+          {[
+            { key: 'total', label: 'Total' },
+            { key: 'mes_atual', label: 'Este mês' },
+            { key: 'mes_anterior', label: 'Mês anterior' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setPeriodo(key as typeof periodo)}
+              className={cn(
+                'flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-caps transition-all border-b-2 -mb-px',
+                periodo === key
+                  ? 'text-brand border-brand'
+                  : 'text-text-tertiary border-transparent hover:text-text-primary'
               )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-              {/* 1st Place */}
-              {profiles[0] && (
-                <div className="order-1 md:order-2 bg-bg-card p-10 rounded-lg shadow-2xl shadow-gold-light/10 border border-gold-default/30 flex flex-col items-center text-center relative group scale-105">
-                  <div className="absolute -top-5 bg-gold-default text-black px-6 py-2 rounded-full text-[10px] uppercase tracking-widest shadow-lg shadow-gold-default/40 flex items-center gap-2 font-600">
-                    <Trophy size={14} /> CAMPEÃO
-                  </div>
-                  <div className="w-28 h-28 rounded-full border-4 border-gold-light/30 overflow-hidden mb-6 shadow-2xl group-hover:scale-110 transition-transform relative">
-                    {profiles[0].avatar_url ? (
-                      <img src={profiles[0].avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-bg-elevated flex items-center justify-center text-gold-light"><User size={40} /></div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-gold-light/20 to-transparent" />
-                  </div>
-                  <h3 className="text-xl text-text-primary truncate w-full font-700">{profiles[0].full_name?.split(' ')[0] || 'Atleta'}</h3>
-                  <p className="text-gold-light text-[12px] uppercase tracking-widest mt-2 font-600">{profiles[0].total_pontos} pontos</p>
+        {/* ── Estado SOLO ── */}
+        {isSolo && (
+          <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-5 text-center">
+            <p className="text-4xl font-bold text-text-primary">{pontos}</p>
+            <p className="text-xs text-text-tertiary mt-1">pontos totais</p>
+          </div>
+        )}
+
+        {/* ── Estado COMUNIDADE ── */}
+        {!isSolo && (
+          <>
+            {/* Sua posição */}
+            {minha && posicao !== null && (
+              <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 flex items-center gap-4">
+                <div className={cn(
+                  'w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-lg',
+                  posicao === 1 ? 'bg-brand text-text-on-brand' : 'bg-surface-3 text-text-primary'
+                )}>
+                  {posicao === 1 ? <Trophy className="w-6 h-6" /> : `#${posicao}`}
                 </div>
-              )}
-
-              {/* 3rd Place */}
-              {profiles[2] && (
-                <div className="order-3 bg-bg-card p-8 rounded-lg border border-border-subtle shadow-lg shadow-gold-default/5 flex flex-col items-center text-center relative group">
-                  <div className="absolute -top-4 bg-gold-default/20 text-gold-light border border-gold-default/20 px-4 py-1 rounded-full text-[10px] uppercase tracking-widest">3º LUGAR</div>
-                  <div className="w-20 h-20 rounded-full border-4 border-gold-default/10 overflow-hidden mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                    {profiles[2].avatar_url ? (
-                      <img src={profiles[2].avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-bg-elevated flex items-center justify-center text-gold-light"><User /></div>
-                    )}
-                  </div>
-                  <h3 className="text-text-primary truncate w-full font-600">{profiles[2].full_name?.split(' ')[0] || 'Atleta'}</h3>
-                  <div className="mt-4 flex items-center gap-2 text-text-secondary text-[10px] uppercase tracking-widest">
-                    <Zap size={12} /> {profiles[2].total_pontos} pts
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-text-primary">
+                    {posicao === 1 ? 'Você está em 1º lugar!' : `#${posicao} de ${leaderboard.length}`}
+                  </p>
+                  {posicao > 1 && leaderboard[posicao - 2] && (
+                    <p className="text-xs text-text-tertiary mt-0.5">
+                      Faltam <span className="font-semibold text-text-primary">
+                        {leaderboard[posicao - 2].pontos - pontos} pts
+                      </span> para o #{posicao - 1}
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Lightning className="w-3.5 h-3.5 text-brand" />
+                  <span className="text-sm font-bold text-brand">{pontos} pts</span>
+                </div>
+              </div>
+            )}
 
-            {/* General List */}
-            <div className="bg-bg-card rounded-lg shadow-2xl shadow-gold-default/5 border border-border-subtle overflow-hidden">
-               <div className="px-10 py-8 border-b border-border-subtle bg-bg-elevated flex items-center justify-between">
-                  <h2 className="label-overline text-text-secondary">Classificação Geral</h2>
-                  <div className="flex items-center gap-2 px-4 py-1 bg-bg-card rounded-full border border-border-subtle text-text-secondary text-[10px]">
-                    {formatCount(profiles.length, 'atleta ativo')}
-                  </div>
-               </div>
-               
-               <div className="divide-y divide-border-subtle">
-                {profiles.map((p, index) => {
-                  const isCurrentUser = userProfile?.profile.id === p.aluno_id;
-                  
+            {/* Leaderboard */}
+            <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl overflow-hidden mb-4">
+              <div className="px-4 py-2.5 bg-surface-2 border-b border-border-subtle">
+                <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Classificação</span>
+              </div>
+              <div>
+                {leaderboard.map((entry, idx) => {
+                  const isMe = entry.aluno_id === userId;
                   return (
-                    <div key={p.aluno_id} className={`px-10 py-6 flex items-center justify-between hover:bg-bg-elevated transition-colors ${isCurrentUser ? 'bg-gold-default/5' : ''}`}>
-                      <div className="flex items-center gap-6">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm shadow-sm font-700 ${
-                          index < 3 ? 'bg-gold-default text-black' : 'bg-bg-elevated text-text-secondary'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-full border-2 overflow-hidden shadow-sm ${isCurrentUser ? 'border-gold-light' : 'border-border-subtle'}`}>
-                            {p.avatar_url ? (
-                              <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full bg-bg-elevated flex items-center justify-center text-text-disabled">
-                                <User size={18} />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className={`${isCurrentUser ? 'text-gold-light' : 'text-text-primary'} font-500`}>
-                              {p.full_name || 'Atleta'}
-                              {isCurrentUser && <span className="ml-2 text-[8px] uppercase bg-gold-default text-black px-2 py-0.5 rounded-full tracking-widest font-600">VOCÊ</span>}
-                            </p>
-                            <p className="text-[10px] text-text-disabled uppercase tracking-widest">Elite Athlete</p>
-                          </div>
-                        </div>
+                    <div key={entry.aluno_id} className={cn(
+                      'flex items-center gap-3 px-4 py-3 border-b border-border-subtle last:border-b-0',
+                      isMe && 'bg-brand/8 border-l-2 border-l-brand'
+                    )}>
+                      {/* Posição */}
+                      <span className="w-8 text-center text-sm font-bold text-text-tertiary flex-shrink-0">
+                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                      </span>
+
+                      {/* Avatar */}
+                      <div className="w-8 h-8 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {entry.avatar_url
+                          ? <img src={entry.avatar_url} alt={entry.coaching_reference ?? entry.full_name ?? ''} className="w-full h-full object-cover" />
+                          : <span className="text-xs font-semibold text-text-secondary">{getInitials(entry.coaching_reference ?? entry.full_name)}</span>}
                       </div>
-                      
-                      <div className="text-right">
-                        <p className="text-sm text-text-primary font-700">
-                          {p.total_pontos} pts
+
+                      {/* Nome */}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn('text-sm font-medium truncate', isMe ? 'text-brand' : 'text-text-primary')}>
+                          {isMe ? 'Você' : (entry.coaching_reference ?? entry.full_name?.split(' ')[0] ?? 'Atleta')}
                         </p>
-                        <p className="text-[9px] text-text-secondary uppercase tracking-widest">Pontuação Total</p>
+                        {entry.streak > 0 && (
+                          <p className="text-2xs text-text-tertiary">🔥 {entry.streak} dias</p>
+                        )}
                       </div>
+
+                      {/* Pontos */}
+                      <span className={cn('text-sm font-bold flex-shrink-0', isMe ? 'text-brand' : 'text-text-secondary')}>
+                        {entry.pontos} pts
+                      </span>
                     </div>
                   );
                 })}
               </div>
             </div>
-          </div>
+          </>
         )}
+
+        {/* ── Como ganhar pontos (sempre visível) ── */}
+        <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
+          <span className="block text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Como ganhar pontos</span>
+          <div>
+            {COMO_GANHAR.map(item => (
+              <div key={item.label} className="flex items-center justify-between py-2 border-b border-border-subtle last:border-b-0">
+                <span className="text-sm text-text-primary">{item.label}</span>
+                <span className="text-sm font-bold text-brand">{item.pts}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mensagem solo */}
+        {isSolo && leaderboard.length === 0 && (
+          <p className="text-xs text-text-tertiary text-center px-4">
+            Quando outros atletas se juntarem à consultoria, vocês vão se ver aqui.
+          </p>
+        )}
+
       </div>
     </div>
   );
