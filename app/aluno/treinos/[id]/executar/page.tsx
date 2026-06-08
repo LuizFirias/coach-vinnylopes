@@ -50,6 +50,7 @@ interface ExercicioState {
   descanso: number;
   video_url?: string;
   observacoes?: string;
+  grupo_muscular?: string;
   series: SerieState[];
 }
 
@@ -374,6 +375,20 @@ export default function ExecucaoTreinoPage() {
       const exerciciosConfig: ExercicioConfig[] = config?.exercicios || [];
       setNomeRotina(fichaData.nome_rotina);
 
+      // Buscar grupos musculares da biblioteca
+      const exercicioIds = exerciciosConfig.map(ex => ex.id).filter(Boolean);
+      let gruposMusculares: Record<string, string> = {};
+      if (exercicioIds.length > 0) {
+        const { data: bibData } = await supabaseClient
+          .from('exercicios_biblioteca')
+          .select('id, grupo_muscular')
+          .in('id', exercicioIds);
+
+        gruposMusculares = Object.fromEntries(
+          (bibData || []).map(ex => [ex.id, ex.grupo_muscular || ''])
+        );
+      }
+
       // Buscar histórico para gráfico e anterior de cada exercício
       const { data: historicoData } = await supabaseClient
         .from('historico_treinos')
@@ -421,6 +436,7 @@ export default function ExecucaoTreinoPage() {
           descanso: parseDescanso(ex.descanso),
           video_url: ex.video_url,
           observacoes: ex.observacoes,
+          grupo_muscular: gruposMusculares[ex.id] || '',
           series: (ex.series || []).map((s, idx) => {
             const prev = seriesPrev[idx];
             const anterior = prev ? `${prev.peso_atual || 0}kg × ${prev.reps || 0}` : '—';
@@ -1394,7 +1410,11 @@ function CompletionScreenWithExport({
     duracao,
     volume,
     sets,
-    exercicios: exercicios.map(ex => ({ nome: ex.nome })),
+    exercicios: exercicios.map(ex => ({
+      nome: ex.nome,
+      grupo_muscular: ex.grupo_muscular,
+      series: ex.series,
+    })),
     prsCount,
     coachUsername,
   };
@@ -1441,9 +1461,10 @@ function CompletionScreenWithExport({
                   duracao={duracao}
                   volume={volume}
                   sets={sets}
-                  exercicios={exercicios.map(ex => ({ nome: ex.nome }))}
+                  exercicios={exercicios}
                   prsCount={prsCount}
                   coachUsername={coachUsername}
+                  showMuscleChart
                 />
               </div>
             </div>
@@ -1480,9 +1501,10 @@ function CompletionScreenWithExport({
                   duracao={duracao}
                   volume={volume}
                   sets={sets}
-                  exercicios={exercicios.map(ex => ({ nome: ex.nome }))}
+                  exercicios={exercicios}
                   prsCount={prsCount}
                   coachUsername={coachUsername}
+                  showMuscleChart
                 />
               </div>
             </div>
@@ -1519,9 +1541,10 @@ function CompletionScreenWithExport({
                   duracao={duracao}
                   volume={volume}
                   sets={sets}
-                  exercicios={exercicios.map(ex => ({ nome: ex.nome }))}
+                  exercicios={exercicios}
                   prsCount={prsCount}
                   coachUsername={coachUsername}
+                  showMuscleChart
                 />
               </div>
             </div>
