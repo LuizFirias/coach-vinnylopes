@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download } from '@phosphor-icons/react';
+import html2canvas from 'html2canvas';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
@@ -521,7 +522,7 @@ export default function ExecucaoTreinoPage() {
   // ── Timer principal ─────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!treinoIniciado || !timerStartAt) return;
+    if (!treinoIniciado || !timerStartAt || saved) return;
     const tick = () => setElapsed(Math.floor((Date.now() - timerStartAt) / 1000));
     tick();
     const id = setInterval(tick, 1000);
@@ -533,7 +534,7 @@ export default function ExecucaoTreinoPage() {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', tick);
     };
-  }, [treinoIniciado, timerStartAt]);
+  }, [treinoIniciado, timerStartAt, saved]);
 
   // ── Aviso ao sair com treino incompleto ─────────────────────────────────────
 
@@ -1402,6 +1403,12 @@ function CompletionScreenWithExport({
   coachUsername,
 }: CompletionScreenProps) {
   const [exporting, setExporting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previews, setPreviews] = useState<Record<string, string | null>>({
+    dark: null,
+    light: null,
+    transparent: null,
+  });
   const { exportCard, exportAllCards } = useExportWorkoutCard();
   const router = useRouter();
 
@@ -1418,6 +1425,37 @@ function CompletionScreenWithExport({
     prsCount,
     coachUsername,
   };
+
+  // Carregar previews quando modal abre
+  useEffect(() => {
+    if (!showPreview) return;
+
+    const loadPreviews = async () => {
+      const newPreviews = { ...previews };
+      const themes: Array<'dark' | 'light' | 'transparent'> = ['dark', 'light', 'transparent'];
+
+      for (const theme of themes) {
+        const element = document.getElementById(`card-${theme}`);
+        if (element) {
+          try {
+            const canvas = await html2canvas(element, {
+              scale: 1.5,
+              backgroundColor: theme === 'transparent' ? null : undefined,
+              logging: false,
+              useCORS: true,
+              allowTaint: true,
+            });
+            newPreviews[theme] = canvas.toDataURL('image/png');
+          } catch (error) {
+            console.error(`Erro ao gerar preview ${theme}:`, error);
+          }
+        }
+      }
+      setPreviews(newPreviews);
+    };
+
+    loadPreviews();
+  }, [showPreview]);
 
   const handleExportSingle = async (theme: 'dark' | 'light' | 'transparent') => {
     setExporting(true);
@@ -1575,6 +1613,13 @@ function CompletionScreenWithExport({
         {/* Action Buttons */}
         <div className="space-y-3">
           <button
+            onClick={() => setShowPreview(true)}
+            disabled={exporting}
+            className="w-full h-12 rounded-xl bg-surface-2 border border-border-subtle text-text-primary font-semibold flex items-center justify-center gap-2 hover:bg-surface-3 transition-colors disabled:opacity-50"
+          >
+            👁️ Ver preview dos estilos
+          </button>
+          <button
             onClick={handleExportAll}
             disabled={exporting}
             className="w-full h-12 rounded-xl bg-brand text-text-on-brand font-semibold flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
@@ -1591,6 +1636,74 @@ function CompletionScreenWithExport({
           </button>
         </div>
       </div>
+
+      {/* Modal de Preview */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
+          <div className="w-full bg-surface-0 rounded-t-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-surface-0 border-b border-border-subtle p-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-text-primary">Preview dos estilos</h2>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary hover:text-text-primary"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-6">
+              {/* Dark Preview */}
+              {previews.dark && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Tema Escuro</p>
+                  <img
+                    src={previews.dark}
+                    alt="Preview tema escuro"
+                    className="w-full rounded-xl border border-border-subtle"
+                    style={{ maxHeight: '600px', objectFit: 'contain' }}
+                  />
+                </div>
+              )}
+
+              {/* Light Preview */}
+              {previews.light && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Tema Claro</p>
+                  <img
+                    src={previews.light}
+                    alt="Preview tema claro"
+                    className="w-full rounded-xl border border-border-subtle"
+                    style={{ maxHeight: '600px', objectFit: 'contain' }}
+                  />
+                </div>
+              )}
+
+              {/* Transparent Preview */}
+              {previews.transparent && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Tema Transparente</p>
+                  <div className="w-full rounded-xl border border-dashed border-border-subtle p-2 bg-checkered">
+                    <img
+                      src={previews.transparent}
+                      alt="Preview tema transparente"
+                      className="w-full rounded-lg"
+                      style={{ maxHeight: '600px', objectFit: 'contain' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Loading State */}
+              {(!previews.dark || !previews.light || !previews.transparent) && (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-text-secondary">Carregando previews...</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

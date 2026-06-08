@@ -29,12 +29,22 @@ export function useExportWorkoutCard() {
         allowTaint: true,
       });
 
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = `${options.nomeRotina.toLowerCase().replace(/\s+/g, '-')}-${theme}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Converter canvas para blob e fazer download
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('Erro ao processar imagem');
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${options.nomeRotina.toLowerCase().replace(/\s+/g, '-')}-${theme}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 'image/png', 1.0);
     } catch (error) {
       console.error(`Erro ao exportar card ${theme}:`, error);
       alert(`Erro ao exportar card. Tente novamente.`);
@@ -45,10 +55,30 @@ export function useExportWorkoutCard() {
     const themes: CardTheme[] = ['dark', 'light', 'transparent'];
 
     for (const theme of themes) {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       await exportCard(theme, options);
     }
   };
 
-  return { exportCard, exportAllCards };
+  const getPreviewUrl = async (theme: CardTheme): Promise<string | null> => {
+    try {
+      const element = document.getElementById(`card-preview-${theme}`);
+      if (!element) return null;
+
+      const canvas = await html2canvas(element, {
+        scale: 1,
+        backgroundColor: theme === 'transparent' ? null : undefined,
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error(`Erro ao gerar preview ${theme}:`, error);
+      return null;
+    }
+  };
+
+  return { exportCard, exportAllCards, getPreviewUrl };
 }
