@@ -3,13 +3,15 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video } from '@phosphor-icons/react';
+import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download } from '@phosphor-icons/react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { haptic } from '@/lib/utils/haptics';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import CompletionCard from './completion-card';
+import { useExportWorkoutCard } from './use-export-card';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -306,6 +308,8 @@ export default function ExecucaoTreinoPage() {
   const [volumeHistory, setVolumeHistory] = useState<VolumePoint[]>([]);
   const [showConfirmFinish, setShowConfirmFinish] = useState(false);
   const [showConfirmAbandon, setShowConfirmAbandon] = useState(false);
+  const [coachUsername, setCoachUsername] = useState('coach');
+  const [prsCount, setPrsCount] = useState(0);
 
   // Timer principal
   const [treinoIniciado, setTreinoIniciado] = useState(false);
@@ -471,6 +475,27 @@ export default function ExecucaoTreinoPage() {
         }
       } else {
         setExercicios(exerciciosState);
+      }
+
+      // Buscar coach do aluno para obter username
+      if (uid) {
+        const { data: coachData } = await supabaseClient
+          .from('coach_alunos')
+          .select('coach_id')
+          .eq('aluno_id', uid)
+          .single();
+
+        if (coachData?.coach_id) {
+          const { data: profileData } = await supabaseClient
+            .from('profiles')
+            .select('coaching_reference')
+            .eq('id', coachData.coach_id)
+            .single();
+
+          if (profileData?.coaching_reference) {
+            setCoachUsername(profileData.coaching_reference);
+          }
+        }
       }
     } finally {
       setLoading(false);
@@ -798,9 +823,19 @@ export default function ExecucaoTreinoPage() {
         if (savedCount === 0) throw error;
       }
 
+      // Contar PRs batidos hoje
+      const hoje = new Date().toISOString().split('T')[0];
+      const { data: prsData } = await supabaseClient
+        .from('recordes_pessoais')
+        .select('id', { count: 'exact', head: true })
+        .eq('aluno_id', userId)
+        .gte('conquistado_em', `${hoje}T00:00:00`)
+        .lte('conquistado_em', `${hoje}T23:59:59`);
+
+      setPrsCount(prsData?.length || 0);
+
       setSaved(true);
       haptic('success');
-      setTimeout(() => router.push('/aluno/treinos'), 2000);
     } catch (err) {
       console.error('Erro ao salvar treino:', err);
       haptic('error');
@@ -836,18 +871,19 @@ export default function ExecucaoTreinoPage() {
   }
 
   if (saved) {
+    const volume = calcVolume(exercicios);
+    const sets = calcSetsCompletos(exercicios);
+
     return (
-      <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center gap-6 p-6">
-        <div className="w-20 h-20 rounded-full bg-success-subtle border-2 border-success flex items-center justify-center">
-          <Trophy className="w-10 h-10 text-success" />
-        </div>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-text-primary mb-2">Treino concluído!</h2>
-          <p className="text-text-secondary">
-            {formatVolume(calcVolume(exercicios))} · {formatDuration(elapsed)} · {calcSetsCompletos(exercicios)} sets
-          </p>
-        </div>
-      </div>
+      <CompletionScreenWithExport
+        nomeRotina={nomeRotina}
+        duracao={elapsed}
+        volume={volume}
+        sets={sets}
+        exercicios={exercicios}
+        prsCount={prsCount}
+        coachUsername={coachUsername}
+      />
     );
   }
 
@@ -1324,6 +1360,214 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── YouTube player ── */}
       {videoUrl && <YouTubePlayer videoUrl={videoUrl} onClose={() => setVideoUrl(null)} />}
+    </div>
+  );
+}
+
+// ─── CompletionScreenWithExport ────────────────────────────────────────────
+
+interface CompletionScreenProps {
+  nomeRotina: string;
+  duracao: number;
+  volume: number;
+  sets: number;
+  exercicios: ExercicioState[];
+  prsCount: number;
+  coachUsername: string;
+}
+
+function CompletionScreenWithExport({
+  nomeRotina,
+  duracao,
+  volume,
+  sets,
+  exercicios,
+  prsCount,
+  coachUsername,
+}: CompletionScreenProps) {
+  const [exporting, setExporting] = useState(false);
+  const { exportCard, exportAllCards } = useExportWorkoutCard();
+  const router = useRouter();
+
+  const exportOptions = {
+    nomeRotina,
+    duracao,
+    volume,
+    sets,
+    exercicios: exercicios.map(ex => ({ nome: ex.nome })),
+    prsCount,
+    coachUsername,
+  };
+
+  const handleExportSingle = async (theme: 'dark' | 'light' | 'transparent') => {
+    setExporting(true);
+    await exportCard(theme, exportOptions);
+    setExporting(false);
+  };
+
+  const handleExportAll = async () => {
+    setExporting(true);
+    await exportAllCards(exportOptions);
+    setExporting(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center p-4 pb-24">
+      <div className="w-full max-w-lg">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 rounded-full bg-success-subtle border-2 border-success flex items-center justify-center mx-auto mb-6">
+            <Trophy className="w-10 h-10 text-success" />
+          </div>
+          <h2 className="text-2xl font-bold text-text-primary mb-2">Treino concluído!</h2>
+          <p className="text-text-secondary">
+            {formatVolume(volume)} · {formatDuration(duracao)} · {sets} sets
+          </p>
+        </div>
+
+        {/* Cards Preview */}
+        <div className="mb-8 space-y-4">
+          <h3 className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-4">
+            Exportar para redes sociais
+          </h3>
+
+          {/* Dark Card */}
+          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
+            <div className="hidden">
+              <div id="card-dark">
+                <CompletionCard
+                  theme="dark"
+                  nomeRotina={nomeRotina}
+                  duracao={duracao}
+                  volume={volume}
+                  sets={sets}
+                  exercicios={exercicios.map(ex => ({ nome: ex.nome }))}
+                  prsCount={prsCount}
+                  coachUsername={coachUsername}
+                />
+              </div>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-surface-2 flex-shrink-0 flex items-center justify-center">
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: '#0F1419',
+                  borderRadius: '8px',
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-primary mb-1">Tema Escuro</p>
+              <p className="text-xs text-text-tertiary">Fundo preto, letras brancas</p>
+            </div>
+            <button
+              onClick={() => handleExportSingle('dark')}
+              disabled={exporting}
+              className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Light Card */}
+          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
+            <div className="hidden">
+              <div id="card-light">
+                <CompletionCard
+                  theme="light"
+                  nomeRotina={nomeRotina}
+                  duracao={duracao}
+                  volume={volume}
+                  sets={sets}
+                  exercicios={exercicios.map(ex => ({ nome: ex.nome }))}
+                  prsCount={prsCount}
+                  coachUsername={coachUsername}
+                />
+              </div>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-surface-2 flex-shrink-0 flex items-center justify-center border border-border-subtle">
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '8px',
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-primary mb-1">Tema Claro</p>
+              <p className="text-xs text-text-tertiary">Fundo branco, letras pretas</p>
+            </div>
+            <button
+              onClick={() => handleExportSingle('light')}
+              disabled={exporting}
+              className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Transparent Card */}
+          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
+            <div className="hidden">
+              <div id="card-transparent">
+                <CompletionCard
+                  theme="transparent"
+                  nomeRotina={nomeRotina}
+                  duracao={duracao}
+                  volume={volume}
+                  sets={sets}
+                  exercicios={exercicios.map(ex => ({ nome: ex.nome }))}
+                  prsCount={prsCount}
+                  coachUsername={coachUsername}
+                />
+              </div>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-surface-2 flex-shrink-0 flex items-center justify-center border border-dashed border-border-subtle">
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  background: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(176,176,176,0.1) 10px, rgba(176,176,176,0.1) 20px)',
+                  borderRadius: '8px',
+                }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-primary mb-1">Tema Transparente</p>
+              <p className="text-xs text-text-tertiary">Fundo transparente, letras brancas</p>
+            </div>
+            <button
+              onClick={() => handleExportSingle('transparent')}
+              disabled={exporting}
+              className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <button
+            onClick={handleExportAll}
+            disabled={exporting}
+            className="w-full h-12 rounded-xl bg-brand text-text-on-brand font-semibold flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            Baixar os 3 estilos
+          </button>
+          <button
+            onClick={() => router.push('/aluno/treinos')}
+            disabled={exporting}
+            className="w-full h-12 rounded-xl bg-surface-1 border border-border-subtle text-text-primary font-semibold hover:bg-surface-2 transition-colors disabled:opacity-50"
+          >
+            Ir para treinos
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
