@@ -1497,7 +1497,7 @@ function CompletionScreenWithExport({
 
           {/* Dark Card */}
           <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
-            <div className="hidden">
+            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
               <div id="card-dark">
                 <CompletionCard
                   theme="dark"
@@ -1546,7 +1546,7 @@ function CompletionScreenWithExport({
 
           {/* Light Card */}
           <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
-            <div className="hidden">
+            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
               <div id="card-light">
                 <CompletionCard
                   theme="light"
@@ -1595,7 +1595,7 @@ function CompletionScreenWithExport({
 
           {/* Transparent Card */}
           <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
-            <div className="hidden">
+            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
               <div id="card-transparent">
                 <CompletionCard
                   theme="transparent"
