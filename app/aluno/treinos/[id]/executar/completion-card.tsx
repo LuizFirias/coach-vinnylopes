@@ -1,7 +1,6 @@
 'use client';
 
 import { Trophy } from '@phosphor-icons/react';
-import MuscleChart from './muscle-chart';
 
 type CardTheme = 'dark' | 'light' | 'transparent';
 
@@ -14,7 +13,6 @@ interface CompletionCardProps {
   exercicios: Array<{ nome: string; grupo_muscular?: string; series: Array<{ completado: boolean }> }>;
   prsCount: number;
   coachUsername: string;
-  showMuscleChart?: boolean;
 }
 
 const themeConfig = {
@@ -63,7 +61,6 @@ export default function CompletionCard({
   exercicios,
   prsCount,
   coachUsername,
-  showMuscleChart,
 }: CompletionCardProps) {
   const config = themeConfig[theme];
 
@@ -163,23 +160,7 @@ export default function CompletionCard({
       </div>
 
       {/* Muscle Chart */}
-      {showMuscleChart && (
-        <div style={{ gap: '20px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: '18px', color: config.textSecondary, textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Músculos trabalhados
-          </div>
-          <div style={{
-            width: '100%',
-            height: '300px',
-            backgroundColor: config.bg === 'transparent' ? 'rgba(255,255,255,0.05)' : (config.bg === '#FFFFFF' ? '#F5F5F5' : '#1A1F2E'),
-            borderRadius: '12px',
-            padding: '20px',
-            boxSizing: 'border-box',
-          }}>
-            <MuscleChart exercicios={exercicios} />
-          </div>
-        </div>
-      )}
+      {/* Removed MuscleChart - user requested text-only card */}
 
       {/* Exercises List */}
       <div style={{ gap: '12px', display: 'flex', flexDirection: 'column' }}>

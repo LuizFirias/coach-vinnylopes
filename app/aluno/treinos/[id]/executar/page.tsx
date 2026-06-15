@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download } from '@phosphor-icons/react';
+import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download, ShareNetwork } from '@phosphor-icons/react';
 import html2canvas from 'html2canvas';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
@@ -1409,7 +1409,7 @@ function CompletionScreenWithExport({
     light: null,
     transparent: null,
   });
-  const { exportCard, exportAllCards } = useExportWorkoutCard();
+  const { exportCard, exportAllCards, shareToGallery } = useExportWorkoutCard();
   const router = useRouter();
 
   const exportOptions = {
@@ -1463,6 +1463,12 @@ function CompletionScreenWithExport({
     setExporting(false);
   };
 
+  const handleShareToGallery = async (theme: 'dark' | 'light' | 'transparent') => {
+    setExporting(true);
+    await shareToGallery(theme, exportOptions);
+    setExporting(false);
+  };
+
   const handleExportAll = async () => {
     setExporting(true);
     await exportAllCards(exportOptions);
@@ -1502,7 +1508,6 @@ function CompletionScreenWithExport({
                   exercicios={exercicios}
                   prsCount={prsCount}
                   coachUsername={coachUsername}
-                  showMuscleChart
                 />
               </div>
             </div>
@@ -1520,13 +1525,23 @@ function CompletionScreenWithExport({
               <p className="text-sm font-semibold text-text-primary mb-1">Tema Escuro</p>
               <p className="text-xs text-text-tertiary">Fundo preto, letras brancas</p>
             </div>
-            <button
-              onClick={() => handleExportSingle('dark')}
-              disabled={exporting}
-              className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
-            >
-              <Download className="w-4 h-4" />
-            </button>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => handleShareToGallery('dark')}
+                disabled={exporting}
+                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors disabled:opacity-50"
+                title="Salvar na galeria"
+              >
+                <ShareNetwork className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleExportSingle('dark')}
+                disabled={exporting}
+                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Light Card */}
@@ -1542,7 +1557,6 @@ function CompletionScreenWithExport({
                   exercicios={exercicios}
                   prsCount={prsCount}
                   coachUsername={coachUsername}
-                  showMuscleChart
                 />
               </div>
             </div>
@@ -1560,13 +1574,23 @@ function CompletionScreenWithExport({
               <p className="text-sm font-semibold text-text-primary mb-1">Tema Claro</p>
               <p className="text-xs text-text-tertiary">Fundo branco, letras pretas</p>
             </div>
-            <button
-              onClick={() => handleExportSingle('light')}
-              disabled={exporting}
-              className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
-            >
-              <Download className="w-4 h-4" />
-            </button>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => handleShareToGallery('light')}
+                disabled={exporting}
+                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors disabled:opacity-50"
+                title="Salvar na galeria"
+              >
+                <ShareNetwork className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleExportSingle('light')}
+                disabled={exporting}
+                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Transparent Card */}
@@ -1582,7 +1606,6 @@ function CompletionScreenWithExport({
                   exercicios={exercicios}
                   prsCount={prsCount}
                   coachUsername={coachUsername}
-                  showMuscleChart
                 />
               </div>
             </div>
@@ -1600,13 +1623,23 @@ function CompletionScreenWithExport({
               <p className="text-sm font-semibold text-text-primary mb-1">Tema Transparente</p>
               <p className="text-xs text-text-tertiary">Fundo transparente, letras brancas</p>
             </div>
-            <button
-              onClick={() => handleExportSingle('transparent')}
-              disabled={exporting}
-              className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
-            >
-              <Download className="w-4 h-4" />
-            </button>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => handleShareToGallery('transparent')}
+                disabled={exporting}
+                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors disabled:opacity-50"
+                title="Salvar na galeria"
+              >
+                <ShareNetwork className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleExportSingle('transparent')}
+                disabled={exporting}
+                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
