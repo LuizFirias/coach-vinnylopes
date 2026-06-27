@@ -24,10 +24,10 @@ interface LeaderboardEntry {
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const COMO_GANHAR = [
-  { label: 'Treino concluído',       pts: '+20 pts' },
-  { label: 'Recorde pessoal batido', pts: '+10 pts' },
-  { label: 'Foto de evolução',       pts: '+5 pts'  },
-  { label: 'Medida registrada',      pts: '+3 pts'  },
+  { label: 'Consistência (Treino concluído)',       pts: '+20 pts' },
+  { label: 'Performance (Recorde pessoal batido)', pts: '+10 pts' },
+  { label: 'Check-in visual (Foto de evolução)',    pts: '+5 pts'  },
+  { label: 'Registro de evolução (Medida)',         pts: '+3 pts'  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -73,6 +73,7 @@ export default function BibliotecaExerciciosPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [coachId, setCoachId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>("");
@@ -104,6 +105,7 @@ export default function BibliotecaExerciciosPage() {
         router.push("/aluno/dashboard");
         return;
       }
+      setCoachId(userId);
       await carregarExercicios();
     } catch (err) {
       setError("Erro ao carregar página");
@@ -186,7 +188,7 @@ export default function BibliotecaExerciciosPage() {
     setSaving(true);
     try {
       const videoId = formData.video_url ? extractYouTubeVideoId(formData.video_url) : null;
-      const dados = {
+      const dados: any = {
         nome: formData.nome.trim(),
         grupo_muscular: formData.grupo_muscular,
         equipamento: formData.equipamento,
@@ -201,6 +203,9 @@ export default function BibliotecaExerciciosPage() {
         if (err) throw err;
         setExercicios((prev) => prev.map((ex) => ex.id === exercicioEditando.id ? { ...ex, ...dados, id: ex.id } : ex) as Exercicio[]);
       } else {
+        dados.origem = 'custom';
+        dados.coach_id = coachId;
+        dados.ativo = true;
         const { data, error: err } = await supabaseClient.from("exercicios_biblioteca").insert(dados).select().single();
         if (err) throw err;
         setExercicios((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome)));
@@ -336,19 +341,20 @@ export default function BibliotecaExerciciosPage() {
                 <div className="flex gap-2 pt-3 border-t border-border-subtle">
                   <button
                     onClick={() => abrirModalEdicao(exercicio)}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 bg-surface-3 border border-border-default rounded-lg text-brand text-xs font-medium hover:border-brand transition-colors"
+                    className="flex-grow h-9 flex items-center justify-center gap-1.5 bg-surface-3 border border-border-default rounded-lg text-brand text-xs font-medium hover:border-brand hover:bg-brand/5 transition-colors"
                   >
-                    <PencilSimple className="w-3 h-3" /> Editar
+                    <PencilSimple className="w-3.5 h-3.5" /> Editar
                   </button>
                   <button
                     onClick={() => deletarExercicio(exercicio.id)}
                     disabled={deleting === exercicio.id}
-                    className="flex-1 h-9 flex items-center justify-center gap-1.5 bg-danger-subtle border border-danger-border rounded-lg text-danger text-xs font-medium hover:bg-danger hover:text-white transition-colors disabled:opacity-50"
+                    className="w-9 h-9 flex items-center justify-center bg-surface-3 border border-border-default rounded-lg text-text-tertiary hover:text-danger hover:border-danger/30 hover:bg-danger-subtle/10 transition-colors disabled:opacity-50 flex-shrink-0"
+                    title="Excluir exercício"
                   >
                     {deleting === exercicio.id ? (
-                      <><CircleNotch className="w-3 h-3 animate-spin" /> Deletando...</>
+                      <CircleNotch className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <><Trash className="w-3 h-3" /> Deletar</>
+                      <Trash className="w-3.5 h-3.5" />
                     )}
                   </button>
                 </div>

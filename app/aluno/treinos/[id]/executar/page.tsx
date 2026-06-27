@@ -1251,6 +1251,22 @@ export default function ExecucaoTreinoPage() {
                   +
                 </button>
               </div>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                {[-5, -2.5, 2.5, 5].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => {
+                      const newVal = Math.max(0, modalCarga + val);
+                      setModalCarga(newVal);
+                      setModalCargaStr(String(newVal));
+                    }}
+                    className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-xs font-mono font-bold text-text-secondary transition-colors"
+                  >
+                    {val > 0 ? `+${val}` : val}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Séries anteriores do exercício */}

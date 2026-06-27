@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
+import { cn } from '@/lib/utils/cn';
 import {
   Barbell,
   ForkKnife,
@@ -24,7 +25,9 @@ import {
   AppleLogo,
   BookOpen,
   ChatCircle,
-  ChartBar
+  ChartBar,
+  CaretLeft,
+  CaretRight
 } from '@phosphor-icons/react';
 
 const menuItems = [
@@ -39,7 +42,7 @@ const menuItems = [
 
 const coachMenuItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
-  { name: 'Painel Alunos', href: '/admin/alunos', icon: Users },
+  { name: 'Alunos', href: '/admin/alunos', icon: Users },
   { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
   { name: 'Treinos Gerais', href: '/admin/treinos', icon: Barbell },
   { name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
@@ -59,7 +62,23 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const { userRole, loading, user } = useAuth();
   const pathname = usePathname();
-  
+
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-expanded');
+    const expanded = saved !== 'false';
+    setIsExpanded(expanded);
+    document.documentElement.style.setProperty('--sidebar-width', expanded ? '240px' : '80px');
+  }, []);
+
+  const toggleSidebar = () => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    localStorage.setItem('sidebar-expanded', String(next));
+    document.documentElement.style.setProperty('--sidebar-width', next ? '240px' : '80px');
+  };
+
   console.log('[Sidebar] Rendered with role:', userRole, 'loading:', loading, 'user:', user?.id);
 
   // Ocultar em rotas públicas ou enquanto carrega
@@ -77,14 +96,32 @@ export default function Sidebar() {
   return (
     <>
       {/* Sidebar for Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-20 bg-bg-base border-r border-border-subtle flex-col py-8 items-center z-60 shadow-2xl">
-        <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="mb-10 group cursor-pointer">
-          <div className="w-14 h-14 bg-surface-1 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden">
-            <Image src="/logo.png" alt="Auronfit" width={44} height={44} className="object-contain" />
-          </div>
-        </Link>
+      <aside
+        style={{ width: isExpanded ? '240px' : '80px' }}
+        className="hidden lg:flex fixed left-0 top-0 h-full bg-surface-1 border-r border-border-subtle flex-col py-8 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300"
+      >
+        <div className="flex items-center justify-between mb-8 px-2">
+          <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="flex items-center gap-3 group cursor-pointer overflow-hidden min-w-0">
+            <div className="w-11 h-11 bg-surface-2 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden shrink-0">
+              <Image src="/logo.png" alt="Auronfit" width={32} height={32} className="object-contain" />
+            </div>
+            {isExpanded && (
+              <span className="font-display font-bold text-text-primary text-base tracking-wider shrink-0 select-none">
+                AURON
+              </span>
+            )}
+          </Link>
+          
+          <button
+            onClick={toggleSidebar}
+            className="w-7 h-7 rounded-lg border border-border-subtle bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0"
+            title={isExpanded ? "Recolher menu" : "Expandir menu"}
+          >
+            {isExpanded ? <CaretLeft size={15} /> : <CaretRight size={15} />}
+          </button>
+        </div>
 
-        <nav className="flex flex-col gap-3 flex-1">
+        <nav className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-1">
            {currentMenuItems.map((m) => {
               const Icon = m.icon;
               const isActive = pathname === m.href;
@@ -92,14 +129,23 @@ export default function Sidebar() {
                 <Link
                   key={m.href}
                   href={m.href}
-                  title={m.name}
-                  className={`w-14 h-14 rounded-lg flex items-center justify-center transition-all group relative ${
-                    isActive ? 'text-brand' : 'text-text-disabled hover:text-brand/60 hover:bg-brand/5'
-                  }`}
+                  title={!isExpanded ? m.name : undefined}
+                  className={`flex items-center gap-3 px-3.5 h-12 rounded-xl transition-all group relative ${
+                    isActive
+                      ? 'bg-brand text-text-on-brand font-semibold shadow-glow-brand'
+                      : 'text-text-disabled hover:text-brand hover:bg-brand/5'
+                  } ${isExpanded ? 'justify-start' : 'justify-center'}`}
                 >
-                   {isActive && <div className="absolute left-0 w-1 h-6 bg-brand rounded-r-full" />}
-                   <Icon size={22} weight={isActive ? 'fill' : 'regular'} className={`${!isActive && 'group-hover:scale-110'} transition-transform`} />
-                   {!isActive && (
+                   {isActive && !isExpanded && <div className="absolute left-0 w-1 h-6 bg-brand rounded-r-full" />}
+                   <Icon size={20} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
+                   
+                   {isExpanded && (
+                     <span className="text-2xs uppercase font-medium tracking-widest truncate">
+                       {m.name}
+                     </span>
+                   )}
+                   
+                   {!isExpanded && (
                       <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
                         {m.name}
                       </div>
@@ -109,17 +155,36 @@ export default function Sidebar() {
            })}
         </nav>
 
-        <button
-          onClick={async () => {
-            try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
-            localStorage.clear();
-            window.location.href = '/login';
-          }}
-          className="mt-4 w-14 h-14 rounded-lg flex items-center justify-center text-text-disabled hover:text-brand hover:bg-brand/10 transition-all group"
-          title="Sair"
-        >
-           <SignOut size={22} />
-        </button>
+        <div className="mt-auto border-t border-border-subtle pt-4 flex flex-col gap-2 shrink-0">
+          {isExpanded && user && (
+            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-surface-2 rounded-xl border border-border-subtle min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-surface-3 flex items-center justify-center border border-border-subtle shrink-0">
+                <User size={14} className="text-brand" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mb-1">Acesso</span>
+                <span className="text-[10px] text-text-primary uppercase tracking-wide truncate leading-none font-medium">
+                  {userRole?.replace('_', ' ') || 'Aluno'}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <button
+            onClick={async () => {
+              try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+              localStorage.clear();
+              window.location.href = '/login';
+            }}
+            className={`w-full h-12 rounded-xl flex items-center gap-3 text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group ${isExpanded ? 'px-3.5 justify-start' : 'justify-center'}`}
+            title="Sair"
+          >
+             <SignOut size={20} className="shrink-0" />
+             {isExpanded && (
+               <span className="text-2xs uppercase tracking-widest font-medium">Sair</span>
+             )}
+          </button>
+        </div>
       </aside>
 
       {/* Hamburger button - Mobile Only - DISABLED (using bottom nav instead) */}

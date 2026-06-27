@@ -9,7 +9,7 @@ import PDFViewer from '@/app/components/PDFViewer';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import Link from 'next/link';
 import {
-  ArrowLeft, ForkKnife, FileText, Drop, Check, Plus, Minus, CaretDown, CaretUp,
+  ArrowLeft, ForkKnife, FileText, Drop, Check, Plus, Minus, CaretDown, CaretUp, FilePdf
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 
@@ -64,6 +64,7 @@ export default function PlanoAlimentarPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   const [plano, setPlano] = useState<Plano | null>(null);
+  const [historicoPlanos, setHistoricoPlanos] = useState<Plano[]>([]);
   const [refeicoes, setRefeicoes] = useState<Refeicao[]>([]);
   const [consumidosHoje, setConsumidosHoje] = useState<Set<string>>(new Set());
   const [agua, setAgua] = useState<RegistroAgua>({ id: null, copos: 0, ml_por_copo: 250 });
@@ -75,6 +76,7 @@ export default function PlanoAlimentarPage() {
 
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfTitle, setPdfTitle] = useState<string>('');
 
   // ── Carregar ────────────────────────────────────────────────────────────────
 
@@ -88,17 +90,18 @@ export default function PlanoAlimentarPage() {
       setUserId(uid);
       const today = getTodayISO();
 
-      // Plano mais recente
-      const { data: planoData } = await supabaseClient
+      // Buscar todos os planos alimentares ordenados do mais recente ao antigo
+      const { data: planosData } = await supabaseClient
         .from('plano_alimentar_pdf')
         .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
         .eq('aluno_id', uid)
-        .order('criado_em', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('criado_em', { ascending: false });
 
-      if (!planoData) { setLoading(false); return; }
+      if (!planosData || planosData.length === 0) { setLoading(false); return; }
+      
+      const planoData = planosData[0];
       setPlano(planoData);
+      setHistoricoPlanos(planosData.slice(1));
 
       // Refeições do plano
       const { data: refeicaoData } = await supabaseClient
@@ -209,12 +212,12 @@ export default function PlanoAlimentarPage() {
     }
   };
 
-  const openPdf = async () => {
-    if (!plano || !userId) return;
-    if (plano.aluno_id !== userId) return;
+  const openPdfForPlan = async (targetPlano: Plano) => {
+    if (!userId) return;
+    if (targetPlano.aluno_id !== userId) return;
 
     try {
-      const filePath = extractStoragePath('plano_alimentar', plano.url_pdf) || plano.url_pdf;
+      const filePath = extractStoragePath('plano_alimentar', targetPlano.url_pdf) || targetPlano.url_pdf;
       const { data, error } = await supabaseClient.storage
         .from('plano_alimentar')
         .createSignedUrl(filePath, 3600);
@@ -224,10 +227,15 @@ export default function PlanoAlimentarPage() {
         return;
       }
       setPdfUrl(data.signedUrl);
+      setPdfTitle(targetPlano.nome_arquivo);
       setPdfViewerOpen(true);
     } catch (err) {
       console.error('[PDF] Erro:', err);
     }
+  };
+
+  const openPdf = () => {
+    if (plano) openPdfForPlan(plano);
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -483,16 +491,52 @@ export default function PlanoAlimentarPage() {
                   </p>
                 )}
               </section>
+
+              {/* ── Histórico de planos anteriores ── */}
+              {historicoPlanos.length > 0 && (
+                <section className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 mt-2">
+                  <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3 flex items-center gap-1.5">
+                    <FilePdf className="w-3.5 h-3.5" />
+                    Histórico de Planos
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {historicoPlanos.map(histPlano => (
+                      <div 
+                        key={histPlano.id}
+                        className="bg-surface-2 border border-border-subtle/50 rounded-xl p-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FilePdf className="w-4 h-4 text-text-secondary shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-text-primary truncate">
+                              {histPlano.nome_arquivo.replace('.pdf', '')}
+                            </p>
+                            <p className="text-[10px] text-text-tertiary mt-0.5">
+                              Enviado em {new Date(histPlano.criado_em).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => openPdfForPlan(histPlano)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-3 border border-border-subtle text-[10px] font-semibold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0"
+                        >
+                          Abrir PDF
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           )}
         </div>
       </div>
 
       {/* PDF Viewer */}
-      {pdfViewerOpen && pdfUrl && plano && (
+      {pdfViewerOpen && pdfUrl && (
         <PDFViewer
           url={pdfUrl}
-          title={plano.nome_arquivo}
+          title={pdfTitle}
           onClose={() => { setPdfViewerOpen(false); setPdfUrl(null); }}
         />
       )}

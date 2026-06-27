@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { Barbell, Check, Moon, ArrowRight } from '@phosphor-icons/react';
+import { useRouter } from 'next/navigation';
+import { Barbell, Check, Moon, ArrowRight, BookOpen, Ruler, ArrowClockwise } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 
 interface NextActionCardProps {
   status: 'pendente' | 'concluido' | 'off' | 'sem-plano';
   treinoNome?: string;
   fichaId?: string;
+  qtdExercicios?: number;
   pontosGanhos?: number;
 }
 
@@ -15,29 +17,57 @@ export function NextActionCard({
   status,
   treinoNome,
   fichaId,
+  qtdExercicios,
   pontosGanhos,
 }: NextActionCardProps) {
+  const router = useRouter();
+
   if (status === 'sem-plano') {
     return (
-      <div className="bg-surface-1 border border-dashed border-border-default rounded-2xl p-5 text-center">
-        <Barbell className="w-6 h-6 text-text-disabled mx-auto mb-2" />
-        <p className="text-sm font-semibold text-text-primary mb-1">Sem treino agendado hoje</p>
-        <p className="text-xs text-text-tertiary">Configure sua agenda semanal abaixo</p>
+      <div className="bg-surface-1 border border-dashed border-border-default rounded-2xl p-5 text-center shadow-elev-1">
+        <Barbell className="w-8 h-8 text-text-disabled mx-auto mb-2.5" />
+        <p className="text-sm font-bold text-text-primary mb-1">Nenhum treino ativo</p>
+        <p className="text-xs text-text-tertiary mb-4 leading-relaxed">
+          Seu coach ainda não liberou uma ficha de treinos ativa para o seu perfil.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center gap-1.5 px-4 h-9 bg-brand text-text-on-brand text-xs font-semibold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-glow-brand"
+        >
+          <ArrowClockwise className="w-3.5 h-3.5 animate-spin-hover" />
+          Atualizar
+        </button>
       </div>
     );
   }
 
   if (status === 'off') {
     return (
-      <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 shadow-elev-1">
+      <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 shadow-elev-1 flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-info-subtle border border-info/30 flex items-center justify-center text-info flex-shrink-0">
             <Moon className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-text-primary">Dia de descanso</p>
-            <p className="text-xs text-text-secondary">Recuperação ativa · sono e hidratação</p>
+            <p className="text-sm font-bold text-text-primary">Dia de recuperação</p>
+            <p className="text-xs text-text-secondary">Recuperação ativa · foco no sono, alimentação e hidratação.</p>
           </div>
+        </div>
+        <div className="flex gap-2 border-t border-border-subtle/50 pt-3">
+          <Link
+            href="/aluno/treinos"
+            className="flex-1 h-9 bg-surface-2 border border-border-subtle text-[11px] font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <Barbell className="w-3.5 h-3.5" />
+            Ver próximos treinos
+          </Link>
+          <Link
+            href="/aluno/medidas"
+            className="flex-1 h-9 bg-surface-2 border border-border-subtle text-[11px] font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <Ruler className="w-3.5 h-3.5" />
+            Ver evolução
+          </Link>
         </div>
       </div>
     );
@@ -48,12 +78,12 @@ export function NextActionCard({
       <div className="bg-success-subtle border border-success-border rounded-2xl p-5 shadow-elev-1">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-success flex items-center justify-center text-white flex-shrink-0">
-          <Check className="w-5 h-5" weight="bold" />
+            <Check className="w-5 h-5" weight="bold" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-text-primary">Treino confirmado hoje</p>
+            <p className="text-sm font-bold text-text-primary">Treino concluído hoje</p>
             <p className="text-xs text-text-secondary">
-              +{pontosGanhos ?? 20} pts contabilizados no ranking
+              +{pontosGanhos ?? 20} pts contabilizados no ranking de consistência!
             </p>
           </div>
         </div>
@@ -63,31 +93,46 @@ export function NextActionCard({
 
   // status === 'pendente'
   return (
-    <Link
-      href={fichaId ? `/aluno/treinos/${fichaId}/executar` : '/aluno/treinos'}
-      className={cn(
-        'block bg-surface-2 border border-brand-border rounded-2xl p-5',
-        'shadow-elev-2 hover:shadow-elev-3 hover:border-brand transition-all active:scale-[0.99]',
-        'relative overflow-hidden group',
-      )}
-    >
+    <div className="bg-surface-1 border border-brand-border/40 rounded-2xl p-5 shadow-elev-2 relative overflow-hidden flex flex-col gap-4">
       {/* Glow accent */}
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-subtle via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-subtle/20 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center text-text-on-brand flex-shrink-0 shadow-glow-brand">
+        <div className="w-11 h-11 rounded-2xl bg-brand flex items-center justify-center text-text-on-brand flex-shrink-0 shadow-glow-brand">
           <Barbell className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-2xs font-semibold uppercase tracking-caps text-brand mb-0.5">
+          <p className="text-2xs font-bold uppercase tracking-widest text-brand mb-0.5">
             Treino de hoje
           </p>
           <p className="text-base font-bold text-text-primary truncate">
-            {treinoNome ?? 'Iniciar treino'}
+            {treinoNome ?? 'Rotina prescrita'}
           </p>
+          {qtdExercicios !== undefined && (
+            <p className="text-[11px] text-text-tertiary mt-0.5">
+              {qtdExercicios} exercício{qtdExercicios !== 1 ? 's' : ''} programado{qtdExercicios !== 1 ? 's' : ''}
+            </p>
+          )}
         </div>
-        <ArrowRight className="w-5 h-5 text-text-secondary group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
       </div>
-    </Link>
+
+      <div className="flex gap-2 border-t border-border-subtle/50 pt-3 relative">
+        <Link
+          href={fichaId ? `/aluno/treinos/${fichaId}/executar` : '/aluno/treinos'}
+          className="flex-1 h-10 bg-brand text-text-on-brand text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-glow-brand hover:opacity-90 active:scale-95 transition-all"
+        >
+          Iniciar treino
+        </Link>
+        {fichaId && (
+          <Link
+            href={`/aluno/treinos/ficha?id=${fichaId}`}
+            className="flex-1 h-10 bg-surface-2 border border-border-subtle text-xs font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <BookOpen className="w-4 h-4" />
+            Ver ficha
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

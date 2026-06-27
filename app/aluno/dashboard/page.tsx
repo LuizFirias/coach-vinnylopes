@@ -67,6 +67,7 @@ export default function AlunoDashboardPage() {
     status: 'pendente' | 'concluido' | 'off' | 'sem-plano';
     nome?: string;
     fichaId?: string;
+    qtdExercicios?: number;
   } | null>(null);
   const [refeicaoAgora, setRefeicaoAgora] = useState<{
     id: string;
@@ -200,7 +201,7 @@ export default function AlunoDashboardPage() {
       try {
         const { data: agendaHoje, error: agendaError } = await supabaseClient
           .from('agenda_semanal')
-          .select('ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina)')
+          .select('ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina, configuracao)')
           .eq('aluno_id', uid)
           .eq('dia_semana', dayOfWeek)
           .maybeSingle();
@@ -218,10 +219,13 @@ export default function AlunoDashboardPage() {
           setTreinoHoje({ status: 'concluido' });
         } else if (agendaHoje.ficha_id) {
           console.log('[Dashboard] Ficha encontrada:', agendaHoje.ficha_id);
+          const config = (agendaHoje as any).fichas_treino?.configuracao as any;
+          const numEx = config?.exercicios?.length || 0;
           setTreinoHoje({
             status: 'pendente',
             nome: (agendaHoje as any).fichas_treino?.nome_rotina,
             fichaId: agendaHoje.ficha_id,
+            qtdExercicios: numEx,
           });
         } else if (agendaHoje.treino_pdf_id) {
           console.log('[Dashboard] PDF encontrado:', agendaHoje.treino_pdf_id);
@@ -400,6 +404,7 @@ export default function AlunoDashboardPage() {
             status={treinoHoje.status}
             treinoNome={treinoHoje.nome}
             fichaId={treinoHoje.fichaId}
+            qtdExercicios={treinoHoje.qtdExercicios}
             pontosGanhos={checkinPontos ?? undefined}
           />
         )}
