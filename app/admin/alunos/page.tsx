@@ -4,7 +4,19 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/components/AuthProvider";
-import { MagnifyingGlass, Plus, Users, TrendUp, WarningCircle, CaretRight, Bell } from "@phosphor-icons/react";
+import {
+  MagnifyingGlass,
+  Plus,
+  Users,
+  TrendUp,
+  WarningCircle,
+  CaretRight,
+  Bell,
+  SlidersHorizontal,
+  ArrowCounterClockwise,
+  Clock,
+  Eye
+} from "@phosphor-icons/react";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { cn } from "@/lib/utils/cn";
@@ -12,12 +24,14 @@ import { cn } from "@/lib/utils/cn";
 interface ProfileRow {
   id: string;
   coaching_reference?: string | null;
+  full_name?: string | null;
   email?: string | null;
   status_pagamento?: string | null;
   tipo_plano?: string | null;
   ultimo_checkin?: string | null;
   avatar_url?: string | null;
   data_expiracao?: string | null;
+  data_inicio?: string | null;
   arquivado?: boolean | null;
 }
 
@@ -67,7 +81,12 @@ export default function AdminAlunosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async (q = "") => {
+  // Filters State
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'pendentes' | 'inativos'>('todos');
+  const [planoFilter, setPlanoFilter] = useState<'todos' | 'mensal' | 'trimestral' | 'semestral' | 'anual'>('todos');
+  const [sortOption, setSortOption] = useState<'recentes' | 'atividade' | 'vencimento' | 'nome'>('atividade');
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -81,19 +100,14 @@ export default function AdminAlunosPage() {
       const ids = links?.map(l => l.aluno_id) ?? [];
       if (ids.length === 0) { setRows([]); return; }
 
-      let qb = supabaseClient
+      const { data, error: err } = await supabaseClient
         .from("profiles")
-        .select("id, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, arquivado")
+        .select("id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, arquivado")
         .in("id", ids)
         .order("arquivado", { ascending: true, nullsFirst: true })
         .order("ultimo_checkin", { ascending: false, nullsFirst: false })
         .limit(200);
 
-      if (q.trim()) {
-        qb = qb.or(`coaching_reference.ilike.%${q}%,email.ilike.%${q}%`);
-      }
-
-      const { data, error: err } = await qb;
       if (err) throw err;
       setRows((data as ProfileRow[]) ?? []);
     } catch (e: any) {
@@ -107,250 +121,386 @@ export default function AdminAlunosPage() {
     if (authLoading) return;
     if (!user) { router.push("/login"); return; }
     fetchData();
-  }, [authLoading, user?.id]);
+  }, [authLoading, user?.id, fetchData]);
 
-  const inativos   = rows.filter(r => r.arquivado).length;
-  const ativos    = rows.filter(r => !r.arquivado && r.status_pagamento === "pago").length;
-  const pendentes = rows.filter(r => !r.arquivado && r.status_pagamento !== "pago").length;
+  const handleResetFilters = () => {
+    setQuery("");
+    setStatusFilter("todos");
+    setPlanoFilter("todos");
+    setSortOption("atividade");
+  };
 
-  const alertasMes = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'mes');
-  const alertasSemana = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'semana');
-  const alertasVencidos = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'vencido');
+  // Metrics Calculations based on ALL retrieved rows
+  const inativosCount = rows.filter(r => r.arquivado).length;
+  const ativosCount = rows.filter(r => {
+    if (r.arquivado) return false;
+    const isPaid = r.status_pagamento === "pago";
+    const expiration = r.data_expiracao ? new Date(r.data_expiracao) : null;
+    return isPaid && (!expiration || expiration >= new Date());
+  }).length;
+  const pendentesCount = rows.filter(r => {
+    if (r.arquivado) return false;
+    const isPaid = r.status_pagamento === "pago";
+    const expiration = r.data_expiracao ? new Date(r.data_expiracao) : null;
+    const isExpired = expiration && expiration < new Date();
+    return !isPaid || isExpired;
+  }).length;
+
+  const alertasVencendoEmBreve = rows.filter(r => {
+    if (r.arquivado) return false;
+    const dias = diasRestantes(r.data_expiracao);
+    return dias !== null && dias >= 0 && dias <= 7;
+  }).length;
+
+  // In-memory Filter and Sort processing
+  const processedRows = rows.filter((r) => {
+    // 1. Query search (name or email)
+    const name = r.coaching_reference || r.full_name || r.email || "";
+    const email = r.email || "";
+    const matchesSearch = name.toLowerCase().includes(query.toLowerCase()) || 
+                          email.toLowerCase().includes(query.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // 2. Status Filter
+    const isPaid = r.status_pagamento === "pago";
+    const expiration = r.data_expiracao ? new Date(r.data_expiracao) : null;
+    const isExpired = expiration && expiration < new Date();
+    const isActive = isPaid && (!expiration || expiration >= new Date());
+    const isArquivado = !!r.arquivado;
+
+    if (statusFilter === 'ativos') {
+      return isActive && !isArquivado;
+    } else if (statusFilter === 'pendentes') {
+      return !isActive && !isArquivado;
+    } else if (statusFilter === 'inativos') {
+      return isArquivado;
+    }
+
+    return true; // 'todos'
+  }).filter((r) => {
+    // 3. Plan Filter
+    if (planoFilter === 'todos') return true;
+    return r.tipo_plano === planoFilter;
+  }).sort((a, b) => {
+    // 4. Sorting logic
+    if (sortOption === 'nome') {
+      const nameA = a.coaching_reference || a.full_name || a.email || "";
+      const nameB = b.coaching_reference || b.full_name || b.email || "";
+      return nameA.localeCompare(nameB);
+    } else if (sortOption === 'vencimento') {
+      if (!a.data_expiracao) return 1;
+      if (!b.data_expiracao) return -1;
+      return new Date(a.data_expiracao).getTime() - new Date(b.data_expiracao).getTime();
+    } else if (sortOption === 'atividade') {
+      if (!a.ultimo_checkin) return 1;
+      if (!b.ultimo_checkin) return -1;
+      return new Date(b.ultimo_checkin).getTime() - new Date(a.ultimo_checkin).getTime();
+    } else { // 'recentes'
+      const dateA = a.data_inicio ? new Date(a.data_inicio).getTime() : 0;
+      const dateB = b.data_inicio ? new Date(b.data_inicio).getTime() : 0;
+      return dateB - dateA;
+    }
+  });
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-28 lg:pl-28">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans">
+      <div className="max-w-7xl mx-auto flex flex-col gap-8">
 
-      {/* ── Header ── */}
-      <div className="px-4 pt-8 pb-5 max-w-2xl mx-auto">
-        <div className="flex items-start justify-between">
+        {/* ── Page Header ── */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Base de Atletas</h1>
-            <p className="text-xs text-text-tertiary mt-0.5">Gestão de performance</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary font-display uppercase">
+              Base de Atletas
+            </h1>
+            <p className="text-sm text-text-secondary mt-1">
+              Gestão de performance, vínculo e acompanhamento dos seus alunos
+            </p>
           </div>
           <button
             onClick={() => router.push("/admin/alunos/novo")}
-            className="w-10 h-10 rounded-xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand active:scale-90 transition-transform"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10 w-fit"
           >
-            <Plus size={20} weight="bold" />
+            <Plus size={14} weight="bold" /> Adicionar Aluno
           </button>
         </div>
-      </div>
 
-      <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4">
-
-        {/* ── Stats bar ── */}
-        {!loading && rows.length > 0 && (
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: "Ativos",    value: ativos,    icon: TrendUp,  color: "text-success",        bg: "bg-success-subtle" },
-              { label: "Pendentes", value: pendentes, icon: WarningCircle, color: "text-warning",        bg: "bg-warning-subtle" },
-              { label: "Total",     value: rows.filter(r => !r.arquivado).length, icon: Users, color: "text-text-secondary", bg: "bg-surface-3" },
-              { label: "Inativos",  value: inativos,  icon: Users,       color: "text-text-disabled",  bg: "bg-surface-3"      },
-            ].map(({ label, value, icon: Icon, color, bg }) => (
-              <div key={label} className="bg-surface-2 rounded-2xl p-3.5 shadow-elev-1 border border-border-subtle flex flex-col gap-1.5">
-                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", bg)}>
-                  <Icon size={14} className={color} />
-                </div>
-                <p className="text-2xl font-bold text-text-primary leading-none tabular-nums">{value}</p>
-                <p className="text-2xs text-text-tertiary">{label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── Alertas de vencimento ── */}
-        {!loading && alertasVencidos.length > 0 && (
-          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-danger/15 border border-danger/30">
-            <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-danger mb-1">Planos vencidos</p>
-              <div className="flex flex-wrap gap-1.5">
-                {alertasVencidos.map(r => {
-                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
-                  const dias = diasRestantes(r.data_expiracao);
-                  const diasVencidos = dias !== null ? Math.abs(dias) : 0;
-                  return (
-                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                      className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded-lg text-danger font-medium hover:bg-danger/30 transition-colors">
-                      {nome} · {diasVencidos === 0 ? 'venceu hoje' : diasVencidos === 1 ? 'venceu ontem' : `venceu há ${diasVencidos}d`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!loading && alertasSemana.length > 0 && (
-          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-danger/10 border border-danger/20">
-            <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-danger mb-1">Planos a vencer em até 7 dias</p>
-              <div className="flex flex-wrap gap-1.5">
-                {alertasSemana.map(r => {
-                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
-                  const dias = diasRestantes(r.data_expiracao);
-                  return (
-                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                      className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded-lg text-danger font-medium hover:bg-danger/30 transition-colors">
-                      {nome} · {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!loading && alertasMes.length > 0 && (
-          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-            <Bell className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-amber-300 mb-1">Planos longos a vencer em até 30 dias</p>
-              <div className="flex flex-wrap gap-1.5">
-                {alertasMes.map(r => {
-                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
-                  const dias = diasRestantes(r.data_expiracao);
-                  return (
-                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                      className="text-2xs px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-300 font-medium hover:bg-amber-500/30 transition-colors capitalize">
-                      {nome} · {r.tipo_plano} · {dias}d
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Search ── */}
-        <div className="relative">
-          <MagnifyingGlass size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-disabled pointer-events-none" />
-          <input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (!e.target.value.trim()) fetchData("");
-            }}
-            onKeyDown={(e) => e.key === "Enter" && fetchData(query)}
-            placeholder="Localizar atleta..."
-            suppressHydrationWarning
-            className="w-full pl-11 pr-4 py-3 bg-surface-2 border border-border-subtle rounded-2xl text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 shadow-elev-1 transition-all"
-          />
-        </div>
-
-        {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* ── Athlete list ── */}
-        {(authLoading || loading) ? (
+        {loading ? (
           <div className="flex items-center justify-center py-24">
-            <DumbbellLoader text="Sincronizando base..." />
+            <DumbbellLoader text="Sincronizando base de atletas..." />
           </div>
         ) : rows.length === 0 ? (
-          <div className="text-center py-24 bg-surface-2 border border-dashed border-border-subtle rounded-2xl shadow-elev-1">
-            <Users size={32} className="text-text-disabled mx-auto mb-3" />
-            <p className="text-text-disabled text-xs uppercase tracking-caps">Nenhum atleta localizado.</p>
+          /* Empty State - No students registered at all */
+          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-lg mx-auto shadow-xl">
+            <Users size={48} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
+            <p className="text-text-secondary text-sm mb-6">
+              Adicione seu primeiro aluno para começar a prescrever treinos, acompanhar evolução e gerenciar a sua consultoria.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => router.push("/admin/alunos/novo")}
+                className="btn-primary inline-flex items-center gap-2 justify-center"
+              >
+                <Plus size={16} weight="bold" /> Cadastrar primeiro aluno
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {rows.map((r) => {
-              const name    = r.coaching_reference || r.email || "?";
-              const initial = name[0].toUpperCase();
-              const isAtivo = r.status_pagamento === "pago";
-              const isArquivado = !!r.arquivado;
-              const lastSeen = timeAgo(r.ultimo_checkin);
-              const dias = diasRestantes(r.data_expiracao);
-              const alerta = isArquivado ? null : nivelAlerta(dias, r.tipo_plano);
+          /* Main Layout with Data */
+          <div className="flex flex-col gap-6">
 
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                  className={cn(
-                    "w-full text-left shadow-elev-1 hover:shadow-elev-2 p-4 rounded-2xl transition-all active:scale-[0.99] flex items-center gap-3.5 group",
-                    isArquivado
-                      ? "bg-surface-2/50 border border-border-subtle opacity-60 hover:opacity-80"
-                      : alerta === 'vencido'
-                        ? "bg-danger/5 border border-danger/20 hover:border-danger/40 hover:bg-danger/10"
-                        : "bg-surface-1 border border-border-subtle hover:border-brand/25 hover:bg-surface-2"
-                  )}
+            {/* ── Stats Bar / Metrics Cards ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "Ativos", value: ativosCount, icon: TrendUp, color: "text-success", bg: "bg-success-subtle border-success/10" },
+                { label: "Pendentes", value: pendentesCount, icon: WarningCircle, color: "text-warning", bg: "bg-warning-subtle border-warning/10" },
+                { label: "Vencendo em breve", value: alertasVencendoEmBreve, icon: Bell, color: "text-danger", bg: "bg-danger-subtle border-danger/10" },
+                { label: "Desativados / Inativos", value: inativosCount, icon: Users, color: "text-text-disabled", bg: "bg-surface-3 border-border-subtle" },
+              ].map(({ label, value, icon: Icon, color, bg }) => (
+                <div key={label} className="bg-surface-1 rounded-xl p-5 border border-border-subtle shadow-sm flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider block">{label}</span>
+                    <span className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display block">{value}</span>
+                  </div>
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", bg)}>
+                    <Icon size={18} className={color} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Filters and Search Line ── */}
+            <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 flex flex-col lg:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="relative w-full lg:max-w-sm">
+                <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Localizar por nome ou e-mail..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+                {/* Status Filter */}
+                <div className="flex items-center gap-1.5 bg-surface-2 border border-border-subtle rounded-lg p-1">
+                  {(['todos', 'ativos', 'pendentes', 'inativos'] as const).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={cn(
+                        "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                        statusFilter === status
+                          ? "bg-brand text-text-on-brand shadow-md shadow-brand/10"
+                          : "text-text-secondary hover:text-text-primary"
+                      )}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Plan Filter */}
+                <select
+                  value={planoFilter}
+                  onChange={(e) => setPlanoFilter(e.target.value as any)}
+                  className="px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-secondary focus:outline-none focus:border-brand/40"
                 >
-                  {/* Avatar */}
-                  <div className={cn(
-                    "w-11 h-11 rounded-2xl bg-gradient-to-br shrink-0 flex items-center justify-center font-bold text-lg text-white overflow-hidden",
-                    isArquivado ? "grayscale" : avatarGrad(name)
-                  )}>
-                    {r.avatar_url
-                      ? <img src={getPublicStorageUrl('avatars', r.avatar_url) ?? r.avatar_url} alt={name} className="w-full h-full object-cover" />
-                      : initial
-                    }
-                  </div>
+                  <option value="todos">Todos os planos</option>
+                  <option value="mensal">Mensal</option>
+                  <option value="trimestral">Trimestral</option>
+                  <option value="semestral">Semestral</option>
+                  <option value="anual">Anual</option>
+                </select>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={cn(
-                        "text-sm font-semibold truncate transition-colors",
-                        isArquivado ? "text-text-disabled" : alerta === 'vencido' ? "text-danger" : "text-text-primary group-hover:text-brand"
-                      )}>
-                        {name}
-                      </span>
-                      {isArquivado ? (
-                        <span className="shrink-0 text-2xs font-semibold uppercase tracking-caps px-1.5 py-0.5 rounded-md bg-surface-3 text-text-disabled border border-border-subtle">
-                          Desativado
-                        </span>
-                      ) : (
-                        <>
-                          <span className={cn(
-                            "shrink-0 w-1.5 h-1.5 rounded-full",
-                            isAtivo ? "bg-success" : "bg-warning"
-                          )} />
-                          {(alerta === 'vencido' || alerta === 'semana') && (
-                            <Bell className="w-3 h-3 text-danger flex-shrink-0" />
-                          )}
-                          {alerta === 'mes' && (
-                            <Bell className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                      {isArquivado ? (
-                        <span className="text-text-disabled">Clique para reativar</span>
-                      ) : (
-                        <>
-                          <span className="capitalize">{r.tipo_plano ?? "mensal"}</span>
-                          {alerta === 'vencido' && dias !== null && (
-                            <span className="text-danger font-semibold">· {Math.abs(dias) === 0 ? 'venceu hoje' : Math.abs(dias) === 1 ? 'venceu ontem' : `venceu há ${Math.abs(dias)}d`}</span>
-                          )}
-                          {alerta === 'semana' && dias !== null && (
-                            <span className="text-danger font-semibold">· vence em {dias <= 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
-                          )}
-                          {alerta === 'mes' && dias !== null && (
-                            <span className="text-amber-400 font-semibold">· {dias}d restantes</span>
-                          )}
-                          {!alerta && lastSeen && (
-                            <>
-                              <span className="text-text-disabled">·</span>
-                              <span>{lastSeen}</span>
-                            </>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
+                {/* Sorting Select */}
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as any)}
+                  className="px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                >
+                  <option value="atividade">Última atividade</option>
+                  <option value="recentes">Mais recentes</option>
+                  <option value="vencimento">Vencimento</option>
+                  <option value="nome">Nome</option>
+                </select>
 
-                  {/* Chevron */}
-                  <div className="w-7 h-7 rounded-xl bg-surface-3 group-hover:bg-brand group-hover:shadow-glow-brand flex items-center justify-center text-text-disabled group-hover:text-text-on-brand shrink-0 transition-all">
-                    <CaretRight size={14} weight="bold" />
-                  </div>
+                {/* Reset filters */}
+                <button
+                  onClick={handleResetFilters}
+                  className="p-2.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-lg transition-colors"
+                  title="Limpar filtros"
+                >
+                  <ArrowCounterClockwise size={14} />
                 </button>
-              );
-            })}
+              </div>
+            </div>
+
+            {/* ── Table / Grid of Athletes ── */}
+            {processedRows.length === 0 ? (
+              /* No results from search / filter */
+              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-md mx-auto shadow-md">
+                <WarningCircle size={40} className="text-warning/60 mx-auto mb-3" />
+                <h3 className="text-md font-bold text-text-primary mb-1">Nenhum atleta encontrado</h3>
+                <p className="text-text-secondary text-xs mb-5">
+                  Tente buscar por outro termo, e-mail ou remova os filtros aplicados.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <button onClick={handleResetFilters} className="btn-secondary text-2xs py-2 px-3">
+                    Limpar filtros
+                  </button>
+                  <button onClick={() => router.push("/admin/alunos/novo")} className="btn-primary text-2xs py-2 px-3">
+                    Adicionar novo atleta
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Modern Responsive Table List */
+              <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-border-subtle bg-surface-2/40">
+                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Atleta</th>
+                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Status</th>
+                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Plano</th>
+                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Vencimento</th>
+                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Última Atividade</th>
+                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase text-right">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {processedRows.map((row) => {
+                        const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
+                        const isAtivo = row.status_pagamento === "pago";
+                        const isArquivado = !!row.arquivado;
+                        const expiration = row.data_expiracao ? new Date(row.data_expiracao) : null;
+                        const isExpired = expiration && expiration < new Date();
+                        const isActive = isAtivo && (!expiration || expiration >= new Date());
+                        
+                        const dias = diasRestantes(row.data_expiracao);
+                        const alerta = isArquivado ? null : nivelAlerta(dias, row.tipo_plano);
+
+                        return (
+                          <tr
+                            key={row.id}
+                            onClick={() => router.push(`/admin/aluno/${row.id}`)}
+                            className={cn(
+                              "border-b border-border-subtle last:border-b-0 cursor-pointer transition-colors hover:bg-surface-2/40",
+                              isArquivado && "opacity-60",
+                              alerta === 'vencido' && "bg-danger/5 hover:bg-danger/10"
+                            )}
+                          >
+                            {/* Avatar & Name */}
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "w-9 h-9 rounded-xl bg-gradient-to-br flex items-center justify-center font-bold text-sm text-white overflow-hidden shrink-0 border border-border-subtle",
+                                  isArquivado ? "grayscale" : avatarGrad(name)
+                                )}>
+                                  {row.avatar_url ? (
+                                    <img src={getPublicStorageUrl('avatars', row.avatar_url) || ""} alt={name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    name[0].toUpperCase()
+                                  )}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm font-bold text-text-primary leading-tight truncate">
+                                    {name}
+                                  </span>
+                                  <span className="text-2xs text-text-tertiary leading-none mt-0.5 truncate">
+                                    {row.email}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Status Badge */}
+                            <td className="p-4">
+                              <span className={cn(
+                                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                                isArquivado
+                                  ? "bg-surface-3 text-text-disabled border-border-subtle"
+                                  : isActive
+                                    ? "bg-success-subtle text-success border-success/15"
+                                    : "bg-danger-subtle text-danger border-danger/15"
+                              )}>
+                                <span className={cn(
+                                  "w-1.5 h-1.5 rounded-full",
+                                  isArquivado ? "bg-text-disabled" : isActive ? "bg-success" : "bg-danger"
+                                )} />
+                                {isArquivado ? "Inativo" : isActive ? "Ativo" : isExpired ? "Expirado" : "Pendente"}
+                              </span>
+                            </td>
+
+                            {/* Plan Type */}
+                            <td className="p-4 text-xs text-text-secondary capitalize font-medium">
+                              {row.tipo_plano || "Mensal"}
+                            </td>
+
+                            {/* Expiration date with alerts */}
+                            <td className="p-4 text-xs">
+                              {expiration ? (
+                                <div className="flex flex-col">
+                                  <span className={cn(
+                                    "font-medium",
+                                    alerta === 'vencido' && "text-danger font-semibold",
+                                    alerta === 'semana' && "text-danger font-semibold",
+                                    alerta === 'mes' && "text-amber-400"
+                                  )}>
+                                    {expiration.toLocaleDateString('pt-BR')}
+                                  </span>
+                                  {alerta === 'vencido' && dias !== null && (
+                                    <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vencido há {Math.abs(dias)}d</span>
+                                  )}
+                                  {alerta === 'semana' && dias !== null && (
+                                    <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vence em {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
+                                  )}
+                                  {alerta === 'mes' && dias !== null && (
+                                    <span className="text-[9px] text-amber-500/80 leading-none mt-0.5">{dias}d restantes</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-text-tertiary">—</span>
+                              )}
+                            </td>
+
+                            {/* Last Activity checkin */}
+                            <td className="p-4 text-xs text-text-secondary font-medium">
+                              {row.ultimo_checkin ? (
+                                <div className="flex items-center gap-1">
+                                  <Clock size={12} className="text-text-tertiary" />
+                                  <span>{timeAgo(row.ultimo_checkin)}</span>
+                                </div>
+                              ) : (
+                                <span className="text-text-tertiary">Sem registros</span>
+                              )}
+                            </td>
+
+                            {/* Link action */}
+                            <td className="p-4 text-right">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/admin/aluno/${row.id}`);
+                                }}
+                                className="inline-flex items-center justify-center w-7 h-7 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-text-secondary hover:text-brand transition-all"
+                                title="Ver Perfil"
+                              >
+                                <Eye size={14} />
+                              </button>
+                            </td>
+
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 

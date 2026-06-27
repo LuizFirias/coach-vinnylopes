@@ -1,4 +1,4 @@
-# 🔧 Configuração do Supabase - Coach Vinny
+# 🔧 Configuração do Supabase - Auronfit
 
 ## 📧 Configuração de E-mail (Auth)
 

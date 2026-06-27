@@ -8,7 +8,19 @@
       "PowerShell(scoop --version)",
       "WebFetch(domain:www.enterprisedb.com)",
       "PowerShell($ProgressPreference = 'SilentlyContinue'; $url = \"https://sbp.enterprisedb.com/getfile.jsp?fileid=1260148\"; $dest = \"$env:TEMP\\\\pgsql.zip\"; Write-Output \"Downloading to: $dest\"; $start = Get-Date; Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing; $elapsed = \\(Get-Date\\) - $start; $size = \\(Get-Item $dest\\).Length / 1MB; Write-Output \\(\"Downloaded {0:N2} MB in {1:N1}s\" -f $size, $elapsed.TotalSeconds\\))",
-      "PowerShell($dest = \"$env:LOCALAPPDATA\\\\Programs\"; if \\(-not \\(Test-Path $dest\\)\\) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; if \\(Test-Path \"$dest\\\\pgsql\"\\) { Write-Output \"Removing existing $dest\\\\pgsql\"; Remove-Item -Recurse -Force \"$dest\\\\pgsql\" }; Write-Output \"Extracting to: $dest\"; $start = Get-Date; Expand-Archive -Path \"$env:TEMP\\\\pgsql.zip\" -DestinationPath $dest -Force; $elapsed = \\(Get-Date\\) - $start; Write-Output \\(\"Extracted in {0:N1}s\" -f $elapsed.TotalSeconds\\); Write-Output \"---\"; Get-ChildItem \"$dest\\\\pgsql\" | Select-Object Name, Mode)"
+      "PowerShell($dest = \"$env:LOCALAPPDATA\\\\Programs\"; if \\(-not \\(Test-Path $dest\\)\\) { New-Item -ItemType Directory -Path $dest -Force | Out-Null }; if \\(Test-Path \"$dest\\\\pgsql\"\\) { Write-Output \"Removing existing $dest\\\\pgsql\"; Remove-Item -Recurse -Force \"$dest\\\\pgsql\" }; Write-Output \"Extracting to: $dest\"; $start = Get-Date; Expand-Archive -Path \"$env:TEMP\\\\pgsql.zip\" -DestinationPath $dest -Force; $elapsed = \\(Get-Date\\) - $start; Write-Output \\(\"Extracted in {0:N1}s\" -f $elapsed.TotalSeconds\\); Write-Output \"---\"; Get-ChildItem \"$dest\\\\pgsql\" | Select-Object Name, Mode)",
+      "Bash(git checkout *)",
+      "Bash(npm install *)",
+      "Bash(node -p \"require\\('next/package.json'\\).version\")",
+      "Bash(node -p \"require\\('react/package.json'\\).version\")",
+      "Bash(awk 'substr\\($0,1,1\\)==sprintf\\(\"%c\",92\\){c++} END{print c+0}' docs/auronfit-setup-completo.sql)",
+      "Bash(grep -iE '\\\\.\\(png|jpg|jpeg|svg|ico|webp|json\\)$|icons?|logo|favicon')",
+      "Bash(grep -iE '\\\\.\\(png|jpg|jpeg|svg|ico|webp\\)$')",
+      "Bash(awk '{print \"dimensoes: \"\\($1*16777216+$2*65536+$3*256+$4\\)\"x\"\\($5*16777216+$6*65536+$7*256+$8\\)}')",
+      "Bash(awk '{print $5\" bytes\"}')",
+      "Bash(awk '{print \\($1*16777216+$2*65536+$3*256+$4\\)\"x\"\\($5*16777216+$6*65536+$7*256+$8\\)}')",
+      "Bash(python \"C:/Users/lfern/AppData/Local/Temp/claude/C--Users-lfern-Documents-Apps-Auronfit/07fbe91f-5cc0-4d07-9b55-e37624305383/scratchpad/remove-bg.py\")",
+      "Bash(py \"C:/Users/lfern/AppData/Local/Temp/claude/C--Users-lfern-Documents-Apps-Auronfit/07fbe91f-5cc0-4d07-9b55-e37624305383/scratchpad/remove-bg.py\")"
     ]
   }
 }

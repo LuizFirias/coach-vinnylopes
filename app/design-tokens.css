@@ -27,19 +27,19 @@
   /* ═══════════════════════════════════════════════════════════
      SURFACES (background layers — do mais escuro pro mais claro)
      ═══════════════════════════════════════════════════════════ */
-  --surface-0:        #08080A;   /* background base do app */
-  --surface-1:        #15151A;   /* cards primários (+7 pontos vs base) */
-  --surface-2:        #1F1F25;   /* cards aninhados, hover */
-  --surface-3:        #2A2A32;   /* inputs, divisores ativos */
-  --surface-4:        #353540;   /* skeleton loaders, elevado */
+  --surface-0:        #070B14;   /* background base do app */
+  --surface-1:        #0B1020;   /* cards primários (+7 pontos vs base) */
+  --surface-2:        #111827;   /* cards aninhados, hover */
+  --surface-3:        #141B2D;   /* inputs, divisores ativos */
+  --surface-4:        #182033;   /* skeleton loaders, elevado */
 
   /* ═══════════════════════════════════════════════════════════
      TEXT
      ═══════════════════════════════════════════════════════════ */
-  --text-primary:     #F5F5F7;   /* títulos, dado principal */
-  --text-secondary:   #B8B8BD;   /* labels, body padrão */
-  --text-tertiary:    #7A7A82;   /* metadata, hints */
-  --text-disabled:    #4A4A50;   /* estados desabilitados */
+  --text-primary:     #F5F7FA;   /* títulos, dado principal */
+  --text-secondary:   #9CA3AF;   /* labels, body padrão */
+  --text-tertiary:    #6B7280;   /* metadata, hints */
+  --text-disabled:    #4B5563;   /* estados desabilitados */
 
   /* ═══════════════════════════════════════════════════════════
      BORDERS
@@ -49,33 +49,35 @@
   --border-strong:    rgba(255, 255, 255, 0.18);
 
   /* ═══════════════════════════════════════════════════════════
-     BRAND (dourado refinado — uso ≤10% da tela)
+     BRAND (azul refinado — uso ≤10% da tela)
      ═══════════════════════════════════════════════════════════ */
-  --brand-primary:    #D4A437;
-  --brand-hover:      #E1B548;
-  --brand-pressed:    #B88B25;
-  --brand-subtle:     rgba(212, 164, 55, 0.12);
-  --brand-border:     rgba(212, 164, 55, 0.32);
+  --brand-primary:    #2563EB;
+  --brand-hover:      #1D4ED8;
+  --brand-pressed:    #1E40AF;
+  --brand-subtle:     rgba(37, 99, 235, 0.12);
+  --brand-border:     rgba(37, 99, 235, 0.36);
 
-  /* Texto sobre dourado: usar este, não branco */
-  --text-on-brand:    #1A1A1D;
+  /* Texto sobre a marca */
+  --text-on-brand:    #FFFFFF;
 
   /* ═══════════════════════════════════════════════════════════
      SEMANTIC COLORS (estado, nunca decoração)
      ═══════════════════════════════════════════════════════════ */
-  --success:          #2EB872;   /* PR, série ok, streak */
-  --success-subtle:   rgba(46, 184, 114, 0.12);
-  --success-border:   rgba(46, 184, 114, 0.40);
+  --success:          #22C55E;   /* PR, série ok, streak */
+  --success-subtle:   rgba(34, 197, 94, 0.12);
+  --success-border:   rgba(34, 197, 94, 0.36);
 
-  --warning:          #E8A33B;   /* deload, atenção */
-  --warning-subtle:   rgba(232, 163, 59, 0.12);
+  --warning:          #F59E0B;   /* deload, atenção */
+  --warning-subtle:   rgba(245, 158, 11, 0.12);
+  --warning-border:   rgba(245, 158, 11, 0.36);
 
-  --danger:           #E5484D;   /* erro, exclusão */
-  --danger-subtle:    rgba(229, 72, 77, 0.12);
-  --danger-border:    rgba(229, 72, 77, 0.40);
+  --danger:           #EF4444;   /* erro, exclusão */
+  --danger-subtle:    rgba(239, 68, 68, 0.12);
+  --danger-border:    rgba(239, 68, 68, 0.36);
 
-  --info:             #3B82F6;   /* info, recovery, sync */
-  --info-subtle:      rgba(59, 130, 246, 0.12);
+  --info:             #38BDF8;   /* info, recovery, sync */
+  --info-subtle:      rgba(56, 189, 248, 0.12);
+  --info-border:      rgba(56, 189, 248, 0.36);
 
   /* ═══════════════════════════════════════════════════════════
      SHADOWS & GLOWS (elevação dark mode)
@@ -85,11 +87,11 @@
   --elev-2:           0 4px 12px rgba(0, 0, 0, 0.45);
   --elev-3:           0 12px 32px rgba(0, 0, 0, 0.55);
 
-  --glow-brand:       0 0 24px rgba(212, 164, 55, 0.25);
-  --glow-success:     0 0 24px rgba(46, 184, 114, 0.30);
-  --pr-glow:          0 0 20px rgba(46, 184, 114, 0.40);
+  --glow-brand:       0 0 24px rgba(37, 99, 235, 0.22);
+  --glow-success:     0 0 24px rgba(34, 197, 94, 0.24);
+  --pr-glow:          0 0 20px rgba(34, 197, 94, 0.32);
 
-  --focus-ring:       0 0 0 2px rgba(212, 164, 55, 0.50);
+  --focus-ring:       0 0 0 2px rgba(37, 99, 235, 0.50);
 
   /* ═══════════════════════════════════════════════════════════
      TYPOGRAPHY
@@ -157,10 +159,10 @@
   /* ═══════════════════════════════════════════════════════════
      REFACTORING DOC ALIASES (--color-* names)
      ═══════════════════════════════════════════════════════════ */
-  --color-gold:           #D4A017;
-  --color-gold-dark:      #B8860B;
-  --color-gold-light:     #F5C842;
-  --color-gold-muted:     rgba(212, 160, 23, 0.15);
+  --color-gold:           #2563EB;
+  --color-gold-dark:      #1D4ED8;
+  --color-gold-light:     #38BDF8;
+  --color-gold-muted:     rgba(37, 99, 235, 0.12);
 
   --color-bg-primary:     var(--surface-0);
   --color-bg-secondary:   var(--surface-1);
@@ -173,7 +175,7 @@
   --color-text-muted:     var(--text-tertiary);
 
   --color-border-default: var(--border-subtle);
-  --color-border-gold:    rgba(212, 160, 23, 0.3);
+  --color-border-gold:    rgba(37, 99, 235, 0.36);
   --color-border-strong:  var(--border-default);
 
   --color-success:        var(--success);
@@ -195,7 +197,7 @@
   --bg-elevated:     var(--surface-3);
   --gold-default:    var(--brand-primary);
   --gold-light:      var(--brand-hover);
-  --gold-highlight:  #EDD06B;
+  --gold-highlight:  #38BDF8;
   --gold-bg:         var(--brand-subtle);
 
   /* ═══════════════════════════════════════════════════════════

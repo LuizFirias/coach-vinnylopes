@@ -218,7 +218,7 @@ function LoginForm() {
             >
               <Image
                 src="/logo.png"
-                alt="Coach Logo"
+                alt="Auronfit"
                 width={200}
                 height={70}
                 priority
@@ -231,7 +231,7 @@ function LoginForm() {
               <div className="w-20 h-20 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center mb-4 shadow-elev-1">
                 <ShieldCheck className="text-brand w-10 h-10" />
               </div>
-              <h1 className="text-2xl font-bold text-text-primary tracking-[0.2em] uppercase">COACH VINNY</h1>
+              <h1 className="text-2xl font-bold text-text-primary tracking-[0.2em] uppercase">AURONFIT</h1>
             </div>
           )}
           <p className="text-xs text-text-tertiary uppercase tracking-[0.2em] max-w-[280px] leading-relaxed">

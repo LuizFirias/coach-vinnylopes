@@ -1,5 +1,5 @@
 import './globals.css';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, Exo_2, JetBrains_Mono } from 'next/font/google';
 import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
 import SessionManager from './components/SessionManager';
@@ -15,6 +15,12 @@ const inter = Inter({
   variable: '--font-sans',
 });
 
+const exo2 = Exo_2({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-display',
+});
+
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   display: 'swap',
@@ -22,17 +28,21 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'COACH VINNY | High Performance',
-  description: 'A Jornada Começa Agora - Ecossistema de Treinamento Exclusivo',
+  title: 'Auronfit | High Performance',
+  description: 'A Jornada Começa Agora - Ecossistema de Treinamento',
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.ico.jpg',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-96x96.png', type: 'image/png', sizes: '96x96' },
+    ],
     apple: '/apple-touch-icon.png',
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black',
-    title: 'COACH VINNY',
+    title: 'Auronfit',
   },
 };
 
@@ -50,7 +60,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${exo2.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{

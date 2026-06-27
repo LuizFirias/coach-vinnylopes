@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from"react";
 import { X, ArrowSquareOut, FileText, ArrowLeft, DeviceMobile } from "@phosphor-icons/react";
@@ -117,7 +117,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
         {/* Footer */}
         <div className="p-3 border-t border-white/5 bg-black/40 flex items-center justify-between shrink-0">
           <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em]">
-            Exibição segura • Coach Vinny Protocol
+            Exibição segura • Auronfit Protocol
           </p>
           <a
             href={url}

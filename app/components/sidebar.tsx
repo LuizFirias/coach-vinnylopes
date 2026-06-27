@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -38,6 +38,7 @@ const menuItems = [
 ];
 
 const coachMenuItems = [
+  { name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
   { name: 'Painel Alunos', href: '/admin/alunos', icon: Users },
   { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
   { name: 'Treinos Gerais', href: '/admin/treinos', icon: Barbell },
@@ -79,7 +80,7 @@ export default function Sidebar() {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-20 bg-bg-base border-r border-border-subtle flex-col py-8 items-center z-60 shadow-2xl">
         <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="mb-10 group cursor-pointer">
           <div className="w-14 h-14 bg-surface-1 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden">
-            <Image src="/logo.png" alt="Coach Vinny" width={44} height={44} className="object-contain" />
+            <Image src="/logo.png" alt="Auronfit" width={44} height={44} className="object-contain" />
           </div>
         </Link>
 
@@ -143,7 +144,7 @@ export default function Sidebar() {
       <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         <div className="p-6 pb-4 flex items-center justify-between">
           <div className="w-11 h-11 bg-surface-1 rounded-lg flex items-center justify-center shadow-lg border border-border-subtle overflow-hidden">
-            <Image src="/logo.png" alt="Coach Vinny" width={36} height={36} className="object-contain" />
+            <Image src="/logo.png" alt="Auronfit" width={36} height={36} className="object-contain" />
           </div>
           <button
             onClick={() => setOpen(false)}

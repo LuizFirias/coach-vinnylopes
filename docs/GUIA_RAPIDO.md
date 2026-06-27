@@ -1,4 +1,4 @@
-# ✅ SISTEMA CONSOLIDADO - Coach Vinny
+# ✅ SISTEMA CONSOLIDADO - Auronfit
 
 ## 🎯 O QUE FOI IMPLEMENTADO
 
@@ -209,4 +209,4 @@ O sistema está **100% funcional**. Você pode:
 
 ---
 
-💪 **Coach Vinny - Sistema Premium de Fichas de Treino**
+💪 **Auronfit - Sistema Premium de Fichas de Treino**

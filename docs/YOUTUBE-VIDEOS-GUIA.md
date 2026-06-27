@@ -1,4 +1,4 @@
-# 📺 Sistema de Vídeos do YouTube - Coach Vinny
+# 📺 Sistema de Vídeos do YouTube - Auronfit
 
 ## ✅ O Que Foi Implementado
 

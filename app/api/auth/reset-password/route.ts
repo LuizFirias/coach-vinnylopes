@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { getPasswordResetEmailHtml } from "@/lib/emailTemplates";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
 export async function POST(req: Request) {
   try {
@@ -48,9 +48,9 @@ export async function POST(req: Request) {
 
     // Enviar e-mail com template customizado (botão dourado visível)
     await resend.emails.send({
-      from: "Coach Vinny <noreply@vinnylopescoach.site>",
+      from: "Auronfit <noreply@vinnylopescoach.site>",
       to: email,
-      subject: "Redefinição de senha — Coach Vinny",
+      subject: "Redefinição de senha — Auronfit",
       html: getPasswordResetEmailHtml(fullName, resetLink),
     });
 

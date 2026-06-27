@@ -25,7 +25,7 @@ Executar a SQL migration que ativa RLS no banco de dados.
 
 ### Passo 1: Ir ao Supabase
 1. Acesse: https://supabase.com/dashboard
-2. Selecione seu projeto Coach Vinny
+2. Selecione seu projeto Auronfit
 3. Vá para **SQL Editor** (menu esquerdo)
 4. Clique em **New Query**
 

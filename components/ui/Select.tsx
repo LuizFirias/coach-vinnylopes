@@ -67,7 +67,7 @@ export function Select({
           onClick={() => !disabled && setOpen((v) => !v)}
           className={cn(
             "w-full h-14 px-5 flex items-center justify-between gap-3",
-            "bg-[#232327] border rounded-xl text-sm transition-all",
+            "bg-surface-2 border border-border-default rounded-xl text-sm transition-all",
             "focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
             open
               ? "border-brand/40 text-text-primary"
@@ -87,8 +87,8 @@ export function Select({
         </button>
 
         {open && (
-          <div className="absolute z-50 mt-1 w-full bg-[#1A1A1D] border border-border-default rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
-            <div className="max-h-60 overflow-y-auto bg-[#1A1A1D]">
+          <div className="absolute z-50 mt-1 w-full bg-surface-2 border border-border-default rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
+            <div className="max-h-60 overflow-y-auto bg-surface-2">
               {options.length === 0 ? (
                 <div className="px-5 py-3 text-sm text-text-disabled">
                   Nenhuma opção disponível
@@ -106,7 +106,7 @@ export function Select({
                       "w-full px-5 py-3 text-left text-sm transition-colors",
                       opt.value === value
                         ? "bg-brand-subtle text-brand font-medium"
-                        : "text-text-primary bg-[#1A1A1D] hover:bg-[#232327]"
+                        : "text-text-primary bg-surface-2 hover:bg-surface-3"
                     )}
                   >
                     {opt.label}

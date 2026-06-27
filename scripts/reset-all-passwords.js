@@ -106,7 +106,7 @@ const getPasswordResetNotificationHtml = (fullName, email) => `
                 Se você tiver qualquer dúvida ou problema para acessar, entre em contato com o suporte.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria de Profissional
+                © 2026 Auronfit - Consultoria de Profissional
               </p>
             </td>
           </tr>
@@ -197,7 +197,7 @@ async function resetAllPasswords() {
         // Enviar e-mail
         console.log('   📧 Enviando e-mail...');
         const { error: emailError } = await resend.emails.send({
-          from: 'Vinny Lopes <contato@vinnylopescoach.site>',
+          from: 'Auronfit <contato@vinnylopescoach.site>',
           to: email,
           subject: '🔐 SENHA REDEFINIDA - AÇÃO NECESSÁRIA',
           html: getPasswordResetNotificationHtml(fullName, email),

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from"react";
 import { usePathname } from 'next/navigation';
@@ -18,6 +18,7 @@ import { supabaseClient } from"@/lib/supabaseClient";import { getSafeSession } f
   User,
   ShieldCheck,
   AppleLogo,
+  SquaresFour,
 } from "@phosphor-icons/react";
 
 const menuItems = [
@@ -31,6 +32,7 @@ const menuItems = [
 ];
 
 const coachMenuItems = [
+  { name:"DASHBOARD", href:"/admin/dashboard", icon: SquaresFour },
   { name:"ALUNOS", href:"/admin/alunos", icon: Users },
   { name:"TREINOS", href:"/admin/treinos", icon: Barbell },
   { name:"NUTRIÇÃO", href:"/admin/nutricao", icon: AppleLogo },
@@ -100,7 +102,7 @@ export default function ResponsiveNav() {
             {!logoFailed ? (
                 <Image
                   src="/logo.png"
-                  alt="Coach Logo"
+                  alt="Auronfit"
                   width={120}
                   height={35}
                   priority
@@ -110,7 +112,7 @@ export default function ResponsiveNav() {
                 />
             ) : (
               <h1 className="text-[11px] tracking-widest text-white text-center">
-                VINNY LOPES <span className="text-brand">COACH</span>
+                AURON<span className="text-brand">FIT</span>
               </h1>
             )}
           </div>
@@ -123,7 +125,7 @@ export default function ResponsiveNav() {
         {/* Sidebar Header */}
         <div className="py-10 flex flex-col items-center">
           <div className="w-10 h-10 bg-brand rounded-lg flex items-center justify-center shadow-lg shadow-brand/5 group cursor-pointer">
-            <span className="text-black text-xs">CV</span>
+            <span className="text-black text-xs">AF</span>
           </div>
         </div>
 

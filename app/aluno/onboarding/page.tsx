@@ -128,7 +128,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-md relative z-10 flex flex-col gap-6">
         {/* Header */}
         <div className="text-center">
-          <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">Coach Vinny</p>
+          <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">Auronfit</p>
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">Bem-vindo ao Time</h1>
         </div>
 

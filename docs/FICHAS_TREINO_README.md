@@ -1,4 +1,4 @@
-# 📋 Sistema de Fichas de Treino Premium - Coach Vinny
+# 📋 Sistema de Fichas de Treino Premium - Auronfit
 
 ## 🎯 Visão Geral
 
@@ -523,7 +523,7 @@ Antes de usar o sistema, confirme:
 
 ---
 
-**✨ Desenvolvido com 💪 para Coach Vinny - Black & Gold Premium Edition**
+**✨ Desenvolvido com 💪 para Auronfit - Black & Gold Premium Edition**
 
 **Design inspirado em**: Hevy App (layout premium de fichas de treino)
 - **Cards**: `bg-zinc-900` com borda `border-yellow-500/10`
@@ -663,4 +663,4 @@ Para dúvidas ou problemas:
 
 ---
 
-**Desenvolvido com 💪 para Coach Vinny - Black & Gold Premium**
+**Desenvolvido com 💪 para Auronfit - Black & Gold Premium**

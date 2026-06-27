@@ -89,7 +89,13 @@ export default function NovaFichaCoachPage() {
   const [exporting, setExporting] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    if (typeof window !== "undefined") {
+      const param = new URLSearchParams(window.location.search).get("alunoId");
+      if (param) setAlunoSelecionado(param);
+    }
+  }, []);
 
   const loadData = async () => {
     try {

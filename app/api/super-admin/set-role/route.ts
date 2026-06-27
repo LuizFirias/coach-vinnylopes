@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { getWelcomeEmailHtml } from "@/lib/emailTemplates";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
 export async function POST(req: Request) {
   try {
@@ -105,9 +105,9 @@ export async function POST(req: Request) {
     if (isNewUser) {
       const displayName = full_name || email.split("@")[0];
       const { error: emailError } = await resend.emails.send({
-        from: "Coach Vinny <noreply@vinnylopescoach.site>",
+        from: "Auronfit <noreply@vinnylopescoach.site>",
         to: email,
-        subject: "Acesso liberado — Coach Vinny",
+        subject: "Acesso liberado — Auronfit",
         html: getWelcomeEmailHtml(displayName, email, temporaryPassword, siteUrl),
       });
 

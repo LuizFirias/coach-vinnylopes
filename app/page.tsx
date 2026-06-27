@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,7 @@ export default function RootPage() {
     }
 
     if (userRole === "coach") {
-      router.replace("/admin/alunos");
+      router.replace("/admin/dashboard");
     } else if (userRole === "super_admin") {
       router.replace("/super-admin");
     } else {

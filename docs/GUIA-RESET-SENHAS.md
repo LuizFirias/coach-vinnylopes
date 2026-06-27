@@ -199,4 +199,4 @@ const coaches = users.filter(user => {
 ---
 
 **Última atualização**: Março 2026  
-**Autor**: Coach Vinny Team
+**Autor**: Auronfit Team

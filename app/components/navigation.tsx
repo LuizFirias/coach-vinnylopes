@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -34,7 +34,7 @@ export default function Navigation() {
               <List size={18} className="text-brand-purple" />
             </button>
             <h1 className="text-[10px] tracking-[0.3em] uppercase text-slate-900">
-              VINNY LOPES <span className="text-brand-purple">COACH</span>
+              AURON<span className="text-brand-purple">FIT</span>
             </h1>
           </div>
 

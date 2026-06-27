@@ -76,7 +76,7 @@ export const getWelcomeEmailHtml = (fullName: string, email: string, temporaryPa
                 Recomendamos que você altere sua senha após o primeiro login para sua total segurança.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria Profissional
+                © 2026 Auronfit - Consultoria Profissional
               </p>
             </td>
           </tr>
@@ -116,7 +116,7 @@ export const getPasswordResetEmailHtml = (fullName: string, resetLink: string) =
             <td style="padding: 20px 40px;">
               <p style="font-size: 18px; color: #FFFFFF; margin-bottom: 20px;">Olá, <strong style="color: #D4AF37;">${fullName}</strong>.</p>
               <p style="line-height: 1.6; color: #e0e0e0; font-size: 16px;">
-                Recebemos uma solicitação para redefinir a senha da sua conta no Coach Vinny. Clique no botão abaixo para escolher uma nova senha:
+                Recebemos uma solicitação para redefinir a senha da sua conta no Auronfit. Clique no botão abaixo para escolher uma nova senha:
               </p>
               
               <!-- CTA Button -->
@@ -139,7 +139,7 @@ export const getPasswordResetEmailHtml = (fullName: string, resetLink: string) =
                 Se você não solicitou esta alteração, ignore este e-mail. Seu acesso continuará seguro com sua senha atual.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria de Profissional
+                © 2026 Auronfit - Consultoria de Profissional
               </p>
             </td>
           </tr>
@@ -224,7 +224,7 @@ export const getPasswordResetNotificationHtml = (fullName: string, email: string
                 Se você tiver qualquer dúvida ou problema para acessar, entre em contato com o suporte.
               </p>
               <p style="font-size: 11px; color: #555; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">
-                © 2026 Coach Vinny - Consultoria de Profissional
+                © 2026 Auronfit - Consultoria de Profissional
               </p>
             </td>
           </tr>

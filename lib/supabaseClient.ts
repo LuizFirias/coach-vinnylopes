@@ -12,7 +12,7 @@ export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-application-name': 'coach-vinny-pwa',
+      'x-application-name': 'auronfit-pwa',
     },
   },
 });

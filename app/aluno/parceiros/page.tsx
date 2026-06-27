@@ -102,7 +102,7 @@ export default function ParceirosPage() {
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">
             Clube de <span className="text-brand">Vantagens</span>
           </h1>
-          <p className="text-sm text-text-tertiary mt-0.5">Benefícios exclusivos para alunos Coach Vinny em marcas parceiras.</p>
+          <p className="text-sm text-text-tertiary mt-0.5">Benefícios exclusivos para alunos Auronfit em marcas parceiras.</p>
         </div>
 
         {error && (

@@ -13,6 +13,7 @@ import {
   Video,
   CircleNotch,
   WarningCircle,
+  Users,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
@@ -98,7 +99,7 @@ export default function BibliotecaExerciciosPage() {
 
       const { data: profile } = await supabaseClient
         .from("profiles").select("role").eq("id", userId).single();
-      if (profile?.role !== "coach" && profile?.role !== "admin") {
+      if (profile?.role !== "coach" && profile?.role !== "super_admin" && profile?.role !== "admin") {
         setError("Acesso restrito a coaches");
         router.push("/aluno/dashboard");
         return;
@@ -238,7 +239,7 @@ export default function BibliotecaExerciciosPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24 p-4 md:p-6 lg:p-10 lg:pl-28">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto flex flex-col gap-6">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
@@ -354,24 +355,42 @@ export default function BibliotecaExerciciosPage() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-border-default flex items-center justify-center mx-auto mb-4">
-              <MagnifyingGlass className="w-7 h-7 text-text-disabled" />
+        ) : exercicios.length === 0 ? (
+          /* Entire Library Empty State */
+          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-lg mx-auto shadow-xl">
+            <Users size={48} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-text-primary mb-2">Sua biblioteca AURON ainda está vazia</h3>
+            <p className="text-text-secondary text-sm mb-6 max-w-sm mx-auto">
+              Cadastre exercícios oficiais ou adicione exercícios personalizados para começar a montar fichas digitais com vídeos de execução.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo}>
+                Cadastrar exercício
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => alert("Função de importação em desenvolvimento.")}>
+                Importar exercícios
+              </Button>
             </div>
-            <p className="text-sm text-text-secondary font-medium">Nenhum exercício encontrado</p>
-            {(searchTerm || grupoSelecionado) ? (
+          </div>
+        ) : (
+          /* Search Results Empty State */
+          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-md mx-auto shadow-md">
+            <WarningCircle size={40} className="text-warning/60 mx-auto mb-3" />
+            <h3 className="text-md font-bold text-text-primary mb-1">Nenhum exercício encontrado</h3>
+            <p className="text-text-secondary text-xs mb-5">
+              Tente buscar por outro termo, grupo muscular ou limpe os filtros aplicados.
+            </p>
+            <div className="flex justify-center gap-3">
               <button
                 onClick={() => { setSearchTerm(""); setGrupoSelecionado(""); }}
-                className="mt-3 text-brand text-sm hover:underline"
+                className="btn-secondary text-2xs py-2 px-3"
               >
                 Limpar filtros
               </button>
-            ) : (
-              <Button variant="secondary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} className="mt-4">
-                Criar primeiro exercício
-              </Button>
-            )}
+              <button onClick={abrirModalNovo} className="btn-primary text-2xs py-2 px-3">
+                Adicionar novo exercício
+              </button>
+            </div>
           </div>
         )}
       </div>

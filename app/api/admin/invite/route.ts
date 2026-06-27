@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
 export async function POST(req: Request) {
   console.log("[INVITE] 🚀 Iniciando rota de convite...");
@@ -280,7 +280,7 @@ export async function POST(req: Request) {
     
     try {
       const { data: emailData, error: emailError } = await resend.emails.send({
-        from: 'Vinny Lopes <contato@vinnylopescoach.site>',
+        from: 'Auronfit <contato@vinnylopescoach.site>',
         to: email,
         subject: 'BEM-VINDO AO TIME | ACESSO LIBERADO',
         html: `

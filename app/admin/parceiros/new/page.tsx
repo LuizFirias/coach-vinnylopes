@@ -158,7 +158,7 @@ export default function NovoParceiroPage() {
                     type="text"
                     value={cupom}
                     onChange={(e) => setCupom(e.target.value)}
-                    placeholder="COACHVINNY15"
+                    placeholder="AURONFIT15"
                     disabled={loading}
                     className="w-full pl-10 pr-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50"
                     required

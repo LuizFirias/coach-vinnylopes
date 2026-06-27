@@ -115,7 +115,7 @@ function ParceiroModal({
                     value={cupom}
                     onChange={(e) => setCupom(e.target.value)}
                     className={cn(inputCls, 'pl-10')}
-                    placeholder="COACHVINNY"
+                    placeholder="AURONFIT"
                     required
                   />
                 </div>
@@ -141,7 +141,7 @@ function ParceiroModal({
                   value={linkDesconto}
                   onChange={(e) => setLinkDesconto(e.target.value)}
                   className={cn(inputCls, 'pl-10')}
-                  placeholder="https://loja.com/alunovinny"
+                  placeholder="https://loja.com/auronfit"
                   required
                 />
               </div>

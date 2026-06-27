@@ -29,6 +29,7 @@ const COACH_RIGHT = [
 ];
 
 const QUICK_ACTIONS = [
+  { label: 'Dashboard',           href: '/admin/dashboard',                    icon: House     },
   { label: 'Nova Ficha Digital',  href: '/admin/treinos/nova-ficha',           icon: Barbell   },
   { label: 'Plano Alimentar',     href: '/admin/nutricao',                     icon: ForkKnife },
   { label: 'Biblioteca',          href: '/admin/biblioteca-exercicios',        icon: BookOpen  },

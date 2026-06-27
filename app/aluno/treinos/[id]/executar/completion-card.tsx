@@ -195,7 +195,7 @@ export default function CompletionCard({
         }}
       >
         <div style={{ fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
-          COACH VINNY
+          AURONFIT
         </div>
         <div style={{ fontSize: '20px', color: config.textSecondary, margin: 0 }}>
           @{coachUsername}

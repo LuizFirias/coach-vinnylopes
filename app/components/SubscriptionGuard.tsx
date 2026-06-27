@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from"react";
 import { supabaseClient } from"@/lib/supabaseClient";
@@ -74,7 +74,7 @@ export default function SubscriptionGuard({ children }: Props) {
   }, []);
 
   const WHATSAPP_NUMBER ="556781232717"; // international format without '+'
-  const waMessage = encodeURIComponent("Olá Coach Vinny, preciso renovar minha assinatura.");
+  const waMessage = encodeURIComponent("Olá Auronfit, preciso renovar minha assinatura.");
 
   if (loading) {
     return (
