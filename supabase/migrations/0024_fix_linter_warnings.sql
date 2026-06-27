@@ -17,18 +17,18 @@ BEGIN;
 -- Configura a view para usar invoker security (segurança do usuário que consulta)
 ALTER VIEW public.v_streak_aluno SET (security_invoker = true);
 
--- ── 2. Revogar EXECUTE de PUBLIC nas funções SECURITY DEFINER ──
-REVOKE ALL ON FUNCTION public.consolidar_pontos_aluno() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.delete_user_account() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.detectar_prs_da_sessao(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_auth_user_role() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_ranking_colegas(text, timestamptz, timestamptz) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.realizar_checkin(uuid, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.recalcular_pontos_aluno(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.rls_auto_enable() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.trg_detectar_prs() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.update_feedbacks_updated_at() FROM PUBLIC;
+-- ── 2. Revogar EXECUTE de PUBLIC, anon e authenticated nas funções SECURITY DEFINER ──
+REVOKE ALL ON FUNCTION public.consolidar_pontos_aluno() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.delete_user_account() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.detectar_prs_da_sessao(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.get_auth_user_role() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.get_ranking_colegas(text, timestamptz, timestamptz) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.realizar_checkin(uuid, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.recalcular_pontos_aluno(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trg_detectar_prs() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.update_feedbacks_updated_at() FROM PUBLIC, anon, authenticated;
 
 -- ── 3. Garantir privilégios mínimos de execução ────────────────
 -- Funções que o app/aluno precisa chamar via RPC (apenas autenticados)
