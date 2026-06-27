@@ -180,8 +180,9 @@ export default function CoachPerfilPage() {
 
             {/* Avatar */}
             <div className="flex items-center gap-5">
-              <div className="relative flex-shrink-0">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface-3 border border-border-default relative">
+              <div className="relative shrink-0">
+                <div className="w-20 h-20 rounded-2xl p-0.5" style={{ background: 'var(--gradient-gold)' }}>
+                <div className="w-full h-full rounded-xl overflow-hidden bg-surface-3 relative">
                   {avatarUrl ? (
                     <img
                       src={getPublicStorageUrl("avatars", avatarUrl) || ""}
@@ -198,6 +199,7 @@ export default function CoachPerfilPage() {
                       <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
                     </div>
                   )}
+                </div>
                 </div>
                 <label className={cn(
                   "absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-xl cursor-pointer",

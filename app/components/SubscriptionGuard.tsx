@@ -15,6 +15,14 @@ export default function SubscriptionGuard({ children }: Props) {
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
 
   useEffect(() => {
+    const parseDateSafe = (value: string) => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [y, m, d] = value.split('-').map(Number);
+        return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+      }
+      return new Date(value);
+    };
+
     const check = async () => {
       setLoading(true);
       try {
@@ -41,7 +49,7 @@ export default function SubscriptionGuard({ children }: Props) {
           setAllowed(false);
           setStatus("arquivado");
         } else {
-          const exp = profile.data_expiracao ? new Date(profile.data_expiracao) : null;
+          const exp = profile.data_expiracao ? parseDateSafe(profile.data_expiracao) : null;
           const now = new Date();
           if (exp && exp >= now && profile.status_pagamento === 'pago') {
             // active

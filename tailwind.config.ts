@@ -57,6 +57,13 @@ const config: Config = {
           DEFAULT: 'rgba(255, 255, 255, 0.10)',
           strong:  'rgba(255, 255, 255, 0.18)',
         },
+        gold: {
+          50:  '#FFF8E1',
+          300: '#F5D061',
+          500: '#E8B339',
+          600: '#C9941F',
+          700: '#9C7216',
+        },
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
@@ -113,6 +120,16 @@ const config: Config = {
         'glow-success': '0 0 24px rgba(46, 184, 114, 0.30)',
         'pr-glow':      '0 0 20px rgba(46, 184, 114, 0.40)',
         'focus-ring':   '0 0 0 2px rgba(212, 164, 55, 0.50)',
+        // v3 premium aliases
+        'gold-glow':    '0 4px 24px rgba(232, 179, 57, 0.25)',
+        'card':         '0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)',
+        'elevated':     '0 8px 32px rgba(0, 0, 0, 0.5)',
+      },
+      backgroundImage: {
+        'gradient-gold':      'linear-gradient(135deg, #F5D061 0%, #E8B339 45%, #C9941F 100%)',
+        'gradient-surface':   'linear-gradient(160deg, #18181C 0%, #0F0F11 100%)',
+        'gradient-glow-gold': 'radial-gradient(circle at 30% 20%, rgba(232,179,57,0.18) 0%, rgba(232,179,57,0) 60%)',
+        'gradient-success':   'linear-gradient(135deg, #4ADE80 0%, #22C55E 100%)',
       },
       transitionTimingFunction: {
         'out':     'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -145,11 +162,16 @@ const config: Config = {
           '40%':  { transform: 'scale(1.05)' },
           '100%': { transform: 'scale(1)' },
         },
+        'pulse-gentle': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%':      { transform: 'scale(1.05)', opacity: '0.85' },
+        },
       },
       animation: {
         'shimmer':        'shimmer 1.5s ease-in-out infinite',
         'pulse-success':  'pulse-success 600ms ease-out',
         'pop-spring':     'pop-spring 400ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'pulse-gentle':   'pulse-gentle 3s ease-in-out infinite',
       },
     },
   },

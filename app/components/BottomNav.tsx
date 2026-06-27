@@ -54,9 +54,10 @@ export default function BottomNav() {
       <nav
         className={cn(
           'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
-          'bg-surface-1/95 backdrop-blur-xl border-t border-border-subtle',
+          'border-t border-border-subtle',
           'pb-[env(safe-area-inset-bottom)]',
         )}
+        style={{ background: 'rgba(13,13,16,0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
         aria-label="Navegação principal"
       >
         <ul className="flex items-stretch justify-around h-16 max-w-mobile mx-auto">
@@ -73,10 +74,18 @@ export default function BottomNav() {
                   aria-current={isActive ? 'page' : undefined}
                 >
                   {isActive && (
-                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand rounded-full" />
+                    <span
+                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                      style={{ background: 'var(--gradient-gold)', boxShadow: '0 0 8px rgba(232,179,57,0.6)' }}
+                    />
                   )}
-                  <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                  <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>
+                  <div className={cn(
+                    'flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-fast',
+                    isActive && 'bg-brand/10'
+                  )}>
+                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                  </div>
+                  <span className={cn('text-2xs leading-none', isActive ? 'font-semibold' : 'font-medium')}>
                     {label}
                   </span>
                 </Link>
@@ -126,9 +135,10 @@ export default function BottomNav() {
       <nav
         className={cn(
           'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
-          'bg-surface-1/95 backdrop-blur-xl border-t border-border-subtle',
+          'border-t border-border-subtle',
           'pb-[env(safe-area-inset-bottom)]',
         )}
+        style={{ background: 'rgba(13,13,16,0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
         aria-label="Navegação coach"
       >
         <div className="flex items-center justify-around h-16 max-w-mobile mx-auto px-2">
@@ -147,10 +157,18 @@ export default function BottomNav() {
                 aria-current={isActive ? 'page' : undefined}
               >
                 {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand rounded-full" />
+                  <span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                    style={{ background: 'var(--gradient-gold)', boxShadow: '0 0 8px rgba(232,179,57,0.6)' }}
+                  />
                 )}
-                <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
+                <div className={cn(
+                  'flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-fast',
+                  isActive && 'bg-brand/10'
+                )}>
+                  <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                </div>
+                <span className={cn('text-2xs leading-none', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
               </Link>
             );
           })}
@@ -187,10 +205,18 @@ export default function BottomNav() {
                 aria-current={isActive ? 'page' : undefined}
               >
                 {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand rounded-full" />
+                  <span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                    style={{ background: 'var(--gradient-gold)', boxShadow: '0 0 8px rgba(232,179,57,0.6)' }}
+                  />
                 )}
-                <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
+                <div className={cn(
+                  'flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-fast',
+                  isActive && 'bg-brand/10'
+                )}>
+                  <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                </div>
+                <span className={cn('text-2xs leading-none', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
               </Link>
             );
           })}

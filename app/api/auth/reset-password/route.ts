@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const resendApiKey = process.env.RESEND_API_KEY;
-    const siteUrl = "https://vinnylopescoach.site";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vinnylopescoach.site";
 
     if (!supabaseUrl || !serviceRoleKey || !resendApiKey) {
       return NextResponse.json({ error: "Configuração do servidor incompleta" }, { status: 500 });

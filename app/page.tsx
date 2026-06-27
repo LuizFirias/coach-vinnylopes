@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,23 @@ export default function RootPage() {
   const { user, userRole, loading } = useAuth();
 
   useEffect(() => {
+    // Se houver parâmetros de recuperação de senha no link, redirecionar para /reset-password
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      const queryParams = new URLSearchParams(window.location.search);
+      const code = queryParams.get('code');
+
+      if (hashParams.get('type') === 'recovery' && hashParams.get('access_token')) {
+        router.replace(`/reset-password${window.location.hash}`);
+        return;
+      }
+      if (code) {
+        router.replace(`/reset-password?code=${code}`);
+        return;
+      }
+    }
+
     if (loading) return;
 
     if (!user) {
@@ -18,7 +35,7 @@ export default function RootPage() {
     }
 
     if (userRole === "coach") {
-      router.replace("/admin/alunos");
+      router.replace("/admin/dashboard");
     } else if (userRole === "super_admin") {
       router.replace("/super-admin");
     } else {

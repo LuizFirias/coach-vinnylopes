@@ -3,6 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('[Supabase] NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY não configurados');
+  }
+}
+
 export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: typeof window !== 'undefined' ? localStorage : undefined,
@@ -25,9 +31,14 @@ if (typeof window !== 'undefined') {
       console.log(`[Auth] Event: ${event}`, session ? 'Session valid' : 'No session');
     }
 
-    // If session is null and we're not on login page, redirect
+    // If session is null and we are on a protected route, redirect to login
     // Guard against network-error-triggered SIGNED_OUT (token refresh fails when offline)
-    if (event === 'SIGNED_OUT' && !window.location.pathname.includes('/login')) {
+    const isProtectedRoute = 
+      window.location.pathname.startsWith('/aluno') || 
+      window.location.pathname.startsWith('/admin') || 
+      window.location.pathname.startsWith('/super-admin');
+
+    if (event === 'SIGNED_OUT' && isProtectedRoute) {
       if (!navigator.onLine) return;
       localStorage.removeItem('sb-auth-token');
       window.location.href = '/login';
@@ -35,9 +46,9 @@ if (typeof window !== 'undefined') {
     
     // Handle token refresh errors
     if (event === 'TOKEN_REFRESHED' && !session) {
-      console.warn('[Auth] Token refresh failed, redirecting to login');
-      localStorage.clear();
-      window.location.href = '/login';
+      // Evita logout forçado em falhas transitórias de rede.
+      console.warn('[Auth] Token refresh sem sessão (possível falha transitória de rede).');
+      return;
     }
 
     // Log token refresh success

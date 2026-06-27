@@ -4,10 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/components/AuthProvider";
-import { MagnifyingGlass, Plus, Users, TrendUp, WarningCircle, CaretRight, Bell } from "@phosphor-icons/react";
+import { Plus, Users, TrendUp, WarningCircle, Bell } from "@phosphor-icons/react";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { cn } from "@/lib/utils/cn";
+import PageHeader from "@/app/components/PageHeader";
+import DataTable from "@/app/components/DataTable";
+import SlideOverPanel from "@/app/components/SlideOverPanel";
 
 interface ProfileRow {
   id: string;
@@ -19,6 +22,7 @@ interface ProfileRow {
   avatar_url?: string | null;
   data_expiracao?: string | null;
   arquivado?: boolean | null;
+  valor_plano?: number | null;
 }
 
 function diasRestantes(dataExpiracao: string | null | undefined): number | null {
@@ -63,11 +67,14 @@ export default function AdminAlunosPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<ProfileRow[]>([]);
-  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Slide Over states
+  const [selectedStudent, setSelectedStudent] = useState<ProfileRow | null>(null);
+  const [slideOverOpen, setSlideOverOpen] = useState(false);
 
-  const fetchData = useCallback(async (q = "") => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -81,19 +88,14 @@ export default function AdminAlunosPage() {
       const ids = links?.map(l => l.aluno_id) ?? [];
       if (ids.length === 0) { setRows([]); return; }
 
-      let qb = supabaseClient
+      const { data, error: err } = await supabaseClient
         .from("profiles")
-        .select("id, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, arquivado")
+        .select("id, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, arquivado, valor_plano")
         .in("id", ids)
         .order("arquivado", { ascending: true, nullsFirst: true })
         .order("ultimo_checkin", { ascending: false, nullsFirst: false })
         .limit(200);
 
-      if (q.trim()) {
-        qb = qb.or(`coaching_reference.ilike.%${q}%,email.ilike.%${q}%`);
-      }
-
-      const { data, error: err } = await qb;
       if (err) throw err;
       setRows((data as ProfileRow[]) ?? []);
     } catch (e: any) {
@@ -117,244 +119,333 @@ export default function AdminAlunosPage() {
   const alertasSemana = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'semana');
   const alertasVencidos = rows.filter(r => !r.arquivado && nivelAlerta(diasRestantes(r.data_expiracao), r.tipo_plano) === 'vencido');
 
-  return (
-    <div className="min-h-screen bg-surface-0 pb-28 lg:pl-28">
-
-      {/* ── Header ── */}
-      <div className="px-4 pt-8 pb-5 max-w-2xl mx-auto">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Base de Atletas</h1>
-            <p className="text-xs text-text-tertiary mt-0.5">Gestão de performance</p>
+  const columns = [
+    {
+      key: 'coaching_reference',
+      label: 'Atleta',
+      sortable: true,
+      render: (row: ProfileRow) => {
+        const name = row.coaching_reference || row.email || "?";
+        const initial = name[0].toUpperCase();
+        return (
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white overflow-hidden shrink-0 shadow-sm border border-border-subtle",
+              row.arquivado ? "grayscale bg-surface-3" : avatarGrad(name)
+            )}>
+              {row.avatar_url ? (
+                <img src={getPublicStorageUrl('avatars', row.avatar_url) ?? row.avatar_url} alt={name} className="w-full h-full object-cover" />
+              ) : (
+                initial
+              )}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-text-primary truncate">{name}</span>
+              <span className="text-[10px] text-text-secondary truncate">{row.email}</span>
+            </div>
           </div>
+        );
+      }
+    },
+    {
+      key: 'tipo_plano',
+      label: 'Plano',
+      sortable: true,
+      render: (row: ProfileRow) => (
+        <span className="capitalize font-semibold text-xs">
+          {row.tipo_plano || 'mensal'}
+        </span>
+      )
+    },
+    {
+      key: 'status_pagamento',
+      label: 'Status',
+      sortable: true,
+      render: (row: ProfileRow) => {
+        if (row.arquivado) {
+          return (
+            <span className="badge bg-surface-3 border border-border-default text-text-disabled uppercase font-bold text-[9px] tracking-wide px-1.5 py-0.5 rounded-[4px]">
+              Desativado
+            </span>
+          );
+        }
+        const isAtivo = row.status_pagamento === "pago";
+        return (
+          <span className={cn(
+            "badge uppercase font-bold text-[9px] tracking-wide px-1.5 py-0.5 rounded-[4px]",
+            isAtivo ? "badge-success" : "badge-danger"
+          )}>
+            {isAtivo ? 'Ativo' : 'Pendente'}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'data_expiracao',
+      label: 'Renovação',
+      sortable: true,
+      render: (row: ProfileRow) => {
+        if (row.arquivado) return <span className="text-text-tertiary">—</span>;
+        const dias = diasRestantes(row.data_expiracao);
+        const alerta = nivelAlerta(dias, row.tipo_plano);
+        if (alerta === 'vencido' && dias !== null) {
+          return (
+            <span className="text-danger font-bold text-xs">
+              Vencido {Math.abs(dias) === 0 ? 'hoje' : Math.abs(dias) === 1 ? 'ontem' : `há ${Math.abs(dias)}d`}
+            </span>
+          );
+        }
+        if (alerta === 'semana' && dias !== null) {
+          return (
+            <span className="text-danger font-bold text-xs">
+              Vence em {dias <= 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}
+            </span>
+          );
+        }
+        if (alerta === 'mes' && dias !== null) {
+          return (
+            <span className="text-amber-400 font-bold text-xs">
+              {dias}d restantes
+            </span>
+          );
+        }
+        return (
+          <span className="text-text-secondary text-xs">
+            {row.data_expiracao ? new Date(row.data_expiracao).toLocaleDateString('pt-BR') : '—'}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'ultimo_checkin',
+      label: 'Última Atividade',
+      sortable: true,
+      render: (row: ProfileRow) => {
+        const lastSeen = timeAgo(row.ultimo_checkin);
+        return <span className="text-text-secondary text-xs">{lastSeen || '—'}</span>;
+      }
+    }
+  ];
+
+  const handleRowClick = (row: ProfileRow) => {
+    setSelectedStudent(row);
+    setSlideOverOpen(true);
+  };
+
+  return (
+    <div className="max-w-[1440px] px-6 md:px-10 py-8 mx-auto w-full flex flex-col gap-6 animate-fade-in">
+      <PageHeader 
+        title="Base de Atletas" 
+        subtitle="Gestão e acompanhamento de performance de atletas"
+        actions={
           <button
             onClick={() => router.push("/admin/alunos/novo")}
-            className="w-10 h-10 rounded-xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand active:scale-90 transition-transform"
+            className="btn-primary h-10 px-4 bg-brand text-text-on-brand rounded-md text-xs font-bold shadow-sm shadow-brand/20 hover:opacity-95 transition-all flex items-center gap-1.5"
+            style={{ width: 'auto', minHeight: '40px' }}
           >
-            <Plus size={20} weight="bold" />
+            <Plus size={16} weight="bold" />
+            Adicionar Atleta
           </button>
+        }
+      />
+
+      {error && (
+        <div className="p-4 bg-danger/10 border border-danger/20 rounded-lg text-danger text-xs flex items-center gap-2">
+          <WarningCircle className="w-4 h-4" />
+          <span>{error}</span>
         </div>
-      </div>
+      )}
 
-      <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4">
-
-        {/* ── Stats bar ── */}
-        {!loading && rows.length > 0 && (
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: "Ativos",    value: ativos,    icon: TrendUp,  color: "text-success",        bg: "bg-success-subtle" },
-              { label: "Pendentes", value: pendentes, icon: WarningCircle, color: "text-warning",        bg: "bg-warning-subtle" },
-              { label: "Total",     value: rows.filter(r => !r.arquivado).length, icon: Users, color: "text-text-secondary", bg: "bg-surface-3" },
-              { label: "Inativos",  value: inativos,  icon: Users,       color: "text-text-disabled",  bg: "bg-surface-3"      },
-            ].map(({ label, value, icon: Icon, color, bg }) => (
-              <div key={label} className="bg-surface-2 rounded-2xl p-3.5 shadow-elev-1 border border-border-subtle flex flex-col gap-1.5">
-                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", bg)}>
-                  <Icon size={14} className={color} />
-                </div>
-                <p className="text-2xl font-bold text-text-primary leading-none tabular-nums">{value}</p>
-                <p className="text-2xs text-text-tertiary">{label}</p>
+      {/* Stats bar */}
+      {!loading && rows.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Ativos", value: ativos, icon: TrendUp, color: "text-success", bg: "bg-success-subtle" },
+            { label: "Pendentes", value: pendentes, icon: WarningCircle, color: "text-warning", bg: "bg-warning-subtle" },
+            { label: "Total", value: rows.filter(r => !r.arquivado).length, icon: Users, color: "text-text-secondary", bg: "bg-surface-2" },
+            { label: "Inativos", value: inativos, icon: Users, color: "text-text-disabled", bg: "bg-surface-2" },
+          ].map(({ label, value, icon: Icon, color, bg }) => (
+            <div key={label} className="bg-surface-1 rounded-lg p-4 border border-border-subtle flex items-center gap-4 shadow-sm">
+              <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0", bg)}>
+                <Icon size={18} className={color} />
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── Alertas de vencimento ── */}
-        {!loading && alertasVencidos.length > 0 && (
-          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-danger/15 border border-danger/30">
-            <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-danger mb-1">Planos vencidos</p>
-              <div className="flex flex-wrap gap-1.5">
-                {alertasVencidos.map(r => {
-                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
-                  const dias = diasRestantes(r.data_expiracao);
-                  const diasVencidos = dias !== null ? Math.abs(dias) : 0;
-                  return (
-                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                      className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded-lg text-danger font-medium hover:bg-danger/30 transition-colors">
-                      {nome} · {diasVencidos === 0 ? 'venceu hoje' : diasVencidos === 1 ? 'venceu ontem' : `venceu há ${diasVencidos}d`}
-                    </button>
-                  );
-                })}
+              <div>
+                <p className="text-xl font-black text-text-primary font-mono leading-none tabular-nums">{value}</p>
+                <p className="text-2xs text-text-secondary mt-1">{label}</p>
               </div>
             </div>
-          </div>
-        )}
-
-        {!loading && alertasSemana.length > 0 && (
-          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-danger/10 border border-danger/20">
-            <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-danger mb-1">Planos a vencer em até 7 dias</p>
-              <div className="flex flex-wrap gap-1.5">
-                {alertasSemana.map(r => {
-                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
-                  const dias = diasRestantes(r.data_expiracao);
-                  return (
-                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                      className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded-lg text-danger font-medium hover:bg-danger/30 transition-colors">
-                      {nome} · {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!loading && alertasMes.length > 0 && (
-          <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-            <Bell className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-amber-300 mb-1">Planos longos a vencer em até 30 dias</p>
-              <div className="flex flex-wrap gap-1.5">
-                {alertasMes.map(r => {
-                  const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
-                  const dias = diasRestantes(r.data_expiracao);
-                  return (
-                    <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                      className="text-2xs px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-300 font-medium hover:bg-amber-500/30 transition-colors capitalize">
-                      {nome} · {r.tipo_plano} · {dias}d
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Search ── */}
-        <div className="relative">
-          <MagnifyingGlass size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-disabled pointer-events-none" />
-          <input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (!e.target.value.trim()) fetchData("");
-            }}
-            onKeyDown={(e) => e.key === "Enter" && fetchData(query)}
-            placeholder="Localizar atleta..."
-            suppressHydrationWarning
-            className="w-full pl-11 pr-4 py-3 bg-surface-2 border border-border-subtle rounded-2xl text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 shadow-elev-1 transition-all"
-          />
+          ))}
         </div>
+      )}
 
-        {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
-            {error}
+      {/* Alertas de vencimento */}
+      {!loading && alertasVencidos.length > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg">
+          <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
+          <div className="flex-1 min-w-0">
+            <p className="text-2xs font-extrabold uppercase tracking-caps text-danger mb-1.5">Planos vencidos</p>
+            <div className="flex flex-wrap gap-1.5">
+              {alertasVencidos.map(r => {
+                const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
+                const dias = diasRestantes(r.data_expiracao);
+                const diasVencidos = dias !== null ? Math.abs(dias) : 0;
+                return (
+                  <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
+                    className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded text-danger font-medium hover:bg-danger/30 transition-colors">
+                    {nome} · {diasVencidos === 0 ? 'venceu hoje' : diasVencidos === 1 ? 'venceu ontem' : `venceu há ${diasVencidos}d`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!loading && alertasSemana.length > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-danger/5 border border-danger/15 rounded-lg">
+          <Bell className="w-4 h-4 text-danger mt-0.5 flex-shrink-0 animate-pulse" />
+          <div className="flex-1 min-w-0">
+            <p className="text-2xs font-extrabold uppercase tracking-caps text-danger mb-1.5">Planos a vencer em até 7 dias</p>
+            <div className="flex flex-wrap gap-1.5">
+              {alertasSemana.map(r => {
+                const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
+                const dias = diasRestantes(r.data_expiracao);
+                return (
+                  <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
+                    className="text-2xs px-2 py-1 bg-danger/20 border border-danger/30 rounded text-danger font-medium hover:bg-danger/30 transition-colors">
+                    {nome} · {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!loading && alertasMes.length > 0 && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/15 rounded-lg">
+          <Bell className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-2xs font-extrabold uppercase tracking-caps text-amber-300 mb-1.5">Planos longos a vencer em até 30 dias</p>
+            <div className="flex flex-wrap gap-1.5">
+              {alertasMes.map(r => {
+                const nome = r.coaching_reference || r.email?.split('@')[0] || 'Aluno';
+                const dias = diasRestantes(r.data_expiracao);
+                return (
+                  <button key={r.id} onClick={() => router.push(`/admin/aluno/${r.id}`)}
+                    className="text-2xs px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded text-amber-300 font-medium hover:bg-amber-500/30 transition-colors">
+                    {nome} · {r.tipo_plano} · {dias}d
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Table base */}
+      {loading || authLoading ? (
+        <div className="flex items-center justify-center py-24">
+          <DumbbellLoader text="Sincronizando base de atletas..." />
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={rows}
+          onRowClick={handleRowClick}
+          searchable
+          searchPlaceholder="Localizar atleta..."
+          pagination={{ pageSize: 12 }}
+        />
+      )}
+
+      {/* Athlete Detail SlideOver */}
+      <SlideOverPanel
+        open={slideOverOpen}
+        onClose={() => setSlideOverOpen(false)}
+        title={selectedStudent?.coaching_reference || selectedStudent?.email || "Detalhes do Atleta"}
+        expandUrl={selectedStudent ? `/admin/aluno/${selectedStudent.id}` : undefined}
+      >
+        {selectedStudent && (
+          <div className="flex flex-col gap-6 animate-fade-in">
+            {/* Student Info Profile Box */}
+            <div className="flex flex-col items-center text-center gap-3 bg-surface-2 border border-border-subtle p-5 rounded-lg shadow-sm">
+              <div className={cn(
+                "w-16 h-16 rounded-full bg-linear-to-br flex items-center justify-center font-bold text-2xl text-white overflow-hidden shadow-md",
+                selectedStudent.arquivado ? "grayscale bg-surface-3" : avatarGrad(selectedStudent.coaching_reference || selectedStudent.email || "?")
+              )}>
+                {selectedStudent.avatar_url ? (
+                  <img src={getPublicStorageUrl('avatars', selectedStudent.avatar_url) ?? selectedStudent.avatar_url} alt={selectedStudent.coaching_reference || ""} className="w-full h-full object-cover" />
+                ) : (
+                  (selectedStudent.coaching_reference || selectedStudent.email || "?")[0].toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0 w-full">
+                <h3 className="text-sm font-bold text-text-primary truncate">
+                  {selectedStudent.coaching_reference || "Atleta"}
+                </h3>
+                <p className="text-2xs text-text-secondary mt-0.5 truncate">
+                  {selectedStudent.email}
+                </p>
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-surface-2 border border-border-subtle p-3.5 rounded-lg text-center flex flex-col items-center justify-center">
+                <span className="text-[9px] font-bold text-text-tertiary uppercase tracking-caps block mb-1.5">Status Plano</span>
+                <span className={cn(
+                  "badge uppercase font-bold text-[9px] tracking-wide px-1.5 py-0.5 rounded-[4px]",
+                  selectedStudent.arquivado 
+                    ? "bg-surface-3 text-text-disabled" 
+                    : selectedStudent.status_pagamento === "pago" ? "badge-success" : "badge-danger"
+                )}>
+                  {selectedStudent.arquivado ? 'Desativado' : selectedStudent.status_pagamento === "pago" ? 'Ativo' : 'Pendente'}
+                </span>
+              </div>
+              <div className="bg-surface-2 border border-border-subtle p-3.5 rounded-lg text-center flex flex-col items-center justify-center">
+                <span className="text-[9px] font-bold text-text-tertiary uppercase tracking-caps block mb-1.5">Modalidade</span>
+                <span className="text-xs font-semibold text-text-primary capitalize">
+                  {selectedStudent.tipo_plano || 'mensal'}
+                </span>
+              </div>
+            </div>
+
+            {/* General actions */}
+            <div className="flex flex-col gap-2.5 mt-2">
+              <button
+                onClick={() => {
+                  setSlideOverOpen(false);
+                  router.push(`/admin/aluno/${selectedStudent.id}`);
+                }}
+                className="w-full h-10 bg-brand text-text-on-brand hover:bg-brand-hover rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              >
+                Ver Perfil Completo
+              </button>
+              
+              <button
+                onClick={() => {
+                  setSlideOverOpen(false);
+                  router.push(`/admin/aluno/${selectedStudent.id}?tab=treinos`);
+                }}
+                className="w-full h-10 bg-surface-2 hover:bg-surface-3 text-text-primary rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1.5 border border-border-subtle"
+              >
+                Gerenciar Fichas de Treino
+              </button>
+
+              <button
+                onClick={() => {
+                  setSlideOverOpen(false);
+                  router.push(`/admin/aluno/${selectedStudent.id}?tab=nutricao`);
+                }}
+                className="w-full h-10 bg-surface-2 hover:bg-surface-3 text-text-primary rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-1.5 border border-border-subtle"
+              >
+                Acompanhar Nutrição
+              </button>
+            </div>
           </div>
         )}
-
-        {/* ── Athlete list ── */}
-        {(authLoading || loading) ? (
-          <div className="flex items-center justify-center py-24">
-            <DumbbellLoader text="Sincronizando base..." />
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="text-center py-24 bg-surface-2 border border-dashed border-border-subtle rounded-2xl shadow-elev-1">
-            <Users size={32} className="text-text-disabled mx-auto mb-3" />
-            <p className="text-text-disabled text-xs uppercase tracking-caps">Nenhum atleta localizado.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {rows.map((r) => {
-              const name    = r.coaching_reference || r.email || "?";
-              const initial = name[0].toUpperCase();
-              const isAtivo = r.status_pagamento === "pago";
-              const isArquivado = !!r.arquivado;
-              const lastSeen = timeAgo(r.ultimo_checkin);
-              const dias = diasRestantes(r.data_expiracao);
-              const alerta = isArquivado ? null : nivelAlerta(dias, r.tipo_plano);
-
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => router.push(`/admin/aluno/${r.id}`)}
-                  className={cn(
-                    "w-full text-left shadow-elev-1 hover:shadow-elev-2 p-4 rounded-2xl transition-all active:scale-[0.99] flex items-center gap-3.5 group",
-                    isArquivado
-                      ? "bg-surface-2/50 border border-border-subtle opacity-60 hover:opacity-80"
-                      : alerta === 'vencido'
-                        ? "bg-danger/5 border border-danger/20 hover:border-danger/40 hover:bg-danger/10"
-                        : "bg-surface-1 border border-border-subtle hover:border-brand/25 hover:bg-surface-2"
-                  )}
-                >
-                  {/* Avatar */}
-                  <div className={cn(
-                    "w-11 h-11 rounded-2xl bg-gradient-to-br shrink-0 flex items-center justify-center font-bold text-lg text-white overflow-hidden",
-                    isArquivado ? "grayscale" : avatarGrad(name)
-                  )}>
-                    {r.avatar_url
-                      ? <img src={getPublicStorageUrl('avatars', r.avatar_url) ?? r.avatar_url} alt={name} className="w-full h-full object-cover" />
-                      : initial
-                    }
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={cn(
-                        "text-sm font-semibold truncate transition-colors",
-                        isArquivado ? "text-text-disabled" : alerta === 'vencido' ? "text-danger" : "text-text-primary group-hover:text-brand"
-                      )}>
-                        {name}
-                      </span>
-                      {isArquivado ? (
-                        <span className="shrink-0 text-2xs font-semibold uppercase tracking-caps px-1.5 py-0.5 rounded-md bg-surface-3 text-text-disabled border border-border-subtle">
-                          Desativado
-                        </span>
-                      ) : (
-                        <>
-                          <span className={cn(
-                            "shrink-0 w-1.5 h-1.5 rounded-full",
-                            isAtivo ? "bg-success" : "bg-warning"
-                          )} />
-                          {(alerta === 'vencido' || alerta === 'semana') && (
-                            <Bell className="w-3 h-3 text-danger flex-shrink-0" />
-                          )}
-                          {alerta === 'mes' && (
-                            <Bell className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                      {isArquivado ? (
-                        <span className="text-text-disabled">Clique para reativar</span>
-                      ) : (
-                        <>
-                          <span className="capitalize">{r.tipo_plano ?? "mensal"}</span>
-                          {alerta === 'vencido' && dias !== null && (
-                            <span className="text-danger font-semibold">· {Math.abs(dias) === 0 ? 'venceu hoje' : Math.abs(dias) === 1 ? 'venceu ontem' : `venceu há ${Math.abs(dias)}d`}</span>
-                          )}
-                          {alerta === 'semana' && dias !== null && (
-                            <span className="text-danger font-semibold">· vence em {dias <= 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
-                          )}
-                          {alerta === 'mes' && dias !== null && (
-                            <span className="text-amber-400 font-semibold">· {dias}d restantes</span>
-                          )}
-                          {!alerta && lastSeen && (
-                            <>
-                              <span className="text-text-disabled">·</span>
-                              <span>{lastSeen}</span>
-                            </>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Chevron */}
-                  <div className="w-7 h-7 rounded-xl bg-surface-3 group-hover:bg-brand group-hover:shadow-glow-brand flex items-center justify-center text-text-disabled group-hover:text-text-on-brand shrink-0 transition-all">
-                    <CaretRight size={14} weight="bold" />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-      </div>
+      </SlideOverPanel>
     </div>
   );
 }

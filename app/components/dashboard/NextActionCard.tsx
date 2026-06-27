@@ -66,27 +66,30 @@ export function NextActionCard({
     <Link
       href={fichaId ? `/aluno/treinos/${fichaId}/executar` : '/aluno/treinos'}
       className={cn(
-        'block bg-surface-2 border border-brand-border rounded-2xl p-5',
-        'shadow-elev-2 hover:shadow-elev-3 hover:border-brand transition-all active:scale-[0.99]',
+        'block rounded-2xl p-5',
+        'hover:opacity-95 transition-all active:scale-[0.99]',
         'relative overflow-hidden group',
       )}
+      style={{ background: 'var(--gradient-gold)', boxShadow: 'var(--shadow-gold-glow)' }}
     >
-      {/* Glow accent */}
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-subtle via-transparent to-transparent pointer-events-none" />
+      {/* Noise/depth overlay */}
+      <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: 'radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
 
-      <div className="relative flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center text-text-on-brand flex-shrink-0 shadow-glow-brand">
-          <Barbell className="w-5 h-5" />
+      <div className="relative flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-black/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+          <Barbell className="w-6 h-6 text-white" weight="fill" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-2xs font-semibold uppercase tracking-caps text-brand mb-0.5">
+          <p className="text-xs font-bold uppercase tracking-caps text-black/60 mb-0.5">
             Treino de hoje
           </p>
-          <p className="text-base font-bold text-text-primary truncate">
+          <p className="text-lg font-bold text-black truncate leading-tight">
             {treinoNome ?? 'Iniciar treino'}
           </p>
         </div>
-        <ArrowRight className="w-5 h-5 text-text-secondary group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
+        <div className="w-9 h-9 rounded-xl bg-black/20 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform">
+          <ArrowRight className="w-4 h-4 text-black/70" weight="bold" />
+        </div>
       </div>
     </Link>
   );

@@ -19,6 +19,9 @@ import {
   WarningCircle,
   FileArrowDown,
   CircleNotch,
+  Link as LinkIcon,
+  LinkBreak,
+  ArrowsLeftRight,
 } from "@phosphor-icons/react";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
 import jsPDF from 'jspdf';
@@ -59,6 +62,8 @@ interface ExercicioFicha {
   video_url: string;
   observacoes: string;
   series: SerieDefinicao[];
+  grupo_biset_id?: string;
+  biset_ordem?: 1 | 2;
 }
 
 const EQUIPAMENTOS = ["Nenhum", "Banda de Resistência", "Banda de Suspensão", "Barra", "Disco de Peso", "Haltere", "Kettlebell", "Máquina", "Outro"];
@@ -88,6 +93,8 @@ export default function NovaFichaCoachPage() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState<boolean>(false);
+  const [selectedIndexes, setSelectedIndexes] = useState<number[]>([]);
 
   useEffect(() => { loadData(); }, []);
 
@@ -204,34 +211,133 @@ export default function NovaFichaCoachPage() {
     }
   };
 
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const removerExercicio = (index: number) => {
-    setExerciciosFicha(exerciciosFicha.filter((_, i) => i !== index));
+    const exToRemove = exerciciosFicha[index];
+    let updated = exerciciosFicha.filter((_, i) => i !== index);
+    if (exToRemove.grupo_biset_id) {
+      updated = updated.map(ex => {
+        if (ex.grupo_biset_id === exToRemove.grupo_biset_id) {
+          const { grupo_biset_id, biset_ordem, ...rest } = ex;
+          return rest as ExercicioFicha;
+        }
+        return ex;
+      });
+    }
+    setExerciciosFicha(updated);
   };
 
   const adicionarSerie = (exercicioIndex: number) => {
     const updated = [...exerciciosFicha];
     const exercicio = updated[exercicioIndex];
-    const novaOrdem = exercicio.series.length + 1;
-    const tipo = exercicio.tipo_exercicio;
-    let novaSerie: SerieDefinicao = { ordem: novaOrdem };
-    switch (tipo) {
-      case "Peso & Repetições": case "Peso Corporal com Peso Acrescido":
-        novaSerie = { ordem: novaOrdem, peso_sugerido: 0, reps_sugerido: 12, tecnica: "", tecnica_extra: "" }; break;
-      case "Repetições": novaSerie = { ordem: novaOrdem, reps_sugerido: 12, tecnica: "", tecnica_extra: "" }; break;
-      case "Duração": novaSerie = { ordem: novaOrdem, tempo_sugerido: "01:00", tecnica: "", tecnica_extra: "" }; break;
-      case "Duração e Peso": novaSerie = { ordem: novaOrdem, tempo_sugerido: "01:00", peso_sugerido: 0, tecnica: "", tecnica_extra: "" }; break;
-      case "Distância e Duração": novaSerie = { ordem: novaOrdem, distancia_sugerida: 5, tempo_sugerido: "00:00", tecnica: "", tecnica_extra: "" }; break;
-      case "Peso e Distância": novaSerie = { ordem: novaOrdem, peso_sugerido: 0, distancia_sugerida: 5, tecnica: "", tecnica_extra: "" }; break;
-      default: novaSerie = { ordem: novaOrdem, peso_sugerido: 0, reps_sugerido: 12, tecnica: "", tecnica_extra: "" };
+    
+    const addSerieToEx = (ex: ExercicioFicha) => {
+      const novaOrdem = ex.series.length + 1;
+      const tipo = ex.tipo_exercicio;
+      let novaSerie: SerieDefinicao = { ordem: novaOrdem };
+      switch (tipo) {
+        case "Peso & Repetições": case "Peso Corporal com Peso Acrescido":
+          novaSerie = { ordem: novaOrdem, peso_sugerido: 0, reps_sugerido: 12, tecnica: "", tecnica_extra: "" }; break;
+        case "Repetições": novaSerie = { ordem: novaOrdem, reps_sugerido: 12, tecnica: "", tecnica_extra: "" }; break;
+        case "Duração": novaSerie = { ordem: novaOrdem, tempo_sugerido: "01:00", tecnica: "", tecnica_extra: "" }; break;
+        case "Duração e Peso": novaSerie = { ordem: novaOrdem, tempo_sugerido: "01:00", peso_sugerido: 0, tecnica: "", tecnica_extra: "" }; break;
+        case "Distância e Duração": novaSerie = { ordem: novaOrdem, distancia_sugerida: 5, tempo_sugerido: "00:00", tecnica: "", tecnica_extra: "" }; break;
+        case "Peso e Distância": novaSerie = { ordem: novaOrdem, peso_sugerido: 0, distancia_sugerida: 5, tecnica: "", tecnica_extra: "" }; break;
+        default: novaSerie = { ordem: novaOrdem, peso_sugerido: 0, reps_sugerido: 12, tecnica: "", tecnica_extra: "" };
+      }
+      ex.series.push(novaSerie);
+    };
+
+    addSerieToEx(exercicio);
+
+    // If in a bi-set, add to the partner as well
+    if (exercicio.grupo_biset_id) {
+      const partner = updated.find((ex, idx) => ex.grupo_biset_id === exercicio.grupo_biset_id && idx !== exercicioIndex);
+      if (partner) {
+        addSerieToEx(partner);
+      }
     }
-    updated[exercicioIndex].series.push(novaSerie);
+
     setExerciciosFicha(updated);
   };
 
   const removerSerie = (exercicioIndex: number, serieIndex: number) => {
     const updated = [...exerciciosFicha];
-    updated[exercicioIndex].series = updated[exercicioIndex].series.filter((_, i) => i !== serieIndex);
-    updated[exercicioIndex].series.forEach((s, i) => { s.ordem = i + 1; });
+    const exercicio = updated[exercicioIndex];
+    
+    exercicio.series = exercicio.series.filter((_, i) => i !== serieIndex);
+    exercicio.series.forEach((s, i) => { s.ordem = i + 1; });
+
+    if (exercicio.grupo_biset_id) {
+      const partner = updated.find((ex, idx) => ex.grupo_biset_id === exercicio.grupo_biset_id && idx !== exercicioIndex);
+      if (partner) {
+        partner.series = partner.series.filter((_, i) => i !== serieIndex);
+        partner.series.forEach((s, i) => { s.ordem = i + 1; });
+      }
+    }
+    setExerciciosFicha(updated);
+  };
+
+  const agruparComoBiset = () => {
+    if (selectedIndexes.length !== 2) return;
+    const sortedIndexes = [...selectedIndexes].sort((a, b) => a - b);
+    const idx1 = sortedIndexes[0];
+    const idx2 = sortedIndexes[1];
+    const ex1 = exerciciosFicha[idx1];
+    const ex2 = exerciciosFicha[idx2];
+
+    const len1 = ex1.series.length;
+    const len2 = ex2.series.length;
+
+    let targetLen = len1;
+    if (len1 !== len2) {
+      const minLen = Math.min(len1, len2);
+      const confirmMsg = `Os exercícios têm números de série diferentes (${len1} e ${len2}). Para o bi-set funcionar, vamos igualar para ${minLen} séries em ambos. Continuar?`;
+      if (!window.confirm(confirmMsg)) {
+        return;
+      }
+      targetLen = minLen;
+    }
+
+    const updated = [...exerciciosFicha];
+    const newGroupId = generateUUID();
+
+    const updatedEx1 = {
+      ...ex1,
+      grupo_biset_id: newGroupId,
+      biset_ordem: 1 as const,
+      series: ex1.series.slice(0, targetLen)
+    };
+
+    const updatedEx2 = {
+      ...ex2,
+      grupo_biset_id: newGroupId,
+      biset_ordem: 2 as const,
+      series: ex2.series.slice(0, targetLen)
+    };
+
+    const withoutThem = updated.filter((_, i) => i !== idx1 && i !== idx2);
+    withoutThem.splice(idx1, 0, updatedEx1, updatedEx2);
+
+    setExerciciosFicha(withoutThem);
+    setIsSelectionMode(false);
+    setSelectedIndexes([]);
+  };
+
+  const desagruparBiset = (grupoBisetId: string) => {
+    const updated = exerciciosFicha.map(ex => {
+      if (ex.grupo_biset_id === grupoBisetId) {
+        const { grupo_biset_id, biset_ordem, ...rest } = ex;
+        return rest as ExercicioFicha;
+      }
+      return ex;
+    });
     setExerciciosFicha(updated);
   };
 
@@ -390,6 +496,8 @@ export default function NovaFichaCoachPage() {
         exercicios: exerciciosFicha.map((ex) => ({
           id: ex.id, nome: ex.nome, tipo_exercicio: ex.tipo_exercicio,
           descanso: ex.descanso, video_url: ex.video_url || "", observacoes: ex.observacoes || "",
+          grupo_biset_id: ex.grupo_biset_id || null,
+          biset_ordem: ex.biset_ordem || null,
           series: ex.series.map((s) => ({
             ordem: s.ordem, peso_atual: s.peso_sugerido ?? null,
             reps: s.reps_sugerido ?? null, tempo: s.tempo_sugerido ?? null,
@@ -432,6 +540,245 @@ export default function NovaFichaCoachPage() {
   }
 
   const canSave = !!alunoSelecionado && !!nomeRotina && exerciciosFicha.length > 0;
+
+  const renderExercicioCard = (exercicio: ExercicioFicha, exIndex: number) => {
+    const colunas = getColunasPorTipo(exercicio.tipo_exercicio);
+    const gridTemplate = `2rem ${colunas.map(() => '5rem').join(' ')} 4rem 5.5rem 2rem`;
+    const isChecked = selectedIndexes.includes(exIndex);
+    const isBiset1 = exercicio.grupo_biset_id && exercicio.biset_ordem === 1;
+    const isBiset2 = exercicio.grupo_biset_id && exercicio.biset_ordem === 2;
+
+    return (
+      <div className={cn(
+        "bg-surface-1 rounded-2xl p-4 transition-all",
+        exercicio.grupo_biset_id ? "border-none shadow-none" : "border border-border-subtle shadow-elev-1"
+      )}>
+        {/* Exercise Header */}
+        <div className="flex flex-col md:flex-row gap-3 mb-4 pb-3 border-b border-border-subtle/50 items-start md:items-center">
+          {isSelectionMode && (
+            <div className="flex items-center gap-2 self-start md:self-center pr-2">
+              <input
+                type="checkbox"
+                disabled={!!exercicio.grupo_biset_id}
+                checked={isChecked}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    if (selectedIndexes.length >= 2) {
+                      alert("Você só pode agrupar exatamente 2 exercícios por vez.");
+                      return;
+                    }
+                    setSelectedIndexes([...selectedIndexes, exIndex]);
+                  } else {
+                    setSelectedIndexes(selectedIndexes.filter(i => i !== exIndex));
+                  }
+                }}
+                className="w-4.5 h-4.5 rounded border-border-subtle text-brand focus:ring-brand bg-surface-2"
+              />
+            </div>
+          )}
+          
+          <div className="flex-1 space-y-1 w-full">
+            <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Exercício</label>
+            <input
+              type="text"
+              value={exercicio.nome}
+              onChange={(e) => atualizarExercicio(exIndex, "nome", e.target.value)}
+              className="w-full text-sm font-bold text-text-primary bg-transparent border-none p-0 focus:ring-0 focus:outline-none"
+            />
+          </div>
+          
+          {isBiset1 ? (
+            <div className="w-full md:w-56 space-y-1">
+              <label className="flex items-center gap-1 text-2xs font-semibold uppercase tracking-caps text-text-tertiary">
+                <Clock className="w-3 h-3" /> Descanso
+              </label>
+              <div className="text-xs font-semibold text-text-tertiary bg-surface-2 px-3 py-1.5 border border-border-subtle rounded-lg truncate">
+                Sem descanso → direto p/ {exerciciosFicha[exIndex + 1]?.nome || "exercício 2"}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full md:w-28 space-y-1">
+              <label className="flex items-center gap-1 text-2xs font-semibold uppercase tracking-caps text-text-tertiary">
+                <Clock className="w-3 h-3" /> {isBiset2 ? "Descanso após o par" : "Descanso"}
+              </label>
+              <TimeInput
+                value={exercicio.descanso}
+                onChange={(v) => atualizarExercicio(exIndex, "descanso", v)}
+                className="w-full px-3 py-1.5 bg-surface-2 border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:border-brand/40"
+              />
+            </div>
+          )}
+          
+          <button
+            type="button"
+            onClick={() => removerExercicio(exIndex)}
+            className="self-end w-9 h-9 flex items-center justify-center bg-danger/10 border border-danger/20 text-danger rounded-xl hover:opacity-80 transition-opacity flex-shrink-0"
+          >
+            <Trash className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Observações */}
+        <div className="space-y-1 mb-4 pb-3 border-b border-border-subtle/50">
+          <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Observações para o Aluno</label>
+          <textarea
+            value={exercicio.observacoes}
+            onChange={(e) => atualizarExercicio(exIndex, "observacoes", e.target.value)}
+            placeholder="Ex: Manter o core contraído, não arquear as costas..."
+            className="w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:border-brand/40 resize-none"
+            rows={2}
+          />
+        </div>
+
+        {/* Series Table */}
+        <div className="space-y-2">
+          {/* Desktop — scrollable table */}
+          <div className="hidden md:block overflow-x-auto">
+            {/* Header row */}
+            <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: gridTemplate }}>
+              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">#</span>
+              {colunas.map((col) => (
+                <span key={col.key} className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary truncate">{col.label}</span>
+              ))}
+              <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70 truncate">TÉC</span>
+              <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70 truncate">TÉCNICA EXTRA</span>
+              <span></span>
+            </div>
+
+            {exercicio.series.map((serie, sIndex) => (
+              <div key={sIndex} className="grid gap-1 bg-surface-2 border border-border-subtle/50 p-1.5 rounded-xl mb-1 min-w-max" style={{ gridTemplateColumns: gridTemplate }}>
+                <div className="flex items-center justify-center text-xs font-bold text-text-secondary">#{serie.ordem}</div>
+                {colunas.map((col) =>
+                  col.type === 'select' ? (
+                    <select
+                      key={col.key}
+                      value={(serie as any)[col.key] ?? ''}
+                      onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, e.target.value)}
+                      className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
+                    >
+                      {(col as any).options?.map((opt: string) => <option key={opt} value={opt}>{opt || '-'}</option>)}
+                    </select>
+                  ) : (col as any).timeInput ? (
+                    <TimeInput
+                      key={col.key}
+                      value={(serie as any)[col.key] ?? '00:00'}
+                      onChange={(v) => atualizarSerie(exIndex, sIndex, col.key, v)}
+                      className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none text-center"
+                    />
+                  ) : (
+                    <input
+                      key={col.key}
+                      type={col.type}
+                      step={(col as any).step}
+                      placeholder={(col as any).placeholder}
+                      value={(serie as any)[col.key] ?? (col.type === 'number' ? 0 : '')}
+                      onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, col.type === 'number' ? Number(e.target.value) : e.target.value)}
+                      className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
+                    />
+                  )
+                )}
+                {/* TÉC */}
+                <select
+                  value={(serie as any).tecnica ?? ''}
+                  onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica', e.target.value)}
+                  className="w-full h-7 px-1 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                >
+                  {TECNICAS_BASE.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                </select>
+                {/* Técnica Extra */}
+                <select
+                  value={(serie as any).tecnica_extra ?? ''}
+                  onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica_extra', e.target.value)}
+                  className="w-full h-7 px-1 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                >
+                  {TECNICAS_EXTRA_OPCOES.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                </select>
+                <button type="button" onClick={() => removerSerie(exIndex, sIndex)} className="flex items-center justify-center text-text-tertiary hover:text-danger transition-colors">
+                  <Trash className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile layout */}
+          {exercicio.series.map((serie, sIndex) => (
+            <div key={sIndex} className="md:hidden bg-surface-2 border border-border-subtle/50 p-3 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-primary">Série #{serie.ordem}</span>
+                <button type="button" onClick={() => removerSerie(exIndex, sIndex)} className="w-7 h-7 flex items-center justify-center text-text-tertiary hover:text-danger transition-colors">
+                  <Trash className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {colunas.map((col) => (
+                  <div key={col.key} className="space-y-0.5">
+                    <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary px-1">{col.label}</label>
+                    {col.type === 'select' ? (
+                      <select
+                        value={(serie as any)[col.key] ?? ''}
+                        onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, e.target.value)}
+                        className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
+                      >
+                        {(col as any).options?.map((opt: string) => <option key={opt} value={opt}>{opt || '-'}</option>)}
+                      </select>
+                    ) : (col as any).timeInput ? (
+                      <TimeInput
+                        value={(serie as any)[col.key] ?? '00:00'}
+                        onChange={(v) => atualizarSerie(exIndex, sIndex, col.key, v)}
+                        className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none text-center"
+                      />
+                    ) : (
+                      <input
+                        type={col.type}
+                        step={(col as any).step}
+                        placeholder={(col as any).placeholder}
+                        value={(serie as any)[col.key] ?? (col.type === 'number' ? 0 : '')}
+                        onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, col.type === 'number' ? Number(e.target.value) : e.target.value)}
+                        className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-border-subtle/50 pt-2">
+                <p className="text-2xs font-semibold uppercase tracking-caps text-brand/70 mb-1.5">Técnicas</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">TÉC</label>
+                    <select
+                      value={(serie as any).tecnica ?? ''}
+                      onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica', e.target.value)}
+                      className="w-full h-8 px-2 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                    >
+                      {TECNICAS_BASE.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-0.5">
+                    <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">Técnica Extra</label>
+                    <select
+                      value={(serie as any).tecnica_extra ?? ''}
+                      onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica_extra', e.target.value)}
+                      className="w-full h-8 px-2 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                    >
+                      {TECNICAS_EXTRA_OPCOES.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => adicionarSerie(exIndex)}
+            className="w-full py-2 border-2 border-dashed border-border-subtle rounded-xl text-text-disabled text-2xs font-semibold uppercase tracking-caps hover:bg-brand/5 hover:border-brand/30 hover:text-brand transition-all"
+          >
+            + Adicionar Série
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24 md:pb-32">
@@ -502,213 +849,75 @@ export default function NovaFichaCoachPage() {
             <h2 className="text-base font-bold text-text-primary">
               Exercícios <span className="text-brand">({exerciciosFicha.length})</span>
             </h2>
-            <button
-              onClick={() => setModalExercicio(true)}
-              className="flex items-center gap-2 px-4 h-9 bg-surface-1 border border-border-subtle shadow-elev-1 text-text-secondary rounded-xl text-xs font-semibold uppercase tracking-caps hover:text-brand hover:border-brand/20 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" weight="bold" /> Adicionar
-            </button>
+            <div className="flex items-center gap-2">
+              {exerciciosFicha.length >= 2 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSelectionMode(!isSelectionMode);
+                    setSelectedIndexes([]);
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-4 h-9 border rounded-xl text-xs font-semibold uppercase tracking-caps transition-all",
+                    isSelectionMode
+                      ? "bg-brand/10 border-brand text-brand"
+                      : "bg-surface-1 border-border-subtle shadow-elev-1 text-text-secondary hover:text-brand hover:border-brand/20"
+                  )}
+                >
+                  <ArrowsLeftRight className="w-3.5 h-3.5" />
+                  {isSelectionMode ? "Cancelar Seleção" : "Agrupar Bi-Set"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setModalExercicio(true)}
+                className="flex items-center gap-2 px-4 h-9 bg-surface-1 border border-border-subtle shadow-elev-1 text-text-secondary rounded-xl text-xs font-semibold uppercase tracking-caps hover:text-brand hover:border-brand/20 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" weight="bold" /> Adicionar
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">
-            {exerciciosFicha.map((exercicio, exIndex) => (
-              <div key={exIndex} className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4">
-                {/* Exercise Header */}
-                <div className="flex flex-col md:flex-row gap-3 mb-4 pb-3 border-b border-border-subtle/50">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Exercício</label>
-                    <input
-                      type="text"
-                      value={exercicio.nome}
-                      onChange={(e) => atualizarExercicio(exIndex, "nome", e.target.value)}
-                      className="w-full text-sm font-bold text-text-primary bg-transparent border-none p-0 focus:ring-0 focus:outline-none"
-                    />
-                  </div>
-                  <div className="w-full md:w-28 space-y-1">
-                    <label className="flex items-center gap-1 text-2xs font-semibold uppercase tracking-caps text-text-tertiary">
-                      <Clock className="w-3 h-3" /> Descanso
-                    </label>
-                    <TimeInput
-                      value={exercicio.descanso}
-                      onChange={(v) => atualizarExercicio(exIndex, "descanso", v)}
-                      className="w-full px-3 py-1.5 bg-surface-2 border border-border-subtle rounded-lg text-sm text-text-primary focus:outline-none focus:border-brand/40"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removerExercicio(exIndex)}
-                    className="self-end w-9 h-9 flex items-center justify-center bg-danger/10 border border-danger/20 text-danger rounded-xl hover:opacity-80 transition-opacity"
-                  >
-                    <Trash className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Observações */}
-                <div className="space-y-1 mb-4 pb-3 border-b border-border-subtle/50">
-                  <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Observações para o Aluno</label>
-                  <textarea
-                    value={exercicio.observacoes}
-                    onChange={(e) => atualizarExercicio(exIndex, "observacoes", e.target.value)}
-                    placeholder="Ex: Manter o core contraído, não arquear as costas..."
-                    className="w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-xl text-sm text-text-primary focus:outline-none focus:border-brand/40 resize-none"
-                    rows={2}
-                  />
-                </div>
-
-                {/* Series Table */}
-                <div className="space-y-2">
-                  {(() => {
-                    const colunas = getColunasPorTipo(exercicio.tipo_exercicio);
-                    const gridTemplate = `2rem ${colunas.map(() => '5rem').join(' ')} 4rem 5.5rem 2rem`;
-                    return (
-                      <>
-                        {/* Desktop — scrollable table */}
-                        <div className="hidden md:block overflow-x-auto">
-                          {/* Header row */}
-                          <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: gridTemplate }}>
-                            <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">#</span>
-                            {colunas.map((col) => (
-                              <span key={col.key} className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary truncate">{col.label}</span>
-                            ))}
-                            <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70 truncate">TÉC</span>
-                            <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70 truncate"></span>
-                            <span></span>
-                          </div>
-
-                          {exercicio.series.map((serie, sIndex) => (
-                            <div key={sIndex} className="grid gap-1 bg-surface-2 border border-border-subtle/50 p-1.5 rounded-xl mb-1 min-w-max" style={{ gridTemplateColumns: gridTemplate }}>
-                              <div className="flex items-center justify-center text-xs font-bold text-text-secondary">#{serie.ordem}</div>
-                              {colunas.map((col) =>
-                                col.type === 'select' ? (
-                                  <select
-                                    key={col.key}
-                                    value={(serie as any)[col.key] ?? ''}
-                                    onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, e.target.value)}
-                                    className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
-                                  >
-                                    {(col as any).options?.map((opt: string) => <option key={opt} value={opt}>{opt || '-'}</option>)}
-                                  </select>
-                                ) : (col as any).timeInput ? (
-                                  <TimeInput
-                                    key={col.key}
-                                    value={(serie as any)[col.key] ?? '00:00'}
-                                    onChange={(v) => atualizarSerie(exIndex, sIndex, col.key, v)}
-                                    className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none text-center"
-                                  />
-                                ) : (
-                                  <input
-                                    key={col.key}
-                                    type={col.type}
-                                    step={(col as any).step}
-                                    placeholder={(col as any).placeholder}
-                                    value={(serie as any)[col.key] ?? (col.type === 'number' ? 0 : '')}
-                                    onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, col.type === 'number' ? Number(e.target.value) : e.target.value)}
-                                    className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
-                                  />
-                                )
-                              )}
-                              {/* TÉC */}
-                              <select
-                                value={(serie as any).tecnica ?? ''}
-                                onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica', e.target.value)}
-                                className="w-full h-7 px-1 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
-                              >
-                                {TECNICAS_BASE.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                              </select>
-                              {/* Técnica Extra */}
-                              <select
-                                value={(serie as any).tecnica_extra ?? ''}
-                                onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica_extra', e.target.value)}
-                                className="w-full h-7 px-1 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
-                              >
-                                {TECNICAS_EXTRA_OPCOES.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                              </select>
-                              <button onClick={() => removerSerie(exIndex, sIndex)} className="flex items-center justify-center text-text-tertiary hover:text-danger transition-colors">
-                                <Trash className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
+            {exerciciosFicha.map((exercicio, exIndex) => {
+              if (exercicio.grupo_biset_id && exercicio.biset_ordem === 2) {
+                return null;
+              }
+              if (exercicio.grupo_biset_id && exercicio.biset_ordem === 1) {
+                const partnerIndex = exIndex + 1;
+                const partner = exerciciosFicha[partnerIndex];
+                if (partner && partner.grupo_biset_id === exercicio.grupo_biset_id) {
+                  return (
+                    <div key={exIndex} className="border border-brand/20 bg-brand/5 p-2 rounded-3xl space-y-2">
+                      {renderExercicioCard(exercicio, exIndex)}
+                      
+                      {/* Connection row */}
+                      <div className="flex items-center justify-between px-5 py-2 bg-brand/10 border border-brand/20 rounded-2xl mx-1.5 shadow-sm">
+                        <div className="flex items-center gap-2 text-brand">
+                          <LinkIcon className="w-4 h-4" />
+                          <span className="text-xs font-bold uppercase tracking-caps">BI-SET (Direto, sem descanso entre os exercícios)</span>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => desagruparBiset(exercicio.grupo_biset_id!)}
+                          className="text-xs font-bold text-text-secondary hover:text-danger flex items-center gap-1.5 transition-colors"
+                        >
+                          <LinkBreak className="w-4 h-4" />
+                          Desagrupar
+                        </button>
+                      </div>
 
-                        {/* Mobile layout */}
-                        {exercicio.series.map((serie, sIndex) => (
-                          <div key={sIndex} className="md:hidden bg-surface-2 border border-border-subtle/50 p-3 rounded-xl space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-text-primary">Série #{serie.ordem}</span>
-                              <button onClick={() => removerSerie(exIndex, sIndex)} className="w-7 h-7 flex items-center justify-center text-text-tertiary hover:text-danger transition-colors">
-                                <Trash className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {colunas.map((col) => (
-                                <div key={col.key} className="space-y-0.5">
-                                  <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary px-1">{col.label}</label>
-                                  {col.type === 'select' ? (
-                                    <select
-                                      value={(serie as any)[col.key] ?? ''}
-                                      onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, e.target.value)}
-                                      className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
-                                    >
-                                      {(col as any).options?.map((opt: string) => <option key={opt} value={opt}>{opt || '-'}</option>)}
-                                    </select>
-                                  ) : (col as any).timeInput ? (
-                                    <TimeInput
-                                      value={(serie as any)[col.key] ?? '00:00'}
-                                      onChange={(v) => atualizarSerie(exIndex, sIndex, col.key, v)}
-                                      className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none text-center"
-                                    />
-                                  ) : (
-                                    <input
-                                      type={col.type}
-                                      step={(col as any).step}
-                                      placeholder={(col as any).placeholder}
-                                      value={(serie as any)[col.key] ?? (col.type === 'number' ? 0 : '')}
-                                      onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, col.type === 'number' ? Number(e.target.value) : e.target.value)}
-                                      className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none"
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                            <div className="border-t border-border-subtle/50 pt-2">
-                              <p className="text-2xs font-semibold uppercase tracking-caps text-brand/70 mb-1.5">Técnicas</p>
-                              <div className="grid grid-cols-2 gap-1.5">
-                                <div className="space-y-0.5">
-                                  <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">TÉC</label>
-                                  <select
-                                    value={(serie as any).tecnica ?? ''}
-                                    onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica', e.target.value)}
-                                    className="w-full h-8 px-2 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
-                                  >
-                                    {TECNICAS_BASE.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                                  </select>
-                                </div>
-                                <div className="space-y-0.5">
-                                  <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">Técnica Extra</label>
-                                  <select
-                                    value={(serie as any).tecnica_extra ?? ''}
-                                    onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica_extra', e.target.value)}
-                                    className="w-full h-8 px-2 bg-surface-0 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
-                                  >
-                                    {TECNICAS_EXTRA_OPCOES.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                                  </select>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    );
-                  })()}
-
-                  <button
-                    onClick={() => adicionarSerie(exIndex)}
-                    className="w-full py-2 border-2 border-dashed border-border-subtle rounded-xl text-text-disabled text-2xs font-semibold uppercase tracking-caps hover:bg-brand/5 hover:border-brand/30 hover:text-brand transition-all"
-                  >
-                    + Adicionar Série
-                  </button>
+                      {renderExercicioCard(partner, partnerIndex)}
+                    </div>
+                  );
+                }
+              }
+              return (
+                <div key={exIndex}>
+                  {renderExercicioCard(exercicio, exIndex)}
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {exerciciosFicha.length === 0 && (
               <div className="bg-surface-1 border-2 border-dashed border-border-subtle rounded-2xl p-12 md:p-20 flex flex-col items-center justify-center text-center">
@@ -946,6 +1155,38 @@ export default function NovaFichaCoachPage() {
                   Criar e Adicionar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating selection bar */}
+        {isSelectionMode && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface-1 border border-brand/35 shadow-elev-3 rounded-2xl py-3 px-5 flex items-center gap-4 max-w-md w-full justify-between animate-fade-in">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-text-primary">
+                {selectedIndexes.length} {selectedIndexes.length === 1 ? "selecionado" : "selecionados"}
+              </span>
+              <span className="text-2xs text-text-tertiary">Selecione exatamente 2 exercícios</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSelectionMode(false);
+                  setSelectedIndexes([]);
+                }}
+                className="px-3 h-8 bg-surface-2 border border-border-subtle rounded-lg text-2xs font-semibold text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={agruparComoBiset}
+                disabled={selectedIndexes.length !== 2}
+                className="px-3.5 h-8 bg-brand disabled:bg-surface-3 text-text-on-brand disabled:text-text-disabled rounded-lg text-2xs font-semibold uppercase tracking-caps shadow-sm shadow-brand/20 transition-all"
+              >
+                Agrupar como Bi-Set
+              </button>
             </div>
           </div>
         )}

@@ -1,11 +1,13 @@
-﻿"use client";
+"use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
+import { getPublicStorageUrl } from '@/lib/storageUrls';
+import { cn } from '@/lib/utils/cn';
 import {
   Barbell,
   ForkKnife,
@@ -38,15 +40,16 @@ const menuItems = [
 ];
 
 const coachMenuItems = [
-  { name: 'Painel Alunos', href: '/admin/alunos', icon: Users },
+  { name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
+  { name: 'Atletas', href: '/admin/alunos', icon: Users },
   { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
-  { name: 'Treinos Gerais', href: '/admin/treinos', icon: Barbell },
+  { name: 'Treinos', href: '/admin/treinos', icon: Barbell },
   { name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
   { name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
   { name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
-  { name: 'Ranking Geral', href: '/admin/ranking', icon: Trophy },
+  { name: 'Ranking', href: '/admin/ranking', icon: Trophy },
   { name: 'Relatórios', href: '/admin/relatorios', icon: ChartBar },
-  { name: 'Meu Perfil', href: '/admin/perfil', icon: User },
+  { name: 'Perfil', href: '/admin/perfil', icon: User },
 ];
 
 const superAdminMenuItems = [
@@ -58,8 +61,34 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const { userRole, loading, user } = useAuth();
   const pathname = usePathname();
-  
-  console.log('[Sidebar] Rendered with role:', userRole, 'loading:', loading, 'user:', user?.id);
+  const [profile, setProfile] = useState<{ name: string; avatarUrl: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
+          .single();
+        if (!error && data) {
+          setProfile({
+            name: data.full_name || user.email?.split('@')[0] || 'Usuário',
+            avatarUrl: data.avatar_url ? getPublicStorageUrl('avatars', data.avatar_url) : null,
+          });
+        } else {
+          setProfile({
+            name: user.email?.split('@')[0] || 'Usuário',
+            avatarUrl: null,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
   // Ocultar em rotas públicas ou enquanto carrega
   if (pathname === '/login' || pathname === '/' || loading) {
@@ -76,14 +105,20 @@ export default function Sidebar() {
   return (
     <>
       {/* Sidebar for Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-20 bg-bg-base border-r border-border-subtle flex-col py-8 items-center z-60 shadow-2xl">
-        <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="mb-10 group cursor-pointer">
-          <div className="w-14 h-14 bg-surface-1 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden">
-            <Image src="/logo.png" alt="Coach Vinny" width={44} height={44} className="object-contain" />
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full bg-bg-base border-r border-border-subtle flex-col py-8 items-stretch z-60 shadow-2xl transition-[width] duration-200 ease-in-out w-16 xl:w-[240px]">
+        
+        {/* Logo */}
+        <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="mb-10 group cursor-pointer flex items-center gap-3 px-3.5">
+          <div className="w-9 h-9 bg-surface-1 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden flex-shrink-0">
+            <Image src="/logo.png" alt="Coach Vinny" width={24} height={24} className="object-contain" />
           </div>
+          <span className="hidden xl:block font-black text-text-primary text-[11px] uppercase tracking-caps whitespace-nowrap overflow-hidden text-ellipsis">
+            COACH VINNY
+          </span>
         </Link>
 
-        <nav className="flex flex-col gap-3 flex-1">
+        {/* Menu Items */}
+        <nav className="flex flex-col gap-2.5 flex-1 w-full px-2.5">
            {currentMenuItems.map((m) => {
               const Icon = m.icon;
               const isActive = pathname === m.href;
@@ -91,37 +126,72 @@ export default function Sidebar() {
                 <Link
                   key={m.href}
                   href={m.href}
-                  title={m.name}
-                  className={`w-14 h-14 rounded-lg flex items-center justify-center transition-all group relative ${
-                    isActive ? 'text-brand' : 'text-text-disabled hover:text-brand/60 hover:bg-brand/5'
-                  }`}
+                  className={cn(
+                    "h-11 rounded-lg flex items-center transition-all group relative px-3 gap-3 w-full",
+                    isActive ? "bg-brand-subtle text-brand" : "text-text-disabled hover:text-brand/60 hover:bg-brand/5"
+                  )}
                 >
-                   {isActive && <div className="absolute left-0 w-1 h-6 bg-brand rounded-r-full" />}
-                   <Icon size={22} weight={isActive ? 'fill' : 'regular'} className={`${!isActive && 'group-hover:scale-110'} transition-transform`} />
-                   {!isActive && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
-                        {m.name}
-                      </div>
-                   )}
+                   {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-brand rounded-r-full" />}
+                   <Icon size={20} weight={isActive ? 'fill' : 'regular'} className={cn("transition-transform flex-shrink-0", !isActive && "group-hover:scale-110")} />
+                   <span className="hidden xl:block text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                     {m.name}
+                   </span>
+                   {/* Tooltip on collapsed mode */}
+                   <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 xl:group-hover:opacity-0 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
+                     {m.name}
+                   </div>
                 </Link>
               );
            })}
         </nav>
 
-        <button
-          onClick={async () => {
-            try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
-            localStorage.clear();
-            window.location.href = '/login';
-          }}
-          className="mt-4 w-14 h-14 rounded-lg flex items-center justify-center text-text-disabled hover:text-brand hover:bg-brand/10 transition-all group"
-          title="Sair"
-        >
-           <SignOut size={22} />
-        </button>
+        {/* Footer with profile + logout */}
+        <div className="mt-auto pt-4 border-t border-border-subtle/50 w-full px-2.5 flex flex-col gap-3">
+          {/* Profile block */}
+          <div className="flex items-center gap-3 px-3 py-2 bg-surface-1/50 rounded-lg border border-border-subtle/30 overflow-hidden min-h-[44px]">
+            {profile?.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt={profile.name}
+                className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-surface-3 flex items-center justify-center border border-border-subtle flex-shrink-0">
+                <User size={14} className="text-brand" />
+              </div>
+            )}
+            <div className="hidden xl:flex flex-col min-w-0">
+              <span className="text-[10px] text-text-primary font-bold truncate leading-tight">
+                {profile?.name || 'Coach'}
+              </span>
+              <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mt-0.5">
+                {userRole?.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+
+          {/* Logout button */}
+          <button
+            onClick={async () => {
+              try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+              localStorage.clear();
+              window.location.href = '/login';
+            }}
+            className="h-11 rounded-lg flex items-center text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group relative px-3 gap-3 w-full"
+          >
+             <SignOut size={20} className="flex-shrink-0" />
+             <span className="hidden xl:block text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+               Sair
+             </span>
+             {/* Tooltip on collapsed mode */}
+             <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-danger text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 xl:group-hover:opacity-0 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
+               Sair
+             </div>
+          </button>
+        </div>
       </aside>
 
-      {/* Hamburger button - Mobile Only - DISABLED (using bottom nav instead) */}
+      {/* Hamburger button - Mobile Only - DISABLED */}
       <button
         aria-label="Menu"
         onClick={() => setOpen(true)}

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download, ShareNetwork } from '@phosphor-icons/react';
+import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download, ShareNetwork, Link as LinkIcon } from '@phosphor-icons/react';
 import html2canvas from 'html2canvas';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
@@ -13,6 +13,8 @@ import { haptic } from '@/lib/utils/haptics';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import CompletionCard from './completion-card';
 import { useExportWorkoutCard } from './use-export-card';
+import { CompletionScreenWithExport } from '@/app/aluno/treinos/components/CompletionScreenWithExport';
+
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -33,6 +35,8 @@ interface ExercicioConfig {
   video_url?: string;
   observacoes?: string;
   series: SerieConfig[];
+  grupo_biset_id?: string;
+  biset_ordem?: 1 | 2;
 }
 
 interface SerieState {
@@ -53,6 +57,8 @@ interface ExercicioState {
   observacoes?: string;
   grupo_muscular?: string;
   series: SerieState[];
+  grupo_biset_id?: string;
+  biset_ordem?: 1 | 2;
 }
 
 interface VolumePoint {
@@ -217,9 +223,10 @@ interface ExercicioCardProps {
   onPesoChange: (ordem: number, peso: number) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen: (url: string) => void;
+  isBisetCard?: boolean;
 }
 
-function ExercicioCard({ exercicio, treinoIniciado, onPesoChange, onCheck, onVideoOpen }: ExercicioCardProps) {
+function ExercicioCard({ exercicio, treinoIniciado, onPesoChange, onCheck, onVideoOpen, isBisetCard }: ExercicioCardProps) {
   const completadas = exercicio.series.filter(s => s.completado).length;
   const total = exercicio.series.length;
   const all = completadas === total;
@@ -227,32 +234,47 @@ function ExercicioCard({ exercicio, treinoIniciado, onPesoChange, onCheck, onVid
   return (
     <div className={cn(
       'rounded-2xl border transition-colors',
-      all ? 'bg-success-subtle/20 border-success-border' : 'bg-surface-1 border-border-subtle'
+      isBisetCard ? 'bg-surface-1 border-border-subtle/50' : (all ? 'bg-success-subtle/20 border-success-border' : 'bg-surface-1 border-border-subtle')
     )}>
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-sm text-text-primary uppercase tracking-tight">{exercicio.nome}</h3>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <Clock className="w-3 h-3 text-brand" />
-            <p className="text-xs text-brand">
-              Descanso: {formatDuration(exercicio.descanso)}
-            </p>
+      <div className="flex flex-col gap-2 px-4 pt-4 pb-2">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="font-bold text-sm text-text-primary uppercase tracking-tight line-clamp-2 flex-1 min-w-0 leading-tight">
+            {exercicio.nome}
+          </h3>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {exercicio.video_url && (
+              <button
+                type="button"
+                onClick={() => onVideoOpen(exercicio.video_url!)}
+                className="w-8 h-8 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0"
+                aria-label="Ver vídeo"
+              >
+                <Play className="w-3.5 h-3.5" fill="currentColor" />
+              </button>
+            )}
+            {all && (
+              <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center flex-shrink-0">
+                <Check className="w-3.5 h-3.5 text-white" weight="bold" />
+              </div>
+            )}
           </div>
         </div>
-        {exercicio.video_url && (
-          <button
-            onClick={() => onVideoOpen(exercicio.video_url!)}
-            className="w-8 h-8 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0"
-          >
-            <Play className="w-3.5 h-3.5" fill="currentColor" />
-          </button>
-        )}
-        {all && (
-          <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
-            <Check className="w-3.5 h-3.5 text-white" weight="bold" />
-          </div>
-        )}
+
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <Clock className="w-3 h-3 text-brand flex-shrink-0" />
+          <p className="text-xs text-brand whitespace-nowrap">
+            {exercicio.grupo_biset_id ? (
+              exercicio.biset_ordem === 1 ? (
+                "Sem descanso"
+              ) : (
+                `Descanso: ${formatDuration(exercicio.descanso)} (após o par)`
+              )
+            ) : (
+              `Descanso: ${formatDuration(exercicio.descanso)}`
+            )}
+          </p>
+        </div>
       </div>
 
       {exercicio.observacoes && (
@@ -331,6 +353,7 @@ export default function ExecucaoTreinoPage() {
   const [modalSerieIdx, setModalSerieIdx] = useState(0);
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
+  const [bisetToast, setBisetToast] = useState<string | null>(null);
 
   // Vídeo
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -438,6 +461,8 @@ export default function ExecucaoTreinoPage() {
           video_url: ex.video_url,
           observacoes: ex.observacoes,
           grupo_muscular: gruposMusculares[ex.id] || '',
+          grupo_biset_id: ex.grupo_biset_id,
+          biset_ordem: ex.biset_ordem,
           series: (ex.series || []).map((s, idx) => {
             const prev = seriesPrev[idx];
             const anterior = prev ? `${prev.peso_atual || 0}kg × ${prev.reps || 0}` : '—';
@@ -761,6 +786,60 @@ export default function ExecucaoTreinoPage() {
     haptic('success');
 
     const isUltimaSerie = modalSerieIdx >= ex.series.length - 1;
+    const pertenceABiset = !!ex.grupo_biset_id;
+    const parceiro = pertenceABiset
+      ? newExercicios.find(e => e.grupo_biset_id === ex.grupo_biset_id && e.id !== ex.id)
+      : null;
+
+    if (pertenceABiset && parceiro) {
+      const ehPrimeiroDoPar = ex.biset_ordem === 1;
+
+      if (ehPrimeiroDoPar) {
+        // Concluiu a série do exercício 1 do par → vai DIRETO pro exercício 2,
+        // MESMA série (mesmo índice), SEM rest timer.
+        const parceiroIdx = newExercicios.findIndex(e => e.id === parceiro.id);
+        
+        setBisetToast(`Agora: ${parceiro.nome}`);
+        setTimeout(() => setBisetToast(null), 1500);
+
+        setModalExIdx(parceiroIdx);
+        setModalSerieIdx(modalSerieIdx); // mesma posição de série
+        const cargaParceiro = parceiro.series[modalSerieIdx]?.peso_atual || 0;
+        setModalCarga(cargaParceiro);
+        setModalCargaStr(cargaParceiro > 0 ? String(cargaParceiro) : '');
+        // SEM iniciarRest() aqui — transição imediata
+        return;
+      } else {
+        // Concluiu a série do exercício 2 do par → PAR completo nesta rodada.
+        const primeiroIdx = newExercicios.findIndex(e => e.id === parceiro.id);
+
+        if (isUltimaSerie) {
+          // Última rodada do par concluída → segue fluxo normal (próximo exercício da ficha ou fim)
+          const isUltimoExercicio = modalExIdx >= newExercicios.length - 1;
+          if (isUltimoExercicio) {
+            setModalExIdx(null);
+            return;
+          }
+          const proxExIdx = modalExIdx + 1;
+          iniciarRest(ex.descanso, () => abrirModalExercicio(proxExIdx));
+        } else {
+          // Ainda há mais rodadas do par → descansa (descanso do par) e volta pro exercício 1, próxima série
+          const proxSerieIdx = modalSerieIdx + 1;
+          iniciarRest(ex.descanso, () => {
+            setBisetToast(`Agora: ${parceiro.nome}`);
+            setTimeout(() => setBisetToast(null), 1500);
+
+            setModalExIdx(primeiroIdx);
+            setModalSerieIdx(proxSerieIdx);
+            const nextCarga = newExercicios[primeiroIdx].series[proxSerieIdx]?.peso_atual || 0;
+            setModalCarga(nextCarga);
+            setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+          });
+        }
+        return;
+      }
+    }
+
     const isUltimoExercicio = modalExIdx >= exercicios.length - 1;
 
     if (isUltimaSerie) {
@@ -815,6 +894,8 @@ export default function ExecucaoTreinoPage() {
         dados_sessao: {
           nome_rotina: nomeRotina,
           nome_exercicio: ex.nome,
+          grupo_biset_id: ex.grupo_biset_id ?? null,
+          biset_ordem: ex.biset_ordem ?? null,
           series: ex.series.map(s => ({
             ordem: s.ordem,
             reps: s.reps,
@@ -1034,16 +1115,56 @@ export default function ExecucaoTreinoPage() {
         )}
 
         {/* Exercícios */}
-        {exercicios.map((ex) => (
-          <ExercicioCard
-            key={ex.id}
-            exercicio={ex}
-            treinoIniciado={treinoIniciado}
-            onPesoChange={(ordem, peso) => handlePesoChange(ex.id, ordem, peso)}
-            onCheck={(ordem) => handleCheck(ex.id, ordem)}
-            onVideoOpen={setVideoUrl}
-          />
-        ))}
+        {(() => {
+          return exercicios.map((ex, exIndex) => {
+            if (ex.grupo_biset_id && ex.biset_ordem === 2) {
+              return null;
+            }
+            if (ex.grupo_biset_id && ex.biset_ordem === 1) {
+              const partnerIndex = exIndex + 1;
+              const partner = exercicios[partnerIndex];
+              if (partner && partner.grupo_biset_id === ex.grupo_biset_id) {
+                return (
+                  <div key={ex.id} className="border border-brand/20 bg-brand/5 p-2.5 rounded-3xl space-y-2.5">
+                    <ExercicioCard
+                      exercicio={ex}
+                      treinoIniciado={treinoIniciado}
+                      onPesoChange={(ordem, peso) => handlePesoChange(ex.id, ordem, peso)}
+                      onCheck={(ordem) => handleCheck(ex.id, ordem)}
+                      onVideoOpen={setVideoUrl}
+                      isBisetCard={true}
+                    />
+                    
+                    {/* Connection row */}
+                    <div className="flex items-center gap-2 px-4 py-1.5 bg-brand/10 border border-brand/20 rounded-xl text-brand">
+                      <LinkIcon className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-2xs font-extrabold uppercase tracking-caps">BI-SET (Sem descanso)</span>
+                    </div>
+
+                    <ExercicioCard
+                      exercicio={partner}
+                      treinoIniciado={treinoIniciado}
+                      onPesoChange={(ordem, peso) => handlePesoChange(partner.id, ordem, peso)}
+                      onCheck={(ordem) => handleCheck(partner.id, ordem)}
+                      onVideoOpen={setVideoUrl}
+                      isBisetCard={true}
+                    />
+                  </div>
+                );
+              }
+            }
+            return (
+              <ExercicioCard
+                key={ex.id}
+                exercicio={ex}
+                treinoIniciado={treinoIniciado}
+                onPesoChange={(ordem, peso) => handlePesoChange(ex.id, ordem, peso)}
+                onCheck={(ordem) => handleCheck(ex.id, ordem)}
+                onVideoOpen={setVideoUrl}
+              />
+            );
+          });
+        })()}
 
       </main>
 
@@ -1153,7 +1274,7 @@ export default function ExecucaoTreinoPage() {
       {modalEx && modalSerie && (
         <div className="fixed inset-0 z-50 flex flex-col bg-surface-0">
           {/* Header do modal */}
-          <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 bg-surface-1 border-b border-border-subtle flex-shrink-0">
+          <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 bg-surface-1 border-b border-border-subtle flex-shrink-0 relative">
             <button
               onClick={() => setModalExIdx(null)}
               className="w-9 h-9 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary flex-shrink-0"
@@ -1164,7 +1285,14 @@ export default function ExecucaoTreinoPage() {
               <p className="text-2xs font-semibold uppercase tracking-caps text-brand mb-0.5">
                 Exercício {(modalExIdx ?? 0) + 1}/{exercicios.length}
               </p>
-              <h2 className="text-sm font-bold text-text-primary uppercase leading-tight truncate">{modalEx.nome}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-text-primary uppercase leading-tight truncate">{modalEx.nome}</h2>
+                {modalEx.grupo_biset_id && (
+                  <span className="px-1.5 py-0.5 rounded bg-brand/10 border border-brand/20 text-brand font-extrabold uppercase tracking-caps text-[9px] flex-shrink-0">
+                    BI-SET {modalEx.biset_ordem}/2
+                  </span>
+                )}
+              </div>
             </div>
             {modalEx.video_url && (
               <button
@@ -1174,14 +1302,21 @@ export default function ExecucaoTreinoPage() {
                 <Play className="w-4 h-4" fill="currentColor" />
               </button>
             )}
+            {bisetToast && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 bg-brand text-text-on-brand shadow-lg rounded-full py-1.5 px-4 text-xs font-bold tracking-caps uppercase mt-2 animate-bounce">
+                {bisetToast}
+              </div>
+            )}
           </div>
 
           {/* Corpo do modal */}
-          <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4">
+          <div key={modalEx.id} className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 animate-fade-in">
 
             {/* Progresso da série */}
             <div className="flex items-center justify-between">
-              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Série</span>
+              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">
+                {modalEx.grupo_biset_id ? "Rodada" : "Série"}
+              </span>
               <span className="text-2xl font-bold text-text-primary">
                 {modalSerieIdx + 1}<span className="text-sm text-text-tertiary">/{modalEx.series.length}</span>
               </span>
@@ -1254,8 +1389,8 @@ export default function ExecucaoTreinoPage() {
             </div>
 
             {/* Séries anteriores do exercício */}
-            <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
-              <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle/50">
+            <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden flex flex-col flex-shrink-0">
+              <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle/50 bg-surface-2/30 flex-shrink-0">
                 <span className="w-7 h-7 text-[10px] font-bold uppercase tracking-caps text-text-disabled text-center flex items-center justify-center">Set</span>
                 <span className="flex-1 min-w-0 text-[10px] font-bold uppercase tracking-caps text-text-disabled">Ant.</span>
                 <span className="w-12 text-[10px] font-bold uppercase tracking-caps text-text-disabled text-center">Peso</span>
@@ -1263,44 +1398,48 @@ export default function ExecucaoTreinoPage() {
                 <span className="w-6 text-[10px] font-bold uppercase tracking-caps text-text-disabled text-center">Té1</span>
                 <span className="w-6 text-[10px] font-bold uppercase tracking-caps text-text-disabled text-center">Té2</span>
               </div>
-              {modalEx.series.map((s, idx) => {
-                const isAtual = idx === modalSerieIdx;
-                return (
-                  <div
-                    key={s.ordem}
-                    className={cn(
-                      'flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle/30 last:border-0',
-                      s.completado ? 'bg-success/10' : isAtual ? 'bg-brand/5' : ''
-                    )}
-                  >
-                    <div className={cn(
-                      'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-                      s.completado ? 'bg-success text-white' : isAtual ? 'bg-brand text-white' : 'bg-surface-3 text-text-secondary'
-                    )}>
-                      {idx + 1}
+              <div className="divide-y divide-border-subtle/30 max-h-[160px] overflow-y-auto scrollbar-thin pb-1">
+                {modalEx.series.map((s, idx) => {
+                  const isAtual = idx === modalSerieIdx;
+                  return (
+                    <div
+                      key={s.ordem}
+                      className={cn(
+                        'flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle/30 last:border-0',
+                        s.completado ? 'bg-success/10' : isAtual ? 'bg-brand/5' : ''
+                      )}
+                    >
+                      <div className={cn(
+                        'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                        s.completado ? 'bg-success text-white' : isAtual ? 'bg-brand text-white' : 'bg-surface-3 text-text-secondary'
+                      )}>
+                        {idx + 1}
+                      </div>
+                      <span className="flex-1 min-w-0 text-[10px] font-mono text-text-disabled/60 truncate">{s.anterior || '—'}</span>
+                      <span className="w-12 text-[10px] font-bold text-text-primary text-center">
+                        {isAtual ? (modalCarga !== undefined ? `${modalCarga} kg` : '—') : (s.completado || s.peso_atual > 0 ? `${s.peso_atual} kg` : '—')}
+                      </span>
+                      <div className={cn(
+                        'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0',
+                        s.completado ? 'bg-success-subtle' : isAtual ? 'bg-brand/10' : ''
+                      )}>
+                        <span className={cn(
+                          'text-xs font-bold',
+                          s.completado ? 'text-success' : isAtual ? 'text-brand' : 'text-text-tertiary'
+                        )}>{s.reps}</span>
+                      </div>
+                      <div className="w-6 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-[10px] font-bold text-text-secondary">{duasLetrasTenica(s.tecnica)}</span>
+                      </div>
+                      <div className="w-6 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-[10px] font-bold text-brand">{abreviarTecnica(s.tecnica_extra)}</span>
+                      </div>
+                      {s.completado && <Check className="w-3 h-3 text-success flex-shrink-0" weight="bold" />}
+                      {isAtual && !s.completado && <div className="w-2 h-2 rounded-full bg-brand animate-pulse flex-shrink-0" />}
                     </div>
-                    <span className="flex-1 min-w-0 text-[10px] font-mono text-text-disabled/60 truncate">{s.anterior || '—'}</span>
-                    <span className="w-12 text-[10px] font-bold text-text-primary text-center">{isAtual ? modalCarga || '—' : s.peso_atual || '—'}</span>
-                    <div className={cn(
-                      'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0',
-                      s.completado ? 'bg-success-subtle' : isAtual ? 'bg-brand/10' : ''
-                    )}>
-                      <span className={cn(
-                        'text-xs font-bold',
-                        s.completado ? 'text-success' : isAtual ? 'text-brand' : 'text-text-tertiary'
-                      )}>{s.reps}</span>
-                    </div>
-                    <div className="w-6 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-[10px] font-bold text-text-secondary">{duasLetrasTenica(s.tecnica)}</span>
-                    </div>
-                    <div className="w-6 h-7 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-[10px] font-bold text-brand">{abreviarTecnica(s.tecnica_extra)}</span>
-                    </div>
-                    {s.completado && <Check className="w-3 h-3 text-success flex-shrink-0" weight="bold" />}
-                    {isAtual && !s.completado && <div className="w-2 h-2 rounded-full bg-brand animate-pulse flex-shrink-0" />}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -1312,7 +1451,9 @@ export default function ExecucaoTreinoPage() {
               <div className="mb-3 bg-surface-2 border border-border-subtle rounded-2xl px-3 py-2.5">
                 <div className="flex items-center gap-1.5 mb-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-                  <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Descanso</span>
+                  <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">
+                    {modalEx.grupo_biset_id ? "Descanso — Próxima rodada do bi-set" : "Descanso"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1356,12 +1497,28 @@ export default function ExecucaoTreinoPage() {
               disabled={restActive}
               className="w-full h-14 bg-brand text-text-on-brand rounded-2xl font-bold text-sm uppercase tracking-caps shadow-lg shadow-brand/30 hover:opacity-90 transition-opacity disabled:opacity-40"
             >
-              {modalSerieIdx >= modalEx.series.length - 1
-                ? modalExIdx !== null && modalExIdx >= exercicios.length - 1
-                  ? '✓ Concluir Treino'
-                  : '✓ Concluir Exercício'
-                : `Concluir Série ${modalSerieIdx + 1}/${modalEx.series.length}`
-              }
+              {modalEx.grupo_biset_id ? (
+                (() => {
+                  const parceiro = exercicios.find(e => e.grupo_biset_id === modalEx.grupo_biset_id && e.id !== modalEx.id);
+                  const parceiroNome = parceiro ? (parceiro.nome.length > 18 ? parceiro.nome.slice(0, 16) + '…' : parceiro.nome) : "exercício 2";
+                  if (modalEx.biset_ordem === 1) {
+                    return `Concluir e ir para ${parceiroNome}`;
+                  } else {
+                    if (modalSerieIdx >= modalEx.series.length - 1) {
+                      return modalExIdx !== null && modalExIdx >= exercicios.length - 1
+                        ? '✓ Concluir Treino'
+                        : '✓ Concluir Bi-Set';
+                    }
+                    return `Concluir Rodada ${modalSerieIdx + 1}/${modalEx.series.length}`;
+                  }
+                })()
+              ) : (
+                modalSerieIdx >= modalEx.series.length - 1
+                  ? modalExIdx !== null && modalExIdx >= exercicios.length - 1
+                    ? '✓ Concluir Treino'
+                    : '✓ Concluir Exercício'
+                  : `Concluir Série ${modalSerieIdx + 1}/${modalEx.series.length}`
+              )}
             </button>
             {modalExIdx !== null && modalExIdx < exercicios.length - 1 && modalSerieIdx >= modalEx.series.length - 1 && (
               <button
@@ -1381,362 +1538,5 @@ export default function ExecucaoTreinoPage() {
   );
 }
 
-// ─── CompletionScreenWithExport ────────────────────────────────────────────
 
-interface CompletionScreenProps {
-  nomeRotina: string;
-  duracao: number;
-  volume: number;
-  sets: number;
-  exercicios: ExercicioState[];
-  prsCount: number;
-  coachUsername: string;
-}
-
-function CompletionScreenWithExport({
-  nomeRotina,
-  duracao,
-  volume,
-  sets,
-  exercicios,
-  prsCount,
-  coachUsername,
-}: CompletionScreenProps) {
-  const [exporting, setExporting] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previews, setPreviews] = useState<Record<string, string | null>>({
-    dark: null,
-    light: null,
-    transparent: null,
-  });
-  const { exportCard, exportAllCards, shareToGallery } = useExportWorkoutCard();
-  const router = useRouter();
-
-  const exportOptions = {
-    nomeRotina,
-    duracao,
-    volume,
-    sets,
-    exercicios: exercicios.map(ex => ({
-      nome: ex.nome,
-      grupo_muscular: ex.grupo_muscular,
-      series: ex.series,
-    })),
-    prsCount,
-    coachUsername,
-  };
-
-  // Carregar previews quando modal abre
-  useEffect(() => {
-    if (!showPreview) return;
-
-    const loadPreviews = async () => {
-      const newPreviews = { ...previews };
-      const themes: Array<'dark' | 'light' | 'transparent'> = ['dark', 'light', 'transparent'];
-
-      for (const theme of themes) {
-        const element = document.getElementById(`card-${theme}`);
-        if (element) {
-          try {
-            const canvas = await html2canvas(element, {
-              scale: 1.5,
-              backgroundColor: theme === 'transparent' ? null : undefined,
-              logging: false,
-              useCORS: true,
-              allowTaint: true,
-            });
-            newPreviews[theme] = canvas.toDataURL('image/png');
-          } catch (error) {
-            console.error(`Erro ao gerar preview ${theme}:`, error);
-          }
-        }
-      }
-      setPreviews(newPreviews);
-    };
-
-    loadPreviews();
-  }, [showPreview]);
-
-  const handleExportSingle = async (theme: 'dark' | 'light' | 'transparent') => {
-    setExporting(true);
-    await exportCard(theme, exportOptions);
-    setExporting(false);
-  };
-
-  const handleShareToGallery = async (theme: 'dark' | 'light' | 'transparent') => {
-    setExporting(true);
-    await shareToGallery(theme, exportOptions);
-    setExporting(false);
-  };
-
-  const handleExportAll = async () => {
-    setExporting(true);
-    await exportAllCards(exportOptions);
-    setExporting(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center p-4 pb-24">
-      <div className="w-full max-w-lg">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-success-subtle border-2 border-success flex items-center justify-center mx-auto mb-6">
-            <Trophy className="w-10 h-10 text-success" />
-          </div>
-          <h2 className="text-2xl font-bold text-text-primary mb-2">Treino concluído!</h2>
-          <p className="text-text-secondary">
-            {formatVolume(volume)} · {formatDuration(duracao)} · {sets} sets
-          </p>
-        </div>
-
-        {/* Cards Preview */}
-        <div className="mb-8 space-y-4">
-          <h3 className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-4">
-            Exportar para redes sociais
-          </h3>
-
-          {/* Dark Card */}
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
-            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
-              <div id="card-dark">
-                <CompletionCard
-                  theme="dark"
-                  nomeRotina={nomeRotina}
-                  duracao={duracao}
-                  volume={volume}
-                  sets={sets}
-                  exercicios={exercicios}
-                  prsCount={prsCount}
-                  coachUsername={coachUsername}
-                />
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-surface-2 flex-shrink-0 flex items-center justify-center">
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: '#0F1419',
-                  borderRadius: '8px',
-                }}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text-primary mb-1">Tema Escuro</p>
-              <p className="text-xs text-text-tertiary">Fundo preto, letras brancas</p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => handleShareToGallery('dark')}
-                disabled={exporting}
-                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors disabled:opacity-50"
-                title="Salvar na galeria"
-              >
-                <ShareNetwork className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleExportSingle('dark')}
-                disabled={exporting}
-                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Light Card */}
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
-            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
-              <div id="card-light">
-                <CompletionCard
-                  theme="light"
-                  nomeRotina={nomeRotina}
-                  duracao={duracao}
-                  volume={volume}
-                  sets={sets}
-                  exercicios={exercicios}
-                  prsCount={prsCount}
-                  coachUsername={coachUsername}
-                />
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-surface-2 flex-shrink-0 flex items-center justify-center border border-border-subtle">
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: '8px',
-                }}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text-primary mb-1">Tema Claro</p>
-              <p className="text-xs text-text-tertiary">Fundo branco, letras pretas</p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => handleShareToGallery('light')}
-                disabled={exporting}
-                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors disabled:opacity-50"
-                title="Salvar na galeria"
-              >
-                <ShareNetwork className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleExportSingle('light')}
-                disabled={exporting}
-                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Transparent Card */}
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-start gap-4">
-            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
-              <div id="card-transparent">
-                <CompletionCard
-                  theme="transparent"
-                  nomeRotina={nomeRotina}
-                  duracao={duracao}
-                  volume={volume}
-                  sets={sets}
-                  exercicios={exercicios}
-                  prsCount={prsCount}
-                  coachUsername={coachUsername}
-                />
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-surface-2 flex-shrink-0 flex items-center justify-center border border-dashed border-border-subtle">
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  background: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(176,176,176,0.1) 10px, rgba(176,176,176,0.1) 20px)',
-                  borderRadius: '8px',
-                }}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text-primary mb-1">Tema Transparente</p>
-              <p className="text-xs text-text-tertiary">Fundo transparente, letras brancas</p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => handleShareToGallery('transparent')}
-                disabled={exporting}
-                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors disabled:opacity-50"
-                title="Salvar na galeria"
-              >
-                <ShareNetwork className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleExportSingle('transparent')}
-                disabled={exporting}
-                className="w-10 h-10 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors flex-shrink-0 disabled:opacity-50"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <button
-            onClick={() => setShowPreview(true)}
-            disabled={exporting}
-            className="w-full h-12 rounded-xl bg-surface-2 border border-border-subtle text-text-primary font-semibold flex items-center justify-center gap-2 hover:bg-surface-3 transition-colors disabled:opacity-50"
-          >
-            👁️ Ver preview dos estilos
-          </button>
-          <button
-            onClick={handleExportAll}
-            disabled={exporting}
-            className="w-full h-12 rounded-xl bg-brand text-text-on-brand font-semibold flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            Baixar os 3 estilos
-          </button>
-          <button
-            onClick={() => router.push('/aluno/treinos')}
-            disabled={exporting}
-            className="w-full h-12 rounded-xl bg-surface-1 border border-border-subtle text-text-primary font-semibold hover:bg-surface-2 transition-colors disabled:opacity-50"
-          >
-            Ir para treinos
-          </button>
-        </div>
-      </div>
-
-      {/* Modal de Preview */}
-      {showPreview && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
-          <div className="w-full bg-surface-0 rounded-t-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-surface-0 border-b border-border-subtle p-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-text-primary">Preview dos estilos</h2>
-              <button
-                onClick={() => setShowPreview(false)}
-                className="w-8 h-8 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary hover:text-text-primary"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-6">
-              {/* Dark Preview */}
-              {previews.dark && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Tema Escuro</p>
-                  <img
-                    src={previews.dark}
-                    alt="Preview tema escuro"
-                    className="w-full rounded-xl border border-border-subtle"
-                    style={{ maxHeight: '600px', objectFit: 'contain' }}
-                  />
-                </div>
-              )}
-
-              {/* Light Preview */}
-              {previews.light && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Tema Claro</p>
-                  <img
-                    src={previews.light}
-                    alt="Preview tema claro"
-                    className="w-full rounded-xl border border-border-subtle"
-                    style={{ maxHeight: '600px', objectFit: 'contain' }}
-                  />
-                </div>
-              )}
-
-              {/* Transparent Preview */}
-              {previews.transparent && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Tema Transparente</p>
-                  <div className="w-full rounded-xl border border-dashed border-border-subtle p-2 bg-checkered">
-                    <img
-                      src={previews.transparent}
-                      alt="Preview tema transparente"
-                      className="w-full rounded-lg"
-                      style={{ maxHeight: '600px', objectFit: 'contain' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Loading State */}
-              {(!previews.dark || !previews.light || !previews.transparent) && (
-                <div className="flex items-center justify-center py-12">
-                  <p className="text-text-secondary">Carregando previews...</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 

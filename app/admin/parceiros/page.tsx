@@ -7,6 +7,8 @@ import {
   Plus, Tag, ArrowSquareOut, Image, X, WarningCircle, ShoppingBag, PencilSimple, Trash, CircleNotch,
 } from '@phosphor-icons/react';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { Card } from '@/components/ui/Card';
+import PageHeader from '@/app/components/PageHeader';
 import { cn } from '@/lib/utils/cn';
 
 interface Parceiro {
@@ -23,15 +25,15 @@ interface Parceiro {
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
-      <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">{label}</label>
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary ml-1">{label}</label>
       {children}
     </div>
   );
 }
 
-const inputCls = "w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors";
-const textareaCls = "w-full bg-surface-0 border border-border-subtle text-text-primary px-4 py-3 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors resize-none";
+const inputCls = "w-full h-11 bg-surface-3 border border-border-default text-text-primary px-4 rounded-[6px] text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand transition-colors";
+const textareaCls = "w-full bg-surface-3 border border-border-default text-text-primary px-4 py-2.5 rounded-[6px] text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand transition-colors resize-none";
 
 // ─── Modal component ──────────────────────────────────────────────────────────
 
@@ -71,7 +73,7 @@ function ParceiroModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl bg-surface-1 border border-border-subtle rounded-2xl shadow-elev-2 overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-xl bg-surface-1 border border-border-default rounded-[12px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle flex-shrink-0">
           <div>
@@ -80,22 +82,22 @@ function ParceiroModal({
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center bg-surface-3 text-text-tertiary hover:text-danger rounded-xl transition-colors"
+            className="w-8 h-8 flex items-center justify-center bg-surface-3 text-text-tertiary hover:text-danger rounded-[8px] transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-6">
           {formError && (
-            <div className="mb-5 p-3 bg-danger/10 border border-danger/20 rounded-xl text-danger flex items-center gap-3 text-sm">
+            <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-[6px] text-danger flex items-center gap-3 text-sm">
               <WarningCircle className="w-4 h-4 flex-shrink-0" />
               {formError}
             </div>
           )}
 
-          <form id="parceiro-form" onSubmit={onSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <form id="parceiro-form" onSubmit={onSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField label="Nome da Marca">
                 <input
                   type="text"
@@ -149,7 +151,7 @@ function ParceiroModal({
 
             <FormField label={multipleImages ? "Imagens (máx 5)" : "Nova Imagem (opcional)"}>
               <div className="space-y-2">
-                <div className="relative flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-border-subtle rounded-xl bg-surface-2/50 hover:bg-brand/5 hover:border-brand/30 transition-all cursor-pointer group">
+                <div className="relative flex flex-col items-center justify-center w-full h-24 border border-dashed border-border-default rounded-[6px] bg-surface-2 hover:bg-brand-subtle hover:border-brand-border transition-all cursor-pointer group">
                   <input
                     type="file"
                     accept="image/*"
@@ -161,17 +163,10 @@ function ParceiroModal({
                   <p className="text-xs text-text-tertiary">Clique para selecionar</p>
                 </div>
 
-                <div className="flex items-start gap-1 p-1.5 bg-surface-2 border border-border-subtle rounded-lg">
-                  <WarningCircle className="w-2.5 h-2.5 text-brand flex-shrink-0 mt-0.5" />
-                  <p className="text-[9px] text-text-tertiary leading-tight">
-                    Ideal: <span className="text-brand font-mono">1200×675px</span> (16:9) ou <span className="text-brand font-mono">800×600px</span> (4:3)
-                  </p>
-                </div>
-
                 {imagePreviews.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                     {imagePreviews.map((src, i) => (
-                      <div key={i} className="shrink-0 w-16 h-16 rounded-xl border border-border-subtle overflow-hidden bg-surface-2">
+                      <div key={i} className="shrink-0 w-14 h-14 rounded-[6px] border border-border-subtle overflow-hidden bg-surface-2">
                         <img src={src} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     ))}
@@ -183,11 +178,11 @@ function ParceiroModal({
         </div>
 
         {/* Modal footer */}
-        <div className="flex gap-3 px-6 py-4 border-t border-border-subtle flex-shrink-0">
+        <div className="flex gap-3 px-6 py-4 border-t border-border-subtle flex-shrink-0 bg-surface-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-11 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
+            className="flex-1 h-10 bg-surface-3 border border-border-subtle text-text-secondary rounded-[8px] text-xs font-semibold hover:text-text-primary transition-colors"
           >
             {cancelLabel}
           </button>
@@ -195,7 +190,7 @@ function ParceiroModal({
             type="submit"
             form="parceiro-form"
             disabled={saving}
-            className="flex-1 h-11 bg-brand text-text-on-brand rounded-xl text-xs font-semibold uppercase tracking-caps shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 h-10 bg-brand text-text-on-brand rounded-[8px] text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {saving ? (
               <><CircleNotch className="w-4 h-4 animate-spin" /> Processando...</>
@@ -366,28 +361,30 @@ export default function ParceirosAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
-      <div className="max-w-6xl mx-auto">
-
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-16 xl:pl-[240px]">
+      <div className="max-w-[1440px] px-6 md:px-10 py-8 mx-auto w-full flex flex-col gap-6 animate-fade-in">
+        
         {/* Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight mb-1">
-              Gestão de <span className="text-brand">Parceiros</span>
-            </h1>
-            <p className="text-sm text-text-tertiary">Configure benefícios e cupons exclusivos para seus alunos</p>
-          </div>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-5 h-11 bg-brand text-text-on-brand rounded-2xl text-xs font-semibold uppercase tracking-caps shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar Parceiro
-          </button>
-        </div>
+        <PageHeader
+          title="Gestão de Parceiros"
+          subtitle="Configure benefícios e cupons exclusivos para seus atletas"
+          breadcrumbs={[
+            { label: "Atletas", href: "/admin/alunos" },
+            { label: "Parceiros" }
+          ]}
+          actions={
+            <button
+              onClick={() => setModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 h-10 bg-brand text-text-on-brand rounded-[8px] text-xs font-bold uppercase tracking-wider shadow-sm hover:opacity-95 transition-opacity"
+            >
+              <Plus className="w-4 h-4" />
+              Adicionar Parceiro
+            </button>
+          }
+        />
 
         {error && (
-          <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-2xl text-danger flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-[6px] bg-danger-subtle border border-danger-border text-danger text-sm">
             <WarningCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
@@ -398,44 +395,58 @@ export default function ParceirosAdminPage() {
             <DumbbellLoader text="Carregando rede..." />
           </div>
         ) : parceiros.length === 0 ? (
-          <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-16 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled mb-6">
+          <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-[10px] p-16 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-full bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled mb-6">
               <ShoppingBag className="w-8 h-8" />
             </div>
-            <h2 className="text-lg font-bold text-text-primary mb-2">Nenhum parceiro ativo</h2>
-            <p className="text-sm text-text-tertiary max-w-sm">Cadastre marcas parceiras para que seus alunos tenham acesso a descontos exclusivos.</p>
+            <h2 className="text-base font-bold text-text-primary mb-2">Nenhum parceiro ativo</h2>
+            <p className="text-xs text-text-tertiary max-w-sm mb-6">Cadastre marcas parceiras para que seus alunos tenham acesso a descontos exclusivos.</p>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="flex items-center gap-1.5 px-5 h-10 bg-brand text-text-on-brand rounded-[8px] text-xs font-bold uppercase tracking-wider hover:opacity-95 transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Adicionar Primeiro Parceiro
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
             {parceiros.map((parceiro) => (
-              <div key={parceiro.id} className="bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-2xl p-5 transition-all">
-                {/* Logo */}
-                <div className="w-14 h-14 bg-surface-2 border border-border-subtle rounded-xl overflow-hidden flex items-center justify-center mb-4">
-                  {parceiro.logo_url ? (
-                    <img
-                      src={getPublicStorageUrl('parceiros-logos', parceiro.logo_url) || ''}
-                      alt={parceiro.nome_marca}
-                      className="w-full h-full object-contain p-2"
-                    />
-                  ) : (
-                    <Image className="w-6 h-6 text-text-disabled" />
-                  )}
+              <Card key={parceiro.id} className="bg-surface-1 border border-border-subtle shadow-sm hover:shadow-md hover:border-brand/20 rounded-[10px] p-4 transition-all flex flex-col justify-between">
+                <div>
+                  {/* Logo */}
+                  <div className="w-12 h-12 bg-surface-2 border border-border-subtle rounded-[6px] overflow-hidden flex items-center justify-center mb-4">
+                    {parceiro.logo_url ? (
+                      <img
+                        src={getPublicStorageUrl('parceiros-logos', parceiro.logo_url) || ''}
+                        alt={parceiro.nome_marca}
+                        className="w-full h-full object-contain p-2"
+                      />
+                    ) : (
+                      <Image className="w-5 h-5 text-text-disabled" />
+                    )}
+                  </div>
+
+                  <h3 className="text-xs font-bold text-text-primary mb-1 uppercase tracking-wider">{parceiro.nome_marca}</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed mb-4 line-clamp-2 min-h-[2.5rem]">{parceiro.descricao}</p>
                 </div>
 
-                <h3 className="text-sm font-bold text-text-primary mb-1">{parceiro.nome_marca}</h3>
-                <p className="text-xs text-text-tertiary leading-relaxed mb-4 line-clamp-2 min-h-[2.5rem]">{parceiro.descricao}</p>
-
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between px-3 py-2.5 bg-brand-subtle border border-brand-border rounded-xl">
-                    <span className="text-2xs font-semibold uppercase tracking-caps text-brand/60">Cupom</span>
-                    <span className="text-brand font-mono text-sm tracking-wider">{parceiro.cupom}</span>
+                  <div className="flex items-center justify-between px-3 py-2 bg-brand-subtle border border-brand-border rounded-[6px]">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-brand/80">Cupom</span>
+                    <span
+                      className="text-brand font-mono text-xs font-bold tracking-wider truncate max-w-[120px]"
+                      title={parceiro.cupom}
+                    >
+                      {parceiro.cupom}
+                    </span>
                   </div>
 
                   <a
                     href={parceiro.link_desconto}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 h-9 text-xs font-semibold uppercase tracking-caps text-text-secondary bg-surface-2 border border-border-subtle hover:border-brand/20 hover:text-brand rounded-xl transition-colors"
+                    className="flex items-center justify-center gap-1.5 h-8.5 text-[11px] font-bold uppercase tracking-wider text-text-secondary bg-surface-2 border border-border-subtle hover:border-brand/20 hover:text-brand rounded-[8px] transition-colors"
                   >
                     <ArrowSquareOut className="w-3.5 h-3.5" />
                     Acessar Loja
@@ -444,19 +455,19 @@ export default function ParceirosAdminPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => abrirEditarParceiro(parceiro)}
-                      className="flex-1 flex items-center justify-center gap-1.5 h-9 text-xs font-semibold text-brand bg-brand-subtle border border-brand-border hover:opacity-80 rounded-xl transition-opacity"
+                      className="flex-1 flex items-center justify-center gap-1 h-8 text-[11px] font-bold text-brand bg-brand-subtle border border-brand-border hover:opacity-85 rounded-[6px] transition-opacity"
                     >
-                      <PencilSimple className="w-3.5 h-3.5" /> Editar
+                      <PencilSimple className="w-3 h-3" /> Editar
                     </button>
                     <button
                       onClick={() => handleDeletarParceiro(parceiro.id)}
-                      className="flex-1 flex items-center justify-center gap-1.5 h-9 text-xs font-semibold text-danger bg-danger/10 border border-danger/20 hover:opacity-80 rounded-xl transition-opacity"
+                      className="flex-1 flex items-center justify-center gap-1 h-8 text-[11px] font-bold text-danger bg-danger/10 border border-danger/20 hover:opacity-85 rounded-[6px] transition-opacity"
                     >
-                      <Trash className="w-3.5 h-3.5" /> Excluir
+                      <Trash className="w-3 h-3" /> Excluir
                     </button>
                   </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}

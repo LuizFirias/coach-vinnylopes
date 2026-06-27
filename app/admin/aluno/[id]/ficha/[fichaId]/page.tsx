@@ -302,6 +302,8 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
               descanso: ex.descanso,
               video_url: ex.video_url || "",
               observacoes: ex.observacoes || "",
+              grupo_biset_id: (ex as any).grupo_biset_id || null,
+              biset_ordem: (ex as any).biset_ordem || null,
               series: ex.series.map(s => ({
                 ordem: s.ordem,
                 reps: s.reps_sugerido ?? null,

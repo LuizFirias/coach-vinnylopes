@@ -27,52 +27,52 @@
   /* ═══════════════════════════════════════════════════════════
      SURFACES (background layers — do mais escuro pro mais claro)
      ═══════════════════════════════════════════════════════════ */
-  --surface-0:        #08080A;   /* background base do app */
-  --surface-1:        #15151A;   /* cards primários (+7 pontos vs base) */
-  --surface-2:        #1F1F25;   /* cards aninhados, hover */
-  --surface-3:        #2A2A32;   /* inputs, divisores ativos */
-  --surface-4:        #353540;   /* skeleton loaders, elevado */
+  --surface-0:        #0A0A0A;   /* background base do app (Preto absoluto) */
+  --surface-1:        #131313;   /* cards primários (1 step acima) */
+  --surface-2:        #1C1C1C;   /* cards aninhados, hover, elevados */
+  --surface-3:        #252525;   /* inputs, divisores ativos */
+  --surface-4:        #303030;   /* skeleton loaders, mais elevado */
 
   /* ═══════════════════════════════════════════════════════════
      TEXT
      ═══════════════════════════════════════════════════════════ */
-  --text-primary:     #F5F5F7;   /* títulos, dado principal */
-  --text-secondary:   #B8B8BD;   /* labels, body padrão */
-  --text-tertiary:    #7A7A82;   /* metadata, hints */
-  --text-disabled:    #4A4A50;   /* estados desabilitados */
+  --text-primary:     #F5F5F5;   /* títulos, dado principal (quase branco) */
+  --text-secondary:   #8A8A8A;   /* labels, body padrão, legendas */
+  --text-tertiary:    #555555;   /* metadata, hints, info de contexto */
+  --text-disabled:    #404040;   /* estados desabilitados */
 
   /* ═══════════════════════════════════════════════════════════
      BORDERS
      ═══════════════════════════════════════════════════════════ */
-  --border-subtle:    rgba(255, 255, 255, 0.06);
-  --border-default:   rgba(255, 255, 255, 0.10);
-  --border-strong:    rgba(255, 255, 255, 0.18);
+  --border-subtle:    #1F1F1F;   /* Linha divisória sutil 1px */
+  --border-default:   #2A2A2A;   /* Linha de borda padrão */
+  --border-strong:    #3F3F3F;   /* Borda em destaque */
 
   /* ═══════════════════════════════════════════════════════════
      BRAND (dourado refinado — uso ≤10% da tela)
      ═══════════════════════════════════════════════════════════ */
-  --brand-primary:    #D4A437;
-  --brand-hover:      #E1B548;
-  --brand-pressed:    #B88B25;
-  --brand-subtle:     rgba(212, 164, 55, 0.12);
-  --brand-border:     rgba(212, 164, 55, 0.32);
+  --brand-primary:    #D4A843;   /* Dourado cobre accent */
+  --brand-hover:      #B8902F;   /* Versão mais escura para hover */
+  --brand-pressed:    #9E7720;
+  --brand-subtle:     rgba(212, 168, 67, 0.12);
+  --brand-border:     rgba(212, 168, 67, 0.32);
 
   /* Texto sobre dourado: usar este, não branco */
-  --text-on-brand:    #1A1A1D;
+  --text-on-brand:    #0A0A0A;
 
   /* ═══════════════════════════════════════════════════════════
      SEMANTIC COLORS (estado, nunca decoração)
      ═══════════════════════════════════════════════════════════ */
-  --success:          #2EB872;   /* PR, série ok, streak */
-  --success-subtle:   rgba(46, 184, 114, 0.12);
-  --success-border:   rgba(46, 184, 114, 0.40);
+  --success:          #4CAF50;   /* Verde sutil para sucesso, series ok */
+  --success-subtle:   rgba(76, 175, 80, 0.12);
+  --success-border:   rgba(76, 175, 80, 0.40);
 
-  --warning:          #E8A33B;   /* deload, atenção */
-  --warning-subtle:   rgba(232, 163, 59, 0.12);
+  --warning:          #FF7043;   /* Laranja sutil para alertas, rest close */
+  --warning-subtle:   rgba(255, 112, 67, 0.12);
 
-  --danger:           #E5484D;   /* erro, exclusão */
-  --danger-subtle:    rgba(229, 72, 77, 0.12);
-  --danger-border:    rgba(229, 72, 77, 0.40);
+  --danger:           #EF5350;   /* Vermelho sutil para erro, falha */
+  --danger-subtle:    rgba(239, 83, 80, 0.12);
+  --danger-border:    rgba(239, 83, 80, 0.40);
 
   --info:             #3B82F6;   /* info, recovery, sync */
   --info-subtle:      rgba(59, 130, 246, 0.12);
@@ -85,11 +85,11 @@
   --elev-2:           0 4px 12px rgba(0, 0, 0, 0.45);
   --elev-3:           0 12px 32px rgba(0, 0, 0, 0.55);
 
-  --glow-brand:       0 0 24px rgba(212, 164, 55, 0.25);
-  --glow-success:     0 0 24px rgba(46, 184, 114, 0.30);
-  --pr-glow:          0 0 20px rgba(46, 184, 114, 0.40);
+  --glow-brand:       0 0 24px rgba(212, 168, 67, 0.25);
+  --glow-success:     0 0 24px rgba(76, 175, 80, 0.30);
+  --pr-glow:          0 0 20px rgba(76, 175, 80, 0.40);
 
-  --focus-ring:       0 0 0 2px rgba(212, 164, 55, 0.50);
+  --focus-ring:       0 0 0 2px rgba(212, 168, 67, 0.50);
 
   /* ═══════════════════════════════════════════════════════════
      TYPOGRAPHY
@@ -102,13 +102,13 @@
   --text-2xs:    11px;
   --text-xs:     12px;
   --text-sm:     14px;
-  --text-base:   16px;
-  --text-lg:     18px;
+  --text-base:   15px;      /* Conforme body text em 15px */
+  --text-lg:     17px;      /* Conforme H2 subtítulo em 17px */
   --text-xl:     20px;
-  --text-2xl:    24px;
+  --text-2xl:    24px;      /* Conforme H1 títulos em 24px */
   --text-3xl:    30px;
   --text-4xl:    36px;
-  --text-5xl:    48px;
+  --text-5xl:    48px;      /* Conforme Display em 48px */
 
   /* Pesos */
   --weight-regular:  400;
@@ -143,29 +143,32 @@
   --space-16: 64px;
 
   /* Padding lateral global do app */
-  --gutter:   var(--space-4);
+  --gutter:   var(--space-5); /* 20px */
 
   /* ═══════════════════════════════════════════════════════════
      BORDER RADIUS
      ═══════════════════════════════════════════════════════════ */
-  --radius-sm:    6px;
-  --radius-md:   10px;
-  --radius-lg:   14px;
-  --radius-xl:   20px;
-  --radius-full: 9999px;
+  --radius-none:  0px;
+  --radius-xs:    4px;      /* badges, tags, chips de status */
+  --radius-sm:    6px;      /* inputs, selects, textareas */
+  --radius-md:    8px;      /* botões, dropdowns */
+  --radius-lg:    10px;     /* cards, modais */
+  --radius-xl:    12px;     /* containers grandes - teto da escala */
+  --radius-pill:  8px;      /* botões outrora pill viram MD (8px) */
+  --radius-full:  9999px;   /* avatares */
 
   /* ═══════════════════════════════════════════════════════════
      REFACTORING DOC ALIASES (--color-* names)
      ═══════════════════════════════════════════════════════════ */
-  --color-gold:           #D4A017;
-  --color-gold-dark:      #B8860B;
-  --color-gold-light:     #F5C842;
-  --color-gold-muted:     rgba(212, 160, 23, 0.15);
+  --color-gold:           #D4A843;
+  --color-gold-dark:      #B8902F;
+  --color-gold-light:     #E8B339;
+  --color-gold-muted:     rgba(212, 168, 67, 0.15);
 
   --color-bg-primary:     var(--surface-0);
   --color-bg-secondary:   var(--surface-1);
-  --color-bg-card:        var(--surface-2);
-  --color-bg-card-hover:  var(--surface-3);
+  --color-bg-card:        var(--surface-1);
+  --color-bg-card-hover:  var(--surface-2);
   --color-bg-input:       var(--surface-2);
 
   --color-text-primary:   var(--text-primary);
@@ -173,7 +176,7 @@
   --color-text-muted:     var(--text-tertiary);
 
   --color-border-default: var(--border-subtle);
-  --color-border-gold:    rgba(212, 160, 23, 0.3);
+  --color-border-gold:    rgba(212, 168, 67, 0.3);
   --color-border-strong:  var(--border-default);
 
   --color-success:        var(--success);
@@ -191,8 +194,8 @@
      ═══════════════════════════════════════════════════════════ */
   --bg-base:         var(--surface-0);
   --bg-surface:      var(--surface-1);
-  --bg-card:         var(--surface-2);
-  --bg-elevated:     var(--surface-3);
+  --bg-card:         var(--surface-1);
+  --bg-elevated:     var(--surface-2);
   --gold-default:    var(--brand-primary);
   --gold-light:      var(--brand-hover);
   --gold-highlight:  #EDD06B;
@@ -205,11 +208,6 @@
   --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --duration-instant: 100ms;
-  --duration-fast:    180ms;
-  --duration-normal:  240ms;
-  --duration-slow:    400ms;
-
   /* ═══════════════════════════════════════════════════════════
      LAYOUT
      ═══════════════════════════════════════════════════════════ */
@@ -217,6 +215,45 @@
   --header-height:     56px;
   --touch-target-min:  48px;
   --max-width-mobile:  428px;  /* iPhone Pro Max baseline */
+
+  /* ═══════════════════════════════════════════════════════════
+     PREMIUM DESIGN SYSTEM V3
+     Tokens adicionados pelo redesign (Parte 2 do refactor doc)
+     ═══════════════════════════════════════════════════════════ */
+
+  /* Background aliases v3 */
+  --bg-surface-1: var(--surface-1);
+  --bg-surface-2: var(--surface-2);
+  --bg-surface-3: var(--surface-3);
+
+  /* Gold palette — escala completa para gradientes e badges */
+  --gold-50:  #FFF8E1;
+  --gold-300: #F5D061;
+  --gold-500: #D4A843;   /* dourado principal */
+  --gold-600: #B8902F;
+  --gold-700: #9E7720;
+
+  /* Border gold */
+  --border-gold: rgba(212, 168, 67, 0.35);
+
+  /* Gradients */
+  --gradient-gold:      linear-gradient(135deg, #F5D061 0%, #D4A843 45%, #B8902F 100%);
+  --gradient-surface:   linear-gradient(160deg, #131313 0%, #0A0A0A 100%);
+  --gradient-glow-gold: radial-gradient(circle at 30% 20%, rgba(212,168,67,0.18) 0%, rgba(212,168,67,0) 60%);
+  --gradient-success:   linear-gradient(135deg, #81C784 0%, #4CAF50 100%);
+
+  /* Shadow spec */
+  --shadow-sm:        0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:        0 2px 8px rgba(0,0,0,0.35);
+  --shadow-lg:        0 8px 24px rgba(0,0,0,0.4);
+
+  --shadow-card:      var(--shadow-sm);
+  --shadow-gold-glow: 0 1px 2px rgba(0,0,0,0.3); /* sutil neutro em vez de glow dourado */
+  --shadow-elevated:  var(--shadow-md);
+
+  /* Typography additions */
+  --font-size-display:    48px;    /* números de destaque: volume, peso, pts (Inter 700 48px) */
+  --letter-spacing-label: 0.08em;  /* labels em CAPS: SEQUÊNCIA, VOLUME SEMANAL */
 }
 
 /* ══════════════════════════════════════════════════════════════

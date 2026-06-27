@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { FileArrowUp, CircleNotch, Trash, AppleLogo } from '@phosphor-icons/react';
-import Link from 'next/link';
+import { FileArrowUp, CircleNotch, Trash, AppleLogo, FileText } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import PageHeader from '@/app/components/PageHeader';
+import DataTable from '@/app/components/DataTable';
+import { getSignedStorageUrl } from "@/lib/storageUrls";
 import { cn } from '@/lib/utils/cn';
 
 interface Aluno {
@@ -17,7 +19,18 @@ interface Aluno {
   email: string | null;
 }
 
+interface PlanoEnviado {
+  id: string;
+  nome_arquivo: string;
+  descricao: string | null;
+  criado_em: string;
+  aluno_id: string;
+  pdf_url: string;
+  original_path: string;
+}
+
 export default function NutricaoPage() {
+  const router = useRouter();
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [selectedAlunoId, setSelectedAlunoId] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -27,36 +40,81 @@ export default function NutricaoPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchAlunos = async () => {
-      try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const coachId = authData?.user?.id;
-        if (!coachId) { setError('Sessão inválida'); setFetchingAlunos(false); return; }
+  // Planos enviados list
+  const [planosEnviados, setPlanosEnviados] = useState<PlanoEnviado[]>([]);
+  const [loadingPlanos, setLoadingPlanos] = useState(true);
 
-        const { data: alunoLinks, error: linkError } = await supabaseClient
-          .from('coach_alunos').select('aluno_id').eq('coach_id', coachId);
-
-        if (linkError) { setError('Erro ao carregar alunos: ' + linkError.message); setFetchingAlunos(false); return; }
-
-        const ids = alunoLinks?.map(link => link.aluno_id) || [];
-        if (ids.length === 0) { setAlunos([]); setFetchingAlunos(false); return; }
-
-        const { data, error: fetchError } = await supabaseClient
-          .from('profiles').select('id, coaching_reference, email')
-          .in('id', ids).eq('arquivado', false).order('coaching_reference', { ascending: true });
-
-        if (fetchError) { setError('Erro ao carregar alunos: ' + fetchError.message); setFetchingAlunos(false); return; }
-
-        setAlunos(data || []);
-        setFetchingAlunos(false);
-      } catch {
-        setError('Erro ao conectar com o banco de dados');
-        setFetchingAlunos(false);
+  const fetchPlanos = async (alunosList: Aluno[]) => {
+    setLoadingPlanos(true);
+    try {
+      const ids = alunosList.map(a => a.id);
+      if (ids.length === 0) {
+        setPlanosEnviados([]);
+        return;
       }
-    };
 
-    fetchAlunos();
+      const { data, error: planosError } = await supabaseClient
+        .from('plano_alimentar_pdf')
+        .select('id, nome_arquivo, descricao, criado_em, aluno_id, pdf_url, url_pdf')
+        .in('aluno_id', ids)
+        .order('criado_em', { ascending: false })
+        .limit(30);
+
+      if (planosError) throw planosError;
+
+      // Sign the URLs
+      const signedData = await Promise.all(((data as any[]) || []).map(async (p: any) => {
+        const pdfPath = p.url_pdf || p.pdf_url;
+        if (!pdfPath) return { ...p, pdf_url: '', original_path: '' };
+        const signed = await getSignedStorageUrl("plano_alimentar", pdfPath, 3600);
+        return {
+          ...p,
+          pdf_url: signed || pdfPath,
+          original_path: pdfPath
+        };
+      }));
+
+      setPlanosEnviados(signedData);
+    } catch (err) {
+      console.error('Erro ao buscar planos alimentares:', err);
+    } finally {
+      setLoadingPlanos(false);
+    }
+  };
+
+  const loadData = async () => {
+    setFetchingAlunos(true);
+    try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const coachId = authData?.user?.id;
+      if (!coachId) { setError('Sessão inválida'); setFetchingAlunos(false); return; }
+
+      const { data: alunoLinks, error: linkError } = await supabaseClient
+        .from('coach_alunos').select('aluno_id').eq('coach_id', coachId);
+
+      if (linkError) { setError('Erro ao carregar alunos: ' + linkError.message); setFetchingAlunos(false); return; }
+
+      const ids = alunoLinks?.map(link => link.aluno_id) || [];
+      if (ids.length === 0) { setAlunos([]); setFetchingAlunos(false); return; }
+
+      const { data, error: fetchError } = await supabaseClient
+        .from('profiles').select('id, coaching_reference, email')
+        .in('id', ids).eq('arquivado', false).order('coaching_reference', { ascending: true });
+
+      if (fetchError) { setError('Erro ao carregar alunos: ' + fetchError.message); setFetchingAlunos(false); return; }
+
+      const loadedAlunos = data || [];
+      setAlunos(loadedAlunos);
+      await fetchPlanos(loadedAlunos);
+    } catch {
+      setError('Erro ao conectar com o banco de dados');
+    } finally {
+      setFetchingAlunos(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,13 +150,14 @@ export default function NutricaoPage() {
         body: formData,
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao fazer upload');
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.error || 'Erro ao fazer upload');
 
       setSuccess('Plano alimentar enviado com sucesso!');
       setSelectedFile(null);
       setSelectedAlunoId('');
       setDescricao('');
+      await loadData();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       setError('Erro ao realizar upload: ' + (err.message || 'Erro desconhecido'));
@@ -107,115 +166,242 @@ export default function NutricaoPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <ScreenHeader
-        title="Gestão de Nutrição"
-        subtitle="Expedição de planos alimentares para atletas"
-      />
+  const handleDeleteNutritionPlan = async (planId: string, pdfUrl: string) => {
+    if (!window.confirm("Remover este plano alimentar permanentemente?")) return;
+    try {
+      if (!pdfUrl) throw new Error("URL do PDF não encontrada");
+      const pathParts = pdfUrl.split("/plano_alimentar/");
+      const filePath = pathParts.length > 1 ? pathParts[1] : pdfUrl;
+      await supabaseClient.storage.from("plano_alimentar").remove([filePath]);
+      const { error: dbError } = await supabaseClient.from("plano_alimentar_pdf").delete().eq("id", planId);
+      if (dbError) throw dbError;
+      await loadData();
+    } catch (err: any) {
+      setError("Erro ao deletar plano: " + err.message);
+    }
+  };
 
-      <div className="px-4 max-w-2xl">
+  // Maps student details in memory
+  const studentMap = new Map(alunos.map(a => [a.id, a]));
+
+  const columns = [
+    {
+      key: 'aluno_id',
+      label: 'Atleta',
+      sortable: true,
+      render: (row: PlanoEnviado) => {
+        const student = studentMap.get(row.aluno_id);
+        const name = student?.coaching_reference || student?.email || 'Atleta';
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-brand-subtle flex items-center justify-center font-bold text-[9px] text-brand border border-brand-border shrink-0">
+              {name[0].toUpperCase()}
+            </div>
+            <span className="text-xs font-semibold text-text-primary truncate">{name}</span>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'descricao',
+      label: 'Descrição / Arquivo',
+      sortable: true,
+      render: (row: PlanoEnviado) => (
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs text-text-secondary truncate max-w-[200px]" title={row.descricao || row.nome_arquivo}>
+            {row.descricao || row.nome_arquivo}
+          </span>
+          {row.descricao && (
+            <span className="text-[10px] text-text-tertiary truncate max-w-[200px]">
+              {row.nome_arquivo}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'criado_em',
+      label: 'Enviado em',
+      sortable: true,
+      render: (row: PlanoEnviado) => (
+        <span className="text-xs text-text-tertiary">
+          {new Date(row.criado_em).toLocaleDateString('pt-BR')}
+        </span>
+      )
+    },
+    {
+      key: 'acoes',
+      label: 'Ações',
+      render: (row: PlanoEnviado) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <a
+            href={row.pdf_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand hover:bg-brand hover:text-text-on-brand transition-colors"
+            title="Visualizar PDF"
+          >
+            <FileText size={15} />
+          </a>
+          <button
+            onClick={() => handleDeleteNutritionPlan(row.id, row.original_path || row.pdf_url)}
+            className="w-8 h-8 rounded-[6px] bg-danger/10 border border-danger/20 flex items-center justify-center text-danger hover:opacity-85 transition-opacity"
+            title="Excluir Plano"
+          >
+            <Trash size={15} />
+          </button>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-16 xl:pl-[240px]">
+      <div className="max-w-[1440px] px-6 md:px-10 py-8 mx-auto w-full flex flex-col gap-6 animate-fade-in">
+        
+        <PageHeader
+          title="Gestão de Nutrição"
+          subtitle="Expedição de planos alimentares para atletas"
+        />
 
         {error && (
-          <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-[6px] bg-danger-subtle border border-danger-border text-danger text-sm animate-fade-in">
             <div className="w-2 h-2 rounded-full bg-danger flex-shrink-0 animate-pulse" />
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-success-subtle border border-success-border text-success text-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-[6px] bg-success-subtle border border-success-border text-success text-sm animate-fade-in">
             <div className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
             {success}
           </div>
         )}
 
-        <Card className="rounded-2xl shadow-elev-1">
-          <div className="flex items-center gap-4 mb-6 pb-5 border-b border-border-subtle">
-            <div className="w-12 h-12 rounded-2xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand">
-              <AppleLogo size={22} />
-            </div>
-            <div>
-              <p className="font-semibold text-text-primary">Upload de Plano Alimentar</p>
-              <p className="text-xs text-text-tertiary mt-0.5">Sincronização imediata com o app do atleta</p>
-            </div>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          
+          {/* Coluna Esquerda: Formulário de Upload */}
+          <div className="xl:col-span-5">
+            <Card className="rounded-[10px] shadow-sm">
+              <div className="flex items-center gap-3 mb-5 pb-3 border-b border-border-subtle">
+                <div className="w-10 h-10 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand">
+                  <AppleLogo size={20} />
+                </div>
+                <div>
+                  <p className="font-bold text-text-primary text-sm">Upload de Plano Alimentar</p>
+                  <p className="text-[10px] text-text-tertiary mt-0.5">Sincronização imediata</p>
+                </div>
+              </div>
+
+              {fetchingAlunos ? (
+                <div className="flex items-center justify-center py-8">
+                  <DumbbellLoader text="Carregando atletas..." />
+                </div>
+              ) : (
+                <form onSubmit={handleUpload} className="flex flex-col gap-4">
+                  
+                  {/* Select aluno */}
+                  <Select
+                    label="Selecione o Atleta"
+                    value={selectedAlunoId}
+                    onChange={setSelectedAlunoId}
+                    placeholder="Escolher atleta..."
+                    disabled={loading}
+                    options={alunos.map((a) => ({
+                      value: a.id,
+                      label: a.coaching_reference || a.email || a.id,
+                    }))}
+                  />
+
+                  {/* Descrição */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary ml-1">Descrição (opcional)</label>
+                    <textarea
+                      value={descricao}
+                      onChange={(e) => setDescricao(e.target.value)}
+                      placeholder="Ex: Plano de 2800 kcal/dia - Fase de Bulking"
+                      disabled={loading}
+                      maxLength={500}
+                      rows={3}
+                      className="w-full px-4 py-2.5 bg-surface-3 border border-border-default rounded-[6px] text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand transition-all resize-none disabled:opacity-50"
+                    />
+                    <p className="text-[10px] text-text-disabled text-right">{descricao.length}/500</p>
+                  </div>
+
+                  {/* Upload */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary ml-1">Arquivo PDF</label>
+                    {!selectedFile ? (
+                      <label className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-border-default rounded-[6px] bg-surface-2 hover:bg-brand-subtle hover:border-brand-border transition-all cursor-pointer group">
+                        <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
+                        <FileArrowUp size={22} className="text-text-disabled group-hover:text-brand transition-colors mb-1.5" />
+                        <p className="text-[11px] text-text-tertiary">Selecionar documento</p>
+                      </label>
+                    ) : (
+                      <div className="flex items-center gap-3 p-3 bg-brand-subtle border border-brand-border rounded-[6px]">
+                        <div className="w-8 h-8 rounded-[6px] bg-surface-3 border border-brand-border flex items-center justify-center text-brand shrink-0">
+                          <FileArrowUp size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-text-primary font-medium truncate">{selectedFile.name}</p>
+                          <p className="text-[10px] text-brand">Válido</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFile(null)}
+                          className="p-1.5 text-text-tertiary hover:text-danger transition-colors"
+                        >
+                          <Trash size={15} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    loading={loading}
+                    disabled={loading || !selectedAlunoId || !selectedFile}
+                    fullWidth
+                  >
+                    Protocolar Plano Agora
+                  </Button>
+                </form>
+              )}
+            </Card>
           </div>
 
-          {fetchingAlunos ? (
-            <div className="flex items-center justify-center py-12">
-              <DumbbellLoader text="Carregando atletas..." />
-            </div>
-          ) : (
-            <form onSubmit={handleUpload} className="flex flex-col gap-5">
+          {/* Coluna Direita: Planos Enviados DataTable */}
+          <div className="xl:col-span-7">
+            <Card className="rounded-[10px] shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-sm font-bold text-text-primary">Planos Enviados Recentemente</h3>
+                <p className="text-xs text-text-tertiary">Lista de planos alimentares expedidos para os atletas</p>
+              </div>
 
-              {/* Select aluno */}
-              <Select
-                label="Selecione o Atleta"
-                value={selectedAlunoId}
-                onChange={setSelectedAlunoId}
-                placeholder="Escolher atleta..."
-                disabled={loading}
-                options={alunos.map((a) => ({
-                  value: a.id,
-                  label: a.coaching_reference || a.email || a.id,
-                }))}
-              />
-
-              {/* Descrição */}
-              <div className="flex flex-col gap-2">
-                <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Descrição (opcional)</label>
-                <textarea
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                  placeholder="Ex: Plano para ganho de massa, cardápio de 2800 cal/dia"
-                  disabled={loading}
-                  maxLength={500}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-none disabled:opacity-50"
+              {loadingPlanos ? (
+                <div className="flex items-center justify-center py-16">
+                  <DumbbellLoader text="Carregando nutrição..." />
+                </div>
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={planosEnviados}
+                  searchable
+                  searchPlaceholder="Buscar por atleta ou descrição..."
+                  onRowClick={(row) => router.push(`/admin/aluno/${row.aluno_id}?tab=nutricao`)}
+                  emptyState={
+                    <div className="text-center py-12 flex flex-col items-center justify-center gap-2">
+                      <AppleLogo size={28} className="text-text-disabled" />
+                      <p className="text-xs text-text-tertiary">Nenhum plano alimentar enviado recentemente</p>
+                    </div>
+                  }
                 />
-                <p className="text-2xs text-text-disabled text-right">{descricao.length}/500</p>
-              </div>
+              )}
+            </Card>
+          </div>
 
-              {/* Upload */}
-              <div className="flex flex-col gap-2">
-                <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Arquivo PDF</label>
-                {!selectedFile ? (
-                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border-default rounded-xl bg-surface-2 hover:bg-brand-subtle hover:border-brand-border transition-all cursor-pointer group">
-                    <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
-                    <FileArrowUp size={24} className="text-text-disabled group-hover:text-brand transition-colors mb-2" />
-                    <p className="text-xs text-text-tertiary">Arraste ou clique para selecionar</p>
-                  </label>
-                ) : (
-                  <div className="flex items-center gap-4 p-4 bg-brand-subtle border border-brand-border rounded-xl">
-                    <div className="w-10 h-10 rounded-xl bg-surface-3 border border-brand-border flex items-center justify-center text-brand shrink-0">
-                      <FileArrowUp size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-text-primary font-medium truncate">{selectedFile.name}</p>
-                      <p className="text-xs text-brand">Documento válido</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFile(null)}
-                      className="p-2 text-text-tertiary hover:text-danger transition-colors"
-                    >
-                      <Trash size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
+        </div>
 
-              <Button
-                type="submit"
-                variant="primary"
-                loading={loading}
-                disabled={loading || !selectedAlunoId || !selectedFile}
-                fullWidth
-              >
-                Protocolar Plano Agora
-              </Button>
-            </form>
-          )}
-        </Card>
       </div>
     </div>
   );

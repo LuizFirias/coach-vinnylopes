@@ -26,10 +26,16 @@ import {
   Ruler,
   Copy,
   X,
+  DownloadSimple,
+  CircleNotch,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
+import PageHeader from "@/app/components/PageHeader";
+import { pdf } from "@react-pdf/renderer";
+import { getDinamicaCargaReport } from "@/lib/reports/getDinamicaCargaReport";
+import { DinamicaCargaReportDocument } from "@/app/components/reports/DinamicaCargaReportDocument";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -69,11 +75,32 @@ interface FichaTreino {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const fieldCls = cn(
-  "w-full px-4 py-3 rounded-xl text-sm text-text-primary",
+  "w-full px-4 py-2.5 rounded-[6px] text-sm text-text-primary",
   "bg-surface-3 border border-border-default",
   "focus:outline-none focus:border-brand transition-colors",
   "appearance-none"
 );
+
+function toDateInputValue(value: string | null | undefined): string {
+  return value ? value.slice(0, 10) : "";
+}
+
+function parseDateSafe(value: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+  }
+  return new Date(value);
+}
+
+function formatDatePtBrSafe(value: string | null | undefined, options?: Intl.DateTimeFormatOptions): string {
+  if (!value) return "—";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  return parseDateSafe(value).toLocaleDateString("pt-BR", options);
+}
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
@@ -114,6 +141,17 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [historicoTreinos, setHistoricoTreinos] = useState<any[]>([]);
   const [notasOriginais, setNotasOriginais] = useState<string>("");
   const [salvandoNotas, setSalvandoNotas] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [pdfPeriod, setPdfPeriod] = useState<'semanal' | 'mensal'>('semanal');
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab) setActiveTab(tab);
+    }
+  }, []);
 
   useEffect(() => { load(); }, [id]);
 
@@ -159,6 +197,28 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleDownloadReport = async (periodo: 'semanal' | 'mensal') => {
+    setGeneratingPdf(true);
+    try {
+      const reportData = await getDinamicaCargaReport(id, periodo);
+      const blob = await pdf(<DinamicaCargaReportDocument data={reportData} />).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `relatorio-carga-${reportData.aluno.nome.toLowerCase().replace(/\s+/g, '-')}-${periodo}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Erro ao gerar relatório:', err);
+      alert('Erro ao gerar o relatório. Tente novamente.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const load = async () => {
     setError(null);
     try {
@@ -190,7 +250,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         setEditStatus(prof.status_pagamento || "pago");
         setEditPlano(prof.tipo_plano || "mensal");
         setEditValorPlano(prof.valor_plano != null ? String(prof.valor_plano) : "");
-        setEditDataInicio(prof.data_inicio ? new Date(prof.data_inicio).toISOString().slice(0, 10) : "");
+        setEditDataInicio(toDateInputValue(prof.data_inicio));
         setNotasOriginais(prof.orientacoes || "");
 
         // Carregar avatar se existir
@@ -258,7 +318,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
       let dataUltimaAtividade: string | null = null;
       if (ultimaFicha && ultimoCheckin) {
-        dataUltimaAtividade = new Date(ultimaFicha.data_conclusao) > new Date(ultimoCheckin.data_treino)
+        dataUltimaAtividade = parseDateSafe(ultimaFicha.data_conclusao) > parseDateSafe(ultimoCheckin.data_treino)
           ? ultimaFicha.data_conclusao : ultimoCheckin.data_treino;
       } else if (ultimaFicha) {
         dataUltimaAtividade = ultimaFicha.data_conclusao;
@@ -282,7 +342,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       // Calcular dias para renovação
       if (prof?.data_expiracao) {
         const hoje = new Date();
-        const dataExp = new Date(prof.data_expiracao);
+        const dataExp = parseDateSafe(prof.data_expiracao);
         const diffTime = dataExp.getTime() - hoje.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         setDiasParaRenovacao(diffDays);
@@ -477,8 +537,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     setSavingProfile(true);
     setError(null);
     try {
-      const dataInicio = new Date(editDataInicio);
-      let dataExpiracao = new Date(editDataInicio);
+      const dataInicio = parseDateSafe(editDataInicio);
+      let dataExpiracao = parseDateSafe(editDataInicio);
       switch (editPlano) {
         case "mensal":     dataExpiracao.setMonth(dataExpiracao.getMonth() + 1); break;
         case "trimestral": dataExpiracao.setMonth(dataExpiracao.getMonth() + 3); break;
@@ -490,8 +550,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         status_pagamento: editStatus,
         tipo_plano: editPlano,
         valor_plano: Number.isFinite(valorPlanoNumber) ? valorPlanoNumber : null,
-        data_inicio: dataInicio.toISOString(),
-        data_expiracao: dataExpiracao.toISOString(),
+        data_inicio: toDateInputValue(dataInicio.toISOString()),
+        data_expiracao: toDateInputValue(dataExpiracao.toISOString()),
       }).eq("id", id);
       if (error) throw error;
       await load();
@@ -517,23 +577,19 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const profileName = profile?.coaching_reference || profile?.full_name || "Aluno";
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-
-      {/* Header */}
-      <header className="px-4 pt-6 pb-4">
-        <div className="flex items-start gap-3 mb-4">
-          <button
-            onClick={() => router.push('/admin/alunos')}
-            className="w-9 h-9 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 mt-0.5"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight truncate">
-              {profile?.coaching_reference || profile?.full_name || "Aluno"}
-            </h1>
-            <p className="text-sm text-text-tertiary truncate">{profile?.email}</p>
-            <div className="flex items-center gap-2 mt-3">
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-16 xl:pl-[240px]">
+      <div className="max-w-[1440px] px-6 md:px-10 py-8 mx-auto w-full flex flex-col gap-6 animate-fade-in">
+        
+        {/* Header */}
+        <PageHeader
+          title={profileName}
+          subtitle={profile?.email || ""}
+          breadcrumbs={[
+            { label: "Atletas", href: "/admin/alunos" },
+            { label: profileName }
+          ]}
+          actions={
+            <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
@@ -563,15 +619,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 </Button>
               )}
             </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="px-4 max-w-5xl flex flex-col gap-4">
+          }
+        />
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-[6px] bg-danger-subtle border border-danger-border text-danger text-sm">
             <WarningCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
@@ -579,10 +632,10 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
         {/* Aviso de Renovação */}
         {mostrarAvisoRenovacao && diasParaRenovacao !== null && (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30 backdrop-blur-sm">
+          <div className="relative overflow-hidden rounded-[10px] bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30 backdrop-blur-sm">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />
             <div className="relative flex items-center gap-3 px-4 py-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-[6px] bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
                 <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
               </div>
               <div className="flex-1">
@@ -604,83 +657,61 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
-        {/* ── Cartão principal do aluno ── */}
+        {/* Main Identity Info Section (Compact header status) */}
         {profile && (
-          <Card className="rounded-2xl shadow-elev-1 relative overflow-hidden">
-            {/* Gradiente de fundo sutil */}
+          <Card className="rounded-[10px] shadow-md relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-transparent pointer-events-none" />
-            <div className="relative">
-            {/* Identidade + status */}
-            <div className="flex flex-col sm:flex-row sm:items-start gap-5 mb-5">
-              {avatarUrl ? (
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-brand/30 flex-shrink-0 shadow-lg">
-                  <img src={avatarUrl} alt={profileName} className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className={cn(
-                  "w-16 h-16 rounded-2xl bg-gradient-to-br flex items-center justify-center font-bold text-2xl text-white flex-shrink-0 shadow-lg",
-                  avatarGrad(profileName)
-                )}>
-                  {profileName[0].toUpperCase()}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-bold text-text-primary truncate">
-                  {profile.coaching_reference || "Protocolo Sem Nome"}
-                </h2>
-                <p className="text-sm text-text-secondary mt-0.5">{profile.email || "E-mail não cadastrado"}</p>
-                <span className={cn(
-                  "inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full text-xs font-semibold",
-                  profile.arquivado
-                    ? "bg-surface-3 border border-border-subtle text-text-disabled"
-                    : profile.status_pagamento === "pago"
-                      ? "bg-brand-subtle border border-brand-border text-brand"
-                      : "bg-danger-subtle border border-danger-border text-danger"
-                )}>
-                  <span className={cn(
-                    "w-1.5 h-1.5 rounded-full",
-                    profile.arquivado
-                      ? "bg-text-disabled"
-                      : profile.status_pagamento === "pago" ? "bg-brand animate-pulse" : "bg-danger animate-pulse"
-                  )} />
-                  {profile.arquivado
-                    ? "Desativado"
-                    : profile.status_pagamento === "pago" ? "Acesso Ativo" : "Acesso Bloqueado"}
-                </span>
-              </div>
-            </div>
-
-            {/* KPIs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-              {[
-                { icon: CreditCard, label: "Plano", value: profile.tipo_plano || "Nenhum", gradient: "from-blue-500/10 to-blue-600/5", iconColor: "text-blue-400" },
-                { icon: CurrencyDollar, label: "Ticket", value: profile.valor_plano?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || "—", gradient: "from-emerald-500/10 to-emerald-600/5", iconColor: "text-emerald-400" },
-                { icon: Calendar, label: "Renovação", value: profile.data_expiracao ? new Date(profile.data_expiracao).toLocaleDateString("pt-BR") : "A definir", gradient: "from-purple-500/10 to-purple-600/5", iconColor: "text-purple-400" },
-                { icon: Clock, label: "Última atividade", value: ultimaAtividade ? new Date(ultimaAtividade).toLocaleDateString("pt-BR") : "Nenhuma", gradient: "from-amber-500/10 to-amber-600/5", iconColor: "text-amber-400" },
-              ].map(({ icon: Icon, label, value, gradient, iconColor }) => (
-                <div key={label} className={cn("relative overflow-hidden flex items-center gap-2.5 p-3 rounded-xl bg-surface-3 border border-border-subtle")}>
-                  <div className={cn("absolute inset-0 bg-gradient-to-br pointer-events-none", gradient)} />
-                  <Icon className={cn("w-4 h-4 flex-shrink-0 relative z-10", iconColor)} />
-                  <div className="min-w-0 relative z-10">
-                    <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary leading-none mb-0.5">{label}</p>
-                    <p className="text-sm font-medium text-text-primary truncate">{value}</p>
+            <div className="relative flex flex-col sm:flex-row sm:items-center gap-5 justify-between">
+              <div className="flex items-center gap-4">
+                {avatarUrl ? (
+                  <div className="w-14 h-14 rounded-full overflow-hidden border border-border-subtle flex-shrink-0 shadow-sm">
+                    <img src={avatarUrl} alt={profileName} className="w-full h-full object-cover" />
                   </div>
+                ) : (
+                  <div className={cn(
+                    "w-14 h-14 rounded-full bg-gradient-to-br flex items-center justify-center font-bold text-lg text-white flex-shrink-0 shadow-sm border border-border-subtle",
+                    avatarGrad(profileName)
+                  )}>
+                    {profileName[0].toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-base font-bold text-text-primary">
+                    {profileName}
+                  </h2>
+                  <span className={cn(
+                    "inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wide",
+                    profile.arquivado
+                      ? "bg-surface-3 border border-border-default text-text-disabled"
+                      : profile.status_pagamento === "pago"
+                        ? "bg-brand-subtle border border-brand-border text-brand"
+                        : "bg-danger-subtle border border-danger-border text-danger"
+                  )}>
+                    <span className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      profile.arquivado
+                        ? "bg-text-disabled"
+                        : profile.status_pagamento === "pago" ? "bg-brand animate-pulse" : "bg-danger"
+                    )} />
+                    {profile.arquivado
+                      ? "Desativado"
+                      : profile.status_pagamento === "pago" ? "Ativo" : "Pendente"}
+                  </span>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {/* Pontos */}
-            <div className="relative overflow-hidden flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-subtle border border-brand-border w-fit">
-              <div className="absolute inset-0 bg-gradient-to-br from-brand/20 to-transparent pointer-events-none" />
-              <Trophy className="w-4 h-4 text-brand relative z-10" />
-              <span className="text-sm font-bold text-brand tabular-nums relative z-10">{pontosTotais} pts</span>
+              {/* Pontos */}
+              <div className="relative overflow-hidden flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-brand-subtle border border-brand-border w-fit shrink-0">
+                <Trophy className="w-4 h-4 text-brand" />
+                <span className="text-xs font-bold text-brand tabular-nums">{pontosTotais} pontos</span>
+              </div>
             </div>
 
             {/* Formulário de edição do plano */}
             {editingProfile && (
-              <div className="mt-6 pt-6 border-t border-border-subtle">
-                <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary mb-4">Atualizar plano</p>
-                <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
+              <div className="mt-4 pt-4 border-t border-border-subtle">
+                <p className="text-xs font-semibold text-text-tertiary mb-3">Atualizar plano</p>
+                <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-medium text-text-secondary">Status financeiro</label>
@@ -720,7 +751,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       className={cn(fieldCls, "text-brand")}
                       required
                     />
-                    <p className="text-xs text-text-tertiary">Datas passadas permitidas para correções retroativas</p>
                   </div>
                   <div>
                     <Button type="submit" loading={savingProfile} size="sm">
@@ -730,445 +760,563 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 </form>
               </div>
             )}
-            </div>
           </Card>
         )}
 
-        {/* ── Fichas digitais ── */}
-        <Card className="rounded-2xl shadow-elev-1 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-purple-500/5 pointer-events-none" />
-          <div className="relative">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-                <Barbell className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-text-primary">Fichas digitais</p>
-                <p className="text-xs text-text-tertiary">Treinos estruturados</p>
-              </div>
-            </div>
+        {/* Tab system navigation */}
+        <div className="flex border-b border-border-subtle gap-2 overflow-x-auto scrollbar-none">
+          {[
+            { value: "overview", label: "Visão Geral" },
+            { value: "treinos", label: "Treinos" },
+            { value: "nutricao", label: "Nutrição" },
+            { value: "medidas", label: "Medidas & Evolução" },
+            { value: "notas", label: "Notas" }
+          ].map(t => (
             <button
-              onClick={() => router.push("/admin/treinos/nova-ficha")}
-              className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand hover:bg-brand hover:text-text-on-brand transition-colors"
-              title="Criar nova ficha"
+              key={t.value}
+              onClick={() => setActiveTab(t.value)}
+              className={cn(
+                "px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap",
+                activeTab === t.value
+                  ? "border-brand text-brand"
+                  : "border-transparent text-text-secondary hover:text-text-primary"
+              )}
             >
-              <span className="text-lg leading-none font-bold">+</span>
+              {t.label}
             </button>
-          </div>
+          ))}
+        </div>
 
-          {fichas.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {fichas.map((ficha) => (
-                <div key={ficha.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface-3 border border-border-subtle hover:border-brand-border transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-brand-subtle flex items-center justify-center flex-shrink-0">
-                    <Barbell className="w-3.5 h-3.5 text-brand" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">{ficha.nome_rotina}</p>
-                    <p className="text-xs text-text-tertiary">
-                      {new Date(ficha.criado_em).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
-                      onClick={() => router.push(`/admin/aluno/${id}/ficha/${ficha.id}`)}
-                      className="w-7 h-7 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center text-brand hover:bg-brand hover:text-text-on-brand transition-colors"
-                      title="Editar ficha"
-                    >
-                      <PencilSimple className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => abrirClonarFicha(ficha)}
-                      className="w-7 h-7 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors"
-                      title="Clonar ficha para outro aluno"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFicha(ficha.id)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-text-disabled hover:text-danger hover:bg-danger-subtle transition-colors"
-                      title="Desativar ficha"
-                    >
-                      <Trash className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <p className="text-xs text-text-tertiary text-center pt-2 border-t border-border-subtle">
-                {fichas.length} ficha{fichas.length !== 1 ? "s" : ""} ativa{fichas.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-          ) : (
-            <div className="h-28 flex flex-col items-center justify-center text-center gap-2">
-              <Barbell className="w-8 h-8 text-text-disabled" />
-              <p className="text-xs text-text-tertiary">Nenhuma ficha digital · crie em Gestão de Treinos</p>
-            </div>
-          )}
-          </div>
-        </Card>
+        {/* ── Tab Content ── */}
 
-        {/* ── Plano alimentar ── */}
-        <Card className="rounded-2xl shadow-elev-1 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-green-500/5 pointer-events-none" />
-          <div className="relative">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-              <AppleLogo className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Plano alimentar</p>
-              <p className="text-xs text-text-tertiary">Uploads de PDF</p>
-            </div>
-          </div>
-
-          <Button variant="secondary" leftIcon={<UploadSimple className="w-4 h-4" />} onClick={() => setUploadNutritionOpen(true)} fullWidth>
-            Adicionar plano alimentar
-          </Button>
-
-          {planosAlimentares.length > 0 && (
-            <div className="flex flex-col gap-1.5 mt-3">
-              <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary">Planos ativos</p>
-              {planosAlimentares.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-surface-3 border border-border-subtle">
-                  <AppleLogo className="w-3.5 h-3.5 text-brand flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-text-primary truncate">{p.nome_arquivo}</p>
-                    {p.descricao && <p className="text-xs text-text-tertiary truncate">{p.descricao}</p>}
-                    <p className="text-xs text-text-disabled">{new Date(p.criado_em).toLocaleDateString("pt-BR")}</p>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <a href={p.pdf_url} target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-brand transition-colors">
-                      <FileText className="w-3.5 h-3.5" />
-                    </a>
-                    <button onClick={() => handleDeleteNutritionPlan(p.id, p.original_path || p.url_pdf || p.pdf_url)} className="text-text-disabled hover:text-danger transition-colors">
-                      <Trash className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {planosAlimentares.length === 0 && (
-            <div className="h-12 flex items-center justify-center mt-2">
-              <p className="text-xs text-text-tertiary">Nenhum plano enviado ainda</p>
-            </div>
-          )}
-          </div>
-        </Card>
-
-        {/* ── Protocolo PDF ── */}
-        <Card className="rounded-2xl shadow-elev-1">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Protocolo de treino</p>
-              <p className="text-xs text-text-tertiary">Enviar PDF individual</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleUploadPdf} className="flex flex-col gap-3">
-            <div className="relative">
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={handlePdfChange}
-                className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
-              />
-              <div className={cn(
-                "flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed transition-colors",
-                pdfFile ? "border-brand bg-brand-subtle" : "border-border-default bg-surface-3 hover:border-brand/50"
-              )}>
-                <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-brand" : "text-text-tertiary")} />
-                <span className={cn("text-sm max-w-[80%] truncate", pdfFile ? "text-brand font-medium" : "text-text-tertiary")}>
-                  {pdfFile ? pdfFile.name : "Selecione o arquivo PDF"}
-                </span>
-              </div>
-            </div>
-
-            {treinosPdf.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <p className="text-xs font-semibold uppercase tracking-caps text-text-tertiary">Protocolos ativos</p>
-                {treinosPdf.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-surface-3 border border-border-subtle">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="w-3.5 h-3.5 text-brand flex-shrink-0" />
-                      <span className="text-xs text-text-secondary truncate">{t.nome_arquivo}</span>
+        {activeTab === "overview" && (
+          <div className="flex flex-col gap-6">
+            {/* KPIs */}
+            {profile && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { icon: CreditCard, label: "Plano", value: profile.tipo_plano || "Nenhum", iconColor: "text-blue-400" },
+                  { icon: CurrencyDollar, label: "Ticket", value: profile.valor_plano?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || "—", iconColor: "text-emerald-400" },
+                  { icon: Calendar, label: "Renovação", value: profile.data_expiracao ? formatDatePtBrSafe(profile.data_expiracao) : "A definir", iconColor: "text-purple-400" },
+                  { icon: Clock, label: "Última atividade", value: ultimaAtividade ? formatDatePtBrSafe(ultimaAtividade) : "Nenhuma", iconColor: "text-amber-400" },
+                ].map(({ icon: Icon, label, value, iconColor }) => (
+                  <div key={label} className="relative overflow-hidden flex items-center gap-3 p-3 rounded-[10px] bg-surface-3 border border-border-subtle">
+                    <Icon className={cn("w-5 h-5 flex-shrink-0 relative z-10", iconColor)} />
+                    <div className="min-w-0 relative z-10">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-0.5">{label}</p>
+                      <p className="text-xs font-semibold text-text-primary truncate">{value}</p>
                     </div>
-                    <button onClick={() => handleDeleteTreino(t.id, t.original_url_pdf || t.url_pdf)} className="text-text-disabled hover:text-danger transition-colors ml-2 flex-shrink-0">
-                      <Trash className="w-3 h-3" />
-                    </button>
                   </div>
                 ))}
               </div>
             )}
 
-            <Button type="submit" loading={uploading} disabled={!pdfFile} fullWidth>
-              Publicar protocolo PDF
-            </Button>
-          </form>
-        </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Últimas 3 atividades */}
+              <Card className="rounded-[10px] shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">Atividade recente</h3>
+                    <p className="text-xs text-text-tertiary">Últimos registros de treino do aluno</p>
+                  </div>
+                </div>
 
-        {/* ── Histórico de medidas ── */}
-        <Card className="rounded-2xl shadow-elev-1 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none" />
-          <div className="relative">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-              <Ruler className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Histórico de medidas</p>
-              <p className="text-xs text-text-tertiary">Evolução completa do aluno</p>
-            </div>
-          </div>
+                {historicoTreinos.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {historicoTreinos.slice(0, 3).map((h, i) => {
+                      const ds = h.dados_sessao as any;
+                      const dia = formatDatePtBrSafe(h.data_conclusao);
+                      return (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-[8px] bg-surface-3 border border-border-subtle">
+                          <div>
+                            <p className="text-xs font-bold text-text-primary">{ds?.nome_rotina || "Sessão de Treino"}</p>
+                            <p className="text-[10px] text-text-tertiary mt-0.5">{dia}</p>
+                          </div>
+                          {ds?.nome_exercicio && (
+                            <span className="text-[10px] font-semibold text-brand px-2 py-0.5 rounded-[4px] bg-brand-subtle border border-brand-border">
+                              {ds.nome_exercicio}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="h-28 flex flex-col items-center justify-center text-center gap-2 border border-dashed border-border-default rounded-[10px]">
+                    <Clock className="w-6 h-6 text-text-disabled" />
+                    <p className="text-xs text-text-tertiary">Nenhuma atividade recente</p>
+                  </div>
+                )}
+              </Card>
 
-          {medidas.length > 0 ? (
-            <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-xs min-w-max">
-                <thead>
-                  <tr className="border-b border-border-subtle">
-                    {["Data", "Peso (kg)", "Gordura %", "Peitoral", "Cintura", "Braço E", "Braço D", "Coxa E", "Coxa D", "Panturrilha"].map((h) => (
-                      <th key={h} className="text-left px-2 py-2 text-2xs font-semibold uppercase tracking-caps text-text-tertiary whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {medidas.map((m: any) => (
-                    <tr key={m.id} className="border-b border-border-subtle hover:bg-surface-3 transition-colors">
-                      <td className="px-2 py-2 text-text-primary whitespace-nowrap">{new Date(m.data_medicao).toLocaleDateString("pt-BR")}</td>
-                      <td className="px-2 py-2 text-center text-brand font-semibold">{m.peso?.toFixed(1) || "—"}</td>
-                      <td className="px-2 py-2 text-center text-text-primary">{m.gordura_corporal ? `${m.gordura_corporal.toFixed(1)}%` : "—"}</td>
-                      {[m.peitoral, m.cintura, m.braco_esquerdo, m.braco_direito, m.coxa_esquerda, m.coxa_direita, m.panturrilha_direita].map((v, i) => (
-                        <td key={i} className="px-2 py-2 text-center text-text-primary">{v?.toFixed(1) || "—"}</td>
+              {/* Dinâmica de carga */}
+              <Card className="rounded-[10px] shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                      <ChartLineUp className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-text-primary">Dinâmica de carga</h3>
+                      <p className="text-xs text-text-tertiary">Cargas máximas registradas</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    {/* Toggle Semanal / Mensal */}
+                    <div className="flex rounded-[6px] bg-surface-2 p-0.5 border border-border-subtle">
+                      <button
+                        type="button"
+                        onClick={() => setPdfPeriod("semanal")}
+                        className={cn(
+                          "px-2.5 py-1 text-[10px] font-bold rounded-[4px] transition-all",
+                          pdfPeriod === "semanal"
+                            ? "bg-brand text-text-on-brand shadow-sm"
+                            : "text-text-secondary hover:text-text-primary"
+                        )}
+                      >
+                        Semanal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPdfPeriod("mensal")}
+                        className={cn(
+                          "px-2.5 py-1 text-[10px] font-bold rounded-[4px] transition-all",
+                          pdfPeriod === "mensal"
+                            ? "bg-brand text-text-on-brand shadow-sm"
+                            : "text-text-secondary hover:text-text-primary"
+                        )}
+                      >
+                        Mensal
+                      </button>
+                    </div>
+
+                    {/* Botão de Download PDF */}
+                    <button
+                      type="button"
+                      disabled={generatingPdf}
+                      onClick={() => handleDownloadReport(pdfPeriod)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-[6px] bg-surface-3 border border-border-default text-text-primary hover:bg-surface-2 hover:border-brand-border transition-colors disabled:opacity-50"
+                    >
+                      {generatingPdf ? (
+                        <CircleNotch className="w-3 h-3 animate-spin text-brand" />
+                      ) : (
+                        <DownloadSimple className="w-3.5 h-3.5" />
+                      )}
+                      {generatingPdf ? "Gerando..." : "PDF"}
+                    </button>
+                  </div>
+                </div>
+
+                {historicoTreinos.length > 0 ? (() => {
+                  const sessoesPorData = new Map<string, any[]>();
+                  historicoTreinos.forEach(h => {
+                    const dia = formatDatePtBrSafe(h.data_conclusao);
+                    if (!sessoesPorData.has(dia)) sessoesPorData.set(dia, []);
+                    sessoesPorData.get(dia)!.push(h);
+                  });
+
+                  return (
+                    <div className="max-h-[220px] overflow-y-auto flex flex-col gap-3 pr-1 scrollbar-thin">
+                      {Array.from(sessoesPorData.entries()).slice(0, 5).map(([dia, sessao]) => (
+                        <div key={dia} className="rounded-[8px] bg-surface-3 border border-border-subtle overflow-hidden">
+                          <div className="px-3 py-1.5 bg-surface-2 border-b border-border-subtle flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-text-tertiary">{dia}</span>
+                            <span className="text-[10px] font-semibold text-brand truncate max-w-[60%]">{sessao[0]?.dados_sessao?.nome_rotina}</span>
+                          </div>
+                          <div className="divide-y divide-border-subtle/50">
+                            {sessao.map((h: any, i: number) => {
+                              const ds = h.dados_sessao as any;
+                              if (!ds) return null;
+                              const series = (ds.series || []).filter((s: any) => s.completado && s.peso_atual > 0);
+                              if (series.length === 0) return null;
+                              const maxCarga = Math.max(...series.map((s: any) => s.peso_atual));
+                              return (
+                                <div key={i} className="flex items-center justify-between px-3 py-1.5">
+                                  <span className="text-xs text-text-primary truncate max-w-[80%]">{ds.nome_exercicio}</span>
+                                  <span className="text-xs font-bold text-brand shrink-0">{maxCarga} kg</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="h-20 flex flex-col items-center justify-center text-center gap-2">
-              <WarningCircle className="w-7 h-7 text-text-disabled" />
-              <p className="text-xs text-text-tertiary">Nenhuma medida registrada · peça ao aluno para adicionar</p>
-            </div>
-          )}
-          </div>
-        </Card>
-
-        {/* ── Notas do coach ── */}
-        <Card className="rounded-2xl shadow-elev-1">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Notas do especialista</p>
-              <p className="text-xs text-text-tertiary">Orientações internas · privado</p>
+                    </div>
+                  );
+                })() : (
+                  <div className="h-28 flex flex-col items-center justify-center text-center gap-2 border border-dashed border-border-default rounded-[10px]">
+                    <ChartLineUp className="w-6 h-6 text-text-disabled" />
+                    <p className="text-xs text-text-tertiary">Aguardando dados</p>
+                  </div>
+                )}
+              </Card>
             </div>
           </div>
-          <textarea
-            value={profile?.orientacoes || ""}
-            onChange={(e) => {
-              const newVal = e.target.value;
-              setProfile((prev) => prev ? { ...prev, orientacoes: newVal } : null);
-            }}
-            placeholder="Observações e ajustes..."
-            className={cn(fieldCls, "h-15 resize-none")}
-          />
-          {profile?.orientacoes !== notasOriginais && (
-            <div className="mt-1 flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setProfile((prev) => prev ? { ...prev, orientacoes: notasOriginais } : null);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                loading={salvandoNotas}
-                onClick={async () => {
-                  setSalvandoNotas(true);
-                  try {
-                    await supabaseClient.from("profiles").update({ orientacoes: profile?.orientacoes }).eq("id", id);
-                    setNotasOriginais(profile?.orientacoes || "");
-                  } catch (err) {
-                    console.error("Erro ao salvar nota:", err);
-                    setError("Erro ao salvar notas");
-                  } finally {
-                    setSalvandoNotas(false);
-                  }
-                }}
-              >
-                Salvar notas
-              </Button>
-            </div>
-          )}
-        </Card>
-
-        {/* ── Transferência de coach (super admin) ── */}
-        {isSuperAdmin && (
-          <Card className="rounded-2xl shadow-elev-1">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-                <User className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-text-primary">Tutor responsável</p>
-                <p className="text-xs text-text-tertiary">Transferência de coach</p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <select
-                value={selectedNewCoach || ""}
-                onChange={(e) => setSelectedNewCoach(e.target.value || null)}
-                disabled={changingCoach}
-                className={cn(fieldCls, "disabled:opacity-50")}
-              >
-                <option value="">Selecione um coach...</option>
-                {coaches.map((coach) => (
-                  <option key={coach.id} value={coach.id}>{coach.full_name}</option>
-                ))}
-              </select>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={changingCoach}
-                disabled={!selectedNewCoach || selectedNewCoach === currentCoachId}
-                onClick={handleChangeCoach}
-              >
-                Confirmar transferência
-              </Button>
-            </div>
-          </Card>
         )}
 
-        {/* ── Dinâmica de carga ── */}
-        <Card className="rounded-2xl shadow-elev-1 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
-          <div className="relative">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-                <ChartLineUp className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-text-primary">Dinâmica de carga</p>
-                <p className="text-xs text-text-tertiary">Cargas registradas nos treinos</p>
-              </div>
-            </div>
+        {activeTab === "treinos" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Fichas digitais */}
+            <div className="lg:col-span-7 flex flex-col gap-6">
+              <Card className="rounded-[10px] shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                      <Barbell className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-text-primary">Fichas digitais</h3>
+                      <p className="text-xs text-text-tertiary">Treinos ativos estruturados</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push("/admin/treinos/nova-ficha")}
+                    className="w-8 h-8 rounded-[8px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand hover:bg-brand hover:text-text-on-brand transition-colors font-bold text-lg"
+                  >
+                    +
+                  </button>
+                </div>
 
-            {historicoTreinos.length > 0 ? (() => {
-              // Agrupar por data de conclusão (dia)
-              const sessoesPorData = new Map<string, any[]>();
-              historicoTreinos.forEach(h => {
-                const dia = new Date(h.data_conclusao).toLocaleDateString("pt-BR");
-                if (!sessoesPorData.has(dia)) sessoesPorData.set(dia, []);
-                sessoesPorData.get(dia)!.push(h);
-              });
-
-              return (
-                <div className="flex flex-col gap-2">
-                  <div className="max-h-[320px] overflow-y-auto flex flex-col gap-3 pr-2 scrollbar-thin scrollbar-thumb-border-subtle scrollbar-track-transparent">
-                    {Array.from(sessoesPorData.entries()).map(([dia, sessao]) => (
-                      <div key={dia} className="rounded-xl bg-surface-2 border border-border-subtle overflow-hidden flex-shrink-0">
-                        <div className="px-3 py-2 bg-surface-3 border-b border-border-subtle flex items-center gap-2">
-                          <Clock className="w-3 h-3 text-brand flex-shrink-0" />
-                          <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">{dia}</span>
-                          <span className="ml-auto text-2xs text-text-disabled truncate">{sessao[0]?.dados_sessao?.nome_rotina || "Treino"}</span>
+                {fichas.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {fichas.map((ficha) => (
+                      <div key={ficha.id} className="flex items-center justify-between p-3 rounded-[8px] bg-surface-3 border border-border-subtle hover:border-brand-border transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Barbell className="w-4 h-4 text-brand flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-text-primary truncate">{ficha.nome_rotina}</p>
+                            <p className="text-[10px] text-text-tertiary mt-0.5">
+                              {formatDatePtBrSafe(ficha.criado_em)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="divide-y divide-border-subtle/50">
-                          {sessao.map((h: any, i: number) => {
-                            const ds = h.dados_sessao as any;
-                            if (!ds) return null;
-                            const series = (ds.series || []).filter((s: any) => s.completado && s.peso_atual > 0);
-                            if (series.length === 0) return null;
-                            const maxCarga = Math.max(...series.map((s: any) => s.peso_atual));
-                            const volTotal = series.reduce((acc: number, s: any) => {
-                              const reps = typeof s.reps === "string" ? parseFloat(s.reps) || 0 : (s.reps || 0);
-                              return acc + s.peso_atual * reps;
-                            }, 0);
-                            return (
-                              <div key={i} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium text-text-primary truncate">{ds.nome_exercicio}</p>
-                                  <p className="text-2xs text-text-tertiary">{series.length} série{series.length !== 1 ? "s" : ""} · vol {volTotal.toFixed(0)} kg</p>
-                                </div>
-                                <div className="flex items-baseline gap-1 flex-shrink-0">
-                                  <span className="text-sm font-bold text-brand tabular-nums">{maxCarga}</span>
-                                  <span className="text-2xs text-text-disabled">kg</span>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => router.push(`/admin/aluno/${id}/ficha/${ficha.id}`)}
+                            className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand hover:opacity-85 transition-opacity"
+                            title="Editar ficha"
+                          >
+                            <PencilSimple className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => abrirClonarFicha(ficha)}
+                            className="w-8 h-8 rounded-[6px] bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:bg-surface-3 transition-colors"
+                            title="Clonar ficha"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFicha(ficha.id)}
+                            className="w-8 h-8 rounded-[6px] bg-danger/10 border border-danger/20 flex items-center justify-center text-danger hover:opacity-85 transition-opacity"
+                            title="Deletar ficha"
+                          >
+                            <Trash className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  {sessoesPorData.size > 5 && (
-                    <p className="text-2xs text-text-tertiary text-center pt-1">Exibindo {Math.min(sessoesPorData.size, historicoTreinos.length)} sessões</p>
-                  )}
+                ) : (
+                  <div className="h-28 flex flex-col items-center justify-center text-center gap-2 border border-dashed border-border-default rounded-[10px]">
+                    <Barbell className="w-6 h-6 text-text-disabled" />
+                    <p className="text-xs text-text-tertiary">Nenhuma ficha criada</p>
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Protocolo PDF */}
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              <Card className="rounded-[10px] shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">Protocolo de treino</h3>
+                    <p className="text-xs text-text-tertiary">Upload individual de PDF</p>
+                  </div>
                 </div>
-              );
-            })() : (
-              <div className="h-24 flex flex-col items-center justify-center gap-2 rounded-xl bg-surface-3 border border-border-subtle border-dashed">
-                <ChartLineUp className="w-7 h-7 text-text-disabled" />
-                <p className="text-xs text-text-tertiary">Nenhum treino registrado ainda</p>
-              </div>
-            )}
-          </div>
-        </Card>
 
-        {/* ── Galeria de evolução ── */}
-        <div>
-          <div className="flex items-center gap-3 mb-4 px-0.5">
-            <div className="w-8 h-8 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-              <ImageIcon className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Linha do tempo visual</p>
-              <p className="text-xs text-text-tertiary">Evolução fisiológica</p>
-            </div>
-          </div>
-
-          {fotos.length > 0 ? (
-            <div>
-              <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory">
-                {fotos.map((f) => (
-                  <div key={f.id} className="group shrink-0 w-56 bg-surface-2 rounded-2xl overflow-hidden border border-border-subtle hover:border-brand-border transition-all shadow-lg hover:shadow-xl relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-brand/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10" />
-                    <div className="relative aspect-3/4 bg-surface-3 overflow-hidden">
-                      <img src={f.url_foto} alt={f.posicao} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-surface-0/80 to-transparent" />
-                      <div className="absolute top-2 right-2 bg-surface-0/70 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                        <span className="text-2xs font-semibold text-text-secondary uppercase">{f.posicao}</span>
-                      </div>
-                    </div>
-                    <div className="p-3">
-                      <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                        <Calendar className="w-3 h-3 text-brand" />
-                        {new Date(f.data_upload).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
-                      </div>
+                <form onSubmit={handleUploadPdf} className="flex flex-col gap-4">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handlePdfChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
+                    />
+                    <div className={cn(
+                      "flex items-center justify-center gap-2 py-4 rounded-[6px] border-2 border-dashed transition-colors",
+                      pdfFile ? "border-brand bg-brand-subtle" : "border-border-default bg-surface-3 hover:border-brand/50"
+                    )}>
+                      <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-brand" : "text-text-tertiary")} />
+                      <span className={cn("text-xs max-w-[80%] truncate", pdfFile ? "text-brand font-medium" : "text-text-tertiary")}>
+                        {pdfFile ? pdfFile.name : "Selecione o arquivo PDF"}
+                      </span>
                     </div>
                   </div>
-                ))}
+
+                  {treinosPdf.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Protocolos enviados</p>
+                      {treinosPdf.map((t) => (
+                        <div key={t.id} className="flex items-center justify-between p-2.5 rounded-[8px] bg-surface-3 border border-border-subtle">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-brand flex-shrink-0" />
+                            <a href={t.url_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-text-secondary truncate hover:text-brand transition-colors">
+                              {t.nome_arquivo}
+                            </a>
+                          </div>
+                          <button onClick={() => handleDeleteTreino(t.id, t.original_url_pdf || t.url_pdf)} className="text-text-disabled hover:text-danger transition-colors shrink-0 p-1">
+                            <Trash className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button type="submit" loading={uploading} disabled={!pdfFile} fullWidth>
+                    Publicar protocolo PDF
+                  </Button>
+                </form>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "nutricao" && (
+          <div className="max-w-2xl">
+            <Card className="rounded-[10px] shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                  <AppleLogo className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">Plano alimentar</h3>
+                  <p className="text-xs text-text-tertiary">Histórico de planos enviados</p>
+                </div>
               </div>
-              {fotos.length > 3 && (
-                <p className="text-center text-xs text-text-tertiary mt-2">← Arraste para ver todas ({fotos.length} fotos) →</p>
+
+              <Button variant="secondary" leftIcon={<UploadSimple className="w-4 h-4" />} onClick={() => setUploadNutritionOpen(true)} fullWidth>
+                Adicionar plano alimentar
+              </Button>
+
+              {planosAlimentares.length > 0 ? (
+                <div className="flex flex-col gap-2 mt-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Planos ativos</p>
+                  {planosAlimentares.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between p-3 rounded-[8px] bg-surface-3 border border-border-subtle">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <AppleLogo className="w-4 h-4 text-brand flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-text-primary truncate">{p.nome_arquivo}</p>
+                          {p.descricao && <p className="text-[10px] text-text-tertiary truncate">{p.descricao}</p>}
+                          <p className="text-[9px] text-text-disabled mt-0.5">{formatDatePtBrSafe(p.criado_em)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a href={p.pdf_url} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-[6px] bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand transition-colors">
+                          <FileText className="w-3.5 h-3.5" />
+                        </a>
+                        <button onClick={() => handleDeleteNutritionPlan(p.id, p.original_path || p.url_pdf || p.pdf_url)} className="w-8 h-8 rounded-[6px] bg-danger/10 border border-danger/20 flex items-center justify-center text-danger hover:opacity-85 transition-opacity">
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-24 flex items-center justify-center mt-4 border border-dashed border-border-default rounded-[10px]">
+                  <p className="text-xs text-text-tertiary">Nenhum plano alimentar enviado ainda</p>
+                </div>
               )}
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "medidas" && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            {/* Tabela de medidas */}
+            <div className="xl:col-span-8 flex flex-col gap-6">
+              <Card className="rounded-[10px] shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                    <Ruler className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">Histórico de medidas</h3>
+                    <p className="text-xs text-text-tertiary">Registro completo de antropometria</p>
+                  </div>
+                </div>
+
+                {medidas.length > 0 ? (
+                  <div className="overflow-x-auto -mx-6 px-6">
+                    <table className="w-full text-xs min-w-max">
+                      <thead>
+                        <tr className="border-b border-border-subtle">
+                          {["Data", "Peso (kg)", "Gordura %", "Peitoral", "Cintura", "Braço E", "Braço D", "Coxa E", "Coxa D", "Panturrilha"].map((h) => (
+                            <th key={h} className="text-left px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-text-tertiary whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {medidas.map((m: any) => (
+                          <tr key={m.id} className="border-b border-border-subtle hover:bg-surface-3 transition-colors">
+                            <td className="px-2.5 py-2 text-text-primary whitespace-nowrap">{formatDatePtBrSafe(m.data_medicao)}</td>
+                            <td className="px-2.5 py-2 text-brand font-semibold">{m.peso?.toFixed(1) || "—"}</td>
+                            <td className="px-2.5 py-2 text-text-primary">{m.gordura_corporal ? `${m.gordura_corporal.toFixed(1)}%` : "—"}</td>
+                            {[m.peitoral, m.cintura, m.braco_esquerdo, m.braco_direito, m.coxa_esquerda, m.coxa_direita, m.panturrilha_direita].map((v, i) => (
+                              <td key={i} className="px-2.5 py-2 text-text-secondary">{v?.toFixed(1) || "—"}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="h-28 flex flex-col items-center justify-center text-center gap-2 border border-dashed border-border-default rounded-[10px]">
+                    <WarningCircle className="w-6 h-6 text-text-disabled" />
+                    <p className="text-xs text-text-tertiary">Nenhuma medida cadastrada</p>
+                  </div>
+                )}
+              </Card>
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-3 py-12 rounded-2xl border border-dashed border-border-subtle">
-              <ImageIcon className="w-10 h-10 text-text-disabled" />
-              <p className="text-xs text-text-tertiary">Aguardando capturas</p>
+
+            {/* Galeria de fotos */}
+            <div className="xl:col-span-4 flex flex-col gap-6">
+              <Card className="rounded-[10px] shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                    <ImageIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">Evolução visual</h3>
+                    <p className="text-xs text-text-tertiary">Fotos de evolução do aluno</p>
+                  </div>
+                </div>
+
+                {fotos.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1">
+                    {fotos.map((f) => (
+                      <div key={f.id} className="group bg-surface-2 rounded-[8px] border border-border-subtle overflow-hidden shadow-sm relative aspect-[3/4]">
+                        <img src={f.url_foto} alt={f.posicao} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute bottom-2 left-2 right-2 flex flex-col">
+                          <span className="text-[10px] font-bold text-white uppercase">{f.posicao}</span>
+                          <span className="text-[8px] text-text-disabled">{formatDatePtBrSafe(f.data_upload, { day: '2-digit', month: 'short' })}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-36 flex flex-col items-center justify-center text-center gap-2 border border-dashed border-border-default rounded-[10px]">
+                    <ImageIcon className="w-7 h-7 text-text-disabled" />
+                    <p className="text-xs text-text-tertiary">Aguardando fotos</p>
+                  </div>
+                )}
+              </Card>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {activeTab === "notas" && (
+          <div className="max-w-2xl flex flex-col gap-6">
+            {/* Notas do coach */}
+            <Card className="rounded-[10px] shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">Notas do especialista</h3>
+                  <p className="text-xs text-text-tertiary">Anotações e orientações internas privativas</p>
+                </div>
+              </div>
+              <textarea
+                value={profile?.orientacoes || ""}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  setProfile((prev) => prev ? { ...prev, orientacoes: newVal } : null);
+                }}
+                placeholder="Insira as observações sobre o atleta..."
+                className={cn(fieldCls, "h-32 resize-none")}
+              />
+              {profile?.orientacoes !== notasOriginais && (
+                <div className="mt-3 flex items-center gap-2 justify-end">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setProfile((prev) => prev ? { ...prev, orientacoes: notasOriginais } : null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    loading={salvandoNotas}
+                    onClick={async () => {
+                      setSalvandoNotas(true);
+                      try {
+                        await supabaseClient.from("profiles").update({ orientacoes: profile?.orientacoes }).eq("id", id);
+                        setNotasOriginais(profile?.orientacoes || "");
+                      } catch (err) {
+                        console.error("Erro ao salvar nota:", err);
+                        setError("Erro ao salvar notas");
+                      } finally {
+                        setSalvandoNotas(false);
+                      }
+                    }}
+                  >
+                    Salvar notas
+                  </Button>
+                </div>
+              )}
+            </Card>
+
+            {/* Transferência de coach (super admin) */}
+            {isSuperAdmin && (
+              <Card className="rounded-[10px] shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">Tutor responsável</h3>
+                    <p className="text-xs text-text-tertiary">Alterar tutor do atleta</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <select
+                    value={selectedNewCoach || ""}
+                    onChange={(e) => setSelectedNewCoach(e.target.value || null)}
+                    disabled={changingCoach}
+                    className={cn(fieldCls, "disabled:opacity-50")}
+                  >
+                    <option value="">Selecione um coach...</option>
+                    {coaches.map((coach) => (
+                      <option key={coach.id} value={coach.id}>{coach.full_name}</option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={changingCoach}
+                    disabled={!selectedNewCoach || selectedNewCoach === currentCoachId}
+                    onClick={handleChangeCoach}
+                  >
+                    Confirmar transferência
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* Modal de upload de nutrição */}
@@ -1183,10 +1331,10 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       {/* Modal Clonar Ficha */}
       {clonandoFicha && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-1 border border-border-default rounded-2xl p-5 flex flex-col gap-4 shadow-2xl">
+          <div className="w-full max-w-sm bg-surface-1 border border-border-default rounded-[10px] p-5 flex flex-col gap-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-text-primary">Clonar Ficha</p>
+                <p className="text-sm font-bold text-text-primary">Clonar Ficha</p>
                 <p className="text-xs text-text-tertiary truncate max-w-[220px]">{clonandoFicha.nome_rotina}</p>
               </div>
               <button
@@ -1198,7 +1346,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </div>
 
             <div>
-              <label className="text-2xs uppercase tracking-caps text-text-tertiary mb-2 block">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 block">
                 Selecionar aluno destino
               </label>
               {alunosCoach.length === 0 ? (
@@ -1207,7 +1355,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <select
                   value={alunoAlvoId}
                   onChange={e => setAlunoAlvoId(e.target.value)}
-                  className="w-full px-3 py-3 bg-surface-3 border border-border-default rounded-xl text-sm text-text-primary focus:outline-none focus:border-brand/40 transition-all"
+                  className="w-full px-3 py-2.5 bg-surface-3 border border-border-default rounded-[6px] text-sm text-text-primary focus:outline-none focus:border-brand transition-all"
                 >
                   <option value="">Escolha um aluno…</option>
                   {alunosCoach.map(a => (
@@ -1220,7 +1368,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setClonandoFicha(null)}
-                className="flex-1 py-3 rounded-xl text-sm text-text-secondary bg-surface-3 border border-border-subtle hover:bg-surface-2 transition-colors"
+                className="flex-1 py-2.5 rounded-[8px] text-xs font-semibold text-text-secondary bg-surface-3 border border-border-subtle hover:bg-surface-2 transition-colors"
               >
                 Cancelar
               </button>

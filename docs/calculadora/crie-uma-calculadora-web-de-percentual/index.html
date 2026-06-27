@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Percentual de Gordura</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="assets/vinny-lopes-logo.jpeg" alt="Vinny Lopes Coach">
+        <div>
+          <p class="eyebrow">Vinny Lopes Coach</p>
+          <a class="instagram-link" href="https://www.instagram.com/vinnyloppes" target="_blank" rel="noopener">@vinnyloppes</a>
+        </div>
+      </div>
+      <h1 id="page-title">Calculadora de percentual de gordura</h1>
+      <p class="intro-text">Estimativa pelo método US Navy com relatório pronto para acompanhamento físico.</p>
+      <p class="instagram-callout">Acompanhe mais orientações de treino, físico e evolução no Instagram <a href="https://www.instagram.com/vinnyloppes" target="_blank" rel="noopener">@vinnyloppes</a>.</p>
+
+      <div class="quick-stats" aria-label="Resumo da metodologia">
+        <div>
+          <strong>US Navy</strong>
+          <span>Método métrico</span>
+        </div>
+        <div>
+          <strong>ACE</strong>
+          <span>Classificação</span>
+        </div>
+        <div>
+          <strong>PDF</strong>
+          <span>Impressão</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="calculator-panel" aria-label="Formulário e resultados">
+      <form id="bodyFatForm" class="form-card" novalidate>
+        <div class="section-heading">
+          <span>Dados do aluno</span>
+          <small>Medidas em centímetros</small>
+        </div>
+
+        <label class="field full">
+          <span>Nome do aluno</span>
+          <input id="studentName" name="studentName" type="text" autocomplete="name" placeholder="Ex.: Ana Souza" required>
+        </label>
+
+        <div class="field">
+          <span>Sexo</span>
+          <div class="segmented-control" role="radiogroup" aria-label="Sexo">
+            <label>
+              <input type="radio" name="sex" value="male" checked>
+              <span>Homem</span>
+            </label>
+            <label>
+              <input type="radio" name="sex" value="female">
+              <span>Mulher</span>
+            </label>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Idade</span>
+          <input id="age" name="age" type="number" min="16" max="99" step="1" placeholder="30" required>
+        </label>
+
+        <label class="field">
+          <span>Peso em kg</span>
+          <input id="weight" name="weight" type="text" inputmode="decimal" placeholder="82,5" required>
+        </label>
+
+        <label class="field">
+          <span>Altura em cm</span>
+          <input id="height" name="height" type="text" inputmode="decimal" placeholder="178" required>
+        </label>
+
+        <label class="field">
+          <span>Pescoço em cm</span>
+          <input id="neck" name="neck" type="text" inputmode="decimal" placeholder="39" required>
+        </label>
+
+        <label class="field">
+          <span>Cintura em cm</span>
+          <input id="waist" name="waist" type="text" inputmode="decimal" placeholder="88" required>
+        </label>
+
+        <label class="field" id="hipField">
+          <span>Quadril em cm</span>
+          <input id="hip" name="hip" type="text" inputmode="decimal" placeholder="102">
+        </label>
+
+        <p id="formError" class="form-error" role="alert" aria-live="polite"></p>
+
+        <div class="actions">
+          <button class="primary-button" type="submit">Calcular</button>
+          <button class="ghost-button" type="button" id="clearButton">Limpar dados</button>
+          <button class="ghost-button" type="button" id="printButton">Imprimir / PDF</button>
+        </div>
+      </form>
+
+      <aside class="result-card" aria-live="polite">
+        <div class="result-brand">
+          <img class="result-logo" src="assets/vinny-lopes-logo.jpeg" alt="Vinny Lopes Coach">
+          <div>
+            <span>Vinny Lopes Coach</span>
+            <a href="https://www.instagram.com/vinnyloppes" target="_blank" rel="noopener">@vinnyloppes</a>
+          </div>
+        </div>
+
+        <div class="result-header">
+          <span>Resultado</span>
+          <strong id="resultName">Aluno</strong>
+        </div>
+
+        <div class="body-fat-meter">
+          <span id="bodyFatValue">--</span>
+          <small>% gordura</small>
+        </div>
+
+        <div class="result-grid">
+          <div>
+            <span>Massa gorda</span>
+            <strong id="fatMassValue">--</strong>
+          </div>
+          <div>
+            <span>Massa magra</span>
+            <strong id="leanMassValue">--</strong>
+          </div>
+          <div class="classification">
+            <span>Classificação</span>
+            <strong id="classificationValue">--</strong>
+          </div>
+        </div>
+
+        <p class="note">Resultado estimado para acompanhamento físico, não substitui avaliação profissional.</p>
+        <p class="result-instagram">Siga no Instagram: <a href="https://www.instagram.com/vinnyloppes" target="_blank" rel="noopener">@vinnyloppes</a></p>
+      </aside>
+    </section>
+
+    <section class="reference-section" aria-label="Referências e orientação">
+      <article>
+        <h2>Classificação ACE</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Mulheres</th>
+                <th>Homens</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Gordura essencial</td><td>10-13%</td><td>2-5%</td></tr>
+              <tr><td>Atletas</td><td>14-20%</td><td>6-13%</td></tr>
+              <tr><td>Fitness</td><td>21-24%</td><td>14-17%</td></tr>
+              <tr><td>Média</td><td>25-31%</td><td>18-24%</td></tr>
+              <tr><td>Obeso</td><td>32% ou mais</td><td>25% ou mais</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article>
+        <h2>Como medir</h2>
+        <p>Meça a cintura sem contrair o abdômen. O pescoço deve ser medido abaixo da laringe, com a fita levemente inclinada para a frente. Para mulheres, o quadril deve ser medido na maior circunferência horizontal.</p>
+        <p>As fórmulas do método US Navy geram uma estimativa ampla. Para maior precisão, combine o acompanhamento com avaliação profissional e medições consistentes.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

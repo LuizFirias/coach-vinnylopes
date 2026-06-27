@@ -1,0 +1,110 @@
+VINNY LOPES COACH
+CORREÇÃO Nº2 — PROFISSIONALIZAÇÃO VISUAL E RECEITA NO DASHBOARD
+Análise crítica sem filtro • Junho 2026
+
+1. VEREDITO DIRETO
+Você está certo, e a primeira spec não foi longe o suficiente nisso. O painel do coach hoje usa estética de aplicativo de consumo — Instagram, apps de delivery, fintech voltada a pessoa física — não de ferramenta B2B que decide receita e gestão de clientes. O sintoma mais visível é o border-radius: todo elemento, do menor input ao maior card, usa o mesmo raio grande e arredondado (algo na faixa de 14–24px), sem nenhuma hierarquia entre eles.
+Isso não é só gosto pessoal. Existe consenso técnico documentado em sistemas de design de empresas como Workday, Telerik e outros: raio pequeno e contido comunica formalidade e seriedade; raio grande e generoso comunica casual e amigável. Um SaaS que lida com mensalidade, inadimplência e dados de pagamento de terceiros deveria pender para o primeiro, não o segundo.
+O botão 'Protocolar Plano Agora' na tela de Nutrição é o exemplo mais claro do problema: é uma pill quase-circular, do tipo usado em apps de namoro ou delivery — não em uma ferramenta onde o coach está prestes a notificar um cliente pagante sobre o plano alimentar dele.
+
+2. SISTEMA DE BORDER-RADIUS — substituição completa
+O erro estrutural é usar um valor único para tudo. A correção é um sistema com radius PROPORCIONAL ao tamanho e à função do elemento — quanto maior e mais 'continer' o elemento, levemente mais raio; quanto menor e mais funcional (input, botão, badge), menos.
+2.1 Nova escala (substitui a escala usada hoje)
+--radius-none
+0px — Tabelas de dados, linhas de tabela, separadores. Dado tabular nunca deveria ter cantos arredondados — é convenção de planilha/extrato bancário
+--radius-xs
+4px — Badges, tags, chips de status, pills pequenas de filtro
+--radius-sm
+6px — Inputs de formulário, selects, textareas, botões secundários
+--radius-md
+8px — Botões primários (CTA), cards pequenos, dropdowns
+--radius-lg
+10px — Cards de conteúdo (KPI cards, cards de listagem), modais
+--radius-xl
+12px — Containers grandes (painéis principais, slide-over panel) — TETO da escala, não deve passar disso em nenhum elemento
+Para efeito de comparação: o app hoje provavelmente usa algo equivalente a 14px em inputs e ~20px em botões CTA. A nova escala corta isso quase pela metade no topo (12px máximo) e elimina arredondamento de elementos pequenos e funcionais (inputs caem de ~14px para 6px).
+2.2 Mudanças específicas e diretas
+Botões CTA ("Protocolar Plano", "Salvar", "Publicar")
+De pill quase-circular para retângulo com --radius-md (8px). Parar de usar border-radius: 9999px ou similar em qualquer botão retangular largo
+Inputs e Selects
+De ~14px para --radius-sm (6px). Reduzir também a altura visual — os inputs atuais parecem ter ~44-48px de altura com padding generoso de app mobile; em desktop, 40px é suficiente e mais denso
+Cards (KPI, listagem, parceiros)
+De ~16-20px para --radius-lg (10px)
+Sidebar / Container principal
+De arredondado a 16px+ para --radius-xl (12px) no máximo, ou 0px se for um painel fixo que encosta nas bordas da viewport
+Avatares
+Manter circular (50%) — único lugar onde arredondamento total é correto e esperado, é convenção universal para foto de perfil
+Badges de status (Ativo/Pendente/Inativo)
+De pill arredondada para --radius-xs (4px) — ainda discernível como "tag", mas sem o aspecto infantilizado
+
+3. OUTROS SINAIS DE FALTA DE SERIEDADE A CORRIGIR
+Border-radius é o sintoma mais visível, mas não é o único. Análise direta dos 11 prints, sem filtro:
+3.1 Excesso de glow/sombra dourada
+Botões CTA com `box-shadow` em tom dourado ("glow") aparecem em pelo menos 3 telas — isso é estética de gaming/streaming, não de ferramenta financeira. Stripe, Linear, e qualquer dashboard B2B sério usa sombras neutras (cinza/preto, baixa opacidade) para profundidade, nunca sombra colorida
+Correção: trocar todo `box-shadow` com cor de brand por `box-shadow: 0 1px 2px rgba(0,0,0,0.3)` (sombra neutra, sutil) em elementos de UI funcional. Reservar cor apenas para o estado ativo da sidebar (já correto) e talvez 1 elemento de destaque por tela no máximo
+3.2 Inconsistência de cor em gráficos
+Já identificado na spec anterior: gráfico de receita usa azul, fora da paleta dourado/preto do produto. Isso permanece crítico e não foi corrigido ainda
+3.3 Tipografia em caixa alta (uppercase) em excesso
+Quase todo label de seção está em uppercase com letter-spacing ("TOTAL ALUNOS ATIVOS", "DISTRIBUIÇÃO POR PLANO", "SELECIONE O ATLETA"). Em pequenas doses, uppercase em caption comunica estrutura. Em excesso — e aqui está em excesso, aparece em quase todo título de card — começa a parecer painel de alerta ou interface militar, cansa visualmente em uma sessão de trabalho longa
+Correção: reservar uppercase apenas para labels de categoria muito curtos (ex: "ATIVOS", "PENDENTES" nos KPIs) e badges de status. Títulos de seção de card ("Histórico de medidas", "Notas do especialista") devem usar capitalização normal de frase, sem uppercase nem letter-spacing
+3.4 Placeholder/dado cortado sem tratamento
+Na tela de Parceiros, o campo de cupom mostra o texto "coloquea" truncado e ilegível ao lado do label "CUPOM" — isso não é só estética, é um bug de UI que um cliente pagante (o coach, neste caso, avaliando se vale a pena pagar pelo SaaS) vai notar imediatamente como falta de polimento
+Correção: aplicar `text-overflow: ellipsis` com tooltip completo no hover, ou aumentar o espaço disponível para o texto — nunca deixar string cortada sem indicação visual de truncamento (reticências)
+
+4. RECEITA NO DASHBOARD PRINCIPAL
+Concordo com o ponto: receita é provavelmente a métrica nº1 que um coach quer ver ao abrir o painel — é literalmente por isso que ele está rodando um negócio. Hoje, dados financeiros só aparecem na tela separada "Relatórios", a 3 cliques de distância do que deveria ser a tela inicial.
+Pesquisa de mercado confirma esse padrão: produtos B2B de referência como Stripe estruturam o dashboard de abertura ao redor de receita, volume e métricas financeiras como prioridade máxima — o usuário não deveria precisar navegar para encontrar o número mais importante do negócio dele. Stripe mostra de cara as 2-3 métricas que mais importam (receita, volume, taxa de disputa), e qualquer detalhe adicional fica a um clique de distância, nunca mais.
+4.1 Problema estrutural atual: não existe "Dashboard" do coach
+Pelos 11 prints enviados, não há uma tela de abertura consolidada — o coach cai direto em "Base de Atletas" (lista de alunos) como tela inicial. Isso por si só já é uma decisão a revisar: a primeira tela que o coach vê deveria ser um resumo executivo do negócio, não uma lista operacional.
+4.2 Proposta: nova tela "Dashboard" como home do painel
+Criar uma tela de abertura nova (ou promover a atual home, se existir e não foi capturada nos prints) estruturada assim, seguindo o padrão de leitura em F (esquerda para direita, cima para baixo, métrica mais crítica no canto superior esquerdo):
+Linha 1 — Receita (prioridade máxima, canto superior esquerdo)
+Card grande de destaque: Receita do mês atual, número grande, com variação percentual vs. mês anterior
+Ao lado: MRR (receita recorrente mensal) — métrica que qualquer negócio de assinatura deveria acompanhar e hoje não aparece em nenhum print
+Ao lado: Pendências de cobrança (quantos alunos com pagamento atrasado, valor total em risco) — hoje existe como KPI "Pendentes" na tela de Relatórios mas mostra contagem de alunos, não o valor em R$ que está pendente, que é o dado que realmente importa para fluxo de caixa
+Linha 2 — Operação (alunos e treinos)
+Alunos ativos / Taxa de adesão aos treinos (% de treinos prescritos que foram realmente executados) / Alunos sem atividade há mais de 7 dias (alerta de risco de churn)
+Linha 3 — Gráfico de receita (largura total, substituindo o card isolado da tela de Relatórios)
+Mesmo gráfico que já existe em Relatórios, mas em destaque na home, corrigido para a paleta dourada (não azul) e com toggle de período
+Linha 4 — Atividade recente (feed compacto)
+Lista curta: últimos pagamentos confirmados, últimos treinos concluídos, últimos feedbacks recebidos — visão rápida do pulso do negócio sem precisar visitar cada seção
+4.3 O que muda na tela atual de "Relatórios"
+Relatórios deixa de ser o único lugar com dado financeiro e passa a ser a versão aprofundada/analítica: filtros de período mais granulares, exportação, comparativos históricos longos, distribuição detalhada por plano. A home/dashboard mostra o resumo do AGORA; Relatórios é para quando o coach quer investigar.
+
+5. TABELA-RESUMO DE TODAS AS CORREÇÕES DESTA RODADA
+Border-radius
+Substituir escala única (~14-24px) por escala proporcional de 6 níveis (0 a 12px máximo)
+Sombra dourada (glow)
+Remover de elementos funcionais; usar sombra neutra cinza/preta padrão
+Uppercase excessivo
+Restringir a labels curtos de KPI e badges; títulos de seção voltam à capitalização normal
+Cupom cortado (Parceiros)
+Corrigir truncamento sem reticências — bug visual visível ao cliente
+Gráfico de receita azul
+Trocar para dourado (`--accent` do design system), pendente desde a spec anterior
+Ausência de Dashboard financeiro
+Criar tela home nova com Receita/MRR/Pendências em destaque no topo, seguindo padrão F de leitura
+Pendências em contagem, não em R$
+KPI de "Pendentes" deve mostrar valor monetário em risco, não só número de alunos
+
+6. CSS TOKENS ATUALIZADOS
+:root {
+  /* Border-radius — substitui valores anteriores */
+  --radius-none: 0px;
+  --radius-xs: 4px;   /* badges, tags */
+  --radius-sm: 6px;   /* inputs, selects */
+  --radius-md: 8px;   /* botões, dropdowns */
+  --radius-lg: 10px;  /* cards */
+  --radius-xl: 12px;  /* painéis grandes — teto da escala */
+
+  /* Sombra — neutra, não usar cor de brand exceto em casos pontuais */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.35);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+  /* REMOVER: qualquer --shadow-gold-glow aplicado fora de 1 elemento de destaque pontual */
+}
+
+7. CONCLUSÃO SEM RODEIOS
+A primeira rodada de spec resolveu o problema de arquitetura (sidebar, largura, tabelas). Esta rodada resolve o problema de tom: o produto hoje parece mais com um app de gamificação fitness para consumidor final do que com a ferramenta de gestão de um profissional que cobra mensalidade de clientes. Coach que está decidindo se paga por esse SaaS olha pra essa interface e ela precisa transmitir confiança de que os dados financeiros e de cliente dele estão sendo levados a sério.
+As duas mudanças mais urgentes, em ordem de impacto: (1) o sistema de border-radius, porque toca todo elemento da interface e é a correção de maior alavancagem visual por esforço de implementação; (2) a tela de Dashboard com receita em destaque, porque resolve uma lacuna funcional real, não só estética — hoje o coach não tem visão financeira imediata ao abrir o painel.
+Documento gerado por Claude • Junho 2026

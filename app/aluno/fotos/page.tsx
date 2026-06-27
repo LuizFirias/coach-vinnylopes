@@ -10,6 +10,7 @@ import {
 import Link from 'next/link';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
+import { motion } from 'framer-motion';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,14 @@ type Sessao = { data: string; fotos: Foto[] };
 type Posicao = 'frente' | 'lado' | 'costas';
 
 const LABEL: Record<Posicao, string> = { frente: 'Frente', lado: 'Lado', costas: 'Costas' };
+
+function parseDateSafe(value: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+  }
+  return new Date(value);
+}
 
 // ─── Ícone de pose (substitui glyph quebrado do "Lado") ──────────────────────
 
@@ -157,11 +166,16 @@ export default function FotosPage() {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   function fmtDataKey(d: string): string {
-    return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return parseDateSafe(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
+  const itemVariants: any = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }
+  };
+
   function fmtDataLabel(d: string): string {
-    return new Date(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+    return parseDateSafe(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
   }
 
   const sessoes: Sessao[] = [];
@@ -174,7 +188,7 @@ export default function FotosPage() {
 
   const sessaoAtiva = sessoes.find(s => s.data === selectedSessao) ?? sessoes[0] ?? null;
   const diasSdeUltima = fotos.length > 0
-    ? Math.floor((Date.now() - new Date(fotos[0].data_upload).getTime()) / 86400000)
+    ? Math.floor((Date.now() - parseDateSafe(fotos[0].data_upload).getTime()) / 86400000)
     : null;
 
   if (loading) {
@@ -186,36 +200,55 @@ export default function FotosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: {
+            staggerChildren: 0.05
+          }
+        }
+      }}
+      className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24"
+    >
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
 
         {/* ── Header ── */}
-        <div>
+        <motion.div variants={itemVariants}>
           <Link href="/aluno/dashboard" className="inline-flex items-center gap-1.5 text-brand text-2xs uppercase tracking-caps mb-4">
             <ArrowLeft className="w-3 h-3" /> Dashboard
           </Link>
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">Fotos</h1>
           <p className="text-xs text-text-tertiary mt-0.5">Acompanhe sua transformação</p>
-        </div>
+        </motion.div>
 
         {error && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-xl px-4 py-3">
+          <motion.div
+            variants={itemVariants}
+            className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-xl px-4 py-3"
+          >
             {error}
-          </div>
+          </motion.div>
         )}
 
         {/* ── Aviso dias atrasados ── */}
         {diasSdeUltima !== null && diasSdeUltima > 15 && (
-          <div className="flex items-center gap-3 bg-surface-2 border border-border-default rounded-2xl px-4 py-3">
+          <motion.div
+            variants={itemVariants}
+            className="flex items-center gap-3 bg-surface-2 border border-border-default rounded-2xl px-4 py-3"
+          >
             <div className="w-2 h-2 rounded-full bg-brand animate-pulse flex-shrink-0" />
             <p className="text-xs text-text-secondary">
               Faz <span className="font-semibold text-text-primary">{diasSdeUltima} dias</span> desde sua última sessão de fotos. Que tal registrar hoje?
             </p>
-          </div>
+          </motion.div>
         )}
 
         {/* ── Upload das 3 poses ── */}
-        <section>
+        <motion.section variants={itemVariants}>
           <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Nova sessão</p>
           <div className="grid grid-cols-3 gap-3">
             {(['frente', 'lado', 'costas'] as const).map(tipo => (
@@ -228,17 +261,17 @@ export default function FotosPage() {
                   onChange={e => handleUpload(e, tipo)}
                   disabled={uploading.has(tipo)}
                 />
-                <div className={cn(
-                  'aspect-[3/4] rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
-                  uploading.has(tipo)
-                    ? 'border-brand/40 bg-brand/5'
-                    : 'border-border-default bg-surface-2 hover:border-brand/60 hover:bg-surface-3'
-                )}>
+                <div
+                  className={cn(
+                    'aspect-[3/4] rounded-2xl border border-dashed flex flex-col items-center justify-center gap-2 p-3 text-center transition-all bg-surface-1 select-none',
+                    uploading.has(tipo) ? 'opacity-50 cursor-wait' : 'border-border-default hover:border-brand/40 active:scale-[0.98]'
+                  )}
+                >
                   {uploading.has(tipo) ? (
                     <CircleNotch className="w-5 h-5 text-brand animate-spin" />
                   ) : (
                     <>
-                      <div className="text-text-tertiary">
+                      <div className="w-10 h-10 rounded-xl bg-brand-subtle flex items-center justify-center text-brand">
                         <PoseIcon tipo={tipo} />
                       </div>
                       <span className="text-xs font-semibold text-text-secondary">{LABEL[tipo]}</span>
@@ -259,17 +292,20 @@ export default function FotosPage() {
               Mesma roupa, mesma luz, mesmo horário. Manhã em jejum é o ideal para comparações consistentes.
             </p>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── Privacidade ── */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-border-subtle">
+        <motion.div
+          variants={itemVariants}
+          className="flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-border-subtle"
+        >
           <Lock className="w-3.5 h-3.5 text-text-tertiary flex-shrink-0" />
           <p className="text-xs text-text-tertiary">Suas fotos são privadas e visíveis apenas pelo seu coach.</p>
-        </div>
+        </motion.div>
 
         {/* ── Timeline + galeria ── */}
         {sessoes.length === 0 ? (
-          <div className="flex flex-col items-center py-16 gap-3 text-center">
+          <motion.div variants={itemVariants} className="flex flex-col items-center py-16 gap-3 text-center">
             <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-tertiary">
               <ImageIcon className="w-7 h-7" />
             </div>
@@ -277,9 +313,9 @@ export default function FotosPage() {
             <p className="text-xs text-text-tertiary max-w-xs">
               Envie suas fotos de frente, lado e costas para acompanhar sua transformação ao longo do tempo.
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <section>
+          <motion.section variants={itemVariants}>
             <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Histórico</p>
 
             {/* Timeline horizontal scrollável */}
@@ -357,7 +393,7 @@ export default function FotosPage() {
                 })}
               </div>
             )}
-          </section>
+          </motion.section>
         )}
       </div>
 
@@ -412,6 +448,6 @@ export default function FotosPage() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -8,6 +8,7 @@ import { Trophy, Lightning, ArrowLeft } from '@phosphor-icons/react';
 import Link from 'next/link';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
+import { motion } from 'framer-motion';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -120,12 +121,30 @@ export default function RankingPage() {
   const pontos = minha?.pontos ?? 0;
   const posicao = minha?.posicao ?? null;
 
+  const itemVariants: any = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }
+  };
+
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: {
+            staggerChildren: 0.05
+          }
+        }
+      }}
+      className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24"
+    >
       <div className="max-w-lg mx-auto flex flex-col gap-5">
 
         {/* ── Header ── */}
-        <div>
+        <motion.div variants={itemVariants}>
           <Link href="/aluno/dashboard" className="inline-flex items-center gap-1.5 text-brand text-2xs uppercase tracking-caps mb-4">
             <ArrowLeft className="w-3 h-3" /> Dashboard
           </Link>
@@ -134,12 +153,10 @@ export default function RankingPage() {
               <h1 className="text-2xl font-bold text-text-primary tracking-tight">Ranking</h1>
               <p className="text-xs text-text-tertiary mt-0.5">
                 {isSolo
-                  ? periodo === 'total' ? 'Sua jornada completa' : periodo === 'mes_atual' ? 'Sua jornada este mês' : 'Sua jornada no mês anterior'
-                  : periodo === 'total'
+                  ? (periodo === 'total' ? 'Sua jornada completa' : periodo === 'mes_atual' ? 'Sua jornada este mês' : 'Sua jornada no mês anterior')
+                  : (atletasAtivos >= 5
                     ? `${atletasAtivos} atleta${atletasAtivos !== 1 ? 's' : ''} ativo${atletasAtivos !== 1 ? 's' : ''} esta semana`
-                    : periodo === 'mes_atual'
-                      ? `Classificação deste mês`
-                      : `Classificação do mês anterior`}
+                    : 'Ranking da semana')}
               </p>
             </div>
             {minha != null && (
@@ -149,10 +166,10 @@ export default function RankingPage() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Filtro de Período ── */}
-        <div className="flex border-b border-border-subtle">
+        <motion.div variants={itemVariants} className="flex border-b border-border-subtle">
           {[
             { key: 'total', label: 'Total' },
             { key: 'mes_atual', label: 'Este mês' },
@@ -171,14 +188,14 @@ export default function RankingPage() {
               {label}
             </button>
           ))}
-        </div>
+        </motion.div>
 
         {/* ── Estado SOLO ── */}
         {isSolo && (
-          <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-5 text-center">
+          <motion.div variants={itemVariants} className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-5 text-center">
             <p className="text-4xl font-bold text-text-primary">{pontos}</p>
             <p className="text-xs text-text-tertiary mt-1">pontos totais</p>
-          </div>
+          </motion.div>
         )}
 
         {/* ── Estado COMUNIDADE ── */}
@@ -186,7 +203,7 @@ export default function RankingPage() {
           <>
             {/* Sua posição */}
             {minha && posicao !== null && (
-              <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 flex items-center gap-4">
+              <motion.div variants={itemVariants} className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 flex items-center gap-4">
                 <div className={cn(
                   'w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-lg',
                   posicao === 1 ? 'bg-brand text-text-on-brand' : 'bg-surface-3 text-text-primary'
@@ -209,11 +226,11 @@ export default function RankingPage() {
                   <Lightning className="w-3.5 h-3.5 text-brand" />
                   <span className="text-sm font-bold text-brand">{pontos} pts</span>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Leaderboard */}
-            <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl overflow-hidden mb-4">
+            <motion.div variants={itemVariants} className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl overflow-hidden mb-4">
               <div className="px-4 py-2.5 bg-surface-2 border-b border-border-subtle">
                 <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Classificação</span>
               </div>
@@ -255,12 +272,12 @@ export default function RankingPage() {
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           </>
         )}
 
         {/* ── Como ganhar pontos (sempre visível) ── */}
-        <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
+        <motion.div variants={itemVariants} className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
           <span className="block text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Como ganhar pontos</span>
           <div>
             {COMO_GANHAR.map(item => (
@@ -270,16 +287,16 @@ export default function RankingPage() {
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Mensagem solo */}
         {isSolo && leaderboard.length === 0 && (
-          <p className="text-xs text-text-tertiary text-center px-4">
+          <motion.p variants={itemVariants} className="text-xs text-text-tertiary text-center px-4">
             Quando outros atletas se juntarem à consultoria, vocês vão se ver aqui.
-          </p>
+          </motion.p>
         )}
 
       </div>
-    </div>
+    </motion.div>
   );
 }

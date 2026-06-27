@@ -31,6 +31,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const initializingRef = useRef(false);
 
+  const getCachedRole = useCallback((userId: string): string | null => {
+    try {
+      const cachedUserId = localStorage.getItem('user_id');
+      const cachedRole = localStorage.getItem('user_role');
+      if (cachedUserId === userId && cachedRole) {
+        return cachedRole;
+      }
+    } catch {
+      // Ignore storage access issues.
+    }
+    return null;
+  }, []);
+
   // Função para buscar role do banco (fonte da verdade)
   const fetchRoleFromDatabase = useCallback(async (userId: string): Promise<string | null> => {
     console.log('[AuthProvider] 🔍 Buscando role do banco para user:', userId);
@@ -44,11 +57,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('[AuthProvider] ❌ Erro ao buscar role:', error);
+
+        // Fallback para role em cache quando houver falha de rede transitória.
+        const cachedRole = getCachedRole(userId);
+        if (cachedRole) {
+          console.warn('[AuthProvider] ⚠️ Usando role em cache devido falha de rede:', cachedRole);
+          return cachedRole;
+        }
+
         return null;
       }
 
       if (!data?.role) {
         console.warn('[AuthProvider] ⚠️ Role não encontrado no banco para user:', userId);
+
+        const cachedRole = getCachedRole(userId);
+        if (cachedRole) {
+          console.warn('[AuthProvider] ⚠️ Usando role em cache (role ausente no retorno):', cachedRole);
+          return cachedRole;
+        }
+
         return null;
       }
 
@@ -56,9 +84,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return data.role;
     } catch (err) {
       console.error('[AuthProvider] ❌ Exceção ao buscar role:', err);
+
+      const cachedRole = getCachedRole(userId);
+      if (cachedRole) {
+        console.warn('[AuthProvider] ⚠️ Usando role em cache após exceção:', cachedRole);
+        return cachedRole;
+      }
+
       return null;
     }
-  }, []);
+  }, [getCachedRole]);
 
   // Função para atualizar role (com validação cruzada)
   const refreshRole = useCallback(async () => {
@@ -186,7 +221,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         } else if (event === 'TOKEN_REFRESHED') {
           // TOKEN_REFRESHED: completamente silencioso, não atualiza nenhum estado
-          console.log('[AuthProvider] 🔄 Token renovado silenciosamente');
+          if (session) {
+            console.log('[AuthProvider] 🔄 Token renovado silenciosamente');
+          } else {
+            console.warn('[AuthProvider] ⚠️ TOKEN_REFRESHED sem sessão (falha transitória)');
+          }
         }
       }
     );

@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     let targetId: string;
     let isNewUser = false;
     const temporaryPassword = `Coach${Math.random().toString(36).slice(2, 8).toUpperCase()}!`;
-    const siteUrl = "https://vinnylopescoach.site";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vinnylopescoach.site";
 
     if (existingUser) {
       // Usuário já existe — apenas atualizar role

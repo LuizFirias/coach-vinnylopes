@@ -275,8 +275,8 @@ export async function POST(req: Request) {
     // ===== 7. ENVIAR E-MAIL DE BOAS-VINDAS (RESEND) =====
     console.log("[INVITE] 📧 Enviando convite via Resend...");
     
-    // HARDCODED URL para garantir que funcione independente da Vercel
-    const siteUrl = "https://www.vinnylopescoach.site";
+    // URL do site vinda das variáveis de ambiente
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.vinnylopescoach.site";
     
     try {
       const { data: emailData, error: emailError } = await resend.emails.send({

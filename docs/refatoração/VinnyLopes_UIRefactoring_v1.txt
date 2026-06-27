@@ -1,0 +1,387 @@
+VINNY LOPES COACH
+UI/UX REFATORAÇÃO COMPLETA — LADO DO ALUNO
+Especificação de Design com Benchmark de Mercado • Junho 2026
+
+1. DIAGNÓSTICO: O PROBLEMA CENTRAL
+Após análise das 12 telas do app e benchmarking contra os principais apps de fitness e coaching do mercado (Hevy, Freeletics, Trainerize, TrueCoach, PT Distinction, Strong App, Whoop, Apple Fitness+), identificamos o problema central:
+O app parece um jogo RPG com tema fitness, não um aplicativo de coaching profissional.
+Os elementos problemáticos são sistemáticos, não pontuais. O design atual mistura uma estética 'gamer' (ícones de fogo, raios, troféus pixelados, amarelo saturado como cor dominante em blocos inteiros, bordas douradas em quase todos os elementos) com uma tentativa de UX funcional que resulta em:
+Visual poluído — muitos elementos competindo por atenção ao mesmo tempo
+Hierarquia tipográfica fraca — títulos, valores e labels usam tamanhos muito próximos
+Cards sem respiração — padding interno insuficiente, informações comprimidas
+Ausência de espaço em branco intencional — o fundo preto está sendo usado como 'cola' entre elementos
+Iconografia inconsistente — mistura de emojis, ícones outline e ícones filled
+Gamificação superficial — pontos e troféus sem contexto de motivação real
+Falta de micro-interações visíveis — app parece estático mesmo no mobile
+
+2. DIAGNÓSTICO POR TELA
+Avaliação 0–10 baseada em: clareza de hierarquia, densidade de informação, qualidade de interação mobile, uso de espaço, coerência visual.
+
+TELA / COMPONENTE
+NOTA ATUAL
+PROBLEMA PRINCIPAL
+Home / Dashboard
+5/10
+Muita informação na dobra. Agenda semanal e cards de métricas competem com os CTAs.
+Treinos — Lista de Rotinas
+4/10
+Tela quase vazia com 1 item. Espaço desperdiçado, sem estado de empty state atrativo.
+Treino — Ficha Interativa
+6/10
+Funcional mas sobrecarregada. Gráfico azul contrasta com tema dourado. Header confuso.
+Treino — Execução de Série
+7/10
+Melhor tela do app. CTA claro, info hierarquizada. Problema: botões +/- muito pequenos.
+Perfil — Dados Pessoais
+5/10
+Grid 2x2 de navegação sem consistência. Mistura de ícones e densidade.
+Perfil — Configurações
+5/10
+Limpa mas sem personalidade. Toggle amarelo quebra a paleta.
+Progresso — Medidas
+5/10
+Bug visual: gráfico não renderiza com 4 registros (bug funcional). Deltas com setas confusas.
+Progresso — Histórico Treinos
+3/10
+Treinos duplicados (mesmo nome e data). Problema de dados ou UI enganosa.
+Medidas — Nova Medida
+6/10
+Form clean mas inputs sem placeholder contextual. Falta validação visual.
+Ranking
+5/10
+Conceito bom mas execução básica. '1 atleta ativo' esvazia o propósito social.
+Fotos
+7/10
+Tela mais clean do app. Orientação de dicas é excelente. Pouco visual.
+Nutrição
+6/10
+Estado vazio bem executado. Dicas genéricas demais.
+
+3. BENCHMARK: O QUE OS MELHORES FAZEM
+3.1 Hevy App — Referência para Fichas de Treino
+Interface monocromática (preto/branco/cinza) com um único accent color (azul)
+Cards de exercício com hierarquia clara: nome em bold grande > reps/peso em tabela limpa
+Rest timer surge como sheet modal na parte inferior, não ocupa a tela inteira
+Log de série usa swipe para completar — reduz taps em 60%
+Histórico de carga mostrado inline no card do exercício como dado contextual secundário
+3.2 Freeletics — Referência para Motivação e Coaching
+Paleta preta com accent branco puro — sem dourado/amarelo
+Tipografia exagerada: números de treino em 72–96px para impacto emocional
+Progress bars lineares substituem gráficos de linha para dados de curto prazo
+Coach message no topo do dashboard — presença do coach sem precisar de uma tela separada
+Transições de tela com slide horizontal fluido — sensação de jornada progressiva
+3.3 TrueCoach — Referência para Interface Coach + Aluno
+Separação visual clara entre o que o coach prescreve e o que o aluno executa
+Feed linear: todo o plano da semana em scroll único, sem tabs aninhadas
+Compliance tracking visual — barras de progresso por sessão visíveis no overview
+Sem gamificação — aposta em dados reais como motivador
+3.4 Whoop — Referência para Dashboard de Métricas
+Um número grande por tela. Nunca dois insights no mesmo peso visual
+Cores semafóricas (verde/amarelo/vermelho) apenas para status — nunca decorativas
+Cards com fundo levemente mais claro que o fundo da tela — depth sem borda
+Gráficos com area fill com gradiente vertical — comunicam tendência melhor que linhas
+3.5 Apple Fitness+ — Referência para Tipografia e Espaçamento
+SF Pro Display em títulos, SF Pro Text em body — hierarquia extremamente legível
+Padding de cards: mínimo 20px horizontal, 16px vertical
+Labels em uppercase com letter-spacing — nunca em bold
+Separadores sutis (1px, 10% opacity) em vez de bordas visíveis
+
+4. NOVO DESIGN SYSTEM — ESPECIFICAÇÕES COMPLETAS
+4.1 Paleta de Cores
+Manter preto como base (boa decisão — OLED-friendly, premium feel). Evoluir o amarelo/dourado para uso cirúrgico, não decorativo.
+
+Background primário
+#0A0A0A  —  Preto absoluto. Base de todas as telas.
+Background de card
+#131313  —  1 step acima do fundo. Sem borda visível, apenas depth.
+Background de card elevado
+#1C1C1C  —  Cards de destaque, modais, bottom sheets.
+Accent primário
+#D4A843  —  Dourado cobre (não amarelo). Uso: CTAs, labels ativos, ícones de destaque.
+Accent hover
+#B8902F  —  Versão mais escura do accent para pressed state.
+Texto primário
+#F5F5F5  —  Quase branco. Títulos, números grandes, valores.
+Texto secundário
+#8A8A8A  —  Labels, legendas, timestamps, placeholders.
+Texto terciário
+#555555  —  Informação de contexto, hint text.
+Sucesso
+#4CAF50  —  Verde sutil. Deltas positivos, séries concluídas.
+Alerta
+#FF7043  —  Laranja. Notificações, descanso próximo do fim.
+Erro
+#EF5350  —  Vermelho. Falha na sequência, erro de input.
+Separador
+#1F1F1F  —  Linha divisória. 1px. Nunca use borda mais espessa que isso.
+4.2 Tipografia
+Trocar a fonte atual por Inter (já amplamente adotada em apps fitness premium) ou SF Pro (iOS-native). Hierarquia rígida com apenas 5 tamanhos:
+
+Display / Hero
+Inter 700, 48px, tracking -1px  —  Números de destaque (volume, peso máx, sequência)
+Title / H1
+Inter 600, 24px, tracking -0.5px  —  Nome da tela, nome do treino em execução
+Subtitle / H2
+Inter 600, 17px  —  Seções de card, nome de exercício
+Body
+Inter 400, 15px, leading 22px  —  Texto corrido, descrições
+Caption / Label
+Inter 500, 12px, uppercase, letter-spacing 1px  —  Labels de seção, tags de técnica
+Micro
+Inter 400, 11px  —  Timestamps, hints secundários
+4.3 Espaçamento e Grid
+Margin lateral global
+20px em todos os lados
+Padding interno de card
+16px vertical × 20px horizontal
+Gap entre cards
+10px
+Gap entre seções
+28px
+Border radius de card
+14px  —  Não mais 8px (muito quadrado) nem 20px (muito redondo/game)
+Border radius de botão CTA
+50px  —  Pill shape. Moderno, distingue claramente de cards
+Altura de botão CTA primário
+56px  —  Conforme guideline iOS (mínimo 44px para toque)
+Altura de linha de list item
+52px  —  Confortável para dedo médio sem crowding
+4.4 Elevação e Depth (sem bordas visíveis)
+O app atual usa bordas arredondadas para delimitar cards. O padrão premium é usar diferença de cor de fundo para criar depth, sem borda. Isso resulta em interface mais arejada.
+Tela de fundo: #0A0A0A
+Card normal: #131313 — diferença de 3 pontos, sutil
+Card ativo / hover: #1C1C1C — mais elevado, como se 'flutua'
+Modal / Bottom sheet: #1C1C1C + backdrop blur 20px
+NUNCA use border: 1px solid #333 — mata a sensação premium
+4.5 Gradientes (uso estratégico, não decorativo)
+Gráficos de área
+fill: linear-gradient(180deg, rgba(212,168,67,0.3) 0%, rgba(212,168,67,0) 100%)
+Header de seção destacada
+linear-gradient(135deg, #1C1C1C 0%, #111111 100%)  —  Sutilíssimo
+Botão CTA
+linear-gradient(135deg, #D4A843 0%, #B8902F 100%)  —  Dourado 3D
+Card de ranking 1º lugar
+linear-gradient(135deg, #1C1600 0%, #131313 100%)  —  Toque quente
+Proibido
+Gradientes em cards normais, em backgrounds de tela, em ícones de navegação
+
+5. REDESIGN TELA A TELA — ESPECIFICAÇÕES
+5.1 HOME / DASHBOARD
+Problema atual:
+'Dia de descanso' ocupa o topo como bloco de texto solto, sem hierarquia
+Cards de Sequência e Volume Semanal têm mesmo peso visual — qual é mais importante?
+Agenda semanal com dots e 'Off' labels polui sem informar
+Dois CTAs (Iniciar Treino + Registrar Evolução) logo abaixo sem breathing room
+Banner 'Benefícios exclusivos' cortado na dobra — parece bug, não feature
+Redesign proposto:
+HERO SECTION: Data em caption uppercase, cinza. Saudação personalizada em H1 bold.
+STATUS DO DIA: Card único com ícone grande (lua para descanso, haltere para treino) + texto contextual + subtext motivacional do coach — UMA informação por card
+MÉTRICA DESTAQUE: Apenas o número mais relevante em Display/48px. Volume em toneladas usa formatação '25.4t' com o delta em caption verde abaixo, não como badge amarelo
+AGENDA: Linha horizontal de 7 dias (DOM–SAB). Dia atual highlighted em accent. Treinos preenchidos com ícone de check. Dias sem treino: ponto cinza. Remove 'Off' label — silêncio comunica
+CTA: Apenas 1 CTA primário (Iniciar Treino ou Ver Plano de Hoje). 'Registrar Evolução' vira ação secundária como link de texto abaixo do botão
+Remove o banner de Benefícios da Home — vai para Perfil como notificação badge
+5.2 TREINOS — LISTA DE ROTINAS
+Problema atual:
+Uma rotina em página quasi-vazia. 'ROTINAS INTERATIVAS' como label de seção desnecessário
+Tags de exercícios truncadas ('Puxada semi s...') — UX break
+Estado vazio não planejado — quando não há rotinas, o que aparece?
+Redesign proposto:
+Header: 'Meus Treinos' em H1. Subtítulo dinâmico: 'X treinos esta semana' em caption
+Card de rotina: full-width, padding 16×20px, border-radius 14px, fundo #131313
+Nome da rotina em Subtitle bold. Última execução em caption cinza abaixo
+Exercícios: pills horizontais com fundo #1C1C1C, máximo 3 visíveis + '+N mais' — sem truncar
+Badge de frequência semanal no canto direito do card (ex: '3×/semana')
+Empty state: ilustração minimalista (ícone de haltere outline em 80px) + 'Seu coach ainda está preparando seu treino' + ícone de relógio pequeno
+FAB (+) no canto inferior direito apenas se o coach habilitar auto-treino
+5.3 TREINO — FICHA INTERATIVA (Detalhe da Rotina)
+Problema atual:
+Gráfico de Progresso de Volume usa linha azul em app de tema dourado — inconsistência
+Colunas TÉ1/TÉ2 com abreviações (FS, CS, WS, DS, BS...) sem legenda — ilegível para novo aluno
+Header da página idêntico à ficha de treino em execução — confunde o usuário
+Botão 'INICIAR TREINO' em uppercase completo e 56px — ok, mas sem ícone
+Redesign proposto:
+Header: botão voltar ( ← ) + nome da rotina em H2. Remove subtítulo '2 exercícios · 25 de mai'
+Gráfico de volume: área com gradiente vertical dourado (accent primário). Eixo Y em caption cinza. Linha em #D4A843. Remove cor azul.
+Cards de exercício: nome em bold grande, descanso em caption com ícone de relógio
+Tabela de séries: colunas SET / ANT. / PESO / REPS / TÉCNICA — renomeia TÉ1/TÉ2 para coluna 'TÉCNICA' com pill interativo (toque abre explicação). Remove coluna de check — vai para a tela de execução
+Técnicas: ao tocar no pill da técnica abre bottom sheet com nome completo + explicação breve (ex: 'Cluster Set: descanse 15s dentro da série para fazer mais reps')
+CTA: 'Iniciar Treino' com ícone de play à esquerda. Botão pill, gradient dourado.
+5.4 TREINO — EXECUÇÃO DE SÉRIE (Melhor tela atual)
+Problema atual:
+Botões - e + têm tamanhos diferentes (- é cinza/menor, + é dourado/grande) — inconsistência
+'SÉRIE 1/4' em caption e '1/4' em canto direito são redundantes
+Progress bar amarela fina no topo — pouco visível
+'CONCLUIR SÉRIE 1/4' em uppercase full no CTA — desnecessário
+Redesign proposto:
+Header: X (fechar) à esquerda + nome do exercício em center bold + play (vídeo) à direita
+Progress dots: 4 dots na linha (um por série) em vez de progress bar thin. Dot atual: dourado sólido. Dots futuros: cinza outline. Dots passados: cinza sólido com check
+Cards de info (REPETIÇÕES / ÚLTIMA VEZ / TÉCNICA): 3 cards em grid 3 colunas, altura uniforme. TÉCNICA card: toque abre bottom sheet com instrução.
+CARGA: campo central grande (número em 48px Display). Botões - e + : mesmas dimensões (48×48px), ambos com fundo #1C1C1C, ícone em accent. Incremento: segurar 2s = incremento automático.
+Tabela de séries anterior: fundo #131313, scroll interno se mais de 3 séries. Série ativa highlighted em accent border-left 3px.
+CTA: 'Concluir Série' com haptic feedback ao tocar. Depois de concluir: anima para próxima série automaticamente + rest timer como sheet sobreposta (não blocking).
+Rest Timer: bottom sheet translúcido com blur. Contador regressivo em Display 72px. Botão 'Pular descanso' em texto link. Vibra 5s antes de acabar.
+5.5 PERFIL — MINHA JORNADA
+Problema atual:
+Grid 2×2 com Progresso, Ranking, Calendário, Fotos — botões de aparência idêntica sem hierarquia
+'DADOS PESSOAIS' seção com listagem longa — muito scroll
+Foto de perfil com botão de câmera sobreposto em posição estranha
+Redesign proposto:
+Header: foto em 72px circle com borda dourada 2px. Nome em H1. 'Cliente desde fev. 2026' em caption. Ação de câmera: ícone pequeno overlay no canto inferior direito da foto.
+Jornada: lista vertical de itens com ícone + label + arrow — não grid. Mais scalable e legível.
+Ordem de importância: Progresso > Calendário > Fotos > Ranking
+Dados pessoais: collapsible section. Tap no header expande. Recolhido por padrão.
+Configurações: ícone de engrenagem no canto superior direito do header — não lista na página principal
+5.6 PROGRESSO — MEDIDAS
+Problema atual:
+Bug: 'Registre pelo menos 3 medidas para ver o gráfico' com '4 registros' abaixo — contradição
+Tabs de período (7d / 30d / 90d / 1a) muito pequenas para toque mobile
+Deltas de medidas: +43.0 cm em tórax é dado impossível ou de teste — indica problema de seed data
+Ícones de seta (subindo/descendo) em vermelho para perda de braço confunde — perda de braço com objetivo de definição pode ser bom
+Redesign proposto:
+Corrige o bug de threshold do gráfico — mostrar gráfico com qualquer número de pontos
+Tabs de período: pills horizontais scrolláveis com mínimo 44px de altura
+Cards de métrica: uma métrica por card. Valor atual em Display 48px. Delta contextualizado pelo OBJETIVO do aluno (verde/vermelho dependendo da meta, não só da direção)
+Lista de medidas: agrupar por parte do corpo. Cabeçalho de grupo em caption uppercase.
+Botão de nova medida: FAB circular dourado no canto inferior direito (não pill full-width que empurra conteúdo)
+5.7 RANKING
+Problema atual:
+'1 atleta ativo esta semana' —  com só 2 pessoas no ranking, desmotiva ao invés de motivar
+Sistema de pontos desconexo da jornada do aluno — parece arbitrário
+Avatar placeholder 'JV' (iniciais) contrasta com a foto real do usuário logado — UX inconsistente
+Redesign proposto:
+Header: não mostrar contagem de atletas ativos se for menor que 5 — mostrar 'Ranking da semana'
+Card do 1º lugar: destaque visual maior — card com gradient dourado sutil, tamanho aumentado
+Pontuação: mostrar não só pts mas a ação que mais contribuiu ('12 treinos concluídos este mês')
+Seção 'Como ganhar pontos': mover para info sheet (ícone ? no header) — não ocupa espaço principal
+Avatars: sempre mostrar iniciais em círculo com cor gerada pelo nome quando sem foto — nunca placeholder cinza genérico
+5.8 NUTRIÇÃO — ESTADO VAZIO
+Análise:
+Esta tela está relativamente bem executada. As dicas são claras e a estrutura comunica o estado 'em preparação' com elegância. Ajustes menores:
+Ícone do fork: trocar pelo ícone outline atual por um mais refinado (ex: bowl com vapor)
+Dicas: adicionar avatar miniatura do coach antes do texto das dicas — presença humana aumenta engajamento
+CTA ausente: adicionar link 'Falar com meu coach sobre nutrição' abaixo das dicas
+Quando plano estiver ativo: exibir macros do dia em 3 círculos (Proteína / Carbs / Gordura) com progress rings, igual ao design do Cronometer
+
+6. MICRO-INTERAÇÕES E TRANSIÇÕES
+6.1 Transições de Tela
+Home → Ficha de Treino
+Slide horizontal (push) — sensação de entrar em nova área
+Ficha → Execução de Série
+Scale up (card expande para full screen) — senso de zoom in no exercício
+Concluir Série → Próxima
+Slide vertical para cima — progresso ascendente, motivacional
+Qualquer → Modal/Sheet
+Slide from bottom — padrão iOS nativo, familiar
+Tab switching
+Cross-fade instantâneo (150ms) — não slide, evita desorientação
+6.2 Feedback de Ações
+Concluir série
+Haptic (impact medium) + checkmark animado em 300ms (escala 0→1.2→1)
+Completar treino
+Haptic (notification success) + confetti leve em dourado/branco
+Bater recorde pessoal
+Banner overlay animado no topo: '🏆 Novo recorde! +Xkg' por 3 segundos
+Carregar tela
+Skeleton screens animados (shimmer) — nunca spinner centralizado
+Erro de rede
+Toast na base: fundo #1C1C1C, texto branco, ícone de wifi cortado
+Salvar medida
+Botão transforma em checkmark por 1s, depois volta ao estado normal
+6.3 Animações de Dados
+Números grandes (volume, sequência): counter animation ao entrar na tela — sobe de 0 até o valor em 600ms com easing ease-out
+Progress bars: fill animation da esquerda para direita em 400ms
+Gráficos: área preenche do eixo X para cima em 500ms ao montar o componente
+Rest timer: tick animation a cada segundo (escala 1→0.95→1 no número)
+
+7. LADO DO COACH — VISÃO GERAL
+O foco desta especificação é o app do aluno, mas registramos os princípios de UX para a interface do coach:
+7.1 Dashboard do Coach
+KPIs no topo: Alunos ativos / Renovações este mês / Receita MRR — cards compactos, dados reais
+Lista de alunos: tabela com filtros (ativos, inadimplentes, sem treino há X dias)
+Alert system: badges de atenção para alunos que não treinaram em 7+ dias
+7.2 Prescrição de Treinos
+Editor de ficha: interface drag-and-drop para reordenar exercícios
+Biblioteca de exercícios: busca com filtro por grupo muscular + vídeos de referência
+Duplicar ficha: copy de rotinas para múltiplos alunos
+Preview modo aluno: ver como o aluno vai ver o treino antes de publicar
+7.3 Gestão Financeira
+Mensalidades: status visual (pago / pendente / vencido) com cor semafórica
+Geração de cobrança: link de pagamento com 1 clique (integração Mercado Pago)
+Relatório mensal: receita, churn, novos alunos — exportável em PDF
+
+8. ROADMAP DE IMPLEMENTAÇÃO
+Fase 1 — Quick Wins (1–2 semanas)
+Impacto visual máximo com menor custo de implementação:
+Atualizar paleta: background de cards para #131313, remover bordas visíveis
+Tipografia: Inter import + 5 tamanhos definidos via CSS variables
+Border-radius: unificar em 14px para cards, 50px para CTAs
+Remover badges amarelos nos cards de métricas — usar apenas accent no CTA
+Gráfico de volume: trocar azul por dourado (#D4A843)
+Corrigir bug do gráfico de medidas (threshold)
+Fase 2 — Estrutural (2–4 semanas)
+Redesign do Home: nova hierarquia de seções, agenda semanal compacta
+Rest timer como bottom sheet (não tela separada)
+Progress dots na execução de série
+Tabela de técnicas com legenda interativa (bottom sheet)
+Micro-animações: counter numbers, skeleton screens
+Fase 3 — Polimento (4–6 semanas)
+Transições de tela (slide push, scale up)
+Haptic feedback nas ações principais
+Confetti ao completar treino
+Avatar generator para alunos sem foto
+Nutrição com macros rings quando plano ativo
+
+9. CSS DESIGN TOKENS — PARA USO NO COPILOT AGENT
+Cole estes tokens como globals.css ou theme.ts no projeto:
+:root {
+  /* Backgrounds */
+  --bg-base: #0A0A0A;
+  --bg-card: #131313;
+  --bg-card-elevated: #1C1C1C;
+  --bg-overlay: rgba(28,28,28,0.95);
+
+  /* Accent */
+  --accent: #D4A843;
+  --accent-dark: #B8902F;
+  --accent-subtle: rgba(212,168,67,0.12);
+
+  /* Text */
+  --text-primary: #F5F5F5;
+  --text-secondary: #8A8A8A;
+  --text-tertiary: #555555;
+
+  /* Semantic */
+  --success: #4CAF50;
+  --warning: #FF7043;
+  --danger: #EF5350;
+
+  /* Borders */
+  --border-subtle: #1F1F1F;
+
+  /* Radius */
+  --radius-card: 14px;
+  --radius-pill: 50px;
+  --radius-sm: 8px;
+
+  /* Spacing */
+  --space-page: 20px;
+  --space-card-h: 20px;
+  --space-card-v: 16px;
+  --gap-card: 10px;
+  --gap-section: 28px;
+
+  /* Typography */
+  --font: 'Inter', -apple-system, sans-serif;
+  --size-display: 48px;
+  --size-h1: 24px;
+  --size-h2: 17px;
+  --size-body: 15px;
+  --size-caption: 12px;
+  --size-micro: 11px;
+}
+
+10. CONCLUSÃO
+O app tem uma base funcional sólida — especialmente a tela de execução de série (nota 7/10) e a tela de fotos. O problema não é a identidade visual dourado/preto em si: é a aplicação excessiva e decorativa dela.
+Regra de ouro: o dourado deve ser o que o aluno vê quando completa algo, não a cor do fundo do card onde ele lê informação.
+Apps como Hevy e TrueCoach dominam o mercado não porque têm design mais bonito — mas porque o aluno consegue logar a série em 2 taps, sem pensar. Cada decisão de redesign aqui foi guiada por esse princípio: reduzir fricção, aumentar clareza, preservar a identidade da marca sem deixá-la dominar a usabilidade.
+Documento gerado por Claude • Junho 2026

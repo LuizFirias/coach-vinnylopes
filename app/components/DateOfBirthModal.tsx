@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import {
   X,
@@ -29,30 +29,43 @@ export default function DateOfBirthModal({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const toDateOnly = (value: string) => value?.slice(0, 10) || '';
+
+  useEffect(() => {
+    if (isOpen) {
+      setDateOfBirth(toDateOnly(currentDate || ''));
+      setMessage(null);
+    }
+  }, [isOpen, currentDate]);
+
+  const parseInputDate = (dateText: string) => {
+    const [year, month, day] = dateText.split('-').map(Number);
+    return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+  };
+
   const handleUpdateDate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const normalizedDateOfBirth = toDateOnly(dateOfBirth);
     
-    if (!dateOfBirth) {
+    if (!normalizedDateOfBirth) {
       setMessage({ type: 'error', text: 'Selecione uma data de nascimento' });
       return;
     }
 
     // Validate date is not in the future
-    const selectedDate = new Date(dateOfBirth);
+    const selectedDate = parseInputDate(normalizedDateOfBirth);
     const today = new Date();
     if (selectedDate > today) {
       setMessage({ type: 'error', text: 'A data de nascimento não pode ser no futuro' });
       return;
     }
 
-    // Validate minimum age (assuming 18 years old minimum for training)
-    const age = today.getFullYear() - selectedDate.getFullYear();
-    const monthDiff = today.getMonth() - selectedDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < selectedDate.getDate())) {
-      if (age < 18) {
-        setMessage({ type: 'error', text: 'Você deve ter no mínimo 18 anos' });
-        return;
-      }
+    // Validate minimum age of 18 years using exact birthdate threshold.
+    const minBirthDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate(), 23, 59, 59, 999);
+    if (selectedDate > minBirthDate) {
+      setMessage({ type: 'error', text: 'Você deve ter no mínimo 18 anos' });
+      return;
     }
 
     setLoading(true);
@@ -61,14 +74,14 @@ export default function DateOfBirthModal({
     try {
       const { error } = await supabaseClient
         .from('profiles')
-        .update({ date_of_birth: dateOfBirth })
+        .update({ date_of_birth: normalizedDateOfBirth })
         .eq('id', userId);
 
       if (error) throw error;
 
       setMessage({ type: 'success', text: 'Data de nascimento atualizada com sucesso!' });
       setTimeout(() => {
-        onSuccess?.(dateOfBirth);
+        onSuccess?.(normalizedDateOfBirth);
         onClose();
       }, 1500);
     } catch (err: any) {
