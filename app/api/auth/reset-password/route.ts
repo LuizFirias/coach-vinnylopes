@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const resendApiKey = process.env.RESEND_API_KEY;
-    const siteUrl = "https://vinnylopescoach.site";
+    const siteUrl = "https://www.auronfit.com.br";
 
     if (!supabaseUrl || !serviceRoleKey || !resendApiKey) {
       return NextResponse.json({ error: "Configuração do servidor incompleta" }, { status: 500 });
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
     // Enviar e-mail com template customizado (botão dourado visível)
     await resend.emails.send({
-      from: "Auronfit <noreply@vinnylopescoach.site>",
+      from: "Auronfit <contato@auronfit.com.br>",
       to: email,
       subject: "Redefinição de senha — Auronfit",
       html: getPasswordResetEmailHtml(fullName, resetLink),

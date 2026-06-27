@@ -14,7 +14,7 @@ Certifique-se de que o arquivo `.env.local` contém:
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
 RESEND_API_KEY=re_sua-chave-resend
-NEXT_PUBLIC_SITE_URL=https://www.vinnylopescoach.site
+NEXT_PUBLIC_SITE_URL=https://www.auronfit.com.br
 ```
 
 ### 2. Dependências Node.js

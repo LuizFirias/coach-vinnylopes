@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     let targetId: string;
     let isNewUser = false;
     const temporaryPassword = `Coach${Math.random().toString(36).slice(2, 8).toUpperCase()}!`;
-    const siteUrl = "https://vinnylopescoach.site";
+    const siteUrl = "https://www.auronfit.com.br";
 
     if (existingUser) {
       // Usuário já existe — apenas atualizar role
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     if (isNewUser) {
       const displayName = full_name || email.split("@")[0];
       const { error: emailError } = await resend.emails.send({
-        from: "Auronfit <noreply@vinnylopescoach.site>",
+        from: "Auronfit <contato@auronfit.com.br>",
         to: email,
         subject: "Acesso liberado — Auronfit",
         html: getWelcomeEmailHtml(displayName, email, temporaryPassword, siteUrl),

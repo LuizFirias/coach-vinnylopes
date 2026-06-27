@@ -276,11 +276,11 @@ export async function POST(req: Request) {
     console.log("[INVITE] 📧 Enviando convite via Resend...");
     
     // HARDCODED URL para garantir que funcione independente da Vercel
-    const siteUrl = "https://www.vinnylopescoach.site";
+    const siteUrl = "https://www.auronfit.com.br";
     
     try {
       const { data: emailData, error: emailError } = await resend.emails.send({
-        from: 'Auronfit <contato@vinnylopescoach.site>',
+        from: 'Auronfit <contato@auronfit.com.br>',
         to: email,
         subject: 'BEM-VINDO AO TIME | ACESSO LIBERADO',
         html: `
