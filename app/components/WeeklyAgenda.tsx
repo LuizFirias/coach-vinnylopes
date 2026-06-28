@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from"react";
 import { Barbell, X, Check, FileText, Moon, CircleNotch, PencilSimple } from "@phosphor-icons/react";
@@ -418,9 +418,9 @@ export default function WeeklyAgenda() {
               key={dayIdx}
               onClick={() => setEditingDay(dayIdx)}
               className={cn(
-                'flex flex-col items-center gap-1.5 min-w-[64px] flex-shrink-0 rounded-xl border p-2.5 transition-all',
+                'flex flex-col items-center gap-1 min-w-[50px] flex-shrink-0 rounded-lg border p-1.5 transition-all',
                 isToday
-                  ? 'bg-brand/10 border-brand/40'
+                  ? 'bg-brand/10 border-brand/40 shadow-sm'
                   : entry?.is_rest_day
                     ? 'bg-surface-1 border-border-subtle opacity-50'
                     : entry?.workout_name
@@ -429,22 +429,22 @@ export default function WeeklyAgenda() {
               )}
             >
               <span className={cn(
-                'text-2xs font-semibold uppercase tracking-caps',
+                'text-[8px] font-bold uppercase tracking-wider',
                 isToday ? 'text-brand' : 'text-text-tertiary'
               )}>
                 {label}
               </span>
               {entry?.is_rest_day ? (
-                <span className="text-[10px] text-text-disabled leading-tight">Off</span>
+                <span className="text-[9px] font-medium text-text-disabled leading-none">Off</span>
               ) : entry?.workout_name ? (
-                <span className="text-[10px] font-medium text-text-primary leading-tight text-center w-full truncate block px-0.5">
-                  {entry.workout_name.length > 7 ? entry.workout_name.slice(0, 7) + '…' : entry.workout_name}
+                <span className="text-[9px] font-semibold text-text-primary leading-none text-center w-full truncate block px-0.5" title={entry.workout_name}>
+                  {entry.workout_name.length > 5 ? entry.workout_name.slice(0, 5) + '…' : entry.workout_name}
                 </span>
               ) : (
-                <span className="text-[10px] text-text-disabled">+</span>
+                <span className="text-[8px] font-bold text-text-disabled leading-none">+</span>
               )}
               <div className={cn(
-                'w-1.5 h-1.5 rounded-full',
+                'w-1 h-1 rounded-full mt-0.5',
                 entry?.is_rest_day
                   ? 'bg-border-default'
                   : entry?.workout_name

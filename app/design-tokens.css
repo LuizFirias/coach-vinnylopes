@@ -27,26 +27,26 @@
   /* ═══════════════════════════════════════════════════════════
      SURFACES (background layers — do mais escuro pro mais claro)
      ═══════════════════════════════════════════════════════════ */
-  --surface-0:        #070B14;   /* background base do app */
-  --surface-1:        #0B1020;   /* cards primários (+7 pontos vs base) */
-  --surface-2:        #111827;   /* cards aninhados, hover */
-  --surface-3:        #141B2D;   /* inputs, divisores ativos */
-  --surface-4:        #182033;   /* skeleton loaders, elevado */
+  --surface-0:        #09090B;   /* --color-bg-base */
+  --surface-1:        #111113;   /* --color-bg-surface */
+  --surface-2:        #18181B;   /* --color-bg-elevated */
+  --surface-3:        #1F1F23;   /* --color-bg-overlay */
+  --surface-4:        #27272A;
 
   /* ═══════════════════════════════════════════════════════════
      TEXT
      ═══════════════════════════════════════════════════════════ */
-  --text-primary:     #F5F7FA;   /* títulos, dado principal */
-  --text-secondary:   #9CA3AF;   /* labels, body padrão */
-  --text-tertiary:    #6B7280;   /* metadata, hints */
-  --text-disabled:    #4B5563;   /* estados desabilitados */
+  --text-primary:     #FAFAFA;   /* --color-text-primary */
+  --text-secondary:   #A1A1AA;   /* --color-text-secondary */
+  --text-tertiary:    #71717A;   /* --color-text-muted */
+  --text-disabled:    #52525B;
 
   /* ═══════════════════════════════════════════════════════════
      BORDERS
      ═══════════════════════════════════════════════════════════ */
-  --border-subtle:    rgba(255, 255, 255, 0.06);
-  --border-default:   rgba(255, 255, 255, 0.10);
-  --border-strong:    rgba(255, 255, 255, 0.18);
+  --border-subtle:    #27272A;   /* --color-border-subtle */
+  --border-default:   #3F3F46;   /* --color-border-default */
+  --border-strong:    #52525B;   /* --color-border-strong */
 
   /* ═══════════════════════════════════════════════════════════
      BRAND (azul refinado — uso ≤10% da tela)
@@ -54,30 +54,30 @@
   --brand-primary:    #2563EB;
   --brand-hover:      #1D4ED8;
   --brand-pressed:    #1E40AF;
-  --brand-subtle:     rgba(37, 99, 235, 0.12);
+  --brand-subtle:     rgba(37, 99, 235, 0.10);
   --brand-border:     rgba(37, 99, 235, 0.36);
 
   /* Texto sobre a marca */
-  --text-on-brand:    #FFFFFF;
+  --text-on-brand:    #FAFAFA;
 
   /* ═══════════════════════════════════════════════════════════
      SEMANTIC COLORS (estado, nunca decoração)
      ═══════════════════════════════════════════════════════════ */
   --success:          #22C55E;   /* PR, série ok, streak */
-  --success-subtle:   rgba(34, 197, 94, 0.12);
-  --success-border:   rgba(34, 197, 94, 0.36);
+  --success-subtle:   rgba(34, 197, 94, 0.10);
+  --success-border:   rgba(34, 197, 94, 0.20);
 
   --warning:          #F59E0B;   /* deload, atenção */
-  --warning-subtle:   rgba(245, 158, 11, 0.12);
-  --warning-border:   rgba(245, 158, 11, 0.36);
+  --warning-subtle:   rgba(245, 158, 11, 0.10);
+  --warning-border:   rgba(245, 158, 11, 0.20);
 
   --danger:           #EF4444;   /* erro, exclusão */
-  --danger-subtle:    rgba(239, 68, 68, 0.12);
-  --danger-border:    rgba(239, 68, 68, 0.36);
+  --danger-subtle:    rgba(239, 68, 68, 0.10);
+  --danger-border:    rgba(239, 68, 68, 0.20);
 
   --info:             #38BDF8;   /* info, recovery, sync */
-  --info-subtle:      rgba(56, 189, 248, 0.12);
-  --info-border:      rgba(56, 189, 248, 0.36);
+  --info-subtle:      rgba(56, 189, 248, 0.10);
+  --info-border:      rgba(56, 189, 248, 0.20);
 
   /* ═══════════════════════════════════════════════════════════
      SHADOWS & GLOWS (elevação dark mode)
@@ -150,10 +150,10 @@
   /* ═══════════════════════════════════════════════════════════
      BORDER RADIUS
      ═══════════════════════════════════════════════════════════ */
-  --radius-sm:    6px;
-  --radius-md:   10px;
-  --radius-lg:   14px;
-  --radius-xl:   20px;
+  --radius-sm:    4px;
+  --radius-md:    6px;
+  --radius-lg:    8px;
+  --radius-xl:   10px;
   --radius-full: 9999px;
 
   /* ═══════════════════════════════════════════════════════════

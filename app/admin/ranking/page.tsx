@@ -45,7 +45,7 @@ export default function AdminRankingPage() {
       const alunoIds = (links || []).map(l => l.aluno_id);
       if (alunoIds.length === 0) { setEntries([]); return; }
 
-      // Buscar perfis dos alunos (inclui oculto_no_ranking — coach vê todos)
+      // Buscar perfis dos alunos
       const { data: profiles, error: profilesError } = await supabaseClient
         .from('profiles')
         .select('id, coaching_reference, email, avatar_url, oculto_no_ranking')
@@ -57,7 +57,6 @@ export default function AdminRankingPage() {
       let pontsMap: Map<string, number>;
 
       if (periodo === 'total') {
-        // Buscar pontuações totais
         const { data: pontuacoes, error: pontsError } = await supabaseClient
           .from('pontuacao_alunos')
           .select('aluno_id, total_pontos')
@@ -66,13 +65,11 @@ export default function AdminRankingPage() {
         if (pontsError) throw pontsError;
         pontsMap = new Map((pontuacoes || []).map(p => [p.aluno_id, p.total_pontos]));
       } else {
-        // Calcular pontos por mês usando historico_treinos + treinos_manuais
         const agora = new Date();
         const mesReferencia = periodo === 'mes_atual' ? agora : new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
         const inicioPeriodo = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth(), 1).toISOString();
         const fimPeriodo = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-        // Fichas digitais: 20 pts por sessão única (por dia)
         const { data: fichasSessoes, error: fichasError } = await supabaseClient
           .from('historico_treinos')
           .select('aluno_id, data_conclusao')
@@ -87,7 +84,6 @@ export default function AdminRankingPage() {
           return acc;
         }, {});
 
-        // Checkins manuais
         const { data: treirosManuais, error: manuaisError } = await supabaseClient
           .from('treinos_manuais')
           .select('aluno_id, pontos_earn')
@@ -130,130 +126,146 @@ export default function AdminRankingPage() {
     }
   }
 
+  async function toggleVisibilidade(alunoId: string, atualOculto: boolean) {
+    try {
+      const { error } = await supabaseClient
+        .from('profiles')
+        .update({ oculto_no_ranking: !atualOculto })
+        .eq('id', alunoId);
+      if (error) throw error;
+      setEntries(prev => prev.map(e => e.id === alunoId ? { ...e, oculto_no_ranking: !atualOculto } : e));
+    } catch (err) {
+      console.error('Erro ao atualizar visibilidade:', err);
+      alert('Erro ao atualizar visibilidade');
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
+      <div className="max-w-4xl mx-auto">
 
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-text-primary tracking-tight mb-1">
-            Ranking de <span className="text-brand">Pontuação</span>
-          </h1>
-          <p className="text-sm text-text-tertiary">Classificação por pontos acumulados · todos os atletas visíveis para o coach</p>
-        </div>
+        {/* Header */}
+        <div className="mb-6 py-4 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight font-display">
+              Ranking de Performance
+            </h1>
+            <p className="text-xs text-text-secondary mt-0.5">Classificação por consistência e treinos concluídos</p>
+          </div>
 
-        {/* Filtro de Período */}
-        <div className="mb-6 flex gap-2 p-1 bg-surface-2 border border-border-subtle rounded-xl max-w-md">
-          {[
-            { key: 'total', label: 'Total' },
-            { key: 'mes_atual', label: 'Este mês' },
-            { key: 'mes_anterior', label: 'Mês anterior' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setPeriodo(key as typeof periodo)}
-              className={cn(
-                'flex-1 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-caps transition-all',
-                periodo === key
-                  ? 'bg-brand text-text-on-brand shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-3'
-              )}
-            >
-              {label}
-            </button>
-          ))}
+          {/* Filtro de Período */}
+          <div className="flex gap-1 p-0.5 bg-surface-2 border border-border-subtle rounded-lg sm:w-80 w-full shrink-0 h-9.5 items-center">
+            {[
+              { key: 'total', label: 'Total' },
+              { key: 'mes_atual', label: 'Este mês' },
+              { key: 'mes_anterior', label: 'Mês anterior' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setPeriodo(key as typeof periodo)}
+                className={cn(
+                  'flex-1 py-1 px-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-8.5',
+                  periodo === key
+                    ? 'bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-2xl text-danger flex items-center gap-3 text-sm">
-            <WarningCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="mb-6 p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger flex items-center gap-3 text-xs font-semibold">
+            <WarningCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-32">
+          <div className="flex items-center justify-center py-24">
             <DumbbellLoader text="Calculando posições..." />
           </div>
         ) : entries.length === 0 ? (
-          <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-16 md:p-24 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled mb-6">
-              <Star className="w-8 h-8" />
+          <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl py-12 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="w-10 h-10 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled mb-4">
+              <Star className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-bold text-text-primary mb-2">Nenhum atleta listado</h2>
-            <p className="text-sm text-text-tertiary max-w-sm">O ranking será preenchido conforme os alunos realizarem treinos e acumularem pontos.</p>
+            <h2 className="text-sm font-bold text-text-primary mb-1">Nenhum aluno listado</h2>
+            <p className="text-xs text-text-tertiary max-w-xs leading-normal">O ranking será preenchido conforme os alunos concluírem treinos e acumularem pontos.</p>
           </div>
         ) : (
-          <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl overflow-hidden">
-            <div className="hidden md:grid grid-cols-[80px_1fr_160px_120px] px-6 py-3 bg-surface-2 border-b border-border-subtle">
-              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Posição</span>
-              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Atleta</span>
-              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary text-right">Pontos</span>
-              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary text-right">Visibilidade</span>
+          <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl overflow-hidden">
+            <div className="hidden md:grid grid-cols-[60px_1fr_120px_120px] px-5 py-2.5 bg-surface-2 border-b border-border-subtle">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Posição</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Aluno</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary text-right">Pontuação</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary text-right">Visibilidade</span>
             </div>
 
             <div className="divide-y divide-border-subtle/50">
               {entries.map((entry, index) => {
                 const displayName = entry.coaching_reference || entry.email?.split('@')[0] || 'Aluno';
                 const isTop3 = index < 3;
-                const medalha = ['🥇', '🥈', '🥉'][index] ?? null;
                 const avatarSrc = entry.avatar_url ? getPublicStorageUrl('avatars', entry.avatar_url) : null;
 
                 return (
                   <div key={entry.id} className={cn(
-                    'flex items-center gap-4 px-4 md:px-6 py-4 hover:bg-surface-2/50 transition-colors',
+                    'flex items-center gap-4 px-4 md:px-5 py-2.5 hover:bg-surface-2/40 transition-colors',
                     entry.oculto_no_ranking && 'opacity-70'
                   )}>
-                    <div className="w-12 flex-shrink-0 flex items-center gap-2">
-                      {medalha ? (
-                        <span className="text-xl">{medalha}</span>
-                      ) : (
-                        <span className={cn('text-sm font-bold', isTop3 ? 'text-text-primary' : 'text-text-tertiary')}>
-                          {index + 1}º
-                        </span>
-                      )}
+                    <div className="w-8 flex-shrink-0 flex items-center gap-1">
+                      <span className={cn('text-xs font-mono font-medium', isTop3 ? 'text-brand' : 'text-text-tertiary')}>
+                        #{index + 1}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
                       <div className={cn(
-                        'w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border-2 flex-shrink-0',
-                        isTop3 ? 'border-brand/30' : 'border-border-subtle',
-                        !avatarSrc && 'bg-surface-3'
+                        'w-7 h-7 rounded-md flex items-center justify-center overflow-hidden border flex-shrink-0',
+                        isTop3 ? 'border-brand/30 bg-surface-2' : 'border-border-subtle bg-surface-2',
                       )}>
                         {avatarSrc ? (
                           <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
                         ) : (
-                          <User className="w-4 h-4 text-text-tertiary" />
+                          <User className="w-3.5 h-3.5 text-text-tertiary" />
                         )}
                       </div>
                       <span className={cn(
-                        'font-semibold truncate',
-                        isTop3 ? 'text-text-primary text-sm' : 'text-text-secondary text-sm'
+                        'font-bold truncate text-xs',
+                        isTop3 ? 'text-text-primary' : 'text-text-secondary'
                       )}>
                         {displayName}
                       </span>
                     </div>
 
-                    <div className="hidden md:flex items-center justify-end gap-1.5 flex-shrink-0 min-w-[160px]">
+                    <div className="hidden md:flex items-center justify-end gap-1 flex-shrink-0 min-w-[120px]">
                       <Lightning className="w-3.5 h-3.5 text-brand" />
-                      <span className="text-sm font-bold text-brand">{entry.total_pontos} pts</span>
+                      <span className="text-xs font-bold text-brand font-mono tabular-nums">{entry.total_pontos} pts</span>
                     </div>
 
                     <div className="hidden md:flex items-center justify-end flex-shrink-0 min-w-[120px]">
-                      {entry.oculto_no_ranking ? (
-                        <span className="text-2xs px-2 py-1 rounded-full bg-surface-3 border border-border-subtle text-text-tertiary">
-                          Oculto para alunos
-                        </span>
-                      ) : (
-                        <span className="text-2xs px-2 py-1 rounded-full bg-brand-subtle border border-brand-border text-brand">
-                          Visível
-                        </span>
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleVisibilidade(entry.id, !!entry.oculto_no_ranking);
+                        }}
+                        className={cn(
+                          "text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded transition-colors",
+                          entry.oculto_no_ranking
+                            ? "bg-surface-3 border border-border-subtle text-text-tertiary hover:bg-surface-4"
+                            : "bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20"
+                        )}
+                      >
+                        {entry.oculto_no_ranking ? "Oculto" : "Visível"}
+                      </button>
                     </div>
 
                     {/* Mobile pontos */}
-                    <div className="flex md:hidden items-center gap-1 flex-shrink-0">
+                    <div className="flex md:hidden items-center gap-0.5 flex-shrink-0">
                       <Lightning className="w-3 h-3 text-brand" />
-                      <span className="text-xs font-bold text-brand">{entry.total_pontos}</span>
+                      <span className="text-xs font-bold text-brand font-mono tabular-nums">{entry.total_pontos}</span>
                     </div>
                   </div>
                 );

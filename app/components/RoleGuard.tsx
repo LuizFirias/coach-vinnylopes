@@ -98,7 +98,7 @@ function getRoleHomePage(role: string): string {
     case 'aluno':
       return '/aluno/dashboard';
     case 'coach':
-      return '/admin/alunos';
+      return '/admin/dashboard';
     case 'super_admin':
       return '/super-admin';
     default:

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Barbell, Check, Moon, ArrowRight, BookOpen, Ruler, ArrowClockwise } from '@phosphor-icons/react';
+import { Barbell, Check, Moon, ArrowRight, Ruler, ArrowClockwise } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 
 interface NextActionCardProps {
@@ -24,18 +24,24 @@ export function NextActionCard({
 
   if (status === 'sem-plano') {
     return (
-      <div className="bg-surface-1 border border-dashed border-border-default rounded-2xl p-5 text-center shadow-elev-1">
-        <Barbell className="w-8 h-8 text-text-disabled mx-auto mb-2.5" />
-        <p className="text-sm font-bold text-text-primary mb-1">Nenhum treino ativo</p>
-        <p className="text-xs text-text-tertiary mb-4 leading-relaxed">
-          Seu coach ainda não liberou uma ficha de treinos ativa para o seu perfil.
-        </p>
+      <div className="bg-surface-1 border border-dashed border-border-subtle rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled flex-shrink-0">
+            <Barbell className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-text-primary leading-tight">Nenhum treino ativo</p>
+            <p className="text-[10px] text-text-tertiary leading-none mt-0.5">
+              Peça ao seu coach para liberar sua ficha.
+            </p>
+          </div>
+        </div>
         <button
           onClick={() => window.location.reload()}
-          className="inline-flex items-center gap-1.5 px-4 h-9 bg-brand text-text-on-brand text-xs font-semibold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-glow-brand"
+          className="inline-flex items-center gap-1 px-2.5 h-7.5 bg-brand text-text-on-brand text-[10px] font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shrink-0 cursor-pointer shadow-sm"
         >
-          <ArrowClockwise className="w-3.5 h-3.5 animate-spin-hover" />
-          Atualizar
+          <ArrowClockwise className="w-3 h-3 animate-spin-hover" />
+          Verificar Treinos
         </button>
       </div>
     );
@@ -123,15 +129,6 @@ export function NextActionCard({
         >
           Iniciar treino
         </Link>
-        {fichaId && (
-          <Link
-            href={`/aluno/treinos/ficha?id=${fichaId}`}
-            className="flex-1 h-10 bg-surface-2 border border-border-subtle text-xs font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <BookOpen className="w-4 h-4" />
-            Ver ficha
-          </Link>
-        )}
       </div>
     </div>
   );

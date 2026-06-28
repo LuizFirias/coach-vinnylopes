@@ -292,9 +292,11 @@ export default function TreinosPage() {
 
   // Filter in-memory routines
   const processedRoutines = fichas.filter(f => {
-    const student = f.aluno_nome.toLowerCase();
-    const name = f.nome_rotina.toLowerCase();
-    const matchesSearch = student.includes(query.toLowerCase()) || name.includes(query.toLowerCase());
+    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const normalizedQuery = normalize(query);
+    const matchesSearch = 
+      normalize(f.aluno_nome).includes(normalizedQuery) || 
+      normalize(f.nome_rotina).includes(normalizedQuery);
     if (!matchesSearch) return false;
 
     if (statusFilter === 'ativas') return f.ativo;
@@ -315,32 +317,32 @@ export default function TreinosPage() {
       <div className="max-w-7xl mx-auto flex flex-col gap-8">
 
         {/* ── Page Header ── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4 border-b border-border-subtle">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary font-display uppercase">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary font-display">
               Gestão de Treinos
             </h1>
-            <p className="text-sm text-text-secondary mt-1">
+            <p className="text-xs text-text-secondary mt-0.5">
               Crie, organize e distribua fichas digitais e PDFs para seus alunos
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => router.push('/admin/treinos/nova-ficha')}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10"
+              className="inline-flex items-center gap-1.5 px-3 h-9 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
             >
               <PlusCircle size={14} weight="bold" /> Nova Ficha Digital
             </button>
             <button
               onClick={() => setShowPdfUpload(!showPdfUpload)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
             >
               <FileArrowUp size={14} /> Upload de PDF
             </button>
             <Link
               href="/admin/biblioteca-exercicios"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold uppercase tracking-wider rounded-lg transition-all"
+              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all"
             >
               <BookOpen size={14} /> Biblioteca
             </Link>
@@ -349,13 +351,13 @@ export default function TreinosPage() {
 
         {/* ── Alerts ── */}
         {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
             <WarningCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
         {success && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-success-subtle border border-success-border text-success text-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
             <CheckCircle className="w-4 h-4 flex-shrink-0" />
             {success}
           </div>
@@ -363,69 +365,67 @@ export default function TreinosPage() {
 
         {alunos.length === 0 ? (
           /* Empty State - No students registered yet */
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-lg mx-auto shadow-xl">
-            <Barbell size={48} className="text-brand/40 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-text-primary mb-2">Nenhum aluno vinculado ainda</h3>
-            <p className="text-text-secondary text-sm mb-6">
+          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
+            <Barbell size={44} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno vinculado ainda</h3>
+            <p className="text-text-secondary text-xs mb-6">
               Você precisa possuir alunos vinculados para começar a prescrever e gerenciar treinos digitais e PDFs.
             </p>
-            <button onClick={() => router.push("/admin/alunos/novo")} className="btn-primary inline-flex items-center gap-2 max-w-xs mx-auto">
+            <button onClick={() => router.push("/admin/alunos/novo")} className="btn-primary inline-flex items-center gap-2 max-w-xs mx-auto text-xs py-2 rounded-lg">
               Cadastrar Aluno
             </button>
           </div>
         ) : (
           /* Training Hub Content */
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6">
 
             {/* ── Metrics Cards Row ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Fichas Digitais Ativas", value: fichasAtivas, icon: Barbell, color: "text-brand", bg: "bg-brand/10 border-brand/20" },
-                { label: "Prescrições (Mês)", value: fichasCriadasMes, icon: Calendar, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/15" },
-                { label: "Alunos Atendidos", value: alunosAtendidos, icon: Users, color: "text-success", bg: "bg-success-subtle border-success/15" },
-                { label: "Execuções (30d)", value: treinosExecutados, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/15" },
-              ].map(({ label, value, icon: Icon, color, bg }) => (
-                <div key={label} className="bg-surface-1 rounded-xl p-5 border border-border-subtle shadow-sm flex items-center justify-between gap-4">
-                  <div>
-                    <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider block">{label}</span>
-                    <span className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display block">{value}</span>
+                { label: "Fichas Digitais Ativas", value: fichasAtivas, dotColor: "bg-brand" },
+                { label: "Prescrições (Mês)", value: fichasCriadasMes, dotColor: "bg-brand" },
+                { label: "Alunos Atendidos", value: alunosAtendidos, dotColor: "bg-success" },
+                { label: "Execuções (30d)", value: treinosExecutados, dotColor: "bg-warning" },
+              ].map(({ label, value, dotColor }) => (
+                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-border-subtle shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
                   </div>
-                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", bg)}>
-                    <Icon size={18} className={color} />
-                  </div>
+                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums leading-none">{value}</span>
                 </div>
               ))}
             </div>
 
             {/* ── Main Workspace split layout ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
               {/* Coluna Esquerda: Listagem de Fichas Recentes */}
-              <div className="lg:col-span-8 flex flex-col gap-6">
+              <div className="lg:col-span-8 flex flex-col gap-4">
                 
                 {/* Search & Filters */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                <div className="bg-surface-1 border border-border-subtle rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                   <div className="relative w-full sm:max-w-xs">
-                    <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                    <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                     <input
                       type="text"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Buscar por rotina ou aluno..."
-                      className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
+                      className="w-full pl-9 pr-4 h-7.5 bg-surface-2 border border-border-subtle rounded-md text-2xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
                     />
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-surface-2 border border-border-subtle rounded-lg p-1">
+                    <div className="flex items-center gap-1.5 bg-surface-2 border border-border-subtle rounded-lg p-1">
                       {(['todas', 'ativas', 'inativas'] as const).map((status) => (
                         <button
                           key={status}
                           onClick={() => setStatusFilter(status)}
                           className={cn(
-                            "px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                            "px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all",
                             statusFilter === status
-                              ? "bg-brand text-text-on-brand shadow-sm shadow-brand/10"
+                              ? "bg-brand text-text-on-brand shadow-sm"
                               : "text-text-secondary hover:text-text-primary"
                           )}
                         >
@@ -436,52 +436,52 @@ export default function TreinosPage() {
 
                     <button
                       onClick={handleResetFilters}
-                      className="p-2.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-lg transition-colors"
+                      className="p-2 bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-lg transition-colors"
                       title="Resetar busca"
                     >
-                      <ArrowCounterClockwise size={14} />
+                      <ArrowCounterClockwise size={13} />
                     </button>
                   </div>
                 </div>
 
                 {/* Table list */}
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden shadow-sm">
-                  <div className="p-5 border-b border-border-subtle">
-                    <h3 className="text-sm font-bold text-text-primary">Fichas e Protocolos</h3>
-                    <p className="text-2xs text-text-tertiary">Grade completa de planejamentos cadastrados</p>
+                <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+                  <div className="p-4 border-b border-border-subtle bg-surface-2/40">
+                    <h3 className="text-xs font-bold text-text-primary">Fichas e Protocolos</h3>
+                    <p className="text-[10px] text-text-tertiary">Grade completa de planejamentos cadastrados</p>
                   </div>
 
                   {processedRoutines.length === 0 ? (
-                    <div className="p-12 text-center">
-                      <WarningCircle size={32} className="text-text-disabled mx-auto mb-3" />
-                      <p className="text-sm text-text-secondary font-medium">Nenhum treino localizado</p>
-                      <p className="text-2xs text-text-tertiary mt-1">Limpe os filtros ou crie um novo treino.</p>
+                    <div className="p-10 text-center">
+                      <WarningCircle size={28} className="text-text-disabled mx-auto mb-2" />
+                      <p className="text-xs text-text-secondary font-medium">Nenhum treino localizado</p>
+                      <p className="text-[10px] text-text-tertiary mt-0.5">Limpe os filtros ou crie um novo treino.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto scrollbar-hide">
                       <table className="w-full border-collapse text-left text-xs">
                         <thead>
-                          <tr className="border-b border-border-subtle bg-surface-2/40">
-                            <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Aluno</th>
-                            <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Rotina</th>
-                            <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Estrutura</th>
-                            <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Status</th>
-                            <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Criado em</th>
-                            <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase text-right">Ações</th>
+                          <tr className="border-b border-border-subtle bg-surface-2/10">
+                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
+                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Rotina</th>
+                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Estrutura</th>
+                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Status</th>
+                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Criado em</th>
+                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase text-right">Ações</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-border-subtle/50">
                           {processedRoutines.map((item) => (
-                            <tr key={item.id} className="border-b border-border-subtle last:border-b-0 hover:bg-surface-2/40 transition-colors">
-                              <td className="p-4 font-bold text-text-primary">
+                            <tr key={item.id} className="hover:bg-surface-2/40 transition-colors">
+                              <td className="p-3 font-bold text-text-primary">
                                 {item.aluno_nome}
                               </td>
-                              <td className="p-4">
+                              <td className="p-3">
                                 <span className="font-semibold text-text-secondary">{item.nome_rotina}</span>
                               </td>
-                              <td className="p-4 text-text-tertiary font-medium">
+                              <td className="p-3 text-text-tertiary font-medium">
                                 {item.tipo === 'digital' ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-brand/10 text-brand rounded border border-brand/10">
+                                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-surface-2 text-text-secondary rounded border border-border-subtle font-semibold">
                                     {item.exercicios_count} exercícios
                                   </span>
                                 ) : (
@@ -490,22 +490,22 @@ export default function TreinosPage() {
                                   </span>
                                 )}
                               </td>
-                              <td className="p-4">
+                              <td className="p-3">
                                 <span className={cn(
-                                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase",
+                                  "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase",
                                   item.ativo ? "bg-success-subtle text-success border border-success/15" : "bg-surface-3 text-text-disabled border border-border-subtle"
                                 )}>
                                   {item.ativo ? "Ativo" : "Inativo"}
                                 </span>
                               </td>
-                              <td className="p-4 text-text-secondary">
+                              <td className="p-3 text-text-secondary">
                                 {new Date(item.criado_em).toLocaleDateString('pt-BR')}
                               </td>
-                              <td className="p-4 text-right">
+                              <td className="p-3 text-right">
                                 {item.tipo === 'digital' ? (
                                   <button
                                     onClick={() => router.push(`/admin/aluno/${item.aluno_id}/ficha/${item.id}`)}
-                                    className="px-2 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle text-brand text-[10px] font-bold uppercase rounded"
+                                    className="px-2.5 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle hover:border-brand/30 text-text-secondary hover:text-brand text-[10px] font-bold uppercase rounded transition-colors"
                                   >
                                     Editar
                                   </button>
@@ -515,13 +515,13 @@ export default function TreinosPage() {
                                       href={item.pdf_url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-2 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle text-brand text-[10px] font-bold uppercase rounded"
+                                      className="px-2.5 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle hover:border-brand/30 text-text-secondary hover:text-brand text-[10px] font-bold uppercase rounded transition-colors"
                                     >
                                       Baixar
                                     </a>
                                     <button
                                       onClick={() => handleDeletePDFRoutine(item.id, item.pdf_url || '')}
-                                      className="text-text-disabled hover:text-danger p-1"
+                                      className="text-text-disabled hover:text-danger p-1 transition-colors"
                                       title="Remover PDF"
                                     >
                                       <Trash size={12} />
@@ -544,13 +544,13 @@ export default function TreinosPage() {
 
                 {/* Inline PDF Upload Form */}
                 {showPdfUpload && (
-                  <Card className="rounded-2xl border border-border-subtle p-5 bg-surface-1 shadow-md animate-fade-in flex flex-col gap-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+                  <Card className="rounded-xl border border-border-subtle p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
                       <div className="flex items-center gap-2">
-                        <FileArrowUp size={18} className="text-brand" />
+                        <FileArrowUp size={16} className="text-brand" />
                         <h4 className="font-bold text-text-primary text-xs uppercase tracking-wider">Protocolar PDF</h4>
                       </div>
-                      <button onClick={() => { setShowPdfUpload(false); setSelectedFile(null); }} className="text-xs text-text-tertiary hover:text-text-primary">
+                      <button onClick={() => { setShowPdfUpload(false); setSelectedFile(null); }} className="text-[10px] text-text-tertiary hover:text-text-primary font-bold uppercase">
                         Cancelar
                       </button>
                     </div>
@@ -571,16 +571,16 @@ export default function TreinosPage() {
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary ml-0.5">Arquivo PDF</label>
                         {!selectedFile ? (
-                          <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-border-default rounded-xl bg-surface-2 hover:bg-brand/5 hover:border-brand/35 transition-all cursor-pointer group">
+                          <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-border-default rounded-lg bg-surface-2 hover:bg-brand/5 hover:border-brand/35 transition-all cursor-pointer group">
                             <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
-                            <FileArrowUp size={20} className="text-text-disabled group-hover:text-brand transition-colors mb-1.5" />
-                            <p className="text-[10px] text-text-tertiary font-medium">Clique para escolher PDF</p>
+                            <FileArrowUp size={18} className="text-text-disabled group-hover:text-brand transition-colors mb-1" />
+                            <p className="text-xs text-text-tertiary">Clique para escolher PDF</p>
                           </label>
                         ) : (
-                          <div className="flex items-center justify-between p-3 bg-brand/5 border border-brand/20 rounded-xl">
+                          <div className="flex items-center justify-between p-2 bg-brand-subtle border border-brand-border rounded-lg">
                             <div className="min-w-0">
                               <p className="text-xs text-text-primary font-bold truncate max-w-[160px]">{selectedFile.name}</p>
-                              <p className="text-[10px] text-brand font-semibold">PDF pronto para envio</p>
+                              <p className="text-[9px] text-brand">PDF pronto para envio</p>
                             </div>
                             <button type="button" onClick={() => setSelectedFile(null)} className="text-text-disabled hover:text-danger p-1">
                               <Trash size={14} />
@@ -595,6 +595,7 @@ export default function TreinosPage() {
                         disabled={loading || !selectedAlunoId || !selectedFile}
                         fullWidth
                         size="sm"
+                        className="h-10 rounded-lg text-xs"
                       >
                         Enviar PDF
                       </Button>
@@ -603,14 +604,14 @@ export default function TreinosPage() {
                 )}
 
                 {/* Quick actions panel */}
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-                  <h3 className="text-sm font-bold text-text-primary">Rotas Rápidas</h3>
+                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 md:p-5 shadow-sm flex flex-col gap-4">
+                  <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2">Rotas Rápidas</h3>
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => router.push('/admin/treinos/nova-ficha')}
-                      className="w-full py-3 px-4 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-xl text-left flex items-center justify-between group transition-all"
+                      className="w-full py-2.5 px-3.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-left flex items-center justify-between group transition-all"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         <Barbell size={16} className="text-brand shrink-0" />
                         <span className="text-xs font-bold text-text-primary group-hover:text-brand transition-colors">Nova Ficha Digital</span>
                       </div>
@@ -618,9 +619,9 @@ export default function TreinosPage() {
                     </button>
                     <button
                       onClick={() => setShowPdfUpload(!showPdfUpload)}
-                      className="w-full py-3 px-4 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-xl text-left flex items-center justify-between group transition-all"
+                      className="w-full py-2.5 px-3.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-left flex items-center justify-between group transition-all"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         <FileArrowUp size={16} className="text-brand shrink-0" />
                         <span className="text-xs font-bold text-text-primary group-hover:text-brand transition-colors">Cadastrar PDF</span>
                       </div>
@@ -628,9 +629,9 @@ export default function TreinosPage() {
                     </button>
                     <button
                       onClick={() => router.push('/admin/biblioteca-exercicios')}
-                      className="w-full py-3 px-4 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-xl text-left flex items-center justify-between group transition-all"
+                      className="w-full py-2.5 px-3.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-left flex items-center justify-between group transition-all"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         <BookOpen size={16} className="text-brand shrink-0" />
                         <span className="text-xs font-bold text-text-primary group-hover:text-brand transition-colors">Biblioteca</span>
                       </div>
@@ -640,27 +641,27 @@ export default function TreinosPage() {
                 </div>
 
                 {/* Alunos sem Ficha Ativa list card */}
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 md:p-5 shadow-sm flex flex-col gap-4">
                   <div>
-                    <h3 className="text-sm font-bold text-text-primary">Alunos sem Ficha Ativa</h3>
-                    <p className="text-2xs text-text-tertiary">Alunos que estão sem planejamento ativo</p>
+                    <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Alunos sem Ficha Ativa</h3>
+                    <p className="text-[10px] text-text-tertiary mt-0.5">Alunos que estão sem planejamento ativo</p>
                   </div>
 
-                  <div className="flex flex-col gap-3 max-h-60 overflow-y-auto pr-1">
+                  <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {alunosSemFicha.length === 0 ? (
                       <div className="py-4 text-center text-xs text-text-tertiary">
-                        🎉 Todos os atletas possuem fichas/PDFs ativos!
+                        Todos os alunos possuem fichas/PDFs ativos.
                       </div>
                     ) : (
                       alunosSemFicha.map((aluno) => (
-                        <div key={aluno.id} className="flex items-center justify-between gap-3 p-3 bg-surface-2 border border-border-subtle rounded-xl">
+                        <div key={aluno.id} className="flex items-center justify-between gap-3 p-2.5 bg-surface-2 border border-border-subtle rounded-lg">
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-text-primary truncate">{aluno.coaching_reference || aluno.full_name || 'Atleta'}</p>
-                            <p className="text-[10px] text-text-tertiary truncate">{aluno.email}</p>
+                            <p className="text-[9px] text-text-tertiary truncate leading-none mt-0.5">{aluno.email}</p>
                           </div>
                           <button
                             onClick={() => router.push(`/admin/treinos/nova-ficha?alunoId=${aluno.id}`)}
-                            className="px-2 py-1.5 bg-brand hover:bg-brand-hover text-text-on-brand text-[9px] font-bold uppercase rounded transition-all shrink-0"
+                            className="px-2.5 py-1 bg-brand hover:bg-brand/90 text-text-on-brand text-[9px] font-bold uppercase rounded-lg transition-all shrink-0 active:scale-95"
                           >
                             + Prescrever
                           </button>

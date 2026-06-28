@@ -15,7 +15,9 @@ import {
   SlidersHorizontal,
   ArrowCounterClockwise,
   Clock,
-  Eye
+  Eye,
+  ArrowRight,
+  Warning
 } from "@phosphor-icons/react";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
@@ -209,90 +211,88 @@ export default function AdminAlunosPage() {
         {/* ── Page Header ── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary font-display uppercase">
-              Base de Atletas
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary font-display">
+              Base de Alunos
             </h1>
-            <p className="text-sm text-text-secondary mt-1">
+            <p className="text-xs text-text-secondary mt-0.5">
               Gestão de performance, vínculo e acompanhamento dos seus alunos
             </p>
           </div>
           <button
             onClick={() => router.push("/admin/alunos/novo")}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10 w-fit"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10 w-fit"
           >
-            <Plus size={14} weight="bold" /> Adicionar Aluno
+            <Plus size={13} weight="bold" /> Adicionar Aluno
           </button>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <DumbbellLoader text="Sincronizando base de atletas..." />
+            <DumbbellLoader text="Sincronizando base de alunos..." />
           </div>
         ) : rows.length === 0 ? (
           /* Empty State - No students registered at all */
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-lg mx-auto shadow-xl">
-            <Users size={48} className="text-brand/40 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
-            <p className="text-text-secondary text-sm mb-6">
+          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
+            <Users size={44} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
+            <p className="text-text-secondary text-xs mb-6">
               Adicione seu primeiro aluno para começar a prescrever treinos, acompanhar evolução e gerenciar a sua consultoria.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={() => router.push("/admin/alunos/novo")}
-                className="btn-primary inline-flex items-center gap-2 justify-center"
+                className="btn-primary inline-flex items-center gap-2 justify-center text-xs py-2 rounded-lg"
               >
-                <Plus size={16} weight="bold" /> Cadastrar primeiro aluno
+                <Plus size={14} weight="bold" /> Cadastrar primeiro aluno
               </button>
             </div>
           </div>
         ) : (
           /* Main Layout with Data */
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
 
             {/* ── Stats Bar / Metrics Cards ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Ativos", value: ativosCount, icon: TrendUp, color: "text-success", bg: "bg-success-subtle border-success/10" },
-                { label: "Pendentes", value: pendentesCount, icon: WarningCircle, color: "text-warning", bg: "bg-warning-subtle border-warning/10" },
-                { label: "Vencendo em breve", value: alertasVencendoEmBreve, icon: Bell, color: "text-danger", bg: "bg-danger-subtle border-danger/10" },
-                { label: "Desativados / Inativos", value: inativosCount, icon: Users, color: "text-text-disabled", bg: "bg-surface-3 border-border-subtle" },
-              ].map(({ label, value, icon: Icon, color, bg }) => (
-                <div key={label} className="bg-surface-1 rounded-xl p-5 border border-border-subtle shadow-sm flex items-center justify-between gap-4">
-                  <div>
-                    <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider block">{label}</span>
-                    <span className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display block">{value}</span>
+                { label: "Ativos", value: ativosCount, dotColor: "bg-success" },
+                { label: "Pendentes", value: pendentesCount, dotColor: "bg-warning" },
+                { label: "Vencendo em breve", value: alertasVencendoEmBreve, dotColor: "bg-danger" },
+                { label: "Inativos", value: inativosCount, dotColor: "bg-text-disabled" },
+              ].map(({ label, value, dotColor }) => (
+                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-border-subtle shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
                   </div>
-                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", bg)}>
-                    <Icon size={18} className={color} />
-                  </div>
+                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums leading-none">{value}</span>
                 </div>
               ))}
             </div>
 
             {/* ── Filters and Search Line ── */}
-            <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 flex flex-col lg:flex-row items-center justify-between gap-4 shadow-sm">
-              <div className="relative w-full lg:max-w-sm">
-                <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <div className="bg-surface-1 border border-border-subtle rounded-lg p-2.5 flex flex-col lg:flex-row items-center justify-between gap-3 shadow-sm">
+              <div className="relative w-full lg:max-w-[280px]">
+                <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Localizar por nome ou e-mail..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
+                  className="w-full pl-9 pr-4 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+              <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
                 {/* Status Filter */}
-                <div className="flex items-center gap-1.5 bg-surface-2 border border-border-subtle rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-surface-2 border border-border-subtle rounded-md p-1 h-8.5">
                   {(['todos', 'ativos', 'pendentes', 'inativos'] as const).map((status) => (
                     <button
                       key={status}
                       onClick={() => setStatusFilter(status)}
                       className={cn(
-                        "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                        "px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all h-6.5 flex items-center justify-center",
                         statusFilter === status
-                          ? "bg-brand text-text-on-brand shadow-md shadow-brand/10"
+                          ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm"
                           : "text-text-secondary hover:text-text-primary"
                       )}
                     >
@@ -305,7 +305,7 @@ export default function AdminAlunosPage() {
                 <select
                   value={planoFilter}
                   onChange={(e) => setPlanoFilter(e.target.value as any)}
-                  className="px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                  className="px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
                 >
                   <option value="todos">Todos os planos</option>
                   <option value="mensal">Mensal</option>
@@ -318,7 +318,7 @@ export default function AdminAlunosPage() {
                 <select
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value as any)}
-                  className="px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                  className="px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
                 >
                   <option value="atividade">Última atividade</option>
                   <option value="recentes">Mais recentes</option>
@@ -329,10 +329,10 @@ export default function AdminAlunosPage() {
                 {/* Reset filters */}
                 <button
                   onClick={handleResetFilters}
-                  className="p-2.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-lg transition-colors"
+                  className="w-8.5 h-8.5 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-md transition-colors"
                   title="Limpar filtros"
                 >
-                  <ArrowCounterClockwise size={14} />
+                  <ArrowCounterClockwise size={13} />
                 </button>
               </div>
             </div>
@@ -340,34 +340,34 @@ export default function AdminAlunosPage() {
             {/* ── Table / Grid of Athletes ── */}
             {processedRows.length === 0 ? (
               /* No results from search / filter */
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-md mx-auto shadow-md">
-                <WarningCircle size={40} className="text-warning/60 mx-auto mb-3" />
-                <h3 className="text-md font-bold text-text-primary mb-1">Nenhum atleta encontrado</h3>
+              <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-md mx-auto shadow-sm">
+                <WarningCircle size={36} className="text-warning/60 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-text-primary mb-1">Nenhum aluno encontrado</h3>
                 <p className="text-text-secondary text-xs mb-5">
                   Tente buscar por outro termo, e-mail ou remova os filtros aplicados.
                 </p>
                 <div className="flex justify-center gap-3">
-                  <button onClick={handleResetFilters} className="btn-secondary text-2xs py-2 px-3">
+                  <button onClick={handleResetFilters} className="btn-secondary text-[11px] py-1.5 px-3 rounded-lg">
                     Limpar filtros
                   </button>
-                  <button onClick={() => router.push("/admin/alunos/novo")} className="btn-primary text-2xs py-2 px-3">
-                    Adicionar novo atleta
+                  <button onClick={() => router.push("/admin/alunos/novo")} className="btn-primary text-[11px] py-1.5 px-3 rounded-lg">
+                    Adicionar novo aluno
                   </button>
                 </div>
               </div>
             ) : (
               /* Modern Responsive Table List */
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden shadow-md">
-                <div className="overflow-x-auto">
+              <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto scrollbar-hide">
                   <table className="w-full border-collapse text-left">
                     <thead>
                       <tr className="border-b border-border-subtle bg-surface-2/40">
-                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Atleta</th>
-                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Status</th>
-                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Plano</th>
-                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Vencimento</th>
-                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Última Atividade</th>
-                        <th className="p-4 text-2xs font-semibold tracking-caps text-text-tertiary uppercase text-right">Ação</th>
+                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
+                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Status</th>
+                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Plano</th>
+                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Vencimento</th>
+                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Última Atividade</th>
+                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -387,16 +387,16 @@ export default function AdminAlunosPage() {
                             key={row.id}
                             onClick={() => router.push(`/admin/aluno/${row.id}`)}
                             className={cn(
-                              "border-b border-border-subtle last:border-b-0 cursor-pointer transition-colors hover:bg-surface-2/40",
+                              "border-b border-border-subtle/50 last:border-b-0 cursor-pointer transition-colors hover:bg-surface-2/40",
                               isArquivado && "opacity-60",
                               alerta === 'vencido' && "bg-danger/5 hover:bg-danger/10"
                             )}
                           >
                             {/* Avatar & Name */}
-                            <td className="p-4">
+                            <td className="p-3">
                               <div className="flex items-center gap-3">
                                 <div className={cn(
-                                  "w-9 h-9 rounded-xl bg-gradient-to-br flex items-center justify-center font-bold text-sm text-white overflow-hidden shrink-0 border border-border-subtle",
+                                  "w-7 h-7 rounded-md bg-gradient-to-br flex items-center justify-center font-bold text-[10px] text-white overflow-hidden shrink-0",
                                   isArquivado ? "grayscale" : avatarGrad(name)
                                 )}>
                                   {row.avatar_url ? (
@@ -406,10 +406,10 @@ export default function AdminAlunosPage() {
                                   )}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-sm font-bold text-text-primary leading-tight truncate">
+                                  <span className="text-xs font-bold text-text-primary leading-tight truncate">
                                     {name}
                                   </span>
-                                  <span className="text-2xs text-text-tertiary leading-none mt-0.5 truncate">
+                                  <span className="text-[10px] text-text-tertiary leading-none mt-0.5 truncate">
                                     {row.email}
                                   </span>
                                 </div>
@@ -417,7 +417,7 @@ export default function AdminAlunosPage() {
                             </td>
 
                             {/* Status Badge */}
-                            <td className="p-4">
+                            <td className="p-3">
                               <span className={cn(
                                 "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                                 isArquivado
@@ -427,7 +427,7 @@ export default function AdminAlunosPage() {
                                     : "bg-danger-subtle text-danger border-danger/15"
                               )}>
                                 <span className={cn(
-                                  "w-1.5 h-1.5 rounded-full",
+                                  "w-1.25 h-1.25 rounded-full",
                                   isArquivado ? "bg-text-disabled" : isActive ? "bg-success" : "bg-danger"
                                 )} />
                                 {isArquivado ? "Inativo" : isActive ? "Ativo" : isExpired ? "Expirado" : "Pendente"}
@@ -435,31 +435,35 @@ export default function AdminAlunosPage() {
                             </td>
 
                             {/* Plan Type */}
-                            <td className="p-4 text-xs text-text-secondary capitalize font-medium">
+                            <td className="p-3 text-xs text-text-secondary capitalize font-medium">
                               {row.tipo_plano || "Mensal"}
                             </td>
 
                             {/* Expiration date with alerts */}
-                            <td className="p-4 text-xs">
+                            <td className="p-3 text-xs">
                               {expiration ? (
-                                <div className="flex flex-col">
-                                  <span className={cn(
-                                    "font-medium",
-                                    alerta === 'vencido' && "text-danger font-semibold",
-                                    alerta === 'semana' && "text-danger font-semibold",
-                                    alerta === 'mes' && "text-amber-400"
-                                  )}>
-                                    {expiration.toLocaleDateString('pt-BR')}
-                                  </span>
-                                  {alerta === 'vencido' && dias !== null && (
-                                    <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vencido há {Math.abs(dias)}d</span>
-                                  )}
-                                  {alerta === 'semana' && dias !== null && (
-                                    <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vence em {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
-                                  )}
-                                  {alerta === 'mes' && dias !== null && (
-                                    <span className="text-[9px] text-amber-500/80 leading-none mt-0.5">{dias}d restantes</span>
-                                  )}
+                                <div className="flex items-center gap-1.5">
+                                  {alerta === 'semana' && <Warning size={12} className="text-warning shrink-0" />}
+                                  <div className="flex flex-col">
+                                    <span className={cn(
+                                      "font-medium",
+                                      alerta === 'vencido' && "text-danger font-semibold",
+                                      alerta === 'semana' && "text-warning font-semibold",
+                                      alerta === 'mes' && "text-amber-500 font-semibold",
+                                      !alerta && "text-text-secondary"
+                                    )}>
+                                      {expiration.toLocaleDateString('pt-BR')}
+                                    </span>
+                                    {alerta === 'vencido' && dias !== null && (
+                                      <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vencido há {Math.abs(dias)}d</span>
+                                    )}
+                                    {alerta === 'semana' && dias !== null && (
+                                      <span className="text-[9px] text-warning/80 leading-none mt-0.5">Vence em {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
+                                    )}
+                                    {alerta === 'mes' && dias !== null && (
+                                      <span className="text-[9px] text-amber-500/80 leading-none mt-0.5">{dias}d restantes</span>
+                                    )}
+                                  </div>
                                 </div>
                               ) : (
                                 <span className="text-text-tertiary">—</span>
@@ -467,28 +471,29 @@ export default function AdminAlunosPage() {
                             </td>
 
                             {/* Last Activity checkin */}
-                            <td className="p-4 text-xs text-text-secondary font-medium">
+                            <td className="p-3 text-xs text-text-secondary font-medium">
                               {row.ultimo_checkin ? (
                                 <div className="flex items-center gap-1">
-                                  <Clock size={12} className="text-text-tertiary" />
+                                  <Clock size={11} className="text-text-tertiary" />
                                   <span>{timeAgo(row.ultimo_checkin)}</span>
                                 </div>
                               ) : (
-                                <span className="text-text-tertiary">Sem registros</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-2 border border-border-subtle text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
+                                  Sem registros
+                                </span>
                               )}
                             </td>
 
                             {/* Link action */}
-                            <td className="p-4 text-right">
+                            <td className="p-3 text-right">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   router.push(`/admin/aluno/${row.id}`);
                                 }}
-                                className="inline-flex items-center justify-center w-7 h-7 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-text-secondary hover:text-brand transition-all"
-                                title="Ver Perfil"
+                                className="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle hover:border-border-strong rounded-md text-text-secondary hover:text-brand text-[10px] font-semibold transition-all"
                               >
-                                <Eye size={14} />
+                                Ver perfil <ArrowRight size={10} />
                               </button>
                             </td>
 

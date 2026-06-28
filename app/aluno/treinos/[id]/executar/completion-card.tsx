@@ -105,13 +105,13 @@ export default function CompletionCard({
 
       {/* Main Metrics */}
       <div style={{ textAlign: 'center', gap: '40px', display: 'flex', flexDirection: 'column' }}>
-        {/* Duration */}
+        {/* Duração */}
         <div>
           <div style={{ fontSize: '56px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
             {formatDuration(duracao)}
           </div>
           <div style={{ fontSize: '20px', color: config.textSecondary, margin: 0 }}>
-            Duration
+            Duração
           </div>
         </div>
 
@@ -121,11 +121,11 @@ export default function CompletionCard({
             {formatVolume(volume)}
           </div>
           <div style={{ fontSize: '20px', color: config.textSecondary, margin: 0 }}>
-            Total Volume
+            Volume Total
           </div>
         </div>
 
-        {/* Records */}
+        {/* Recordes */}
         {prsCount > 0 && (
           <div>
             <div
@@ -143,18 +143,18 @@ export default function CompletionCard({
               <Trophy size={48} weight="fill" color={config.accentYellow} />
             </div>
             <div style={{ fontSize: '20px', color: config.textSecondary, margin: 0 }}>
-              Personal Records
+              Recordes Pessoais
             </div>
           </div>
         )}
 
-        {/* Sets */}
+        {/* Séries */}
         <div>
           <div style={{ fontSize: '56px', fontWeight: 'bold', margin: '0 0 10px 0' }}>
             {sets}
           </div>
           <div style={{ fontSize: '20px', color: config.textSecondary, margin: 0 }}>
-            Sets Completed
+            Séries
           </div>
         </div>
       </div>
@@ -181,7 +181,7 @@ export default function CompletionCard({
         ))}
         {exercicios.length > 6 && (
           <div style={{ fontSize: '18px', color: config.textSecondary }}>
-            ...and {exercicios.length - 6} more
+            ...e mais {exercicios.length - 6}
           </div>
         )}
       </div>

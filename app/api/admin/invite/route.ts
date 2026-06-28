@@ -38,8 +38,12 @@ export async function POST(req: Request) {
 
     const email = String(body?.email || "").trim().toLowerCase();
     const fullName = String(body?.full_name || "").trim();
+    const dateOfBirth = body?.date_of_birth ? String(body.date_of_birth) : null;
+    const objetivo = body?.objetivo ? String(body.objetivo) : null;
+    const tipoPlano = body?.tipo_plano ? String(body.tipo_plano) : null;
+    const dataExpiracao = body?.data_expiracao ? String(body.data_expiracao) : null;
 
-    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName });
+    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName, dateOfBirth, objetivo, tipoPlano, dataExpiracao });
 
     if (!email || !fullName) {
       return NextResponse.json({ error: "Nome e e-mail são obrigatórios" }, { status: 400 });
@@ -198,6 +202,10 @@ export async function POST(req: Request) {
         status_pagamento: "pago",
         arquivado: false,
         first_access_completed: false,  // Flag da primeira vez (onboarding)
+        date_of_birth: dateOfBirth || null,
+        objetivo: objetivo || null,
+        tipo_plano: tipoPlano || null,
+        data_expiracao: dataExpiracao || null,
       }, {
         onConflict: "id", // Se o ID já existir, atualiza em vez de falhar
         ignoreDuplicates: false // Força atualização dos campos

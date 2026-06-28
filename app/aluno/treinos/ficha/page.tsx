@@ -40,6 +40,19 @@ interface FichaTreino {
   exercicios: Exercicio[];
 }
 
+function toTitleCase(str: string): string {
+  const minusculas = ["com", "de", "do", "da", "no", "na", "em", "e", "a", "o"];
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word, i) =>
+      i === 0 || !minusculas.includes(word)
+        ? word.charAt(0).toUpperCase() + word.slice(1)
+        : word,
+    )
+    .join(" ");
+}
+
 
 function FichaContent() {
   const router = useRouter();
@@ -614,8 +627,8 @@ function FichaContent() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-32">
-      <div className="max-w-2xl mx-auto flex flex-col gap-6">
+    <div className="min-h-screen bg-surface-0 p-3 pb-24">
+      <div className="max-w-md mx-auto flex flex-col gap-4">
 
         {/* ── Header ── */}
         <div className="flex flex-col gap-4">
@@ -667,34 +680,34 @@ function FichaContent() {
               <button
                 onClick={handleBaixarPDF}
                 disabled={downloadingPDF}
-                className="h-10 px-3 bg-surface-1 border border-border-subtle shadow-elev-1 rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-border-default transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                className="h-8.5 px-3 bg-surface-1 border border-border-subtle shadow-sm rounded-lg text-2xs font-bold text-text-secondary hover:text-text-primary hover:border-border-default transition-colors flex items-center gap-1.5 disabled:opacity-50"
               >
-                {downloadingPDF ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <FileArrowDown className="w-3.5 h-3.5" />}
+                {downloadingPDF ? <CircleNotch className="w-3 animate-spin" /> : <FileArrowDown className="w-3 h-3" />}
                 PDF
               </button>
               {!treinoIniciado ? (
                 <button
                   onClick={iniciarTreino}
-                  className="h-10 px-4 bg-brand text-text-on-brand rounded-xl text-xs font-semibold shadow-sm shadow-brand/30 flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                  className="h-8 px-3 bg-brand text-text-on-brand rounded-lg text-[11px] font-semibold shadow-sm shadow-brand/30 flex items-center gap-1.5 hover:opacity-90 transition-opacity"
                 >
-                  <Play className="w-3.5 h-3.5" fill="currentColor" />
-                  Iniciar
+                  <Play className="w-3 h-3" fill="currentColor" />
+                  Iniciar treino
                 </button>
               ) : (
                 <>
                   <button
                     onClick={() => setShowDiscardModal(true)}
-                    className="h-10 px-3 bg-surface-1 border border-danger/30 shadow-elev-1 rounded-xl text-xs font-semibold text-danger/80 hover:text-danger hover:border-danger/50 transition-colors flex items-center gap-1.5"
+                    className="h-8.5 px-2.5 bg-surface-1 border border-danger/30 shadow-sm rounded-lg text-2xs font-bold text-danger/80 hover:text-danger hover:border-danger/50 transition-colors flex items-center gap-1"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3 h-3" />
                     Descartar
                   </button>
                   <button
                     onClick={handleFinalizarTreino}
                     disabled={saving}
-                    className="h-10 px-4 bg-brand text-text-on-brand rounded-xl text-xs font-semibold shadow-sm shadow-brand/30 flex items-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="h-8 px-3 bg-brand text-text-on-brand rounded-lg text-[11px] font-semibold shadow-sm shadow-brand/30 flex items-center gap-1 hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    {saving ? <CircleNotch className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    {saving ? <CircleNotch className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                     {saving ? "Salvando…" : "Concluir"}
                   </button>
                 </>
@@ -744,24 +757,24 @@ function FichaContent() {
         )}
 
         {/* ── Exercícios ── */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {ficha.exercicios.map((exercicio, exIdx) => (
             <div
               key={exercicio.id}
-              className="bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-2xl transition-all"
+              className="bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-lg transition-all"
             >
               {/* Cabeçalho do exercício */}
-              <div className="flex items-start gap-3 p-4">
-                <div className="w-10 h-10 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-                  <Barbell className="w-4.5 h-4.5" />
+              <div className="flex items-start gap-2.5 p-3">
+                <div className="w-8 h-8 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
+                  <Barbell className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-semibold text-text-primary leading-tight">{exercicio.nome}</h3>
+                    <h3 className="text-xs font-semibold text-text-primary leading-tight">{toTitleCase(exercicio.nome)}</h3>
                     {exercicio.video_url && (
                       <button
                         onClick={() => setVideoModal(exercicio.video_url || null)}
-                        className="flex items-center gap-1.5 text-2xs font-medium text-brand bg-brand/10 border border-brand/20 rounded-full px-3 py-1.5 hover:opacity-80 transition-opacity"
+                        className="flex items-center gap-1 text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 rounded-md px-2 py-1 hover:opacity-80 transition-opacity"
                       >
                         <Play className="w-3 h-3 fill-brand" />
                         Ver execução
@@ -770,26 +783,26 @@ function FichaContent() {
                     {treinoIniciado && (
                       <button
                         onClick={() => iniciarExercicio(exIdx)}
-                        className="ml-auto h-7 px-3 bg-brand text-text-on-brand rounded-lg text-2xs font-semibold shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity flex-shrink-0"
+                        className="ml-auto h-6.5 px-2.5 bg-brand text-text-on-brand rounded-md text-[10px] font-semibold shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity flex-shrink-0"
                       >
                         Executar
                       </button>
                     )}
                   </div>
-                  <p className="text-2xs text-text-tertiary mt-0.5">Descanso: {exercicio.descanso}</p>
+                  <p className="text-[10px] text-text-tertiary mt-0.5">Descanso: {exercicio.descanso}</p>
                 </div>
               </div>
 
               {/* Observações do coach */}
               {exercicio.observacoes && (
-                <div className="mx-4 mb-4 px-3 py-2.5 bg-surface-2 border border-border-subtle rounded-xl">
-                  <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">Observações</p>
-                  <p className="text-xs text-text-secondary leading-relaxed">{exercicio.observacoes}</p>
+                <div className="mx-3 mb-3 px-2.5 py-2 bg-surface-2 border border-border-subtle rounded-md">
+                  <p className="text-[10px] font-semibold uppercase tracking-caps text-text-tertiary mb-1">Observações</p>
+                  <p className="text-[11px] text-text-secondary leading-relaxed">{exercicio.observacoes}</p>
                 </div>
               )}
 
               {/* Tabela de séries */}
-              <div className="px-4 pb-4">
+              <div className="px-3 pb-3">
                 {(() => {
                   const hasTec = exercicio.series.some(s => !!s.tecnica?.trim());
                   const hasExtra = exercicio.series.some(s => !!s.tecnica_extra?.trim());
@@ -801,107 +814,125 @@ function FichaContent() {
                   return (
                     <>
                       {/* Cabeçalhos desktop */}
-                      <div className="hidden md:grid gap-2 mb-2 px-1 min-w-max overflow-x-auto" style={{ gridTemplateColumns: gridTemplate }}>
-                        <span className="text-2xs font-semibold uppercase tracking-caps text-text-disabled text-left">Set</span>
-                        <span className="text-2xs font-semibold uppercase tracking-caps text-text-disabled text-center">Anterior</span>
-                        <span className="text-2xs font-semibold uppercase tracking-caps text-text-disabled text-center">Peso</span>
-                        {hasTec && <span className="text-2xs font-semibold uppercase tracking-caps text-text-disabled text-center">TÉC</span>}
-                        {hasExtra && <span className="text-2xs font-semibold uppercase tracking-caps text-text-disabled text-center"></span>}
-                        <span className="text-2xs font-semibold uppercase tracking-caps text-text-disabled text-center">Reps</span>
+                      <div className="hidden md:grid gap-1.5 mb-1.5 px-1 min-w-max overflow-x-auto" style={{ gridTemplateColumns: gridTemplate }}>
+                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left">Set</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Ant.</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Peso</span>
+                        {hasTec && <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">T1</span>}
+                        {hasExtra && <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">T2</span>}
+                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Reps</span>
                         <span className="opacity-0">X</span>
                       </div>
 
-                      <div className="flex flex-col gap-2">
+                      {/* Mobile Column Headers */}
+                      <div className="md:hidden flex items-center gap-1 px-3 pb-1 select-none">
+                        <span className="w-6 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Set</span>
+                        <span className="flex-1 text-[8px] font-bold uppercase tracking-wider text-text-disabled">Ant.</span>
+                        <span className="w-12 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Peso</span>
+                        <span className="w-7 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Reps</span>
+                        <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">T1</span>
+                        <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">T2</span>
+                        <span className="w-7 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">✓</span>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
                         {exercicio.series.map((serie, sIdx) => (
                           <div key={sIdx}>
-                            {/* Mobile */}
+                            {/* Mobile Set Row */}
                             <div className={cn(
-                              "md:hidden p-3 rounded-xl border-2 transition-all",
-                              serie.completado ? "bg-success-subtle border-success-border" : "bg-surface-0 border-border-subtle"
+                              "md:hidden flex items-center gap-1 py-0.5 px-3 transition-all border border-border-subtle/30 rounded-md",
+                              serie.completado ? "bg-success/5 border-success-border/20" : "bg-surface-0"
                             )}>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <div className={cn(
-                                    "w-8 h-8 rounded-full flex items-center justify-center border font-bold text-sm",
-                                    serie.completado ? "bg-success border-success text-white" : "bg-surface-3 border-border-default text-text-primary"
-                                  )}>
-                                    {sIdx + 1}
-                                  </div>
-                                  <span className="text-2xs text-text-tertiary">
-                                    Anterior: <span className="font-mono text-text-secondary">{serie.anterior}</span>
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
-                                  disabled={!treinoIniciado}
-                                  className={cn(
-                                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-30",
-                                    serie.completado ? "bg-success border-2 border-success text-white" : "bg-surface-3 border-2 border-border-default text-text-tertiary hover:border-brand/50"
-                                  )}
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
+                              {/* Set number */}
+                              <div className={cn(
+                                "w-5.5 h-5.5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
+                                serie.completado ? "bg-success text-white" : "bg-surface-3 text-text-secondary"
+                              )}>
+                                {sIdx + 1}
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <p className="text-2xs font-semibold uppercase tracking-caps text-text-disabled mb-1">Peso (kg)</p>
-                                  <input
-                                    type="number"
-                                    value={serie.peso_atual || ""}
-                                    onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
-                                    disabled={!treinoIniciado}
-                                    className="w-full h-11 bg-surface-3 border border-border-subtle rounded-xl text-center text-sm font-bold text-text-primary focus:border-brand/40 outline-none transition-colors disabled:opacity-40"
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div>
-                                  <p className="text-2xs font-semibold uppercase tracking-caps text-text-disabled mb-1">Reps</p>
-                                  <div className="w-full h-11 bg-surface-2 border border-border-subtle rounded-xl flex items-center justify-center">
-                                    <span className="text-sm font-bold text-brand">{serie.reps || "0"}</span>
-                                  </div>
-                                </div>
+
+                              {/* Anterior */}
+                              <div className="flex-1 min-w-0">
+                                <span className={cn(
+                                  "text-[9px] font-mono",
+                                  serie.completado ? "text-text-disabled line-through" : "text-text-tertiary"
+                                )}>
+                                  {serie.anterior || "—"}
+                                </span>
                               </div>
-                              {(serie.tecnica || serie.tecnica_extra) && (
-                                <div className={cn("grid gap-2 mt-2", serie.tecnica && serie.tecnica_extra ? "grid-cols-2" : "grid-cols-1")}>
-                                  {serie.tecnica && (
-                                    <div>
-                                      <p className="text-2xs font-semibold uppercase tracking-caps text-text-disabled mb-1">TÉC</p>
-                                      <button
-                                        onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                        className="w-full h-9 bg-surface-2 border border-border-subtle rounded-xl flex items-center justify-center hover:opacity-80 transition-opacity"
-                                      >
-                                        <span className="text-xs font-bold text-text-secondary">{serie.tecnica}</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                  {serie.tecnica_extra && (
-                                    <div>
-                                      <p className="text-2xs font-semibold uppercase tracking-caps text-text-disabled mb-1">Técnica</p>
-                                      <button
-                                        onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
-                                        className="w-full h-9 bg-brand/10 border border-brand/20 rounded-xl flex items-center justify-center hover:opacity-80 transition-opacity"
-                                      >
-                                        <span className="text-xs font-bold text-brand truncate px-2">{serie.tecnica_extra}</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+
+                              {/* Peso */}
+                              <div className="w-11 shrink-0">
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  value={serie.peso_atual || ""}
+                                  onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
+                                  disabled={!treinoIniciado || serie.completado}
+                                  placeholder="0"
+                                  className="w-full h-6 bg-surface-2 border border-border-subtle rounded-md text-center text-[10px] font-bold text-text-primary focus:border-brand focus:outline-none disabled:opacity-50"
+                                />
+                              </div>
+
+                              {/* Reps */}
+                              <div className="w-7 shrink-0 text-center">
+                                <span className="text-[10px] font-bold text-brand">{serie.reps || "0"}</span>
+                              </div>
+
+                              {/* Téc 1 */}
+                              <div className="w-8 shrink-0 text-center">
+                                {serie.tecnica ? (
+                                  <button
+                                    onClick={() => setTecnicaInfoModal(serie.tecnica!)}
+                                    className="px-1 py-0.5 bg-surface-2 border border-border-subtle/50 rounded text-[8px] font-semibold text-text-tertiary hover:border-brand/30 transition-colors uppercase leading-none"
+                                  >
+                                    {serie.tecnica.substring(0, 2).toUpperCase()}
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-text-disabled">—</span>
+                                )}
+                              </div>
+
+                              {/* Téc 2 */}
+                              <div className="w-8 shrink-0 text-center">
+                                {serie.tecnica_extra ? (
+                                  <button
+                                    onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
+                                    className="px-1 py-0.5 bg-brand/5 border border-brand/15 rounded text-[8px] font-semibold text-brand/80 hover:bg-brand/10 transition-all uppercase leading-none"
+                                  >
+                                    {serie.tecnica_extra.substring(0, 2).toUpperCase()}
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-text-disabled">—</span>
+                                )}
+                              </div>
+
+                              {/* Check */}
+                              <button
+                                onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
+                                disabled={!treinoIniciado}
+                                className={cn(
+                                  "w-6 h-6 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 shrink-0",
+                                  serie.completado ? "bg-success text-white" : "bg-surface-3 border border-border-default text-text-tertiary"
+                                )}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
                             </div>
 
                             {/* Desktop */}
                             <div className={cn(
-                              "hidden md:grid gap-2 items-center p-2 rounded-xl border transition-all overflow-x-auto min-w-max",
+                              "hidden md:grid gap-1.5 items-center p-1.5 rounded-lg border transition-all overflow-x-auto min-w-max",
                               serie.completado ? "bg-success-subtle border-success-border" : "bg-surface-0/60 border-transparent hover:border-border-subtle"
                             )} style={{ gridTemplateColumns: gridTemplate }}>
                               <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center border font-bold text-sm",
+                                "w-7 h-7 rounded-full flex items-center justify-center border font-bold text-xs",
                                 serie.completado ? "bg-success border-success text-white" : "bg-surface-3 border-border-default text-text-primary"
                               )}>
                                 {sIdx + 1}
                               </div>
                               <div className="text-center">
-                                <span className="text-xs text-text-secondary font-mono">{serie.anterior}</span>
+                                <span className="text-[11px] text-text-secondary font-mono">{serie.anterior}</span>
                               </div>
                               <div className="flex justify-center">
                                 <input
@@ -909,7 +940,7 @@ function FichaContent() {
                                   value={serie.peso_atual || ""}
                                   onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
                                   disabled={!treinoIniciado}
-                                  className="w-full h-10 bg-surface-3 border border-border-subtle rounded-xl text-center text-sm font-bold text-text-primary focus:border-brand/40 outline-none disabled:opacity-40"
+                                  className="w-full h-8 bg-surface-3 border border-border-subtle rounded-md text-center text-xs font-semibold text-text-primary focus:border-brand/40 outline-none disabled:opacity-40"
                                   placeholder="0"
                                 />
                               </div>
@@ -918,7 +949,7 @@ function FichaContent() {
                                   {serie.tecnica ? (
                                     <button
                                       onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                      className="text-2xs font-bold px-1.5 py-1 rounded-md text-text-secondary bg-surface-3 border border-border-subtle hover:opacity-80 transition-opacity"
+                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-text-tertiary bg-surface-3 border border-border-subtle/50 hover:opacity-80 transition-opacity"
                                     >
                                       {serie.tecnica}
                                     </button>
@@ -930,7 +961,7 @@ function FichaContent() {
                                   {serie.tecnica_extra ? (
                                     <button
                                       onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
-                                      className="text-2xs font-bold px-1.5 py-0.5 rounded-md text-brand bg-brand/10 border border-brand/20 hover:opacity-80 transition-opacity truncate max-w-full"
+                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-brand/80 bg-brand/5 border border-brand/15 hover:opacity-80 transition-opacity truncate max-w-full"
                                     >
                                       {serie.tecnica_extra}
                                     </button>
@@ -938,8 +969,8 @@ function FichaContent() {
                                 </div>
                               )}
                               <div className="flex justify-center">
-                                <div className="w-full h-10 bg-surface-2 border border-border-subtle rounded-xl flex items-center justify-center">
-                                  <span className="text-sm font-bold text-brand">{serie.reps || "0"}</span>
+                                <div className="w-full h-8 bg-surface-2 border border-border-subtle rounded-md flex items-center justify-center">
+                                  <span className="text-xs font-semibold text-brand">{serie.reps || "0"}</span>
                                 </div>
                               </div>
                               <div className="flex justify-end">
@@ -947,7 +978,7 @@ function FichaContent() {
                                   onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
                                   disabled={!treinoIniciado}
                                   className={cn(
-                                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-30",
+                                    "w-8 h-8 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30",
                                     serie.completado ? "bg-success border-2 border-success text-white" : "bg-surface-3 border-2 border-border-default text-text-tertiary hover:border-brand/50"
                                   )}
                                 >
@@ -1323,8 +1354,8 @@ function FichaContent() {
                 className="w-full h-13 bg-brand text-text-on-brand rounded-xl font-semibold text-sm shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity disabled:opacity-40"
               >
                 {serieAtual >= ficha.exercicios[exercicioAtivo].series.length - 1
-                  ? "✓ Concluir Exercício"
-                  : `Concluir Série ${serieAtual + 1}/${ficha.exercicios[exercicioAtivo].series.length}`}
+                  ? "Concluir exercício"
+                  : `Concluir série ${serieAtual + 1}/${ficha.exercicios[exercicioAtivo].series.length}`}
               </button>
             </div>
 

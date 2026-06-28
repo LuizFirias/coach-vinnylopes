@@ -105,7 +105,7 @@ export default function CoachPerfilPage() {
               await supabaseClient.storage.from("avatars").remove([oldPath]);
             }
           } catch {
-            // avatar antigo não encontrado — ignorar
+            // avatar antigo não encontrado
           }
         }
 
@@ -150,38 +150,43 @@ export default function CoachPerfilPage() {
   return (
     <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
       <ScreenHeader
-        title="Perfil"
-        subtitle="Gerencie seus dados de acesso"
+        title="Configurações da Conta"
+        subtitle="Gerencie seus dados profissionais e de acesso"
         action={
-          <Button variant="danger" size="sm" leftIcon={<SignOut className="w-4 h-4" />} onClick={handleLogout}>
-            Sair
-          </Button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="h-8 px-3 rounded-md text-xs font-bold transition-all border border-danger/30 text-danger bg-transparent hover:bg-danger/10 flex items-center gap-1.5 cursor-pointer"
+          >
+            <SignOut className="w-3.5 h-3.5" />
+            Sair da conta
+          </button>
         }
       />
 
-      <div className="px-4 max-w-2xl">
+      <div className="px-4 max-w-4xl mx-auto flex flex-col gap-4">
 
         {/* Feedback */}
         {error && (
-          <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
-            <div className="w-2 h-2 rounded-full bg-danger flex-shrink-0 animate-pulse" />
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
+            <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-success-subtle border border-success-border text-success text-sm">
-            <div className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
+            <div className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
             {success}
           </div>
         )}
 
-        <Card className="rounded-2xl shadow-elev-1">
-          <form onSubmit={handleSaveProfile} className="flex flex-col gap-6">
-
-            {/* Avatar */}
-            <div className="flex items-center gap-5">
-              <div className="relative flex-shrink-0">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-surface-3 border border-border-default relative">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          
+          {/* Coluna 1: Avatar e resumo */}
+          <div className="lg:col-span-1">
+            <Card className="rounded-xl border border-border-subtle/80 p-5 flex flex-col items-center text-center shadow-sm">
+              <div className="relative mb-4">
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-surface-3 border border-border-default flex items-center justify-center relative select-none">
                   {avatarUrl ? (
                     <img
                       src={getPublicStorageUrl("avatars", avatarUrl) || ""}
@@ -189,74 +194,91 @@ export default function CoachPerfilPage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-text-tertiary text-3xl font-bold">
+                    <div className="w-full h-full flex items-center justify-center text-text-tertiary text-2xl font-bold font-mono">
                       {fullName?.charAt(0)?.toUpperCase() || "C"}
                     </div>
                   )}
                   {uploadingAvatar && (
                     <div className="absolute inset-0 bg-surface-0/80 flex items-center justify-center">
-                      <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-brand/35 border-t-brand rounded-full animate-spin" />
                     </div>
                   )}
                 </div>
                 <label className={cn(
-                  "absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-xl cursor-pointer",
-                  "bg-brand hover:bg-brand-hover active:bg-brand-pressed transition-colors",
-                  "flex items-center justify-center text-text-on-brand shadow-lg"
+                  "absolute -bottom-1 -right-1 w-7 h-7 rounded-lg cursor-pointer",
+                  "bg-brand hover:bg-brand/90 active:scale-95 transition-all",
+                  "flex items-center justify-center text-text-on-brand shadow-sm"
                 )}>
                   <Camera className="w-3.5 h-3.5" />
                   <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
                 </label>
               </div>
 
-              <div>
-                <p className="font-semibold text-text-primary">{fullName || "Coach"}</p>
-                <p className="text-xs text-text-tertiary mt-0.5">Coach · Autoridade Certificada</p>
-              </div>
-            </div>
+              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider">{fullName || "Coach"}</h2>
+              <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wide mt-1.5 px-2 py-0.5 rounded bg-surface-3 border border-border-subtle">
+                Personal Trainer
+              </span>
+            </Card>
+          </div>
 
-            {/* Campos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Nome completo"
-                name="fullName"
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ex: Prof. Ricardo Silva"
-              />
-              <Input
-                label="E-mail"
-                name="email"
-                type="email"
-                value={email}
-                disabled
-                helperText="Apenas leitura"
-              />
-            </div>
+          {/* Coluna 2: Dados e Segurança */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            <Card className="rounded-xl border border-border-subtle/80 p-5 md:p-6 shadow-sm">
+              <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
+                
+                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2">
+                  Dados do Perfil
+                </h3>
 
-            {/* Ações */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <Button
-                type="button"
-                variant="secondary"
-                leftIcon={<Lock className="w-4 h-4" />}
-                onClick={() => setChangePasswordModalOpen(true)}
-                fullWidth
-              >
-                Trocar senha
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                loading={saving || uploadingAvatar}
-                fullWidth
-              >
-                Salvar alterações
-              </Button>
-            </div>
-          </form>
-        </Card>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Nome completo"
+                    name="fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Ex: Prof. Ricardo Silva"
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-text-secondary">E-mail de acesso</label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={email}
+                        disabled
+                        className="h-12 w-full rounded-md px-4 bg-surface-2 border border-border-subtle text-text-primary opacity-60 pr-10 text-xs cursor-not-allowed"
+                      />
+                      <Lock className="w-4 h-4 text-text-disabled absolute right-4.5 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-xs text-text-tertiary">Somente leitura</p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-border-subtle/50 flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-10 text-xs rounded-lg flex-1"
+                    leftIcon={<Lock className="w-4 h-4" />}
+                    onClick={() => setChangePasswordModalOpen(true)}
+                  >
+                    Trocar senha de acesso
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="h-10 text-xs rounded-lg flex-1"
+                    loading={saving || uploadingAvatar}
+                  >
+                    Salvar alterações
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+
+        </div>
+
       </div>
 
       <ChangePasswordModal

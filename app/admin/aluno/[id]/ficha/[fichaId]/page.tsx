@@ -39,7 +39,7 @@ interface Ficha {
   aluno_id: string;
 }
 
-const fieldCls = "w-full px-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all";
+const fieldCls = "w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all h-10";
 
 const TECNICAS_BASE_EDIT = ["", "WS", "FS", "TS"];
 const TECNICAS_EXTRA_OPCOES_EDIT = ["", "Cluster Set", "Drop Set", "Bi-Set", "Super Set", "Repetições Parciais", "Isometria"];
@@ -158,9 +158,10 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
     setSearchExercicio("");
   };
 
-  const filteredCatalogo = catalogoExercicios.filter(ex =>
-    ex.nome.toLowerCase().includes(searchExercicio.toLowerCase())
-  );
+  const filteredCatalogo = catalogoExercicios.filter(ex => {
+    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return normalize(ex.nome).includes(normalize(searchExercicio));
+  });
 
   const handleExportarPDF = async () => {
     if (!nomeFicha.trim() || exercicios.length === 0) {
@@ -333,44 +334,44 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
   if (!ficha) {
     return (
       <div className="min-h-screen bg-surface-0 p-6">
-        <Link href={`/admin/aluno/${id}`} className="text-brand text-2xs uppercase tracking-caps inline-flex items-center gap-2 mb-6">
+        <Link href={`/admin/aluno/${id}`} className="text-text-secondary hover:text-brand text-xs inline-flex items-center gap-1.5 mb-6 transition-colors">
           <ArrowLeft size={14} /> Voltar
         </Link>
-        <p className="text-danger">Ficha não encontrada</p>
+        <p className="text-danger text-xs font-semibold">Ficha não encontrada</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 py-4 border-b border-border-subtle flex flex-col gap-2.5">
           <Link
             href={`/admin/aluno/${id}`}
-            className="inline-flex items-center gap-2 text-brand text-2xs uppercase tracking-caps mb-4 hover:gap-3 transition-all"
+            className="inline-flex items-center gap-1.5 text-text-secondary hover:text-brand text-xs transition-colors mb-1"
           >
             <ArrowLeft size={14} /> Voltar para Perfil
           </Link>
-          <h1 className="text-3xl font-bold text-text-primary tracking-tight uppercase mb-1">
+          <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">
             Editar Ficha Digital
           </h1>
-          <p className="text-sm text-text-secondary">Modifique os exercícios e cargas da ficha</p>
+          <p className="text-xs text-text-secondary">Modifique os exercícios e cargas da ficha</p>
         </div>
 
         {error && (
-          <div className="mb-6 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+          <div className="mb-6 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="shrink-0">
-              <X size={16} />
+              <X size={14} />
             </button>
           </div>
         )}
 
         {/* Nome da Ficha */}
-        <div className="bg-surface-1 rounded-2xl p-6 border border-border-subtle shadow-elev-1 mb-6">
-          <label className="text-2xs uppercase tracking-caps text-text-tertiary mb-3 block">Nome da Ficha</label>
+        <div className="bg-surface-1 rounded-xl p-4 md:p-5 border border-border-subtle shadow-sm mb-6">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 block">Nome da Ficha</label>
           <input
             type="text"
             value={nomeFicha}
@@ -383,43 +384,44 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         {/* Exercícios */}
         <div className="space-y-4">
           {exercicios.map((ex, exIdx) => (
-            <div key={ex.id} className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-6">
+            <div key={ex.id} className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl p-4 md:p-5">
               {/* Header do Exercício */}
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-text-primary mb-1">{ex.nome}</h3>
-                  <p className="text-text-tertiary text-2xs uppercase tracking-caps">{ex.grupo_muscular || 'Exercício'}</p>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-bold text-text-primary truncate">{ex.nome}</h3>
+                  <p className="text-text-tertiary text-[9px] font-bold uppercase tracking-wider mt-0.5">{ex.grupo_muscular || 'Exercício'}</p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => handleMoveExercicio(exIdx, -1)}
                     disabled={exIdx === 0}
-                    className="p-2 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-3 rounded-lg transition-colors"
+                    className="p-1.5 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-2 rounded-md transition-colors"
                     title="Mover para cima"
                   >
-                    <CaretUp size={16} />
+                    <CaretUp size={14} />
                   </button>
                   <button
                     onClick={() => handleMoveExercicio(exIdx, 1)}
                     disabled={exIdx === exercicios.length - 1}
-                    className="p-2 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-3 rounded-lg transition-colors"
+                    className="p-1.5 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-2 rounded-md transition-colors"
                     title="Mover para baixo"
                   >
-                    <CaretDown size={16} />
+                    <CaretDown size={14} />
                   </button>
                   <button
                     onClick={() => handleRemoveExercicio(exIdx)}
-                    className="p-2 text-text-disabled hover:text-danger hover:bg-danger-subtle rounded-xl transition-colors ml-1"
+                    className="p-1.5 text-text-disabled hover:text-danger hover:bg-danger-subtle rounded-md transition-colors ml-1"
+                    title="Excluir exercício"
                   >
-                    <Trash size={16} />
+                    <Trash size={14} />
                   </button>
                 </div>
               </div>
 
               {/* Descanso + Observações */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 pb-5 border-b border-border-subtle">
-                <div className="space-y-2">
-                  <label className="text-2xs uppercase tracking-caps text-text-tertiary">Descanso entre Séries</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b border-border-subtle">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Descanso entre Séries</label>
                   <TimeInput
                     value={ex.descanso || "01:00"}
                     onChange={(v) => {
@@ -430,8 +432,8 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                     className={cn(fieldCls, "text-center")}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-2xs uppercase tracking-caps text-text-tertiary">Observações para o Aluno</label>
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Observações para o Aluno</label>
                   <textarea
                     value={ex.observacoes || ""}
                     onChange={(e) => {
@@ -440,8 +442,8 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                       setExercicios(updated);
                     }}
                     placeholder="Ex: Manter o core contraído, não arquear as costas..."
-                    className={cn(fieldCls, "resize-none")}
-                    rows={3}
+                    className={cn(fieldCls, "resize-none h-10 py-1.5")}
+                    rows={1}
                   />
                 </div>
               </div>
@@ -452,27 +454,27 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                 <div className="hidden md:block overflow-x-auto">
                   {/* Header */}
                   <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
-                    <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">#</span>
-                    <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Reps</span>
-                    <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70">TÉC</span>
-                    <span className="text-2xs font-semibold uppercase tracking-caps text-brand/70"></span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">#</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Reps</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70">TÉC</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70"></span>
                     <span></span>
                   </div>
                   {ex.series.map((serie, serieIdx) => (
-                    <div key={serieIdx} className="grid gap-1 bg-surface-3 border border-border-subtle p-1.5 rounded-xl mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
-                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-subtle text-brand text-xs font-semibold">{serie.ordem}</div>
+                    <div key={serieIdx} className="grid gap-1 bg-surface-2 border border-border-subtle p-1 rounded-lg mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
+                      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-brand-subtle text-brand text-xs font-bold">{serie.ordem}</div>
                       <input
                         type="text"
                         value={serie.reps_sugerido}
                         onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)}
                         placeholder="12"
-                        className="w-full h-7 px-2 bg-surface-2 border border-border-default rounded-lg text-text-primary text-xs focus:outline-none focus:border-brand/40 text-center"
+                        className="w-full h-7 px-2 bg-surface-0 border border-border-subtle rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 text-center"
                       />
                       {/* TÉC */}
                       <select
                         value={(serie as any).tecnica ?? ''}
                         onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                        className="w-full h-7 px-1 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                        className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
                       >
                         {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
                       </select>
@@ -480,12 +482,12 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                       <select
                         value={(serie as any).tecnica_extra ?? ''}
                         onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
-                        className="w-full h-7 px-1 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
+                        className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
                       >
                         {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
                       </select>
                       <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="flex items-center justify-center text-text-disabled hover:text-danger transition-colors">
-                        <Trash size={14} />
+                        <Trash className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
@@ -493,40 +495,37 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
                 {/* Mobile */}
                 {ex.series.map((serie, serieIdx) => (
-                  <div key={serieIdx} className="md:hidden bg-surface-3 rounded-xl border border-border-subtle p-3 space-y-3">
+                  <div key={serieIdx} className="md:hidden bg-surface-2 rounded-lg border border-border-subtle p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 rounded-lg bg-brand-subtle flex items-center justify-center text-brand text-xs font-semibold">{serie.ordem}</div>
+                      <div className="w-7 h-7 rounded-md bg-brand-subtle flex items-center justify-center text-brand text-xs font-bold">{serie.ordem}</div>
                       <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="p-1.5 text-text-disabled hover:text-danger transition-colors"><Trash size={14} /></button>
                     </div>
                     <div className="grid grid-cols-1 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-2xs uppercase tracking-caps text-text-tertiary px-1">Reps</label>
+                      <div className="space-y-0.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary px-1">Reps</label>
                         <input type="text" value={serie.reps_sugerido} onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)} placeholder="12" className={cn(fieldCls, "text-center")} />
                       </div>
                     </div>
-                    <div className="border-t border-border-subtle/50 pt-2">
-                      <p className="text-2xs font-semibold uppercase tracking-caps text-brand/70 mb-1.5">Técnicas</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <div className="space-y-0.5">
-                          <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">TÉC</label>
-                          <select
-                            value={(serie as any).tecnica ?? ''}
-                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                            className="w-full h-8 px-2 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
-                          >
-                            {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-0.5">
-                          <label className="text-2xs font-semibold uppercase tracking-caps text-brand/70 px-1">Técnica Extra</label>
-                          <select
-                            value={(serie as any).tecnica_extra ?? ''}
-                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
-                            className="w-full h-8 px-2 bg-surface-2 border border-brand/20 rounded-lg text-xs text-brand/80 focus:outline-none"
-                          >
-                            {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                          </select>
-                        </div>
+                    <div className="border-t border-border-subtle/50 pt-2 grid grid-cols-2 gap-2">
+                      <div className="space-y-0.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">TÉC</label>
+                        <select
+                          value={(serie as any).tecnica ?? ''}
+                          onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
+                          className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
+                        >
+                          {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-0.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">Técnica Extra</label>
+                        <select
+                          value={(serie as any).tecnica_extra ?? ''}
+                          onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
+                          className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
+                        >
+                          {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -535,9 +534,9 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
               <button
                 onClick={() => handleAddSerie(exIdx)}
-                className="w-full py-2 text-2xs uppercase tracking-caps text-brand border border-brand-border rounded-lg hover:bg-brand-subtle transition-colors flex items-center justify-center gap-2"
+                className="w-full py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand border border-brand-border/40 rounded-lg hover:bg-brand-subtle/50 transition-colors flex items-center justify-center gap-1.5"
               >
-                <Plus size={14} /> Adicionar Série
+                <Plus size={12} weight="bold" /> Adicionar Série
               </button>
             </div>
           ))}
@@ -546,14 +545,14 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         {/* Adicionar Exercício */}
         <button
           onClick={() => setShowAddExercicioModal(true)}
-          className="w-full mt-4 py-4 px-6 bg-brand-subtle border-2 border-dashed border-brand-border rounded-2xl text-brand text-2xs uppercase tracking-caps hover:bg-brand/10 transition-all flex items-center justify-center gap-3"
+          className="w-full mt-4 py-3 px-6 bg-surface-1 border border-dashed border-brand-border/30 rounded-xl text-brand text-xs font-bold hover:bg-brand-subtle/40 transition-all flex items-center justify-center gap-2"
         >
-          <Plus size={16} /> Adicionar Exercício do Catálogo
+          <Plus size={14} weight="bold" /> Adicionar Exercício do Catálogo
         </button>
 
         {exercicios.length === 0 && (
-          <div className="mt-4 bg-surface-2 rounded-2xl p-12 text-center border border-dashed border-border-subtle">
-            <p className="text-text-disabled text-2xs uppercase tracking-caps">Nenhum exercício nesta ficha</p>
+          <div className="mt-4 bg-surface-2 rounded-xl p-8 text-center border border-dashed border-border-subtle">
+            <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">Nenhum exercício nesta ficha</p>
           </div>
         )}
 
@@ -562,29 +561,29 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           <Button
             type="button"
             variant="secondary"
+            className="h-10 text-xs rounded-lg flex-1"
             onClick={handleExportarPDF}
             loading={exportingPDF}
-            leftIcon={<FileArrowDown size={16} />}
-            fullWidth
+            leftIcon={<FileArrowDown size={14} />}
           >
             Exportar PDF
           </Button>
           <Button
             type="button"
             variant="primary"
+            className="h-10 text-xs rounded-lg flex-1"
             onClick={handleSalvar}
             loading={saving}
-            leftIcon={<FloppyDisk size={16} />}
-            fullWidth
+            leftIcon={<FloppyDisk size={14} />}
           >
             Salvar Alterações
           </Button>
           <Button
             type="button"
             variant="ghost"
+            className="h-10 text-xs rounded-lg flex-1"
             onClick={() => router.push(`/admin/aluno/${id}`)}
-            leftIcon={<X size={16} />}
-            fullWidth
+            leftIcon={<X size={14} />}
           >
             Cancelar
           </Button>
@@ -593,45 +592,46 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         {/* Modal Adicionar Exercício */}
         {showAddExercicioModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-0/80 backdrop-blur-sm">
-            <div className="bg-surface-1 rounded-2xl border border-border-default shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              <div className="sticky top-0 bg-surface-1 border-b border-border-subtle p-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-text-primary uppercase tracking-tight">Adicionar Exercício</h2>
+            <div className="bg-surface-1 rounded-xl border border-border-default shadow-2xl max-w-xl w-full max-h-[80vh] flex flex-col overflow-hidden">
+              <div className="bg-surface-1 border-b border-border-subtle p-4 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-text-primary">Adicionar Exercício</h2>
                 <button
                   onClick={() => { setShowAddExercicioModal(false); setSearchExercicio(""); }}
                   className="text-text-tertiary hover:text-text-primary transition-colors"
                 >
-                  <X size={20} />
+                  <X size={16} />
                 </button>
               </div>
 
-              <div className="p-5 border-b border-border-subtle">
+              <div className="p-3 border-b border-border-subtle">
                 <input
                   type="text"
                   placeholder="Buscar exercício..."
                   value={searchExercicio}
                   onChange={(e) => setSearchExercicio(e.target.value)}
-                  className={fieldCls}
+                  className="w-full px-3 py-1.5 h-8 bg-surface-2 border border-border-subtle rounded-md text-text-primary text-2xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all"
                 />
               </div>
 
-              <div className="divide-y divide-border-subtle">
+              <div className="flex-1 overflow-y-auto divide-y divide-border-subtle">
                 {filteredCatalogo.length > 0 ? (
                   filteredCatalogo.map((exCatalogo) => {
                     const jáAdicionado = exercicios.some(e => e.id === exCatalogo.id);
                     return (
-                      <div key={exCatalogo.id} className="p-5 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4">
+                      <div key={exCatalogo.id} className="p-4 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-text-primary text-sm font-medium truncate">{exCatalogo.nome}</h3>
-                          <p className="text-text-tertiary text-2xs uppercase tracking-caps mt-0.5">
+                          <h3 className="text-text-primary text-xs font-bold truncate">{exCatalogo.nome}</h3>
+                          <p className="text-text-tertiary text-[9px] font-bold uppercase tracking-wider mt-0.5">
                             {exCatalogo.grupo_muscular || 'Exercício'}
                           </p>
                         </div>
                         <Button
                           variant="primary"
                           size="sm"
+                          className="h-8 rounded-lg text-xs"
                           onClick={() => handleAddExercicio(exCatalogo)}
                           disabled={jáAdicionado}
-                          leftIcon={<Plus size={14} />}
+                          leftIcon={<Plus size={12} />}
                         >
                           {jáAdicionado ? "Adicionado" : "Adicionar"}
                         </Button>
@@ -639,8 +639,8 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                     );
                   })
                 ) : (
-                  <div className="p-12 text-center">
-                    <p className="text-text-disabled text-2xs uppercase tracking-caps">Nenhum exercício encontrado</p>
+                  <div className="p-10 text-center">
+                    <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">Nenhum exercício encontrado</p>
                   </div>
                 )}
               </div>

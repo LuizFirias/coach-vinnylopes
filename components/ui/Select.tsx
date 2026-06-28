@@ -54,9 +54,9 @@ export function Select({
   }, []);
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-1.5", className)}>
       {label && (
-        <span className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">
+        <span className="text-xs font-medium text-text-secondary ml-0.5">
           {label}
         </span>
       )}
@@ -66,19 +66,19 @@ export function Select({
           disabled={disabled}
           onClick={() => !disabled && setOpen((v) => !v)}
           className={cn(
-            "w-full h-14 px-5 flex items-center justify-between gap-3",
-            "bg-surface-2 border border-border-default rounded-xl text-sm transition-all",
+            "w-full h-10 px-3 flex items-center justify-between gap-2.5",
+            "bg-surface-2 border border-border-subtle rounded-md text-xs transition-all",
             "focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
             open
               ? "border-brand/40 text-text-primary"
-              : "border-border-default text-text-primary hover:border-border-default"
+              : "border-border-subtle text-text-primary hover:border-border-default"
           )}
         >
           <span className={cn(!selected && "text-text-disabled")}>
             {selected ? selected.label : placeholder}
           </span>
           <ChevronDown
-            size={16}
+            size={14}
             className={cn(
               "shrink-0 text-text-disabled transition-transform duration-200",
               open && "rotate-180"
@@ -87,10 +87,10 @@ export function Select({
         </button>
 
         {open && (
-          <div className="absolute z-50 mt-1 w-full bg-surface-2 border border-border-default rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden">
+          <div className="absolute z-50 mt-1 w-full bg-surface-2 border border-border-default rounded-md shadow-overlay overflow-hidden">
             <div className="max-h-60 overflow-y-auto bg-surface-2">
               {options.length === 0 ? (
-                <div className="px-5 py-3 text-sm text-text-disabled">
+                <div className="px-3 py-2 text-xs text-text-disabled">
                   Nenhuma opção disponível
                 </div>
               ) : (
@@ -103,7 +103,7 @@ export function Select({
                       setOpen(false);
                     }}
                     className={cn(
-                      "w-full px-5 py-3 text-left text-sm transition-colors",
+                      "w-full px-3 py-2 text-left text-xs transition-colors",
                       opt.value === value
                         ? "bg-brand-subtle text-brand font-medium"
                         : "text-text-primary bg-surface-2 hover:bg-surface-3"

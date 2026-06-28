@@ -14,6 +14,7 @@ import {
   CircleNotch,
   WarningCircle,
   Users,
+  Barbell,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
@@ -128,9 +129,11 @@ export default function BibliotecaExerciciosPage() {
   const filtrarExercicios = () => {
     let resultado = [...exercicios];
     if (searchTerm.trim()) {
+      const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const normalizedQuery = normalize(searchTerm);
       resultado = resultado.filter((ex) =>
-        ex.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ex.grupo_muscular.toLowerCase().includes(searchTerm.toLowerCase())
+        normalize(ex.nome).includes(normalizedQuery) ||
+        normalize(ex.grupo_muscular).includes(normalizedQuery)
       );
     }
     if (grupoSelecionado) {
@@ -247,133 +250,155 @@ export default function BibliotecaExerciciosPage() {
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2.5">
             <Link
               href="/admin/alunos"
-              className="w-9 h-9 rounded-xl bg-surface-2 border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              className="w-8 h-8 rounded-lg bg-surface-2 border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-text-primary tracking-tight">Biblioteca</h1>
-              <p className="text-sm text-text-secondary">Gerencie exercícios e demonstrações em vídeo</p>
+              <h1 className="text-xl font-bold text-text-primary tracking-tight">Biblioteca de Exercícios</h1>
+              <p className="text-xs text-text-secondary mt-0.5">Gerencie exercícios e demonstrações em vídeo</p>
             </div>
           </div>
-          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} fullWidth={false}>
+          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} fullWidth={false} className="py-2 rounded-lg text-xs">
             Novo exercício
           </Button>
         </div>
 
         {/* Busca */}
-        <div className="relative mb-6">
-          <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary pointer-events-none" />
+        <div className="relative mb-4">
+          <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary pointer-events-none" />
           <input
             type="text"
             placeholder="Buscar por nome ou grupo muscular..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 bg-surface-2 border border-border-subtle rounded-2xl text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors text-sm shadow-elev-1"
+            className="w-full h-8 pl-10 pr-4 bg-surface-2 border border-border-subtle rounded-md text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors text-2xs shadow-sm"
           />
         </div>
 
         {/* Filtros por grupo muscular */}
-        <div className="mb-8 overflow-x-auto pb-2">
-          <div className="flex gap-2 min-w-max">
-            <button
-              onClick={() => setGrupoSelecionado("")}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
-                !grupoSelecionado ? "bg-brand text-text-on-brand shadow-glow-brand" : "bg-surface-2 text-text-secondary border border-border-subtle hover:text-brand hover:border-brand/30"
-              )}
-            >
-              Todos
-            </button>
-            {GRUPOS_MUSCULARES.map((grupo) => (
+        <div className="relative mb-6">
+          {/* Left fade mask */}
+          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-surface-0 to-transparent pointer-events-none z-10" />
+          {/* Right fade mask */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-surface-0 to-transparent pointer-events-none z-10" />
+          
+          <div className="overflow-x-auto pb-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-2">
+            <div className="flex gap-1 p-0.5 bg-surface-2 border border-border-subtle rounded-md h-8.5 w-max items-center">
               <button
-                key={grupo}
-                onClick={() => setGrupoSelecionado(grupo)}
+                onClick={() => setGrupoSelecionado("")}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
-                  grupoSelecionado === grupo ? "bg-brand text-text-on-brand shadow-glow-brand" : "bg-surface-2 text-text-secondary border border-border-subtle hover:text-brand hover:border-brand/30"
+                  "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
+                  !grupoSelecionado ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                {grupo}
+                Todos
               </button>
-            ))}
+              {GRUPOS_MUSCULARES.map((grupo) => (
+                <button
+                  key={grupo}
+                  onClick={() => setGrupoSelecionado(grupo)}
+                  className={cn(
+                    "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
+                    grupoSelecionado === grupo ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {grupo}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Erro */}
         {error && (
-          <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
+          <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
             <WarningCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
 
-        {/* Grid */}
+        {/* Lista Compacta de Exercícios */}
         {filtrados.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtrados.map((exercicio) => (
-              <div
-                key={exercicio.id}
-                className="group bg-surface-1 rounded-2xl border border-border-subtle p-5 shadow-elev-1 hover:shadow-elev-2 hover:border-brand/25 transition-all"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-text-primary uppercase tracking-tight group-hover:text-brand transition-colors truncate">
-                      {exercicio.nome}
-                    </h3>
-                    <p className="text-xs text-text-tertiary mt-1 uppercase tracking-caps">{exercicio.grupo_muscular}</p>
-                  </div>
-                  {exercicio.video_url && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-subtle border border-brand-border flex items-center justify-center text-brand ml-2">
-                      <Video className="w-3.5 h-3.5" />
+          <div className="flex flex-col gap-2">
+            {filtrados.map((exercicio) => {
+              return (
+                <div
+                  key={exercicio.id}
+                  className="group bg-surface-1 border border-border-subtle hover:border-brand/35 rounded-xl px-4 py-3 flex items-center justify-between gap-4 transition-all shadow-sm h-[72px]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Dumbbell Icon Thumbnail */}
+                    <div className="w-11 h-11 rounded-lg bg-surface-3 flex items-center justify-center text-text-tertiary border border-border-subtle shrink-0 select-none">
+                      <Barbell className="w-5 h-5" />
                     </div>
-                  )}
-                </div>
+                    {/* Nome & Subtext */}
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="text-xs md:text-sm font-bold text-text-primary group-hover:text-brand transition-colors truncate">
+                        {exercicio.nome}
+                      </h3>
+                      <span className="text-[10px] text-text-tertiary mt-0.5 truncate">
+                        {exercicio.grupo_muscular} {exercicio.equipamento ? `• ${exercicio.equipamento}` : ""} {exercicio.tipo_exercicio ? `• ${exercicio.tipo_exercicio}` : ""}
+                      </span>
+                    </div>
+                  </div>
 
-                {exercicio.descricao && (
-                  <p className="text-xs text-text-secondary mb-3 line-clamp-2">{exercicio.descricao}</p>
-                )}
-
-                <div className="flex gap-2 pt-3 border-t border-border-subtle">
-                  <button
-                    onClick={() => abrirModalEdicao(exercicio)}
-                    className="flex-grow h-9 flex items-center justify-center gap-1.5 bg-surface-3 border border-border-default rounded-lg text-brand text-xs font-medium hover:border-brand hover:bg-brand/5 transition-colors"
-                  >
-                    <PencilSimple className="w-3.5 h-3.5" /> Editar
-                  </button>
-                  <button
-                    onClick={() => deletarExercicio(exercicio.id)}
-                    disabled={deleting === exercicio.id}
-                    className="w-9 h-9 flex items-center justify-center bg-surface-3 border border-border-default rounded-lg text-text-tertiary hover:text-danger hover:border-danger/30 hover:bg-danger-subtle/10 transition-colors disabled:opacity-50 flex-shrink-0"
-                    title="Excluir exercício"
-                  >
-                    {deleting === exercicio.id ? (
-                      <CircleNotch className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-3 shrink-0">
+                    {/* Video Camera Icon */}
+                    {exercicio.video_url && (
+                      <span 
+                        className="text-text-secondary flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider border border-border-subtle bg-surface-2 px-2 py-0.5 rounded"
+                        title="Possui demonstração em vídeo"
+                      >
+                        <Video className="w-3.5 h-3.5 text-brand" weight="fill" />
+                        <span>Vídeo</span>
+                      </span>
                     )}
-                  </button>
+
+                    {/* Action buttons (discrete - visible on hover for desktop, always for mobile) */}
+                    <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => abrirModalEdicao(exercicio)}
+                        className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-brand transition-colors"
+                        title="Editar exercício"
+                      >
+                        <PencilSimple className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => deletarExercicio(exercicio.id)}
+                        disabled={deleting === exercicio.id}
+                        className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-danger transition-colors disabled:opacity-50"
+                        title="Excluir exercício"
+                      >
+                        {deleting === exercicio.id ? (
+                          <CircleNotch className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : exercicios.length === 0 ? (
           /* Entire Library Empty State */
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-lg mx-auto shadow-xl">
-            <Users size={48} className="text-brand/40 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-text-primary mb-2">Sua biblioteca AURON ainda está vazia</h3>
-            <p className="text-text-secondary text-sm mb-6 max-w-sm mx-auto">
+          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
+            <Users size={44} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-base font-bold text-text-primary mb-2">Sua biblioteca AURON ainda está vazia</h3>
+            <p className="text-text-secondary text-xs mb-6 max-w-sm mx-auto">
               Cadastre exercícios oficiais ou adicione exercícios personalizados para começar a montar fichas digitais com vídeos de execução.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo}>
+              <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} className="py-2 rounded-lg text-xs">
                 Cadastrar exercício
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => alert("Função de importação em desenvolvimento.")}>
+              <Button variant="secondary" size="sm" onClick={() => alert("Função de importação em desenvolvimento.")} className="py-2 rounded-lg text-xs">
                 Importar exercícios
               </Button>
             </div>

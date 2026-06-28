@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { extractStoragePath, getSignedStorageUrl, getPublicStorageUrl } from "@/lib/storageUrls";
 import UploadNutritionPlan from "@/app/components/UploadNutritionPlan";
@@ -30,7 +31,8 @@ import {
   Coins,
   CheckCircle,
   Handshake,
-  ArrowRight
+  ArrowRight,
+  FilePdf
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -130,6 +132,10 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [historicoTreinos, setHistoricoTreinos] = useState<any[]>([]);
   const [notasOriginais, setNotasOriginais] = useState<string>("");
   const [salvandoNotas, setSalvandoNotas] = useState(false);
+
+  // Nutrition States
+  const [digitalPlan, setDigitalPlan] = useState<any | null>(null);
+  const [digitalCheckins, setDigitalCheckins] = useState<any[]>([]);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
@@ -297,6 +303,39 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         .order("data_conclusao", { ascending: false })
         .limit(30);
       setHistoricoTreinos(historicoData || []);
+
+      // Load active digital plan for the student
+      const { data: activeDigPlan } = await supabaseClient
+        .from('nutrition_plans')
+        .select(`
+          *,
+          days:nutrition_plan_days (
+            id,
+            meals:nutrition_meals (
+              *
+            )
+          )
+        `)
+        .eq('student_id', id)
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      setDigitalPlan(activeDigPlan);
+
+      if (activeDigPlan) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const { data: checkins } = await supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('*')
+          .eq('student_id', id)
+          .gte('checkin_date', sevenDaysAgo.toISOString().slice(0, 10))
+          .order('checkin_date', { ascending: false });
+
+        setDigitalCheckins(checkins || []);
+      } else {
+        setDigitalCheckins([]);
+      }
 
       // Calcular dias para renovação
       if (prof?.data_expiracao) {
@@ -1017,71 +1056,236 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {/* ── NUTRIÇÃO TAB ── */}
         {activeTab === 'nutricao' && (
           <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-6 max-w-3xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-text-primary">Planos Nutricionais</h3>
-                <p className="text-2xs text-text-tertiary">Planejamentos alimentares prescritos em PDF</p>
+            
+            {/* Seção 1: Plano Digital Ativo */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">Acompanhamento Alimentar Digital</h3>
+                  <p className="text-2xs text-text-tertiary">Acompanhe a adesão em tempo real do aluno</p>
+                </div>
+                {!digitalPlan && (
+                  <Link href="/admin/nutricao/novo-plano">
+                    <Button variant="primary" size="sm" leftIcon={<AppleLogo size={14} />}>
+                      Prescrever Plano
+                    </Button>
+                  </Link>
+                )}
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                leftIcon={<UploadSimple className="w-4 h-4" />}
-                onClick={() => setUploadNutritionOpen(true)}
-              >
-                Enviar PDF
-              </Button>
+
+              {digitalPlan ? (
+                <div className="flex flex-col gap-4">
+                  {/* Card do plano digital */}
+                  <div className="p-4 bg-surface-2 border border-border-subtle rounded-xl flex flex-col gap-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-success/15 border border-success/30 text-success">
+                          Ativo
+                        </span>
+                        <h4 className="text-xs font-bold text-text-primary mt-2">{digitalPlan.name}</h4>
+                        <p className="text-[11px] text-text-secondary">Objetivo: {digitalPlan.goal || 'Hipertrofia'}</p>
+                      </div>
+                      
+                      <div className="flex gap-2 shrink-0">
+                        <Link href={`/admin/nutricao/planos/${digitalPlan.id}`}>
+                          <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-border-subtle">
+                            Ver Plano
+                          </Button>
+                        </Link>
+                        <Link href={`/admin/nutricao/planos/${digitalPlan.id}/editar`}>
+                          <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-border-subtle">
+                            Editar
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Metas */}
+                    {digitalPlan.calories_target && (
+                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-border-subtle/30 py-2.5">
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Calorias</span>
+                          <span className="text-text-primary font-bold">{digitalPlan.calories_target} kcal</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Proteínas</span>
+                          <span className="text-text-primary font-bold">{digitalPlan.protein_target || '—'}g</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Carbos</span>
+                          <span className="text-text-primary font-bold">{digitalPlan.carbs_target || '—'}g</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Gorduras</span>
+                          <span className="text-text-primary font-bold">{digitalPlan.fat_target || '—'}g</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Adherence metrics */}
+                    {(() => {
+                      const todayISO = new Date().toISOString().slice(0, 10);
+                      const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
+                      
+                      // Today adherence
+                      const todayCheckins = digitalCheckins.filter(c => c.checkin_date === todayISO);
+                      let todayWeightSum = 0;
+                      todayCheckins.forEach(c => {
+                        if (c.status === 'done' || c.status === 'substituted') todayWeightSum += 1.0;
+                        else if (c.status === 'partial') todayWeightSum += 0.5;
+                      });
+                      const todayAdherence = mealsCount > 0 ? Math.min(100, Math.round((todayWeightSum / mealsCount) * 100)) : 100;
+
+                      // 7 days adherence
+                      const expected7dMeals = mealsCount * 7;
+                      let total7dWeightSum = 0;
+                      digitalCheckins.forEach(c => {
+                        if (c.status === 'done' || c.status === 'substituted') total7dWeightSum += 1.0;
+                        else if (c.status === 'partial') total7dWeightSum += 0.5;
+                      });
+                      const weeklyAdherence = expected7dMeals > 0 ? Math.min(100, Math.round((total7dWeightSum / expected7dMeals) * 100)) : 100;
+
+                      // Last checkin
+                      const lastCheckin = digitalCheckins[0];
+                      const formattedLastCheckin = lastCheckin
+                        ? `${new Date(lastCheckin.checkin_date).toLocaleDateString('pt-BR')} (${lastCheckin.status.toUpperCase()})`
+                        : 'Nenhum recente';
+
+                      return (
+                        <div className="grid grid-cols-3 gap-4 text-xs font-medium">
+                          <div>
+                            <p className="text-[9px] uppercase font-bold text-text-tertiary mb-0.5">Adesão Hoje</p>
+                            <p className="text-text-primary font-bold font-mono">{todayAdherence}%</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase font-bold text-text-tertiary mb-0.5">Adesão 7 Dias</p>
+                            <p className="text-text-primary font-bold font-mono">{weeklyAdherence}%</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase font-bold text-text-tertiary mb-0.5">Último Registro</p>
+                            <p className="text-text-secondary truncate">{formattedLastCheckin}</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Refeições Recentes (Hoje) */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] uppercase font-bold text-text-tertiary tracking-wider mb-1">Adesão às refeições de hoje</span>
+                    {digitalPlan.days?.[0]?.meals?.map((meal: any) => {
+                      const todayISO = new Date().toISOString().slice(0, 10);
+                      const checkin = digitalCheckins.find(c => c.meal_id === meal.id && c.checkin_date === todayISO);
+                      const status = checkin?.status || 'pending';
+
+                      const statusLabels: Record<string, string> = {
+                        done: 'Feita',
+                        substituted: 'Substituída',
+                        partial: 'Parcial',
+                        skipped: 'Não Feita',
+                        pending: 'Pendente'
+                      };
+
+                      const statusColors: Record<string, string> = {
+                        done: 'bg-success/10 text-success border-success/20',
+                        substituted: 'bg-brand/10 text-brand border-brand/20',
+                        partial: 'bg-warning/10 text-warning border-warning/20',
+                        skipped: 'bg-danger/10 text-danger border-danger/20',
+                        pending: 'bg-surface-3 text-text-tertiary border-border-subtle'
+                      };
+
+                      return (
+                        <div key={meal.id} className="p-3 bg-surface-2/60 border border-border-subtle/50 rounded-lg flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-text-primary leading-tight truncate">{meal.title}</p>
+                            {meal.time_suggestion && (
+                              <span className="text-[9px] text-text-disabled font-mono flex items-center gap-1 mt-0.5">
+                                <Clock size={10} /> {meal.time_suggestion.slice(0, 5)}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <span className={cn(
+                            "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border",
+                            statusColors[status]
+                          )}>
+                            {statusLabels[status]}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center flex flex-col items-center justify-center gap-2 bg-surface-2 border border-dashed border-border-subtle rounded-xl">
+                  <AppleLogo size={32} className="text-text-disabled" />
+                  <p className="text-xs text-text-tertiary font-semibold">Nenhum plano alimentar digital ativo para este aluno.</p>
+                  <p className="text-[10px] text-text-disabled max-w-xs leading-relaxed">Prescreva uma rotina digital para habilitar o acompanhamento automático de macros e adesão semanal.</p>
+                </div>
+              )}
             </div>
 
-            {planosAlimentares.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {planosAlimentares.map((p) => (
-                  <div key={p.id} className="flex flex-col justify-between p-4 rounded-xl bg-surface-2 border border-border-subtle hover:border-brand/20 transition-all">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
-                        <AppleLogo size={16} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-text-primary truncate">{p.nome_arquivo}</p>
-                        {p.descricao && <p className="text-[11px] text-text-secondary mt-0.5 truncate">{p.descricao}</p>}
-                        <span className="text-[10px] text-text-tertiary mt-1 block">
-                          Envio: {new Date(p.criado_em).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-border-subtle/50">
-                      <a
-                        href={p.pdf_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-brand hover:underline font-semibold flex items-center gap-1"
-                      >
-                        Abrir PDF <ArrowRight size={10} />
-                      </a>
-                      <button
-                        onClick={() => handleDeleteNutritionPlan(p.id, p.original_path || p.url_pdf || p.pdf_url)}
-                        className="text-text-disabled hover:text-danger transition-colors p-1"
-                      >
-                        <Trash size={12} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-16 text-center flex flex-col items-center justify-center gap-3 bg-surface-2 border border-dashed border-border-subtle rounded-xl">
-                <AppleLogo size={36} className="text-text-disabled" />
-                <p className="text-xs text-text-tertiary">Nenhum planejamento alimentar prescrito ainda.</p>
+            {/* Seção 2: Documentos em PDF */}
+            <div className="border-t border-border-subtle/40 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">Histórico de Planos PDF</h3>
+                  <p className="text-2xs text-text-tertiary">Planejamentos alimentares enviados em arquivo PDF</p>
+                </div>
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   size="sm"
                   leftIcon={<UploadSimple className="w-4 h-4" />}
                   onClick={() => setUploadNutritionOpen(true)}
                 >
-                  Enviar primeiro PDF
+                  Enviar PDF
                 </Button>
               </div>
-            )}
+
+              {planosAlimentares.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {planosAlimentares.map((p) => (
+                    <div key={p.id} className="flex flex-col justify-between p-4 rounded-xl bg-surface-2 border border-border-subtle hover:border-brand/20 transition-all">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                          <AppleLogo size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-text-primary truncate">{p.nome_arquivo}</p>
+                          {p.descricao && <p className="text-[11px] text-text-secondary mt-0.5 truncate">{p.descricao}</p>}
+                          <span className="text-[10px] text-text-tertiary mt-1 block font-mono">
+                            Envio: {new Date(p.criado_em).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-border-subtle/50">
+                        <a
+                          href={p.pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-brand hover:underline font-semibold flex items-center gap-1"
+                        >
+                          Abrir PDF <ArrowRight size={10} />
+                        </a>
+                        <button
+                          onClick={() => handleDeleteNutritionPlan(p.id, p.original_path || p.url_pdf || p.pdf_url)}
+                          className="text-text-disabled hover:text-danger transition-colors p-1 cursor-pointer"
+                        >
+                          <Trash size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-10 text-center flex flex-col items-center justify-center gap-3 bg-surface-2 border border-dashed border-border-subtle rounded-xl">
+                  <FilePdf size={28} className="text-text-disabled" />
+                  <p className="text-xs text-text-tertiary">Nenhum plano alimentar em PDF enviado.</p>
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 

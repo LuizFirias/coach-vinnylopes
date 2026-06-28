@@ -13,51 +13,51 @@ const config: Config = {
     extend: {
       colors: {
         surface: {
-          0: '#070B14',
-          1: '#0B1020',
-          2: '#111827',
-          3: '#141B2D',
-          4: '#182033',
+          0: '#09090B',   // base bg
+          1: '#111113',   // surface card
+          2: '#18181B',   // elevated card / input bg
+          3: '#1F1F23',   // overlay bg (modals)
+          4: '#27272A',
         },
         text: {
-          primary: '#F5F7FA',
-          secondary: '#9CA3AF',
-          tertiary: '#6B7280',
-          disabled: '#4B5563',
-          'on-brand': '#FFFFFF',
+          primary: '#FAFAFA',
+          secondary: '#A1A1AA',
+          tertiary: '#71717A',
+          disabled: '#52525B',
+          'on-brand': '#FAFAFA',
         },
         brand: {
           DEFAULT: '#2563EB',
           primary: '#2563EB',
           hover: '#1D4ED8',
           pressed: '#1E40AF',
-          subtle: 'rgba(37, 99, 235, 0.12)',
+          subtle: 'rgba(37, 99, 235, 0.10)',
           border: 'rgba(37, 99, 235, 0.36)',
         },
         success: {
           DEFAULT: '#22C55E',
-          subtle: 'rgba(34, 197, 94, 0.12)',
-          border: 'rgba(34, 197, 94, 0.36)',
+          subtle: 'rgba(34, 197, 94, 0.10)',
+          border: 'rgba(34, 197, 94, 0.20)',
         },
         warning: {
           DEFAULT: '#F59E0B',
-          subtle: 'rgba(245, 158, 11, 0.12)',
-          border: 'rgba(245, 158, 11, 0.36)',
+          subtle: 'rgba(245, 158, 11, 0.10)',
+          border: 'rgba(245, 158, 11, 0.20)',
         },
         danger: {
           DEFAULT: '#EF4444',
-          subtle: 'rgba(239, 68, 68, 0.12)',
-          border: 'rgba(239, 68, 68, 0.36)',
+          subtle: 'rgba(239, 68, 68, 0.10)',
+          border: 'rgba(239, 68, 68, 0.20)',
         },
         info: {
           DEFAULT: '#38BDF8',
-          subtle: 'rgba(56, 189, 248, 0.12)',
-          border: 'rgba(56, 189, 248, 0.36)',
+          subtle: 'rgba(56, 189, 248, 0.10)',
+          border: 'rgba(56, 189, 248, 0.20)',
         },
         border: {
-          subtle: 'rgba(255, 255, 255, 0.06)',
-          DEFAULT: 'rgba(255, 255, 255, 0.10)',
-          strong: 'rgba(255, 255, 255, 0.18)',
+          subtle: '#27272A',
+          DEFAULT: '#3F3F46',
+          strong: '#52525B',
         },
       },
       fontFamily: {
@@ -102,10 +102,10 @@ const config: Config = {
         '16': '64px',
       },
       borderRadius: {
-        sm:   '6px',
-        md:   '10px',
-        lg:   '14px',
-        xl:   '20px',
+        sm:   '4px',
+        md:   '6px',
+        lg:   '8px',
+        xl:   '10px',
         full: '9999px',
       },
       boxShadow: {

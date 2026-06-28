@@ -90,15 +90,15 @@ export default function AlunoTreinosPage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-surface-0 pb-28 lg:pl-28">
+      <div className="min-h-screen bg-surface-0 pb-24">
 
         {/* Header */}
-        <div className="px-4 pt-8 pb-5 max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Minhas Rotinas</h1>
+        <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
+          <h1 className="text-xl font-bold text-text-primary tracking-tight">Minhas Rotinas</h1>
           <p className="text-xs text-text-tertiary mt-0.5">Seu cronograma técnico de treinamento</p>
         </div>
 
-        <div className="px-4 max-w-2xl mx-auto flex flex-col gap-5">
+        <div className="px-4 max-w-md mx-auto flex flex-col gap-4">
 
           {error && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
@@ -109,8 +109,7 @@ export default function AlunoTreinosPage() {
           {/* Fichas interativas */}
           {fichas.length > 0 && (
             <section>
-              <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3 flex items-center gap-2">
-                <span className="w-1 h-4 bg-brand rounded-full inline-block" />
+              <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-secondary mb-2">
                 Rotinas Interativas
               </p>
               <div className="flex flex-col gap-2">
@@ -123,19 +122,19 @@ export default function AlunoTreinosPage() {
                     <Link
                       key={ficha.id}
                       href={`/aluno/treinos/${ficha.id}/executar`}
-                      className="w-full bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/30 rounded-2xl p-4 flex items-start gap-3.5 transition-all active:scale-[0.99] group"
+                      className="w-full bg-surface-1 border border-border-subtle shadow-sm hover:border-brand/30 rounded-lg px-3 py-2 flex items-start gap-2 transition-all active:scale-[0.99] group"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Barbell size={16} className="text-brand" />
+                      <div className="w-6 h-6 rounded-md bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Barbell size={12} className="text-brand" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
-                          <p className="text-sm font-bold text-text-primary uppercase tracking-tight truncate pr-2">
+                          <p className="text-xs font-bold text-text-primary uppercase tracking-tight truncate pr-2">
                             {ficha.nome_rotina}
                           </p>
-                          <ArrowRight size={15} className="text-text-tertiary shrink-0 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
+                          <ArrowRight size={13} className="text-text-tertiary shrink-0 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
                         </div>
-                        <p className="text-2xs text-text-tertiary mb-2">
+                        <p className="text-[10px] text-text-tertiary mb-1">
                           {exercicios.length > 0
                             ? `${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''}`
                             : 'Sem exercícios'}
@@ -143,14 +142,14 @@ export default function AlunoTreinosPage() {
                           {new Date(ficha.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                         </p>
                         {exercicios.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-1">
                             {exercicios.slice(0, 3).map((nome, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-surface-2 rounded-lg text-2xs text-text-secondary">
-                                {nome.length > 14 ? nome.slice(0, 14) + '…' : nome}
+                              <span key={i} className="inline-flex items-center px-2 py-0.5 bg-surface-2 rounded-md text-[9px] font-medium text-text-tertiary leading-none">
+                                {nome.length > 11 ? nome.slice(0, 11) + '…' : nome}
                               </span>
                             ))}
                             {exercicios.length > 3 && (
-                              <span className="px-2 py-0.5 text-2xs text-text-disabled">+{exercicios.length - 3}</span>
+                              <span className="inline-flex items-center px-1 py-0.5 text-[9px] font-bold text-text-disabled leading-none">+{exercicios.length - 3}</span>
                             )}
                           </div>
                         )}
@@ -177,21 +176,21 @@ export default function AlunoTreinosPage() {
                       if (pdf.aluno_id !== userId) return;
                       setSelectedPdf(pdf);
                     }}
-                    className="w-full text-left bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 p-4 rounded-2xl transition-all active:scale-[0.99] flex items-center gap-3.5 group"
+                    className="w-full text-left bg-surface-1 border border-border-subtle shadow-sm hover:border-brand/20 p-3 rounded-xl transition-all active:scale-[0.99] flex items-center gap-3 group"
                   >
-                    <div className="w-11 h-11 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary shrink-0 group-hover:border-brand/30 transition-colors">
-                      <FileText size={20} />
+                    <div className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary shrink-0 group-hover:border-brand/30 transition-colors">
+                      <FileText size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-text-primary truncate group-hover:text-brand transition-colors">
+                      <p className="text-xs font-bold text-text-primary truncate group-hover:text-brand transition-colors">
                         {pdf.nome_arquivo.replace('.pdf', '')}
                       </p>
-                      <p className="text-xs text-text-tertiary mt-0.5">
+                      <p className="text-[10px] text-text-tertiary mt-0.5">
                         Enviado em {new Date(pdf.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
-                    <div className="w-7 h-7 rounded-xl bg-surface-3 group-hover:bg-surface-2 flex items-center justify-center text-text-tertiary shrink-0 transition-colors">
-                      <MagnifyingGlass size={13} />
+                    <div className="w-6 h-6 rounded-lg bg-surface-3 group-hover:bg-surface-2 flex items-center justify-center text-text-tertiary shrink-0 transition-colors">
+                      <MagnifyingGlass size={12} />
                     </div>
                   </button>
                 ))}

@@ -143,9 +143,9 @@ export default function RankingPage() {
               </p>
             </div>
             {minha != null && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-brand/10 border border-brand/20 rounded-full">
-                <span className="text-xs">⚡</span>
-                <span className="text-xs font-bold text-brand">{pontos} pts</span>
+              <div className="flex items-center gap-1 px-2.5 py-1 bg-brand/10 border border-brand/20 rounded-md">
+                <Lightning size={12} weight="fill" className="text-brand" />
+                <span className="text-xs font-bold text-brand font-mono tabular-nums">{pontos} pts</span>
               </div>
             )}
           </div>
@@ -226,8 +226,11 @@ export default function RankingPage() {
                       isMe && 'bg-brand/8 border-l-2 border-l-brand'
                     )}>
                       {/* Posição */}
-                      <span className="w-8 text-center text-sm font-bold text-text-tertiary flex-shrink-0">
-                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                      <span className={cn(
+                        'w-8 text-center text-sm font-bold flex-shrink-0 font-mono',
+                        idx < 3 ? 'text-brand' : 'text-text-tertiary'
+                      )}>
+                        #{idx + 1}
                       </span>
 
                       {/* Avatar */}
@@ -243,7 +246,10 @@ export default function RankingPage() {
                           {isMe ? 'Você' : (entry.coaching_reference ?? entry.full_name?.split(' ')[0] ?? 'Atleta')}
                         </p>
                         {entry.streak > 0 && (
-                          <p className="text-2xs text-text-tertiary">🔥 {entry.streak} dias</p>
+                          <div className="flex items-center gap-1 text-[9px] text-brand font-bold mt-0.5 uppercase tracking-wider">
+                            <span className="w-1 h-1 rounded-full bg-brand animate-pulse" />
+                            <span>{entry.streak} dias ativos</span>
+                          </div>
                         )}
                       </div>
 

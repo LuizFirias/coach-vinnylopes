@@ -101,7 +101,7 @@ export default function AlunoDashboardPage() {
       if (profile?.coach_id) setCoachId(profile.coach_id);
 
       if (profile?.role === "coach" || profile?.role === "super_admin") {
-        router.push("/admin/alunos");
+        router.push("/admin/dashboard");
         return;
       }
       if (profile?.role === "aluno" && !profile?.first_access_completed) {
@@ -245,43 +245,104 @@ export default function AlunoDashboardPage() {
       const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
       const todayISO = new Date().toISOString().slice(0, 10);
 
-      const { data: planoAtual } = await supabaseClient
-        .from('plano_alimentar_pdf')
-        .select('id')
-        .eq('aluno_id', uid)
-        .order('criado_em', { ascending: false })
-        .limit(1)
+      // 1. Verificar plano digital ativo primeiro
+      const { data: activePlan } = await supabaseClient
+        .from('nutrition_plans')
+        .select(`
+          id,
+          name,
+          goal,
+          status,
+          days:nutrition_plan_days (
+            id,
+            day_index,
+            meals:nutrition_meals (
+              id,
+              title,
+              time_suggestion,
+              meal_type,
+              sort_order
+            )
+          )
+        `)
+        .eq('student_id', uid)
+        .eq('status', 'active')
         .maybeSingle();
 
-      if (planoAtual) {
-        const { data: refeicoes } = await supabaseClient
-          .from('refeicoes_plano')
-          .select('id, nome, horario_sugerido')
-          .eq('plano_id', planoAtual.id)
-          .not('horario_sugerido', 'is', null);
+      let foundMealNow = false;
 
-        const refAgora = (refeicoes ?? []).find((r: any) => {
-          if (!r.horario_sugerido) return false;
-          const [h, m] = r.horario_sugerido.split(':').map(Number);
+      if (activePlan?.days?.[0]?.meals) {
+        const mealsList = activePlan.days[0].meals;
+        const { data: todayCheckins } = await supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('meal_id, status')
+          .eq('student_id', uid)
+          .eq('checkin_date', todayISO);
+
+        const checkedMealIds = new Set(todayCheckins?.map(c => c.meal_id) || []);
+
+        const refAgora = mealsList.find((r: any) => {
+          if (!r.time_suggestion) return false;
+          const [h, m] = r.time_suggestion.split(':').map(Number);
           const minRef = h * 60 + m;
           return Math.abs(minutosAgora - minRef) <= 60;
         });
 
         if (refAgora) {
-          const { data: consumo } = await supabaseClient
-            .from('consumos_refeicao')
-            .select('id')
-            .eq('aluno_id', uid)
-            .eq('refeicao_id', refAgora.id)
-            .eq('data_consumo', todayISO)
-            .maybeSingle();
-
           setRefeicaoAgora({
             id: refAgora.id,
-            nome: refAgora.nome,
-            horario: refAgora.horario_sugerido.slice(0, 5),
-            consumida: !!consumo,
+            nome: refAgora.title,
+            horario: refAgora.time_suggestion.slice(0, 5),
+            consumida: checkedMealIds.has(refAgora.id),
+            isDigital: true,
+            planId: activePlan.id
+          } as any);
+          foundMealNow = true;
+        }
+      }
+
+      // 2. Fallback para plano PDF
+      if (!foundMealNow) {
+        const { data: planoAtual } = await supabaseClient
+          .from('plano_alimentar_pdf')
+          .select('id')
+          .eq('aluno_id', uid)
+          .order('criado_em', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (planoAtual) {
+          const { data: refeicoes } = await supabaseClient
+            .from('refeicoes_plano')
+            .select('id, nome, horario_sugerido')
+            .eq('plano_id', planoAtual.id)
+            .not('horario_sugerido', 'is', null);
+
+          const refAgora = (refeicoes ?? []).find((r: any) => {
+            if (!r.horario_sugerido) return false;
+            const [h, m] = r.horario_sugerido.split(':').map(Number);
+            const minRef = h * 60 + m;
+            return Math.abs(minutosAgora - minRef) <= 60;
           });
+
+          if (refAgora) {
+            const { data: consumo } = await supabaseClient
+              .from('consumos_refeicao')
+              .select('id')
+              .eq('aluno_id', uid)
+              .eq('refeicao_id', refAgora.id)
+              .eq('data_consumo', todayISO)
+              .maybeSingle();
+
+            setRefeicaoAgora({
+              id: refAgora.id,
+              nome: refAgora.nome,
+              horario: refAgora.horario_sugerido.slice(0, 5),
+              consumida: !!consumo,
+              isDigital: false,
+              planId: planoAtual.id
+            } as any);
+          }
         }
       }
 
@@ -333,8 +394,8 @@ export default function AlunoDashboardPage() {
   const volumeDeltaPct = kpis?.volume_delta_pct ?? null;
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
-      <div className="max-w-2xl mx-auto flex flex-col gap-5">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6 pb-24">
+      <div className="max-w-md mx-auto flex flex-col gap-4">
 
         {/* ── 1. Hero ── */}
         <div>
@@ -418,54 +479,69 @@ export default function AlunoDashboardPage() {
             consumida={refeicaoAgora.consumida}
             onMarcar={async () => {
               if (!userId || refeicaoAgora.consumida) return;
-              await supabaseClient.from('consumos_refeicao').insert({
-                aluno_id: userId,
-                refeicao_id: refeicaoAgora.id,
-                data_consumo: new Date().toISOString().slice(0, 10),
-              });
+              const todayISO = new Date().toISOString().slice(0, 10);
+              
+              if ((refeicaoAgora as any).isDigital) {
+                await supabaseClient
+                  .from('nutrition_meal_checkins')
+                  .upsert({
+                    student_id: userId,
+                    plan_id: (refeicaoAgora as any).planId,
+                    meal_id: refeicaoAgora.id,
+                    checkin_date: todayISO,
+                    status: 'done',
+                    created_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'student_id,meal_id,checkin_date'
+                  });
+              } else {
+                await supabaseClient.from('consumos_refeicao').insert({
+                  aluno_id: userId,
+                  refeicao_id: refeicaoAgora.id,
+                  data_consumo: todayISO,
+                });
+              }
               setRefeicaoAgora({ ...refeicaoAgora, consumida: true });
             }}
           />
         )}
 
-        {/* ── 6. KPIs — Sequência + Volume ── */}
-        <div className="flex flex-col gap-2.5">
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-4 shadow-elev-1">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
-              <Fire className="w-5 h-5 text-brand" />
+        {/* ── 6. KPIs — Sequência + Volume (Lado a Lado) ── */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-surface-1 border border-border-subtle rounded-xl p-3 flex items-center gap-2.5 shadow-sm">
+            <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
+              <Fire className="w-4 h-4 text-brand" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Sequência</span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="font-mono tabular-nums font-bold text-3xl text-text-primary leading-none">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Sequência</span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono tabular-nums font-bold text-lg text-text-primary leading-none">
                   {kpis?.streak_atual ?? '—'}
                 </span>
-                <span className="text-sm text-text-secondary">
+                <span className="text-[10px] text-text-secondary">
                   {(kpis?.streak_atual ?? 0) === 1 ? 'dia' : 'dias'}
                 </span>
               </div>
             </div>
-            <span className="text-xs text-text-tertiary flex-shrink-0">
-              {(kpis?.streak_atual ?? 0) === 0 ? 'Comece hoje' : 'Sem falhas'}
-            </span>
           </div>
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-4 shadow-elev-1">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
-              <Lightning className="w-5 h-5 text-brand" />
+
+          <div className="bg-surface-1 border border-border-subtle rounded-xl p-3 flex items-center gap-2.5 shadow-sm">
+            <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
+              <Lightning className="w-4 h-4 text-brand" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Volume semanal</span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="font-mono tabular-nums font-bold text-3xl text-text-primary leading-none">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Volume</span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-mono tabular-nums font-bold text-lg text-text-primary leading-none">
                   {volumeValue}
                 </span>
-                <span className="text-sm text-text-secondary">{volumeUnit}</span>
+                <span className="text-[10px] text-text-secondary">{volumeUnit}</span>
               </div>
             </div>
             {volumeDeltaPct != null && volumeDeltaPct !== 0 && (
               <span className={cn(
-                'text-xs font-semibold flex-shrink-0 px-2 py-1 rounded-lg',
-                volumeDeltaPct > 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
+                'text-[8px] font-bold shrink-0 px-1 py-0.5 rounded',
+                volumeDeltaPct > 0 ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'
               )}>
                 {volumeDeltaPct > 0 ? '+' : ''}{volumeDeltaPct.toFixed(0)}%
               </span>
@@ -474,30 +550,30 @@ export default function AlunoDashboardPage() {
         </div>
 
         {/* ── 7. Agenda semanal (sempre aberta) ── */}
-        <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden shadow-elev-1">
-          <div className="px-4 py-2.5 bg-surface-2 border-b border-border-subtle flex items-center gap-2">
+        <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+          <div className="px-3.5 py-2 bg-surface-2 border-b border-border-subtle flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-text-tertiary" />
-            <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Agenda semanal</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Agenda semanal</span>
           </div>
-          <div className="px-4 pb-4 pt-3">
+          <div className="px-3 pb-3 pt-2.5">
             <WeeklyAgenda />
           </div>
         </div>
 
-        {/* ── 8. CTAs principais ── */}
-        <div className="flex flex-col gap-2">
+        {/* ── 8. CTAs principais (Lado a Lado) ── */}
+        <div className="grid grid-cols-2 gap-3">
           <Link
             href="/aluno/treinos"
-            className="w-full h-13 bg-brand text-text-on-brand rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 shadow-glow-brand hover:opacity-90 active:scale-[0.98] transition-all"
+            className="w-full h-11 bg-brand text-text-on-brand rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-glow-brand hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Barbell className="w-4 h-4" />
+            <Barbell className="w-3.5 h-3.5" />
             Iniciar treino
           </Link>
           <Link
             href="/aluno/medidas"
-            className="w-full h-13 bg-transparent border border-border-strong text-text-primary rounded-2xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-surface-2 active:scale-[0.98] transition-all"
+            className="w-full h-11 bg-transparent border border-border-strong text-text-primary rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-surface-2 active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Ruler className="w-4 h-4" />
+            <Ruler className="w-3.5 h-3.5" />
             Registrar evolução
           </Link>
         </div>

@@ -108,6 +108,11 @@ export default function AdminDashboard() {
   const [atividades, setAtividades] = useState<RecentActivity[]>([]);
   const [chartData, setChartData] = useState<{ mes: string; receita: number; futuro: boolean }[]>([]);
   const [alunosPorPlano, setAlunosPorPlano] = useState<{ name: string; count: number }[]>([]);
+  // Nutrition States
+  const [planoDigitalAtivos, setPlanoDigitalAtivos] = useState(0);
+  const [adesaoAlimentar, setAdesaoAlimentar] = useState(0);
+  const [alunosSemPlanoDig, setAlunosSemPlanoDig] = useState(0);
+  const [alunosBaixaAdesaoDig, setAlunosBaixaAdesaoDig] = useState(0);
 
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
@@ -128,7 +133,6 @@ export default function AdminDashboard() {
       const alunosIds = (coachAlunosData || []).map(ca => ca.aluno_id);
       
       if (alunosIds.length === 0) {
-        // Safe defaults for empty state
         setTotalAlunos(0);
         setAlunosAtivos(0);
         setLoading(false);
@@ -148,11 +152,38 @@ export default function AdminDashboard() {
       setTotalAlunos(rows.length);
       setSaudeAlunos(rows);
 
+      // 2b. Fetch active digital nutrition plans and day 1 meals count
+      const { data: activePlans } = await supabaseClient
+        .from('nutrition_plans')
+        .select(`
+          id,
+          student_id,
+          name,
+          days:nutrition_plan_days (
+            id,
+            meals:nutrition_meals (
+              id
+            )
+          )
+        `)
+        .in('student_id', alunosIds)
+        .eq('status', 'active');
+
       // Dates
       const today = new Date();
       const seteDiasAtras = new Date();
       seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
       const seteDiasAtrasIso = seteDiasAtras.toISOString();
+
+      // Fetch meal check-ins in the last 7 days
+      const activePlanIds = activePlans?.map(p => p.id) || [];
+      const { data: checkins7d } = activePlanIds.length > 0
+        ? await supabaseClient
+            .from('nutrition_meal_checkins')
+            .select('plan_id, meal_id, status, checkin_date, student_id')
+            .in('plan_id', activePlanIds)
+            .gte('checkin_date', seteDiasAtrasIso.slice(0, 10))
+        : { data: [] };
 
       // 3. Compute Financial and Operation Base Metrics
       let tempReceitaMes = 0;
@@ -162,6 +193,12 @@ export default function AdminDashboard() {
       let tempRiscoCount = 0;
 
       const tempPrioridades: PriorityAction[] = [];
+
+      // Nutrition adherence calculations variables
+      let totalExpectedMeals = 0;
+      let totalWeighedCompletedMeals = 0;
+      let tempLowAdherenceCount = 0;
+      const plansMap = new Map(activePlans?.map(p => [p.student_id, p]));
 
       rows.forEach((r) => {
         const valor = r.valor_plano || 0;
@@ -244,6 +281,80 @@ export default function AdminDashboard() {
             link: `/admin/aluno/${r.id}`
           });
         }
+
+        // Digital Nutrition adherence metrics calculations per student
+        const studentPlan: any = plansMap.get(r.id);
+        if (studentPlan) {
+          const mealsCount = studentPlan.days?.[0]?.meals?.length || 0;
+          if (mealsCount > 0) {
+            const expectedMeals = mealsCount * 7;
+            totalExpectedMeals += expectedMeals;
+
+            const studentCheckins = (checkins7d || []).filter(c => c.student_id === r.id);
+            let weightSum = 0;
+            studentCheckins.forEach(c => {
+              if (c.status === 'done' || c.status === 'substituted') weightSum += 1.0;
+              else if (c.status === 'partial') weightSum += 0.5;
+            });
+            totalWeighedCompletedMeals += weightSum;
+
+            const studentAdherence = Math.min(100, Math.round((weightSum / expectedMeals) * 100));
+
+            // Alerts based on adherence
+            if (studentAdherence < 60) {
+              tempLowAdherenceCount++;
+              tempPrioridades.push({
+                id: `low-adherence-${r.id}`,
+                aluno_id: r.id,
+                nome: r.coaching_reference || r.full_name || "Atleta",
+                tipo: 'warning',
+                descricao: `Adesão à dieta baixa: ${studentAdherence}%`,
+                acao: 'Ver Plano',
+                link: `/admin/nutricao/planos/${studentPlan.id}`
+              });
+            }
+
+            // Sem marcar refeições há 3 dias check
+            if (studentCheckins.length > 0) {
+              const dates = studentCheckins.map(c => new Date(c.checkin_date).getTime());
+              const lastCheckinTime = Math.max(...dates);
+              const diffDays = Math.floor((today.getTime() - lastCheckinTime) / (1000 * 60 * 60 * 24));
+              if (diffDays >= 3) {
+                tempPrioridades.push({
+                  id: `no-diet-checkin-${r.id}`,
+                  aluno_id: r.id,
+                  nome: r.coaching_reference || r.full_name || "Atleta",
+                  tipo: 'danger',
+                  descricao: `Sem registrar dieta há ${diffDays} dias`,
+                  acao: 'Cobrar Check-in',
+                  link: `/admin/aluno/${r.id}`
+                });
+              }
+            } else {
+              // No nutrition check-in at all in 7 days
+              tempPrioridades.push({
+                id: `no-diet-checkin-at-all-${r.id}`,
+                aluno_id: r.id,
+                nome: r.coaching_reference || r.full_name || "Atleta",
+                tipo: 'warning',
+                descricao: `Sem check-in de dieta na semana`,
+                acao: 'Cobrar Check-in',
+                link: `/admin/aluno/${r.id}`
+              });
+            }
+          }
+        } else if (isActive) {
+          // Student is active but has no digital plan
+          tempPrioridades.push({
+            id: `nodigitalplan-${r.id}`,
+            aluno_id: r.id,
+            nome: r.coaching_reference || r.full_name || "Atleta",
+            tipo: 'info',
+            descricao: `Sem plano de nutrição digital`,
+            acao: 'Criar Plano',
+            link: `/admin/nutricao/novo-plano`
+          });
+        }
       });
 
       setReceitaMes(tempReceitaMes);
@@ -252,6 +363,16 @@ export default function AdminDashboard() {
       setPrevisao(tempReceitaMes + tempPendencias);
       setAlunosAtivos(tempActiveCount);
       setAlunosEmRisco(tempRiscoCount);
+
+      // Nutrition dashboard stats state updates
+      setPlanoDigitalAtivos(activePlans?.length || 0);
+      setAlunosSemPlanoDig(rows.length - (activePlans?.length || 0));
+      setAlunosBaixaAdesaoDig(tempLowAdherenceCount);
+
+      const calculatedAdesaoDig = totalExpectedMeals > 0 
+        ? Math.min(100, Math.round((totalWeighedCompletedMeals / totalExpectedMeals) * 100))
+        : 0;
+      setAdesaoAlimentar(calculatedAdesaoDig);
 
       // Plan counts distribution
       const counts = rows.reduce<Record<string, number>>((acc, r) => {
@@ -489,81 +610,90 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary font-display uppercase">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary font-display">
               Dashboard
             </h1>
-            <p className="text-sm text-text-secondary mt-1">
+            <p className="text-xs text-text-secondary mt-0.5">
               Visão geral da sua consultoria
             </p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/admin/alunos/novo" className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10">
-              <Plus size={14} weight="bold" /> Adicionar aluno
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/admin/alunos/novo" className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10">
+              <Plus size={13} weight="bold" /> Adicionar aluno
             </Link>
-            <Link href="/admin/treinos/nova-ficha" className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95">
+            <Link href="/admin/treinos/nova-ficha" className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95">
               Criar Treino
             </Link>
-            <Link href="/admin/relatorios" className="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95">
-              <ChartBar size={14} /> Relatórios
+            <Link href="/admin/relatorios" className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95">
+              <ChartBar size={13} /> Relatórios
             </Link>
           </div>
         </div>
 
         {totalAlunos === 0 ? (
           /* Empty State Dashboard */
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-lg mx-auto mt-12 shadow-xl">
-            <Users size={48} className="text-brand/40 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
-            <p className="text-text-secondary text-sm mb-6">
+          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">
+            <Users size={44} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
+            <p className="text-text-secondary text-xs mb-6">
               Adicione seu primeiro aluno para começar a prescrever treinos, acompanhar adesão e gerenciar cobranças.
             </p>
-            <Link href="/admin/alunos/novo" className="btn-primary inline-flex items-center gap-2 justify-center max-w-xs mx-auto">
-              <Plus size={16} weight="bold" /> Cadastrar Aluno
+            <Link href="/admin/alunos/novo" className="btn-primary inline-flex items-center gap-2 justify-center max-w-xs mx-auto text-xs py-2 rounded-lg">
+              <Plus size={14} weight="bold" /> Cadastrar Aluno
             </Link>
           </div>
         ) : (
           /* Dashboard Layout */
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6">
             
             {/* Bloco 1 — Métricas Financeiras */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Receipt size={16} className="text-brand" />
-                <h2 className="text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Faturamento & Prospecção</h2>
-              </div>
+              <h2 className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase border-t border-border-subtle/50 pt-3 mt-1 mb-2.5 block">Faturamento & Prospecção</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
                 {/* Receita do mês */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Receita do Mês</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{fmt(receitaMes)}</div>
-                  <div className="text-[10px] text-success mt-2 flex items-center gap-1 font-semibold">
-                    <TrendUp size={12} /> +12% vs mês anterior
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-brand" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Receita do Mês</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1 leading-none">{fmt(receitaMes)}</div>
+                  <div className="text-[9px] text-success flex items-center gap-0.5 font-semibold mt-1">
+                    <TrendUp size={11} /> +12% vs anterior
                   </div>
                 </div>
 
                 {/* MRR ativo */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">MRR Ativo</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{fmt(mrr)}</div>
-                  <span className="text-[10px] text-text-tertiary mt-2 block">Receita recorrente vigente</span>
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">MRR Ativo</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1 leading-none">{fmt(mrr)}</div>
+                  <span className="text-[9px] text-text-disabled mt-1 leading-none">Recorrência mensal ativa</span>
                 </div>
 
                 {/* Pendências */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Pendências</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{fmt(pendencias)}</div>
-                  <span className="text-[10px] text-danger mt-2 block font-medium">Alunos inadimplentes ou vencidos</span>
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-danger" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Pendências</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1 leading-none">{fmt(pendencias)}</div>
+                  <span className="text-[9px] text-danger font-medium mt-1 leading-none">Contas atrasadas ou vencidas</span>
                 </div>
 
                 {/* Previsão do mês */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Previsão do Mês</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{fmt(previsao)}</div>
-                  <span className="text-[10px] text-text-tertiary mt-2 block">Baseado em planos ativos</span>
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-text-disabled" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Previsão do Mês</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1 leading-none">{fmt(previsao)}</div>
+                  <span className="text-[9px] text-text-disabled mt-1 leading-none">Projeção por planos ativos</span>
                 </div>
 
               </div>
@@ -571,121 +701,169 @@ export default function AdminDashboard() {
 
             {/* Bloco 2 — Saúde da Operação */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Barbell size={16} className="text-brand" />
-                <h2 className="text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Saúde da Operação</h2>
-              </div>
+              <h2 className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase border-t border-border-subtle/50 pt-3 mt-1 mb-2.5 block">Saúde da Operação</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
                 {/* Alunos ativos */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Alunos Ativos</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{alunosAtivos}</div>
-                  <span className="text-[10px] text-text-tertiary mt-2 block">Alunos pagantes vigentes</span>
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Alunos Ativos</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{alunosAtivos}</div>
+                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">Perfis pagantes vigentes</span>
                 </div>
 
                 {/* Adesão média */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Adesão Média</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{adesao}%</div>
-                  <span className="text-[10px] text-text-tertiary mt-2 block">Treinos concluídos na semana</span>
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-brand" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Adesão Média</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{adesao}%</div>
+                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">Presença nos treinos na semana</span>
                 </div>
 
                 {/* Alunos em risco */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Alunos em Risco</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{alunosEmRisco}</div>
-                  <span className="text-[10px] text-danger mt-2 block font-medium">Sem treino há mais de 7 dias</span>
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-danger" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Alunos em Risco</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{alunosEmRisco}</div>
+                  <span className="text-[9px] text-danger font-medium mt-1.5 leading-none">Inativos há mais de 7 dias</span>
                 </div>
 
                 {/* Check-ins pendentes */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-5 shadow-sm">
-                  <span className="text-2xs font-medium text-text-tertiary uppercase tracking-wider">Check-ins Pendentes</span>
-                  <div className="text-2xl font-bold tracking-tight text-text-primary mt-1 font-display">{checkinsPendentes}</div>
-                  <span className="text-[10px] text-text-tertiary mt-2 block">Novos uploads / feedbacks</span>
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-warning" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Check-ins Pendentes</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{checkinsPendentes}</div>
+                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">Novos relatos ou fotos enviados</span>
                 </div>
 
               </div>
             </div>
 
-            {/* Grid Principal - 2 Colunas */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
-              {/* Coluna Esquerda - Ações e Atividade */}
-              <div className="lg:col-span-7 flex flex-col gap-8">
+            {/* Bloco 2b — Acompanhamento Nutricional */}
+            <div>
+              <h2 className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase border-t border-border-subtle/50 pt-3 mt-1 mb-2.5 block">Acompanhamento Nutricional</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
-                {/* Ações Prioritárias */}
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3 className="text-base font-bold text-text-primary">Ações prioritárias</h3>
-                      <p className="text-2xs text-text-tertiary">Pendências críticas identificadas</p>
-                    </div>
-                    <span className="px-2 py-0.5 bg-danger/10 text-danger text-[10px] font-semibold uppercase rounded-full">
-                      Ação Requerida
-                    </span>
+                {/* Adesão Alimentar */}
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Adesão Alimentar Média</span>
                   </div>
-
-                  <div className="flex flex-col gap-3">
-                    {prioridades.length === 0 ? (
-                      <div className="py-6 text-center text-sm text-text-tertiary">
-                        ✨ Tudo em ordem por agora. Nenhuma pendência crítica encontrada na sua consultoria.
-                      </div>
-                    ) : (
-                      prioridades.map((action) => (
-                        <div key={action.id} className="p-4 bg-surface-2 border border-border-subtle hover:border-border-strong rounded-xl flex items-center justify-between gap-4 transition-all">
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "w-2.5 h-2.5 rounded-full shrink-0",
-                              action.tipo === 'danger' && "bg-danger",
-                              action.tipo === 'warning' && "bg-warning",
-                              action.tipo === 'info' && "bg-info",
-                              action.tipo === 'success' && "bg-success"
-                            )} />
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-text-primary leading-tight">{action.nome}</span>
-                              <span className="text-2xs text-text-secondary mt-0.5 leading-none">{action.descricao}</span>
-                            </div>
-                          </div>
-                          <Link href={action.link} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-text-primary text-2xs font-semibold uppercase tracking-wider rounded-lg transition-all">
-                            {action.acao} <ArrowRight size={10} />
-                          </Link>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{adesaoAlimentar}%</div>
+                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">Adesão semanal à dieta prescrita</span>
                 </div>
 
-                {/* Atividade Recente */}
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-base font-bold text-text-primary mb-1">Atividade recente</h3>
-                  <p className="text-2xs text-text-tertiary mb-5">Atividades em tempo real dos seus atletas</p>
+                {/* Planos Digitais Ativos */}
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-brand" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Planos Digitais Ativos</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{planoDigitalAtivos}</div>
+                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">Planos alimentares digitais vigentes</span>
+                </div>
 
-                  <div className="flex flex-col gap-4">
+                {/* Alunos Sem Plano */}
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-warning" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Alunos Sem Plano</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{alunosSemPlanoDig}</div>
+                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">Alunos sem dieta digital prescrita</span>
+                </div>
+
+                {/* Baixa Adesão */}
+                <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-danger" />
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Baixa Adesão</span>
+                  </div>
+                  <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{alunosBaixaAdesaoDig}</div>
+                  <span className="text-[9px] text-danger font-medium mt-1.5 leading-none">Adesão na semana abaixo de 60%</span>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Bloco 3 — Ações Prioritárias (Subiu na tela e mais compacto) */}
+            {prioridades.length > 0 && (
+              <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <WarningCircle className="text-brand w-4 h-4" />
+                    <h3 className="text-xs font-bold text-text-primary">Ações prioritárias</h3>
+                  </div>
+                  <span className="px-2 py-0.5 bg-danger/10 text-danger text-[9px] font-semibold uppercase rounded-full">
+                    Ação Requerida
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {prioridades.map((action) => (
+                    <div key={action.id} className="p-3 bg-surface-2 border border-border-subtle hover:border-border-strong rounded-lg flex items-center justify-between gap-3 transition-all h-14">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full shrink-0",
+                          action.tipo === 'danger' && "bg-danger animate-pulse",
+                          action.tipo === 'warning' && "bg-warning",
+                          action.tipo === 'info' && "bg-info",
+                          action.tipo === 'success' && "bg-success"
+                        )} />
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-bold text-text-primary leading-tight truncate">{action.nome}</span>
+                          <span className="text-[10px] text-text-secondary mt-0.5 leading-none truncate">{action.descricao}</span>
+                        </div>
+                      </div>
+                      <Link href={action.link} className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-hover transition-colors shrink-0">
+                        {action.acao === 'Prescrever' ? 'Prescrever' : action.acao} <ArrowRight size={12} />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Grid Principal - 2 Colunas */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Coluna Esquerda - Atividade Recente */}
+              <div className="lg:col-span-7 flex flex-col gap-6">
+                
+                {/* Atividade Recente */}
+                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm">
+                  <h3 className="text-xs font-bold text-text-primary mb-0.5">Atividade recente</h3>
+                  <p className="text-[10px] text-text-tertiary mb-4">Atualizações em tempo real dos seus alunos</p>
+
+                  <div className="flex flex-col gap-3">
                     {atividades.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-text-tertiary">
+                      <div className="py-8 text-center text-xs text-text-tertiary">
                         Nenhuma atividade recente encontrada.
                       </div>
                     ) : (
                       atividades.map((act) => (
-                        <div key={act.id} className="flex items-start justify-between gap-4 border-b border-border-subtle pb-3.5 last:border-b-0 last:pb-0">
-                          <div className="flex gap-3">
-                            <div className={cn(
-                              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border",
-                              act.tipo === 'feedback' && "bg-info-subtle border-info/20 text-info",
-                              act.tipo === 'treino_digital' && "bg-success-subtle border-success/20 text-success",
-                              act.tipo === 'treino_manual' && "bg-brand-subtle border-brand/20 text-brand"
-                            )}>
-                              {act.tipo === 'feedback' && <ChatCircle size={16} />}
-                              {act.tipo === 'treino_digital' && <Barbell size={16} />}
-                              {act.tipo === 'treino_manual' && <Calendar size={16} />}
+                        <div key={act.id} className="flex items-start justify-between gap-4 border-b border-border-subtle/50 pb-2.5 last:border-b-0 last:pb-0">
+                          <div className="flex gap-3 min-w-0">
+                            <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 border border-border-subtle bg-surface-2 text-text-secondary">
+                              {act.tipo === 'feedback' && <ChatCircle size={14} />}
+                              {act.tipo === 'treino_digital' && <Barbell size={14} />}
+                              {act.tipo === 'treino_manual' && <Calendar size={14} />}
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-text-primary leading-tight">{act.aluno_nome}</span>
-                              <span className="text-xs text-text-secondary mt-0.5 leading-relaxed">{act.descricao}</span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-bold text-text-primary leading-tight truncate">{act.aluno_nome}</span>
+                              <span className="text-[11px] text-text-secondary mt-0.5 leading-tight truncate">{act.descricao}</span>
                             </div>
                           </div>
-                          <span className="text-[10px] text-text-tertiary whitespace-nowrap shrink-0">{act.data}</span>
+                          <span className="text-[9px] text-text-tertiary whitespace-nowrap shrink-0 pt-0.5">{act.data}</span>
                         </div>
                       ))
                     )}
@@ -694,35 +872,36 @@ export default function AdminDashboard() {
 
               </div>
 
-              {/* Coluna Direita - Gráficos e Saúde Alunos */}
-              <div className="lg:col-span-5 flex flex-col gap-8">
+              {/* Coluna Direita - Gráficos */}
+              <div className="lg:col-span-5 flex flex-col gap-6">
                 
                 {/* Grafico Receita */}
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-base font-bold text-text-primary mb-1">Faturamento Mensal</h3>
-                  <p className="text-2xs text-text-tertiary mb-6">Realizado e projeção da sua consultoria</p>
+                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm">
+                  <h3 className="text-xs font-bold text-text-primary mb-0.5">Faturamento Mensal</h3>
+                  <p className="text-[10px] text-text-tertiary mb-4">Realizado e projeção mensal</p>
 
-                  <div className="h-56">
+                  <div className="h-44">
                     {chartData.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-sm text-text-tertiary">
+                      <div className="h-full flex items-center justify-center text-xs text-text-tertiary">
                         Sem dados suficientes para gerar gráfico.
                       </div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <XAxis dataKey="mes" stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} />
-                          <YAxis stroke="#6B7280" fontSize={10} tickFormatter={(v) => `R$ ${v}`} tickLine={false} axisLine={false} />
+                        <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                          <XAxis dataKey="mes" stroke="#6B7280" fontSize={9} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#6B7280" fontSize={9} tickFormatter={(v) => `R$${v}`} tickLine={false} axisLine={false} />
                           <Tooltip
-                            contentStyle={{
-                              backgroundColor: '#111827',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                              borderRadius: '8px',
-                            }}
-                            labelStyle={{ color: '#F5F7FA', fontWeight: 'bold', fontSize: '12px' }}
-                            itemStyle={{ color: '#2563EB', fontSize: '12px' }}
-                            formatter={(v: any) => [fmt(Number(v)), 'Faturamento']}
-                          />
-                          <Bar dataKey="receita" radius={[4, 4, 0, 0]}>
+                             contentStyle={{
+                               backgroundColor: '#1F1F23',
+                               border: '1px solid #27272A',
+                               borderRadius: '6px',
+                               padding: '6px',
+                             }}
+                             labelStyle={{ color: '#FAFAFA', fontWeight: 'bold', fontSize: '10px' }}
+                             itemStyle={{ color: '#2563EB', fontSize: '10px', padding: '2px 0' }}
+                             formatter={(v: any) => [fmt(Number(v)), 'Faturamento']}
+                           />
+                          <Bar dataKey="receita" radius={[3, 3, 0, 0]}>
                             {chartData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.futuro ? 'rgba(37, 99, 235, 0.4)' : '#2563EB'} />
                             ))}
@@ -734,23 +913,23 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Planos Ativos */}
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-base font-bold text-text-primary mb-1">Distribuição de Planos</h3>
-                  <p className="text-2xs text-text-tertiary mb-5">Vigência por modalidade contratada</p>
+                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm">
+                  <h3 className="text-xs font-bold text-text-primary mb-0.5">Distribuição de Planos</h3>
+                  <p className="text-[10px] text-text-tertiary mb-4">Modalidades vigentes</p>
 
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2.5">
                     {alunosPorPlano.length === 0 ? (
-                      <div className="py-4 text-center text-sm text-text-tertiary">
+                      <div className="py-2 text-center text-xs text-text-tertiary">
                         Nenhum plano ativo encontrado.
                       </div>
                     ) : (
                       alunosPorPlano.map((plano) => (
-                        <div key={plano.name} className="flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between text-xs">
+                        <div key={plano.name} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between text-[11px]">
                             <span className="font-bold text-text-secondary capitalize">{plano.name}</span>
                             <span className="font-medium text-text-primary">{plano.count} alunos</span>
                           </div>
-                          <div className="w-full h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                          <div className="w-full h-1 bg-surface-3 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-brand rounded-full"
                               style={{ width: `${Math.min(100, (plano.count / totalAlunos) * 100)}%` }}
@@ -766,28 +945,28 @@ export default function AdminDashboard() {
 
             </div>
 
-            {/* Bloco 5 - Saúde dos Alunos */}
-            <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            {/* Bloco 5 - Saúde dos Alunos (Compacta) */}
+            <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="text-base font-bold text-text-primary">Saúde dos alunos</h3>
-                  <p className="text-2xs text-text-tertiary">Métricas de engajamento e status de evolução</p>
+                  <h3 className="text-xs font-bold text-text-primary">Saúde dos alunos</h3>
+                  <p className="text-[10px] text-text-tertiary">Métricas de engajamento e status de evolução</p>
                 </div>
-                <Link href="/admin/alunos" className="inline-flex items-center gap-1.5 text-brand text-xs font-semibold uppercase tracking-wider hover:underline">
-                  Ver todos os alunos <ArrowRight size={12} />
+                <Link href="/admin/alunos" className="inline-flex items-center gap-1 text-brand text-xs font-semibold hover:underline">
+                  Ver todos os alunos <ArrowRight size={10} />
                 </Link>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto scrollbar-hide">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="border-b border-border-subtle">
-                      <th className="pb-3 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Nome</th>
-                      <th className="pb-3 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Status</th>
-                      <th className="pb-3 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Plano</th>
-                      <th className="pb-3 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Último Treino</th>
-                      <th className="pb-3 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Expiração</th>
-                      <th className="pb-3 text-2xs font-semibold tracking-caps text-text-tertiary uppercase">Ações</th>
+                      <th className="pb-2 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Nome</th>
+                      <th className="pb-2 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Status</th>
+                      <th className="pb-2 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Plano</th>
+                      <th className="pb-2 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Último Treino</th>
+                      <th className="pb-2 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Expiração</th>
+                      <th className="pb-2 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -798,29 +977,29 @@ export default function AdminDashboard() {
                       const isActive = isPaid && (!expiration || expiration >= today);
 
                       return (
-                        <tr key={aluno.id} className="border-b border-border-subtle last:border-b-0 hover:bg-surface-2/40 transition-colors">
-                          <td className="py-3 text-sm font-bold text-text-primary">
-                            {aluno.coaching_reference || aluno.full_name || "Atleta"}
+                        <tr key={aluno.id} className="border-b border-border-subtle/50 last:border-b-0 hover:bg-surface-2/40 transition-colors">
+                          <td className="py-2.5 text-xs font-bold text-text-primary">
+                            {aluno.coaching_reference || aluno.full_name || "Aluno"}
                           </td>
-                          <td className="py-3 text-xs">
+                          <td className="py-2.5 text-xs">
                             <span className={cn(
-                              "px-2 py-0.5 rounded-full font-semibold uppercase text-[9px] tracking-wider",
+                              "px-2 py-0.5 rounded-full font-semibold uppercase text-[8px] tracking-wider",
                               isActive ? "bg-success-subtle text-success border border-success/10" : "bg-danger-subtle text-danger border border-danger/10"
                             )}>
                               {isActive ? "Ativo" : isExpired ? "Expirado" : "Pendente"}
                             </span>
                           </td>
-                          <td className="py-3 text-xs text-text-secondary capitalize">
+                          <td className="py-2.5 text-xs text-text-secondary capitalize">
                             {aluno.tipo_plano || "Sem plano"}
                           </td>
-                          <td className="py-3 text-xs text-text-secondary">
+                          <td className="py-2.5 text-xs text-text-secondary">
                             {aluno.ultimo_checkin ? timeAgo(aluno.ultimo_checkin) : "Sem treinos"}
                           </td>
-                          <td className="py-3 text-xs text-text-secondary">
+                          <td className="py-2.5 text-xs text-text-secondary">
                             {expiration ? expiration.toLocaleDateString('pt-BR') : "Sem vencimento"}
                           </td>
-                          <td className="py-3 text-xs">
-                            <Link href={`/admin/aluno/${aluno.id}`} className="text-brand hover:underline font-semibold inline-flex items-center gap-1">
+                          <td className="py-2.5 text-xs">
+                            <Link href={`/admin/aluno/${aluno.id}`} className="text-brand hover:underline font-semibold inline-flex items-center gap-0.5">
                               Perfil <ArrowRight size={10} />
                             </Link>
                           </td>

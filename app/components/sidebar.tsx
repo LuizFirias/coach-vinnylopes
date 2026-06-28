@@ -44,13 +44,13 @@ const coachMenuItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
   { name: 'Alunos', href: '/admin/alunos', icon: Users },
   { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
-  { name: 'Treinos Gerais', href: '/admin/treinos', icon: Barbell },
+  { name: 'Treinos', href: '/admin/treinos', icon: Barbell },
   { name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
   { name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
   { name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
-  { name: 'Ranking Geral', href: '/admin/ranking', icon: Trophy },
+  { name: 'Ranking', href: '/admin/ranking', icon: Trophy },
   { name: 'Relatórios', href: '/admin/relatorios', icon: ChartBar },
-  { name: 'Meu Perfil', href: '/admin/perfil', icon: User },
+  { name: 'Perfil', href: '/admin/perfil', icon: User },
 ];
 
 const superAdminMenuItems = [
@@ -101,7 +101,7 @@ export default function Sidebar() {
         className="hidden lg:flex fixed left-0 top-0 h-full bg-surface-1 border-r border-border-subtle flex-col py-8 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300"
       >
         <div className="flex items-center justify-between mb-8 px-2">
-          <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="flex items-center gap-3 group cursor-pointer overflow-hidden min-w-0">
+          <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/dashboard' : '/super-admin'} className="flex items-center gap-3 group cursor-pointer overflow-hidden min-w-0">
             <div className="w-11 h-11 bg-surface-2 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden shrink-0">
               <Image src="/logo.png" alt="Auronfit" width={32} height={32} className="object-contain" />
             </div>
@@ -121,52 +121,56 @@ export default function Sidebar() {
           </button>
         </div>
 
-        <nav className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-1">
+        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
            {currentMenuItems.map((m) => {
               const Icon = m.icon;
               const isActive = pathname === m.href;
+              const isPerfil = m.name === 'Perfil' || m.name === 'Perfil Master';
               return (
-                <Link
-                  key={m.href}
-                  href={m.href}
-                  title={!isExpanded ? m.name : undefined}
-                  className={`flex items-center gap-3 px-3.5 h-12 rounded-xl transition-all group relative ${
-                    isActive
-                      ? 'bg-brand text-text-on-brand font-semibold shadow-glow-brand'
-                      : 'text-text-disabled hover:text-brand hover:bg-brand/5'
-                  } ${isExpanded ? 'justify-start' : 'justify-center'}`}
-                >
-                   {isActive && !isExpanded && <div className="absolute left-0 w-1 h-6 bg-brand rounded-r-full" />}
-                   <Icon size={20} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
-                   
-                   {isExpanded && (
-                     <span className="text-2xs uppercase font-medium tracking-widest truncate">
-                       {m.name}
-                     </span>
-                   )}
-                   
-                   {!isExpanded && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
-                        {m.name}
-                      </div>
-                   )}
-                </Link>
+                <div key={m.href} className="flex flex-col gap-1 shrink-0">
+                  {isPerfil && (
+                    <div className="border-t border-border-subtle my-1.5 mx-2" />
+                  )}
+                  <Link
+                    href={m.href}
+                    title={!isExpanded ? m.name : undefined}
+                    className={cn(
+                      "flex items-center gap-3 px-3 h-10 transition-all group relative",
+                      isActive
+                        ? "bg-brand/12 text-text-primary font-medium border-l-2 border-brand rounded-r-lg rounded-l-none"
+                        : "text-text-disabled hover:text-brand hover:bg-brand/5 rounded-lg",
+                      isExpanded ? "justify-start" : "justify-center"
+                    )}
+                  >
+                     {isActive && !isExpanded && <div className="absolute left-0 w-1 h-5 bg-brand rounded-r-full" />}
+                     <Icon size={16} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
+                     
+                     {isExpanded && (
+                       <span className="text-xs font-medium tracking-wide truncate">
+                         {m.name}
+                       </span>
+                     )}
+                     
+                     {!isExpanded && (
+                        <div className="absolute left-full ml-4 px-2 py-1 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] tracking-wider rounded border border-border-subtle pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100 shadow-xl">
+                          {m.name}
+                        </div>
+                     )}
+                  </Link>
+                </div>
               );
            })}
         </nav>
 
         <div className="mt-auto border-t border-border-subtle pt-4 flex flex-col gap-2 shrink-0">
           {isExpanded && user && (
-            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-surface-2 rounded-xl border border-border-subtle min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-surface-3 flex items-center justify-center border border-border-subtle shrink-0">
-                <User size={14} className="text-brand" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mb-1">Acesso</span>
-                <span className="text-[10px] text-text-primary uppercase tracking-wide truncate leading-none font-medium">
-                  {userRole?.replace('_', ' ') || 'Aluno'}
-                </span>
-              </div>
+            <div className="flex flex-col min-w-0 px-2 py-1">
+              <span className="text-[9px] font-semibold text-text-tertiary uppercase tracking-[0.06em] mb-1">
+                Acesso
+              </span>
+              <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate">
+                {userRole?.replace('_', ' ') || 'Aluno'}
+              </span>
             </div>
           )}
           
@@ -176,12 +180,12 @@ export default function Sidebar() {
               localStorage.clear();
               window.location.href = '/login';
             }}
-            className={`w-full h-12 rounded-xl flex items-center gap-3 text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group ${isExpanded ? 'px-3.5 justify-start' : 'justify-center'}`}
+            className={`w-full h-10 rounded-lg flex items-center gap-3 text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group ${isExpanded ? 'px-3.5 justify-start' : 'justify-center'}`}
             title="Sair"
           >
-             <SignOut size={20} className="shrink-0" />
+             <SignOut size={16} className="shrink-0" />
              {isExpanded && (
-               <span className="text-2xs uppercase tracking-widest font-medium">Sair</span>
+                <span className="text-xs font-semibold tracking-wide">Sair</span>
              )}
           </button>
         </div>
