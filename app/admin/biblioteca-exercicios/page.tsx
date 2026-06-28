@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
@@ -15,6 +15,7 @@ import {
   WarningCircle,
   Users,
   Barbell,
+  UploadSimple,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
@@ -29,6 +30,7 @@ interface Exercicio {
   nome: string;
   grupo_muscular: string;
   video_url?: string;
+  gif_url?: string;
   descricao?: string;
   imagem_url?: string;
   equipamento?: string;
@@ -75,6 +77,7 @@ export default function BibliotecaExerciciosPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [coachId, setCoachId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>("");
@@ -83,10 +86,15 @@ export default function BibliotecaExerciciosPage() {
   const [modoEdicao, setModoEdicao] = useState(false);
   const [exercicioEditando, setExercicioEditando] = useState<Exercicio | null>(null);
   const [formData, setFormData] = useState({
-    nome: "", grupo_muscular: "", video_url: "",
+    nome: "", grupo_muscular: "", video_url: "", gif_url: "",
     descricao: "", equipamento: "", musculos_secundarios: "", tipo_exercicio: "",
   });
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
+  
+  const inputGifRef = useRef<HTMLInputElement>(null);
+  const [uploadingGif, setUploadingGif] = useState(false);
+
+  const isSuperAdmin = userRole === "super_admin";
 
   useEffect(() => { verificarAcessoECarregar(); }, []);
   useEffect(() => { filtrarExercicios(); }, [exercicios, searchTerm, grupoSelecionado]);
@@ -107,6 +115,7 @@ export default function BibliotecaExerciciosPage() {
         return;
       }
       setCoachId(userId);
+      setUserRole(profile?.role || null);
       await carregarExercicios();
     } catch (err) {
       setError("Erro ao carregar página");
@@ -145,7 +154,7 @@ export default function BibliotecaExerciciosPage() {
   const abrirModalNovo = () => {
     setModoEdicao(false);
     setExercicioEditando(null);
-    setFormData({ nome: "", grupo_muscular: "", video_url: "", descricao: "", equipamento: "", musculos_secundarios: "", tipo_exercicio: "" });
+    setFormData({ nome: "", grupo_muscular: "", video_url: "", gif_url: "", descricao: "", equipamento: "", musculos_secundarios: "", tipo_exercicio: "" });
     setErroValidacao(null);
     setModalAberto(true);
   };
@@ -157,6 +166,7 @@ export default function BibliotecaExerciciosPage() {
       nome: exercicio.nome,
       grupo_muscular: exercicio.grupo_muscular,
       video_url: exercicio.video_url || "",
+      gif_url: exercicio.gif_url || "",
       descricao: exercicio.descricao || "",
       equipamento: exercicio.equipamento || "",
       musculos_secundarios: exercicio.musculos_secundarios || "",
@@ -164,6 +174,48 @@ export default function BibliotecaExerciciosPage() {
     });
     setErroValidacao(null);
     setModalAberto(true);
+  };
+
+  const handleGifUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/gif', 'image/webp'].includes(file.type)) {
+      alert("Apenas arquivos GIF ou WebP animado são permitidos.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert("O arquivo não pode exceder 2MB.");
+      return;
+    }
+
+    try {
+      setUploadingGif(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${coachId || 'admin'}_exercise_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from('exercicios-gifs')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabaseClient.storage
+        .from('exercicios-gifs')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({ ...prev, gif_url: publicUrl }));
+    } catch (err) {
+      console.error("Erro no upload do GIF:", err);
+      alert("Erro ao enviar o GIF. Tente novamente.");
+    } finally {
+      setUploadingGif(false);
+    }
+  };
+
+  const removerGif = () => {
+    setFormData(prev => ({ ...prev, gif_url: "" }));
+    if (inputGifRef.current) inputGifRef.current.value = "";
   };
 
   const fecharModal = () => {
@@ -198,6 +250,7 @@ export default function BibliotecaExerciciosPage() {
         tipo_exercicio: formData.tipo_exercicio,
         musculos_secundarios: formData.musculos_secundarios.trim() || null,
         video_url: videoId ? `https://youtube.com/embed/${videoId}` : null,
+        gif_url: formData.gif_url.trim() || null,
         descricao: formData.descricao.trim() || null,
       };
 
@@ -263,9 +316,11 @@ export default function BibliotecaExerciciosPage() {
               <p className="text-xs text-text-secondary mt-0.5">Gerencie exercícios e demonstrações em vídeo</p>
             </div>
           </div>
-          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} fullWidth={false} className="py-2 rounded-lg text-xs">
-            Novo exercício
-          </Button>
+          {isSuperAdmin && (
+            <Button leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} fullWidth={false} className="py-2 rounded-lg text-xs">
+              Novo exercício
+            </Button>
+          )}
         </div>
 
         {/* Busca */}
@@ -360,27 +415,29 @@ export default function BibliotecaExerciciosPage() {
                     )}
 
                     {/* Action buttons (discrete - visible on hover for desktop, always for mobile) */}
-                    <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => abrirModalEdicao(exercicio)}
-                        className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-brand transition-colors"
-                        title="Editar exercício"
-                      >
-                        <PencilSimple className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => deletarExercicio(exercicio.id)}
-                        disabled={deleting === exercicio.id}
-                        className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-danger transition-colors disabled:opacity-50"
-                        title="Excluir exercício"
-                      >
-                        {deleting === exercicio.id ? (
-                          <CircleNotch className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Trash className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
+                    {isSuperAdmin && (
+                      <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => abrirModalEdicao(exercicio)}
+                          className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-brand transition-colors"
+                          title="Editar exercício"
+                        >
+                          <PencilSimple className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deletarExercicio(exercicio.id)}
+                          disabled={deleting === exercicio.id}
+                          className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-danger transition-colors disabled:opacity-50"
+                          title="Excluir exercício"
+                        >
+                          {deleting === exercicio.id ? (
+                            <CircleNotch className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -395,12 +452,16 @@ export default function BibliotecaExerciciosPage() {
               Cadastre exercícios oficiais ou adicione exercícios personalizados para começar a montar fichas digitais com vídeos de execução.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} className="py-2 rounded-lg text-xs">
-                Cadastrar exercício
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => alert("Função de importação em desenvolvimento.")} className="py-2 rounded-lg text-xs">
-                Importar exercícios
-              </Button>
+              {isSuperAdmin && (
+                <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={abrirModalNovo} className="py-2 rounded-lg text-xs">
+                  Cadastrar exercício
+                </Button>
+              )}
+              {isSuperAdmin && (
+                <Button variant="secondary" size="sm" onClick={() => alert("Função de importação em desenvolvimento.")} className="py-2 rounded-lg text-xs">
+                  Importar exercícios
+                </Button>
+              )}
             </div>
           </div>
         ) : (
@@ -418,9 +479,11 @@ export default function BibliotecaExerciciosPage() {
               >
                 Limpar filtros
               </button>
-              <button onClick={abrirModalNovo} className="btn-primary text-2xs py-2 px-3">
-                Adicionar novo exercício
-              </button>
+              {isSuperAdmin && (
+                <button onClick={abrirModalNovo} className="btn-primary text-2xs py-2 px-3">
+                  Adicionar novo exercício
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -506,6 +569,48 @@ export default function BibliotecaExerciciosPage() {
                   className={fieldCls}
                 />
                 <p className="text-xs text-text-tertiary">Cole a URL completa ou apenas o ID do vídeo</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-brand">GIF de demonstração (opcional)</label>
+                
+                {uploadingGif ? (
+                  <div className="border border-dashed border-border-default rounded-xl p-6 flex flex-col items-center justify-center gap-2 bg-surface-3">
+                    <CircleNotch className="w-5 h-5 animate-spin text-brand" />
+                    <p className="text-xs text-text-secondary">Enviando arquivo...</p>
+                  </div>
+                ) : formData.gif_url ? (
+                  <div className="relative rounded-xl overflow-hidden border border-border-subtle aspect-video bg-surface-3 flex items-center justify-center">
+                    <img src={formData.gif_url} alt="Demonstração" className="max-h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={removerGif}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-surface-0/80 border border-border-subtle flex items-center justify-center hover:bg-surface-1 transition-colors"
+                      title="Remover GIF"
+                    >
+                      <X className="w-3.5 h-3.5 text-text-primary" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => inputGifRef.current?.click()}
+                    className="border border-dashed border-border-default rounded-xl p-6 flex flex-col items-center gap-2 bg-surface-3 cursor-pointer hover:border-brand/40 hover:bg-brand/5 transition-all"
+                  >
+                    <UploadSimple className="w-5 h-5 text-text-tertiary" />
+                    <p className="text-xs text-text-secondary text-center">
+                      Clique para enviar GIF ou WebP animado<br/>
+                      <span className="text-2xs text-text-tertiary">Máximo 2MB · 480×480px mínimo</span>
+                    </p>
+                  </div>
+                )}
+                
+                <input
+                  ref={inputGifRef}
+                  type="file"
+                  accept="image/gif,image/webp"
+                  className="hidden"
+                  onChange={handleGifUpload}
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

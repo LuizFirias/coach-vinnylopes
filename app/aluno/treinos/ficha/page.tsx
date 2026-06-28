@@ -764,13 +764,13 @@ function FichaContent() {
               className="bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-lg transition-all"
             >
               {/* Cabeçalho do exercício */}
-              <div className="flex items-start gap-2.5 p-3">
+              <div className="flex items-start gap-2.5 px-4 pt-4 pb-3 border-b border-border-subtle/50">
                 <div className="w-8 h-8 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
                   <Barbell className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xs font-semibold text-text-primary leading-tight">{toTitleCase(exercicio.nome)}</h3>
+                    <h3 className="text-sm font-semibold text-text-primary leading-tight">{toTitleCase(exercicio.nome)}</h3>
                     {exercicio.video_url && (
                       <button
                         onClick={() => setVideoModal(exercicio.video_url || null)}
@@ -789,20 +789,20 @@ function FichaContent() {
                       </button>
                     )}
                   </div>
-                  <p className="text-[10px] text-text-tertiary mt-0.5">Descanso: {exercicio.descanso}</p>
+                  <p className="text-[10px] text-text-tertiary mt-1.5">Descanso: {exercicio.descanso}</p>
                 </div>
               </div>
 
               {/* Observações do coach */}
               {exercicio.observacoes && (
-                <div className="mx-3 mb-3 px-2.5 py-2 bg-surface-2 border border-border-subtle rounded-md">
+                <div className="mx-4 mb-3 px-2.5 py-2 bg-surface-2 border border-border-subtle rounded-md">
                   <p className="text-[10px] font-semibold uppercase tracking-caps text-text-tertiary mb-1">Observações</p>
                   <p className="text-[11px] text-text-secondary leading-relaxed">{exercicio.observacoes}</p>
                 </div>
               )}
 
               {/* Tabela de séries */}
-              <div className="px-3 pb-3">
+              <div className="px-4 pt-2 pb-3">
                 {(() => {
                   const hasTec = exercicio.series.some(s => !!s.tecnica?.trim());
                   const hasExtra = exercicio.series.some(s => !!s.tecnica_extra?.trim());
@@ -816,7 +816,7 @@ function FichaContent() {
                       {/* Cabeçalhos desktop */}
                       <div className="hidden md:grid gap-1.5 mb-1.5 px-1 min-w-max overflow-x-auto" style={{ gridTemplateColumns: gridTemplate }}>
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left">Set</span>
-                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Ant.</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left pl-2">Ant.</span>
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Peso</span>
                         {hasTec && <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">T1</span>}
                         {hasExtra && <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">T2</span>}
@@ -827,7 +827,7 @@ function FichaContent() {
                       {/* Mobile Column Headers */}
                       <div className="md:hidden flex items-center gap-1 px-3 pb-1 select-none">
                         <span className="w-6 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Set</span>
-                        <span className="flex-1 text-[8px] font-bold uppercase tracking-wider text-text-disabled">Ant.</span>
+                        <span className="flex-1 text-[8px] font-bold uppercase tracking-wider text-text-disabled pl-2">Ant.</span>
                         <span className="w-12 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Peso</span>
                         <span className="w-7 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Reps</span>
                         <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">T1</span>
@@ -852,7 +852,7 @@ function FichaContent() {
                               </div>
 
                               {/* Anterior */}
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 pl-2">
                                 <span className={cn(
                                   "text-[9px] font-mono",
                                   serie.completado ? "text-text-disabled line-through" : "text-text-tertiary"
@@ -931,8 +931,8 @@ function FichaContent() {
                               )}>
                                 {sIdx + 1}
                               </div>
-                              <div className="text-center">
-                                <span className="text-[11px] text-text-secondary font-mono">{serie.anterior}</span>
+                              <div className="text-left pl-2">
+                                <span className="text-[11px] text-text-secondary font-mono">{serie.anterior || "—"}</span>
                               </div>
                               <div className="flex justify-center">
                                 <input
