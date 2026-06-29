@@ -1,5 +1,5 @@
 import './globals.css';
-import { Inter, Exo_2, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
 import SessionManager from './components/SessionManager';
@@ -13,12 +13,6 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
-});
-
-const exo2 = Exo_2({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-display',
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -60,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${exo2.variable} ${jetbrainsMono.variable}`}>
+    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{

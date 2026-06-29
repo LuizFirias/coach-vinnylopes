@@ -219,7 +219,7 @@ export default function FotosPage() {
           <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Nova sessão</p>
           <div className="grid grid-cols-3 gap-3">
             {(['frente', 'lado', 'costas'] as const).map(tipo => (
-              <label key={tipo} className="cursor-pointer">
+              <label key={tipo} className="cursor-pointer group block">
                 <input
                   type="file"
                   accept="image/*"
@@ -228,21 +228,32 @@ export default function FotosPage() {
                   onChange={e => handleUpload(e, tipo)}
                   disabled={uploading.has(tipo)}
                 />
-                <div className={cn(
-                  'aspect-[3/4] rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
-                  uploading.has(tipo)
-                    ? 'border-brand/40 bg-brand/5'
-                    : 'border-border-default bg-surface-2 hover:border-brand/60 hover:bg-surface-3'
-                )}>
+                <div 
+                  className={cn(
+                    'aspect-[3/4] rounded-2xl border transition-all duration-120 flex flex-col items-center justify-center gap-2 relative overflow-hidden',
+                    'border-white/8 active:scale-97 hover:scale-[0.99] hover:border-brand/40',
+                    uploading.has(tipo) ? 'bg-brand/5' : ''
+                  )}
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.4) 100%)',
+                    boxShadow: '0px 10px 30px rgba(0,0,0,0.35)'
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(0,122,255,0.25)';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.boxShadow = '0px 10px 30px rgba(0,0,0,0.35)';
+                  }}
+                >
                   {uploading.has(tipo) ? (
                     <CircleNotch className="w-5 h-5 text-brand animate-spin" />
                   ) : (
                     <>
-                      <div className="text-text-tertiary">
+                      <div className="text-text-tertiary group-hover:text-brand group-hover:scale-105 transition-all">
                         <PoseIcon tipo={tipo} />
                       </div>
-                      <span className="text-xs font-semibold text-text-secondary">{LABEL[tipo]}</span>
-                      <div className="w-6 h-6 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center text-text-tertiary">
+                      <span className="text-xs font-semibold text-text-secondary group-hover:text-text-primary transition-colors">{LABEL[tipo]}</span>
+                      <div className="w-6 h-6 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center text-text-tertiary group-hover:bg-brand/10 group-hover:border-brand/30 group-hover:text-brand transition-all">
                         <UploadSimple className="w-3 h-3" />
                       </div>
                     </>
@@ -326,32 +337,55 @@ export default function FotosPage() {
                 {(['frente', 'lado', 'costas'] as const).map(tipo => {
                   const foto = sessaoAtiva.fotos.find(f => f.posicao === tipo);
                   return (
-                    <div key={tipo} className="relative">
+                    <div key={tipo} className="relative group">
                       <div
                         className={cn(
-                          'aspect-[3/4] rounded-2xl overflow-hidden border border-border-subtle bg-surface-2',
+                          'aspect-[3/4] rounded-2xl overflow-hidden border border-white/8 relative bg-surface-2 transition-all duration-120 active:scale-97 hover:scale-[0.99]',
                           foto && 'cursor-pointer'
                         )}
+                        style={{
+                          boxShadow: '0px 10px 30px rgba(0,0,0,0.35)'
+                        }}
                         onClick={() => foto && setLightbox(foto)}
                       >
                         {foto ? (
-                          <img src={foto.url_foto} alt={LABEL[tipo]} className="w-full h-full object-cover" />
+                          <>
+                            <img src={foto.url_foto} alt={LABEL[tipo]} className="w-full h-full object-cover" />
+                            {/* Overlay inferior com gradient fade */}
+                            <div 
+                              className="absolute inset-0 pointer-events-none" 
+                              style={{
+                                background: 'linear-gradient(0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 60%)'
+                              }}
+                            />
+                            {/* Texto absoluto sobre a imagem */}
+                            <div className="absolute bottom-3 left-3 right-3 flex flex-col pointer-events-none">
+                              <span className="text-xs font-bold text-white tracking-wide">{LABEL[tipo]}</span>
+                              <span className="text-[10px] text-text-secondary mt-0.5 font-mono">
+                                {new Date(foto.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                              </span>
+                            </div>
+                            
+                            {/* Indicador de progresso (badge canto superior esquerdo) */}
+                            <div className="absolute top-2 left-2 bg-brand/80 backdrop-blur-xs px-2 py-0.5 rounded-full border border-brand/20 shadow-sm pointer-events-none">
+                              <span className="text-[9px] font-bold text-white uppercase tracking-wider">Atualizado</span>
+                            </div>
+                          </>
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-text-tertiary">
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-text-tertiary">
                             <PoseIcon tipo={tipo} />
-                            <span className="text-2xs">{LABEL[tipo]}</span>
+                            <span className="text-2xs font-medium">{LABEL[tipo]}</span>
                           </div>
                         )}
                       </div>
                       {foto && (
                         <button
                           onClick={() => setPhotoToDelete(foto)}
-                          className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-danger hover:bg-danger hover:text-white transition-colors"
+                          className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-xs flex items-center justify-center text-danger hover:bg-danger hover:text-white border border-white/5 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                         >
                           <Trash className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      <p className="mt-1 text-center text-2xs text-text-tertiary">{LABEL[tipo]}</p>
                     </div>
                   );
                 })}

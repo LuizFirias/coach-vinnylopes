@@ -1,6 +1,10 @@
 @import './design-tokens.css';
 @import "tailwindcss";
 
+:root {
+  --font-display: var(--font-sans);
+}
+
 /* Keep touch-action to eliminate double-tap zoom delay */
 html {
   touch-action: manipulation;
@@ -171,11 +175,11 @@ select {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display), var(--font-sans), sans-serif !important;
+  font-family: var(--font-sans), sans-serif !important;
 }
 
 .heading-h1 {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(32px, 6vw, 48px);
   font-weight: 700;
   line-height: 1.05;
@@ -183,14 +187,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .heading-h2 {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .heading-h3 {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
