@@ -43,13 +43,13 @@ const menuItems = [
 const coachMenuItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
   { name: 'Alunos', href: '/admin/alunos', icon: Users },
-  { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
   { name: 'Treinos', href: '/admin/treinos', icon: Barbell },
   { name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
-  { name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
+  { name: 'Financeiro', href: '/admin/relatorios', icon: ChartBar },
+  { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
   { name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
+  { name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
   { name: 'Ranking', href: '/admin/ranking', icon: Trophy },
-  { name: 'Relatórios', href: '/admin/relatorios', icon: ChartBar },
   { name: 'Perfil', href: '/admin/perfil', icon: User },
 ];
 
@@ -91,30 +91,44 @@ export default function Sidebar() {
     return null;
   }
 
-  const currentMenuItems = userRole === 'aluno' ? menuItems : userRole === 'coach' ? coachMenuItems : superAdminMenuItems;
+  const currentMenuItems = 
+    userRole === 'aluno' 
+      ? menuItems 
+      : userRole === 'super_admin'
+        ? [
+            ...coachMenuItems.filter(item => item.name !== 'Perfil'),
+            { name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
+            { name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
+          ]
+        : coachMenuItems;
 
   return (
     <>
       {/* Sidebar for Desktop */}
       <aside
         style={{ width: isExpanded ? '240px' : '80px' }}
-        className="hidden lg:flex fixed left-0 top-0 h-full bg-surface-1 border-r border-border-subtle flex-col py-8 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300"
+        className="hidden lg:flex fixed left-0 top-0 h-full bg-surface-1 border-r border-border-subtle flex-col py-5 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300"
       >
-        <div className="flex items-center justify-between mb-8 px-2">
-          <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/dashboard' : '/super-admin'} className="flex items-center gap-3 group cursor-pointer overflow-hidden min-w-0">
-            <div className="w-11 h-11 bg-surface-2 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden shrink-0">
-              <Image src="/logo.png" alt="Auronfit" width={32} height={32} className="object-contain" />
-            </div>
-            {isExpanded && (
-              <span className="font-display font-bold text-text-primary text-base tracking-wider shrink-0 select-none">
-                AURON
-              </span>
-            )}
+        <div className="flex flex-col items-center gap-3 mb-5 px-2 relative">
+          <Link href={userRole === 'aluno' ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
+            <Image 
+              src="/logo.png" 
+              alt="Auronfit" 
+              width={isExpanded ? 48 : 40} 
+              height={isExpanded ? 48 : 40} 
+              className={cn(
+                "object-contain group-hover:scale-105 transition-transform",
+                isExpanded ? "w-12 h-12" : "w-10 h-10"
+              )} 
+            />
           </Link>
           
           <button
             onClick={toggleSidebar}
-            className="w-7 h-7 rounded-lg border border-border-subtle bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0"
+            className={cn(
+              "w-7 h-7 rounded-lg border border-border-subtle bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
+              isExpanded ? "absolute right-2 top-1/2 -translate-y-1/2" : "mt-0.5"
+            )}
             title={isExpanded ? "Recolher menu" : "Expandir menu"}
           >
             {isExpanded ? <CaretLeft size={15} /> : <CaretRight size={15} />}

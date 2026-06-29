@@ -317,6 +317,10 @@ export default function WeeklyAgenda() {
             descricao: descricao?.trim() || null,
             data_treino: todayStr,
           });
+          await supabaseClient
+            .from('profiles')
+            .update({ ultimo_checkin: new Date().toISOString() })
+            .eq('id', session.user.id);
         }
       } catch (err) {
         console.error('Erro ao salvar treino livre:', err);
@@ -386,6 +390,10 @@ export default function WeeklyAgenda() {
             descricao: descricao?.trim() || null,
             data_treino: todayStr,
           });
+          await supabaseClient
+            .from('profiles')
+            .update({ ultimo_checkin: new Date().toISOString() })
+            .eq('id', user.id);
         }
       }
 

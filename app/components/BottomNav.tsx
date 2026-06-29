@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   House, Barbell, ForkKnife, User,
-  Users, Chat, Plus, BookOpen, X, Handshake, ChartBar,
+  Users, Chat, Plus, BookOpen, X, Handshake, ChartBar, ShieldWarning,
+  AppleLogo, Trophy, List,
 } from '@phosphor-icons/react';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
@@ -20,21 +21,12 @@ const STUDENT_ITEMS = [
 
 // ── Coach nav (4 items + FAB) ─────────────────────────────────────────────────
 const COACH_LEFT = [
-  { href: '/admin/alunos',    label: 'Alunos',  icon: Users   },
-  { href: '/admin/treinos',   label: 'Treinos', icon: Barbell },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: House },
+  { href: '/admin/alunos',    label: 'Alunos',    icon: Users },
 ];
 const COACH_RIGHT = [
-  { href: '/admin/feedbacks', label: 'Feedbacks', icon: Chat },
-  { href: '/admin/perfil',    label: 'Perfil',    icon: User       },
-];
-
-const QUICK_ACTIONS = [
-  { label: 'Dashboard',           href: '/admin/dashboard',                    icon: House     },
-  { label: 'Nova Ficha Digital',  href: '/admin/treinos/nova-ficha',           icon: Barbell   },
-  { label: 'Plano Alimentar',     href: '/admin/nutricao',                     icon: ForkKnife },
-  { label: 'Biblioteca',          href: '/admin/biblioteca-exercicios',        icon: BookOpen  },
-  { label: 'Parceiros',           href: '/admin/parceiros',                    icon: Handshake },
-  { label: 'Relatórios',          href: '/admin/relatorios',                   icon: ChartBar  },
+  { href: '/admin/treinos',    label: 'Treinos',    icon: Barbell  },
+  { href: '/admin/relatorios', label: 'Financeiro', icon: ChartBar },
 ];
 
 export default function BottomNav() {
@@ -48,6 +40,18 @@ export default function BottomNav() {
   }
 
   const isCoach = userRole === 'coach' || userRole === 'super_admin';
+
+  const profileRoute = userRole === 'super_admin' ? '/super-admin/perfil' : '/admin/perfil';
+
+  const actions = [
+    { label: 'Nutrição',   href: '/admin/nutricao',             icon: AppleLogo },
+    { label: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen  },
+    { label: 'Parceiros',  href: '/admin/parceiros',            icon: Handshake },
+    { label: 'Feedbacks',  href: '/admin/feedbacks',            icon: Chat      },
+    { label: 'Ranking',    href: '/admin/ranking',              icon: Trophy    },
+    { label: 'Perfil',     href: profileRoute,                  icon: User      },
+    ...(userRole === 'super_admin' ? [{ label: 'Master Control', href: '/super-admin', icon: ShieldWarning }] : [])
+  ];
 
   // ── Student ─────────────────────────────────────────────────────────────────
   if (!isCoach) {
@@ -103,13 +107,13 @@ export default function BottomNav() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-surface-2 border border-border-default rounded-3xl overflow-hidden shadow-elev-3">
-              {QUICK_ACTIONS.map(({ label, href, icon: Icon }, i) => (
+              {actions.map(({ label, href, icon: Icon }, i) => (
                 <button
                   key={href}
                   onClick={() => { setFabOpen(false); router.push(href); }}
                   className={cn(
                     'w-full flex items-center gap-4 px-5 py-4 text-left transition-colors active:bg-surface-3',
-                    i < QUICK_ACTIONS.length - 1 && 'border-b border-border-subtle',
+                    i < actions.length - 1 && 'border-b border-border-subtle',
                   )}
                 >
                   <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
@@ -163,13 +167,12 @@ export default function BottomNav() {
               className={cn(
                 'w-12 h-12 rounded-2xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand',
                 'transition-all duration-fast active:scale-90',
-                fabOpen && 'rotate-45',
               )}
-              aria-label={fabOpen ? 'Fechar menu' : 'Ações rápidas'}
+              aria-label={fabOpen ? 'Fechar menu' : 'Mais seções'}
             >
               {fabOpen
                 ? <X size={22} weight="bold" />
-                : <Plus size={22} weight="bold" />
+                : <List size={22} weight="bold" />
               }
             </button>
           </div>

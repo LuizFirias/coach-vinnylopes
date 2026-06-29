@@ -875,6 +875,16 @@ export default function ExecucaoTreinoPage() {
         if (savedCount === 0) throw error;
       }
 
+      // Atualizar o ultimo_checkin no perfil do aluno
+      try {
+        await supabaseClient
+          .from('profiles')
+          .update({ ultimo_checkin: new Date().toISOString() })
+          .eq('id', userId);
+      } catch (profileErr) {
+        console.error('Erro ao atualizar ultimo_checkin:', profileErr);
+      }
+
       // Contar PRs batidos hoje
       const hoje = new Date().toISOString().split('T')[0];
       const { data: prsData } = await supabaseClient

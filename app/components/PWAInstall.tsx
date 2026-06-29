@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from 'react';
 import { DeviceMobile, DownloadSimple, X } from '@phosphor-icons/react';
@@ -20,10 +20,16 @@ export default function PWAInstall() {
 
     // Detectar plataforma
     const userAgent = window.navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(userAgent)) {
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    const isAndroid = /android/.test(userAgent);
+
+    if (isIOS) {
       setPlatform('ios');
-    } else if (/android/.test(userAgent)) {
+    } else if (isAndroid) {
       setPlatform('android');
+    } else {
+      // Se não for mobile (iOS ou Android), não mostrar o modal
+      return;
     }
 
     // Mostrar após 3 segundos

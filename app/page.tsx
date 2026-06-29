@@ -17,10 +17,8 @@ export default function RootPage() {
       return;
     }
 
-    if (userRole === "coach") {
+    if (userRole === "coach" || userRole === "super_admin") {
       router.replace("/admin/dashboard");
-    } else if (userRole === "super_admin") {
-      router.replace("/super-admin");
     } else {
       router.replace("/aluno/treinos");
     }

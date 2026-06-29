@@ -119,10 +119,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [deleting, setDeleting] = useState(false);
   const [planosAlimentares, setPlanosAlimentares] = useState<any[]>([]);
   const [uploadNutritionOpen, setUploadNutritionOpen] = useState(false);
-  const [coaches, setCoaches] = useState<any[]>([]);
-  const [selectedNewCoach, setSelectedNewCoach] = useState<string | null>(null);
-  const [changingCoach, setChangingCoach] = useState(false);
-  const [currentCoachId, setCurrentCoachId] = useState<string | null>(null);
+
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [ultimaAtividade, setUltimaAtividade] = useState<string | null>(null);
   const [pontosTotais, setPontosTotais] = useState<number>(0);
@@ -195,7 +192,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         isAdmin = userData?.role === "super_admin";
         setIsSuperAdmin(isAdmin);
 
-        if (userData?.role === "coach") {
+        if (userData?.role === "coach" || userData?.role === "super_admin") {
           const { data: ownership } = await supabaseClient
             .from("coach_alunos")
             .select("aluno_id")
@@ -264,15 +261,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       }));
       setPlanosAlimentares(planosAssinados);
 
-      if (isSuperAdmin) {
-        const { data: coachesData } = await supabaseClient
-          .from("profiles").select("id, full_name").eq("role", "coach").order("full_name", { ascending: true });
-        setCoaches(coachesData || []);
-      }
-      if (prof?.coach_id) {
-        setCurrentCoachId(prof.coach_id);
-        setSelectedNewCoach(prof.coach_id);
-      }
+
 
       const { data: ultimaFicha } = await supabaseClient
         .from("historico_treinos").select("data_conclusao").eq("aluno_id", id)
@@ -463,29 +452,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleChangeCoach = async () => {
-    if (!selectedNewCoach) return setError("Selecione um coach");
-    if (selectedNewCoach === currentCoachId) return setError("Este é o coach atual do aluno");
-    if (!window.confirm("Deseja transferir este aluno para outro coach?")) return;
-    setChangingCoach(true);
-    setError(null);
-    try {
-      if (currentCoachId) {
-        await supabaseClient.from("coach_alunos").delete().eq("coach_id", currentCoachId).eq("aluno_id", id);
-      }
-      const { error: insertError } = await supabaseClient.from("coach_alunos").insert([{ coach_id: selectedNewCoach, aluno_id: id }]);
-      if (insertError && !insertError.message.includes("unique")) throw insertError;
-      const { error: updateError } = await supabaseClient.from("profiles").update({ coach_id: selectedNewCoach }).eq("id", id);
-      if (updateError) throw updateError;
-      setCurrentCoachId(selectedNewCoach);
-      await load();
-    } catch (err: any) {
-      setError("Erro ao transferir aluno: " + err.message);
-      setSelectedNewCoach(currentCoachId);
-    } finally {
-      setChangingCoach(false);
-    }
-  };
+
 
   const handleDeleteNutritionPlan = async (planId: string, pdfUrl: string) => {
     if (!window.confirm("Remover este plano alimentar permanentemente?")) return;
@@ -628,30 +595,30 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Quick action buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => router.push("/admin/treinos/nova-ficha")}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-brand hover:bg-brand-hover text-text-on-brand text-2xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10"
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand hover:bg-brand-hover text-text-on-brand text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 shadow-sm shadow-brand/10"
           >
-            <Plus size={12} weight="bold" /> Nova Ficha
+            <Plus size={10} weight="bold" /> Nova Ficha
           </button>
           <button
             onClick={() => { setActiveTab('nutricao'); setUploadNutritionOpen(true); }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-2xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95"
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
           >
-            <UploadSimple size={12} /> Enviar Plano
+            <UploadSimple size={10} /> Enviar Plano
           </button>
           <button
             onClick={() => { setActiveTab('financeiro'); setEditingProfile(!editingProfile); }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-2xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95"
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
           >
-            <Gear size={12} /> Gerir Plano
+            <Gear size={10} /> Gerir Plano
           </button>
           <button
             onClick={() => setActiveTab('fotos')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-2xs font-semibold uppercase tracking-wider rounded-lg transition-all active:scale-95"
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
           >
-            <ImageIcon size={12} /> Ver Fotos
+            <ImageIcon size={10} /> Ver Fotos
           </button>
         </div>
       </div>
@@ -1513,41 +1480,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 </div>
               )}
 
-              {/* Tutor Responsável - Super Admin Transfer */}
-              {isSuperAdmin && (
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <User className="text-brand w-5 h-5" />
-                    <div>
-                      <h3 className="text-sm font-bold text-text-primary">Transferir Coach</h3>
-                      <p className="text-2xs text-text-tertiary">Gestor responsável pela consultoria</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <select
-                      value={selectedNewCoach || ""}
-                      onChange={(e) => setSelectedNewCoach(e.target.value || null)}
-                      disabled={changingCoach}
-                      className={cn(fieldCls, "disabled:opacity-50")}
-                    >
-                      <option value="">Selecione um coach responsável...</option>
-                      {coaches.map((coach) => (
-                        <option key={coach.id} value={coach.id}>{coach.full_name}</option>
-                      ))}
-                    </select>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      loading={changingCoach}
-                      disabled={!selectedNewCoach || selectedNewCoach === currentCoachId}
-                      onClick={handleChangeCoach}
-                      fullWidth
-                    >
-                      Confirmar transferência
-                    </Button>
-                  </div>
-                </div>
-              )}
+
 
             </div>
 

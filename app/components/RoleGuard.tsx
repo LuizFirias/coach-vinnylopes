@@ -100,7 +100,7 @@ function getRoleHomePage(role: string): string {
     case 'coach':
       return '/admin/dashboard';
     case 'super_admin':
-      return '/super-admin';
+      return '/admin/dashboard';
     default:
       return '/login';
   }

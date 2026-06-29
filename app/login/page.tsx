@@ -56,8 +56,7 @@ function LoginForm() {
         .eq("id", session.user.id)
         .single();
       const role = profile?.role || "aluno";
-      if (role === "coach") router.replace("/admin/dashboard");
-      else if (role === "super_admin") router.replace("/super-admin");
+      if (role === "coach" || role === "super_admin") router.replace("/admin/dashboard");
       else router.replace("/aluno/dashboard");
     };
     checkExistingSession();
@@ -147,8 +146,7 @@ function LoginForm() {
         const role = profileData?.role || "aluno";
 
         let defaultRoute = "/aluno/dashboard";
-        if (role === "coach") defaultRoute = "/admin/dashboard";
-        if (role === "super_admin") defaultRoute = "/super-admin";
+        if (role === "coach" || role === "super_admin") defaultRoute = "/admin/dashboard";
 
         const allowAdmin = role === "coach" || role === "super_admin";
 
@@ -198,9 +196,13 @@ function LoginForm() {
 
         {/* Logo / Marca */}
         <div className="relative z-10 flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand/10 border border-brand/20 rounded-lg flex items-center justify-center">
-            <ShieldCheck className="text-brand w-4 h-4" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Logo Auronfit"
+            width={32}
+            height={32}
+            className="w-8 h-8 object-contain"
+          />
           <span className="font-bold text-sm text-text-primary tracking-widest uppercase font-display">
             AURONFIT
           </span>
@@ -248,7 +250,7 @@ function LoginForm() {
         {/* Rodapé do Hero */}
         <div className="relative z-10">
           <p className="text-[9px] text-text-disabled uppercase tracking-widest leading-none">
-            AURON conecta quem prescreve, quem executa e os dados de resultado.
+            AURON conecta quem prescreve com quem evolui.
           </p>
         </div>
       </div>

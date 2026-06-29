@@ -481,14 +481,6 @@ export default function NutricaoPage() {
         <ScreenHeader
           title="Gestão de Nutrição"
           subtitle="Crie planos alimentares interativos digitais ou faça upload de PDFs para seus alunos"
-          action={
-            <Link href="/admin/nutricao/novo-plano">
-              <Button variant="primary" className="h-9 px-3 rounded-lg text-xs font-bold gap-1.5 cursor-pointer animate-fade-in">
-                <FileText className="w-4 h-4" />
-                Criar Plano Digital
-              </Button>
-            </Link>
-          }
         />
 
         <div className="px-4">
@@ -643,7 +635,7 @@ export default function NutricaoPage() {
                                </span>
                                
                                {/* Status Tooltip */}
-                               <div className="absolute bottom-full mb-1 left-2 w-56 bg-surface-1 border border-border-subtle p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
+                               <div className="absolute bottom-full mb-1 right-0 w-56 bg-surface-1 border border-border-subtle p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
                                  <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
                                    {student.status === 'em-dia' && (
                                      <>O aluno está com excelente cumprimento das refeições. Adesão superior a <strong className="text-success">80%</strong> nos últimos 7 dias.</>
@@ -894,8 +886,27 @@ export default function NutricaoPage() {
                 </Card>
               </div>
 
-              {/* Right Column: Upload Form (4 cols) */}
+              {/* Right Column: Actions & Upload Form (4 cols) */}
               <div className="lg:col-span-4 flex flex-col gap-6">
+                {/* Criar Plano Digital Card */}
+                <Card className="rounded-xl border border-border-subtle/80 shadow-sm p-4 md:p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
+                      <AppleLogo size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Dieta Digital</h3>
+                      <p className="text-[10px] text-text-tertiary">Monte rotinas de refeições interativas integradas ao app</p>
+                    </div>
+                  </div>
+                  <Link href="/admin/nutricao/novo-plano" className="w-full mt-1">
+                    <Button variant="primary" fullWidth className="h-10 rounded-lg text-xs font-bold cursor-pointer">
+                      Criar Plano Digital
+                    </Button>
+                  </Link>
+                </Card>
+
+                {/* Enviar Plano Alimentar PDF */}
                 <Card className="rounded-xl border border-border-subtle/80 shadow-sm p-4 md:p-5">
                   <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-4 border-b border-border-subtle pb-2">
                     Enviar Plano Alimentar PDF
