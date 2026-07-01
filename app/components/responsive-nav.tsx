@@ -133,7 +133,12 @@ export default function ResponsiveNav() {
         <nav className="flex-1 w-full px-3 py-4 flex flex-col gap-4">
           {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href === '/aluno/perfil' && (
+              pathname.startsWith('/aluno/estatisticas') ||
+              pathname.startsWith('/aluno/medidas') ||
+              pathname.startsWith('/aluno/fotos') ||
+              pathname.startsWith('/aluno/ranking')
+            ));
             return (
               <Link
                 key={item.href}
@@ -210,7 +215,12 @@ export default function ResponsiveNav() {
         <nav className="flex-1 px-4 py-6 flex flex-col gap-1 overflow-y-auto">
           {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href === '/aluno/perfil' && (
+              pathname.startsWith('/aluno/estatisticas') ||
+              pathname.startsWith('/aluno/medidas') ||
+              pathname.startsWith('/aluno/fotos') ||
+              pathname.startsWith('/aluno/ranking')
+            ));
             return (
               <Link
                 key={item.href}

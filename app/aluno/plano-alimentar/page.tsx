@@ -7,14 +7,14 @@ import { extractStoragePath } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import PDFViewer from '@/app/components/PDFViewer';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
-import Link from 'next/link';
 import {
-  ArrowLeft, ForkKnife, FileText, Drop, Check, Plus, Minus, CaretDown, CaretUp, FilePdf,
-  Clock, Flame, Egg, Bread, DropHalf
+  ForkKnife, FileText, Drop, Check, Plus, Minus, CaretDown, FilePdf,
+  Clock,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { Card } from '@/components/ui/Card';
+import { getTodayBrazil } from '@/lib/dateUtils';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ interface RegistroAgua {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getTodayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return getTodayBrazil();
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -68,6 +68,7 @@ export default function PlanoAlimentarPage() {
   const [pdfTitle, setPdfTitle] = useState<string>('');
 
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [loadedDate, setLoadedDate] = useState<string>('');
 
   // ── Carregar Dados ──────────────────────────────────────────────────────────
 
@@ -80,8 +81,9 @@ export default function PlanoAlimentarPage() {
       const uid = user.id;
       setUserId(uid);
       const today = getTodayISO();
+      setLoadedDate(today);
 
-      // 1. Tentar buscar o plano digital ativo do aluno via API otimizada (bypassa RLS lento no client-side)
+      // 1. Tentar buscar o plano digital ativo do aluno via API otimizada
       const resPlan = await fetch('/api/aluno/plano-alimentar/digital', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -177,14 +179,44 @@ export default function PlanoAlimentarPage() {
     }
   }, []);
 
+  const checkDateChange = useCallback(() => {
+    const today = getTodayISO();
+    if (loadedDate && today !== loadedDate) {
+      setLoadedDate(today);
+      setDigitalCheckins({});
+      setLegacyConsumidos(new Set());
+      setAgua({ id: null, copos: 0, ml_por_copo: 250 });
+      fetchData();
+      return true;
+    }
+    return false;
+  }, [loadedDate, fetchData]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkDateChange();
+    }, 15000); // Verifica a cada 15 segundos
+    return () => clearInterval(interval);
+  }, [checkDateChange]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      checkDateChange();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [checkDateChange]);
 
   // ── Ações de Hidratação ──────────────────────────────────────────────────────
 
   const updateAgua = async (delta: number) => {
     if (!userId || savingAgua) return;
+    const dateChanged = checkDateChange();
+    if (dateChanged) return;
     const next = Math.max(0, Math.min(20, agua.copos + delta));
     if (next === agua.copos) return;
 
@@ -213,10 +245,19 @@ export default function PlanoAlimentarPage() {
     }
   };
 
+  const toggleCopo = async (index: number) => {
+    // Clicar num copo já bebido desmarca a partir dali; clicar num não-bebido marca até ele
+    const newCopos = index < agua.copos ? index : index + 1;
+    const delta = newCopos - agua.copos;
+    await updateAgua(delta);
+  };
+
   // ── Ações do Plano Digital ───────────────────────────────────────────────────
 
   const toggleDigitalMeal = async (mealId: string) => {
     if (!userId || !digitalPlan || togglingMealId) return;
+    const dateChanged = checkDateChange();
+    if (dateChanged) return;
     setTogglingMealId(mealId);
     setFeedbackError(null);
 
@@ -291,6 +332,8 @@ export default function PlanoAlimentarPage() {
 
   const toggleLegacyMeal = async (refeicaoId: string) => {
     if (!userId || togglingMealId) return;
+    const dateChanged = checkDateChange();
+    if (dateChanged) return;
     setTogglingMealId(refeicaoId);
 
     const today = getTodayISO();
@@ -362,8 +405,6 @@ export default function PlanoAlimentarPage() {
     );
   }
 
-  const hojeFormatado = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-
   // Digital calculations
   const totalMealsCount = digitalPlan?.days?.[0]?.meals?.length || 0;
   const completedMealsCount = Object.keys(digitalCheckins).length;
@@ -373,28 +414,34 @@ export default function PlanoAlimentarPage() {
   const totalLegacyMeals = legacyRefeicoes.length;
   const completedLegacyMeals = legacyConsumidos.size;
 
+  // Date header
+  const now = new Date();
+  const diasSemanaLabels = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const mesesLabels = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const diaSemanaStr = diasSemanaLabels[now.getDay()];
+  const diaNumStr = now.getDate();
+  const mesStr = mesesLabels[now.getMonth()];
+
+  // Water
+  const mlAtual = agua.copos * agua.ml_por_copo;
+  const mlMeta = metaCopos * agua.ml_por_copo;
+
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
-        <div className="max-w-2xl mx-auto flex flex-col gap-6">
+      <div className="min-h-screen bg-surface-0 pb-24 scroll-content">
+        <div className="max-w-2xl mx-auto flex flex-col pt-safe">
 
-          {/* ── Header ── */}
-          <div>
-            <Link
-              href="/aluno/dashboard"
-              className="inline-flex items-center gap-1.5 text-brand text-2xs uppercase tracking-caps mb-3 cursor-pointer"
-            >
-              <ArrowLeft className="w-3 h-3" /> Dashboard
-            </Link>
-            <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-0.5">
-              {hojeFormatado}
+          {/* ── Header — padrão igual ao dashboard, sem "← DASHBOARD" azul ── */}
+          <div className="px-4 pt-4 pb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted capitalize">
+              {diaSemanaStr}, {diaNumStr} de {mesStr}
             </p>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Nutrição</h1>
+            <h1 className="text-xl font-bold text-text-primary mt-0.5">Nutrição</h1>
           </div>
 
           {/* Feedback error toast */}
           {feedbackError && (
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-xs font-semibold animate-shake">
+            <div className="mx-4 mb-3 flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-xs font-semibold animate-shake">
               <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
               {feedbackError}
             </div>
@@ -415,7 +462,7 @@ export default function PlanoAlimentarPage() {
 
               {/* Dicas temporárias */}
               <div className="w-full mt-4 flex flex-col gap-2 text-left">
-                <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">Dicas de hidratação e rotina</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-1">Dicas de hidratação e rotina</p>
                 {[
                   { icon: '💧', text: 'Beba pelo menos 35ml de água por kg de peso todos os dias' },
                   { icon: '🥩', text: 'Consuma fontes limpas de proteínas em todas as refeições' },
@@ -430,61 +477,66 @@ export default function PlanoAlimentarPage() {
             </div>
           )}
 
-          {/* ── CASO 1: PLANO DIGITAL ATIVO (Destaque Principal) ── */}
+          {/* ── CASO 1: PLANO DIGITAL ATIVO ── */}
           {digitalPlan && (
             <>
-              {/* Card de metas e resumo */}
-              <Card className="rounded-2xl border border-border-subtle p-4 flex flex-col gap-4 bg-surface-1">
-                <div className="flex justify-between items-start">
-                  <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-success uppercase tracking-wider px-2 py-0.5 rounded-full bg-success/10 border border-success/20">
-                      Plano Digital Ativo
-                    </span>
-                    <h2 className="text-base font-bold text-text-primary mt-2 truncate">{digitalPlan.name}</h2>
-                    <p className="text-xs text-text-secondary">Foco: {digitalPlan.goal || 'Hipertrofia'}</p>
-                  </div>
+              {/* Card de Plano Ativo — refatorado */}
+              <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4">
 
-                  <div className="text-right shrink-0">
-                    <span className="text-xs font-mono font-bold text-text-secondary">
-                      {completedMealsCount} de {totalMealsCount} feitas
-                    </span>
-                    <p className="text-[9px] text-text-tertiary">Adesão de hoje</p>
+                {/* Status + adesão lado a lado */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-1.5">
+                    {/* Dot em vez de badge pill verde */}
+                    <span className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
+                    <span className="text-[11px] font-medium text-success">Plano ativo</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold font-mono tabular-nums text-text-primary">
+                      {completedMealsCount} de {totalMealsCount}
+                    </p>
+                    <p className="text-[10px] text-text-muted">refeições hoje</p>
                   </div>
                 </div>
 
-                {/* Progresso de refeições */}
-                <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden w-full">
-                  <div 
+                {/* Nome e foco */}
+                <p className="text-base font-bold text-text-primary">{digitalPlan.name}</p>
+                <p className="text-xs text-text-muted mt-0.5">Foco: {digitalPlan.goal || 'Hipertrofia'}</p>
+
+                {/* Barra de progresso */}
+                <div className="mt-3 w-full h-1 bg-surface-2 rounded-full overflow-hidden">
+                  <div
                     className="h-full bg-brand rounded-full transition-all duration-300"
                     style={{ width: `${totalMealsCount > 0 ? (completedMealsCount / totalMealsCount) * 100 : 0}%` }}
                   />
                 </div>
 
-                {/* Targets Summary discretos */}
+                {/* Macros — grid 4 colunas */}
                 {digitalPlan.calories_target && (
-                  <div className="border-t border-border-subtle/30 pt-3 grid grid-cols-4 gap-2 text-center text-xs font-mono">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Calorias</span>
-                      <span className="text-text-primary font-bold">{digitalPlanMacros.calories} / {digitalPlan.calories_target} kcal</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Proteínas</span>
-                      <span className="text-text-primary font-bold">{digitalPlanMacros.protein} / {digitalPlan.protein_target || '—'}g</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Carbos</span>
-                      <span className="text-text-primary font-bold">{digitalPlanMacros.carbs} / {digitalPlan.carbs_target || '—'}g</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Gorduras</span>
-                      <span className="text-text-primary font-bold">{digitalPlanMacros.fat} / {digitalPlan.fat_target || '—'}g</span>
-                    </div>
+                  <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border-subtle/50">
+                    {[
+                      { label: 'Kcal',     atual: digitalPlanMacros.calories,  meta: digitalPlan.calories_target,   unit: '' },
+                      { label: 'Proteína', atual: digitalPlanMacros.protein,   meta: digitalPlan.protein_target,    unit: 'g' },
+                      { label: 'Carbo',    atual: digitalPlanMacros.carbs,     meta: digitalPlan.carbs_target,      unit: 'g' },
+                      { label: 'Gordura',  atual: digitalPlanMacros.fat,       meta: digitalPlan.fat_target,        unit: 'g' },
+                    ].map(({ label, atual, meta, unit }) => (
+                      <div key={label}>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-text-muted mb-0.5">
+                          {label}
+                        </p>
+                        <p className="text-[12px] font-bold font-mono tabular-nums text-text-primary leading-tight">
+                          {atual}
+                        </p>
+                        <p className="text-[10px] font-mono text-text-muted">
+                          /{meta ?? '—'}{unit}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </Card>
+              </div>
 
               {/* Lista de Refeições Digitais */}
-              <div className="flex flex-col gap-3">
+              <div className="mx-4 mb-4 flex flex-col gap-2">
                 {digitalPlan.days?.[0]?.meals?.map((meal: any) => {
                   const isMealDone = digitalCheckins[meal.id] === 'done';
                   const isExpanded = expandedMeals[meal.id];
@@ -494,126 +546,132 @@ export default function PlanoAlimentarPage() {
                     <div
                       key={meal.id}
                       className={cn(
-                        'rounded-2xl border transition-all duration-200 overflow-hidden',
+                        'bg-surface-1 border rounded-lg overflow-hidden transition-colors duration-100',
                         isMealDone
-                          ? 'bg-success-subtle/30 border-success-border/60 shadow-sm'
-                          : 'bg-surface-1 border-border-subtle shadow-sm'
+                          ? 'border-success/20 bg-success/5'
+                          : 'border-border-subtle'
                       )}
                     >
-                      {/* Accordion trigger line */}
-                      <div className="flex items-center gap-3 p-3">
-                        {/* Check-in Toggle Button */}
-                        <button
-                          onClick={() => toggleDigitalMeal(meal.id)}
-                          disabled={togglingMealId === meal.id}
+                      {/* Header da refeição — sempre visível */}
+                      <button
+                        onClick={() => setExpandedMeals(prev => ({ ...prev, [meal.id]: !prev[meal.id] }))}
+                        className="w-full flex items-center gap-3 px-4 py-3"
+                        id={`btn-refeicao-${meal.id}`}
+                      >
+                        {/* Check — compacto, caixa 20px rounded-md */}
+                        <div
+                          onClick={(e) => { e.stopPropagation(); toggleDigitalMeal(meal.id); }}
                           className={cn(
-                            'w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer',
+                            'w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 cursor-pointer',
                             isMealDone
-                              ? 'bg-success border-success text-white'
-                              : 'border-border-default bg-surface-2 text-transparent hover:border-brand/40'
+                              ? 'bg-success border-success'
+                              : 'border-border-default bg-surface-2'
                           )}
-                          aria-label={isMealDone ? 'Desmarcar refeição' : 'Marcar como feita'}
                         >
-                          <Check className="w-3.5 h-3.5" weight="bold" />
-                        </button>
+                          {isMealDone && (
+                            <Check className="w-3 h-3 text-white" weight="bold" />
+                          )}
+                        </div>
 
-                        {/* Title and Time */}
-                        <div 
-                          className="flex-1 min-w-0 cursor-pointer"
-                          onClick={() => setExpandedMeals(prev => ({ ...prev, [meal.id]: !prev[meal.id] }))}
-                        >
+                        <div className="flex-1 text-left">
+                          {/* Nome — tachado quando concluída */}
                           <p className={cn(
-                            'text-xs font-bold leading-tight',
-                            isMealDone ? 'text-success line-through opacity-80' : 'text-text-primary'
+                            'text-sm font-semibold',
+                            isMealDone
+                              ? 'line-through text-text-muted'
+                              : 'text-text-primary'
                           )}>
                             {meal.title}
                           </p>
                           {meal.time_suggestion && (
-                            <span className="text-[10px] text-text-tertiary flex items-center gap-1 mt-0.5">
-                              <Clock size={11} /> {meal.time_suggestion.slice(0, 5)}
-                            </span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3 text-text-muted" />
+                              <p className="text-[11px] text-text-muted">{meal.time_suggestion.slice(0, 5)}</p>
+                            </div>
                           )}
                         </div>
 
-                        {/* Right Summary */}
-                        <div 
-                          className="flex items-center gap-2 cursor-pointer"
-                          onClick={() => setExpandedMeals(prev => ({ ...prev, [meal.id]: !prev[meal.id] }))}
-                        >
-                          <span className="text-[10px] font-mono text-text-tertiary">{mMacros.calories} kcal</span>
-                          {isExpanded ? <CaretUp size={14} className="text-text-tertiary" /> : <CaretDown size={14} className="text-text-tertiary" />}
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-mono tabular-nums text-text-secondary">
+                            {mMacros.calories} kcal
+                          </p>
+                          <CaretDown className={cn(
+                            'w-4 h-4 text-text-muted transition-transform duration-200',
+                            isExpanded ? 'rotate-180' : ''
+                          )} />
                         </div>
-                      </div>
+                      </button>
 
-                      {/* Expanded Content */}
+                      {/* Detalhes expandíveis */}
                       {isExpanded && (
-                        <div className="px-3 pb-3 pt-0 border-t border-border-subtle/30 bg-surface-1/40">
-                          
+                        <div className="px-4 pb-3 border-t border-border-subtle/50">
                           {/* Foods list */}
-                          <div className="mt-3 flex flex-col gap-2">
-                            {meal.items?.map((item: any, itIdx: number) => {
-                              const food = item.food;
-                              if (!food) return null;
-
-                              return (
-                                <div key={itIdx} className="bg-surface-2/60 border border-border-subtle/20 rounded-lg p-2.5 flex flex-col gap-1.5">
-                                  <div className="flex justify-between items-baseline gap-4">
-                                    <span className="text-xs font-bold text-text-primary leading-tight">{food.name}</span>
-                                    <span className="text-xs font-mono font-bold text-text-secondary shrink-0">
-                                      {item.quantity_grams}g {item.portion_label ? `(${item.portion_label})` : ''}
-                                    </span>
-                                  </div>
-
-                                  {/* Substitutions drawer/disclosure */}
-                                  {item.substitutions && item.substitutions.length > 0 && (
-                                    <div className="border-t border-border-subtle/20 pt-1.5 mt-1">
-                                      <details className="group">
-                                        <summary className="text-[9px] font-bold text-brand hover:text-brand-hover flex items-center gap-1 cursor-pointer select-none">
-                                          Opções de substituição
-                                        </summary>
-                                        <div className="flex flex-col gap-1 mt-1.5 pl-2 border-l border-border-default">
-                                          {item.substitutions.map((sub: any, subIdx: number) => {
-                                            const subFood = sub.food;
-                                            if (!subFood) return null;
-                                            return (
-                                              <div key={subIdx} className="text-[10px] text-text-secondary flex justify-between">
-                                                <span>• {subFood.name}</span>
-                                                <span className="font-mono font-semibold">{sub.quantity_grams}g {sub.portion_label ? `(${sub.portion_label})` : ''}</span>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </details>
+                          {meal.items && meal.items.length > 0 && (
+                            <div className="mt-3 flex flex-col gap-1.5">
+                              {meal.items.map((item: any, itIdx: number) => {
+                                const food = item.food;
+                                if (!food) return null;
+                                return (
+                                  <div key={itIdx} className="flex justify-between py-1.5 border-b border-border-subtle/30 last:border-0">
+                                    <div>
+                                      <p className="text-xs text-text-secondary">{food.name}</p>
+                                      {/* Substituições */}
+                                      {item.substitutions && item.substitutions.length > 0 && (
+                                        <details className="group mt-1">
+                                          <summary className="text-[9px] font-bold text-brand cursor-pointer select-none">
+                                            Opções de substituição
+                                          </summary>
+                                          <div className="flex flex-col gap-1 mt-1 pl-2 border-l border-border-default">
+                                            {item.substitutions.map((sub: any, subIdx: number) => {
+                                              const subFood = sub.food;
+                                              if (!subFood) return null;
+                                              return (
+                                                <div key={subIdx} className="text-[10px] text-text-secondary flex justify-between">
+                                                  <span>• {subFood.name}</span>
+                                                  <span className="font-mono font-semibold">{sub.quantity_grams}g</span>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </details>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                                    <p className="text-xs font-mono text-text-muted flex-shrink-0 ml-4">
+                                      {item.quantity_grams}g {item.portion_label ? `(${item.portion_label})` : ''}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
 
-                          {/* Meal Notes */}
+                          {/* Notas da refeição */}
                           {meal.notes && (
-                            <div className="mt-3 p-2 bg-brand/5 border border-brand-border/30 rounded-lg text-[10px] text-text-secondary italic">
+                            <div className="mt-3 p-2 bg-brand/5 border border-brand/20 rounded-lg text-[10px] text-text-secondary italic">
                               Recomendação: {meal.notes}
                             </div>
                           )}
 
-                          {/* Quick Toggle Button in Footer */}
-                          <div className="mt-3.5 pt-2.5 border-t border-border-subtle/25">
+                          {/* Botão marcar como feita — apenas quando não concluída */}
+                          {!isMealDone && (
                             <button
                               onClick={() => toggleDigitalMeal(meal.id)}
                               disabled={togglingMealId === meal.id}
-                              className={cn(
-                                "w-full h-8.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                                isMealDone
-                                  ? "bg-surface-3 border border-border-subtle text-text-secondary hover:text-danger"
-                                  : "bg-success text-white hover:bg-success-hover"
-                              )}
+                              className="mt-3 w-full h-9 rounded-md bg-success/10 border border-success/20 text-xs font-semibold text-success flex items-center justify-center gap-1.5 cursor-pointer"
                             >
-                              <Check size={14} weight="bold" />
-                              {isMealDone ? 'Desmarcar Refeição' : 'Marcar Refeição como Feita'}
+                              <Check className="w-3.5 h-3.5" weight="bold" />
+                              Marcar como feita
                             </button>
-                          </div>
+                          )}
+                          {isMealDone && (
+                            <button
+                              onClick={() => toggleDigitalMeal(meal.id)}
+                              disabled={togglingMealId === meal.id}
+                              className="mt-3 w-full h-9 rounded-md bg-surface-2 border border-border-subtle text-xs font-semibold text-text-secondary flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              Desmarcar refeição
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -627,23 +685,24 @@ export default function PlanoAlimentarPage() {
           {!digitalPlan && planoPDF && (
             <>
               {/* PDF Highlight Card */}
-              <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 flex items-center justify-between gap-3">
+              <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-brand flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-brand flex-shrink-0">
                     <ForkKnife className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-text-primary truncate">
                       {planoPDF.nome_arquivo.replace('.pdf', '')}
                     </p>
-                    <p className="text-xs text-text-tertiary">
+                    <p className="text-xs text-text-muted">
                       Enviado em {new Date(planoPDF.criado_em).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={openPdf}
-                  className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-surface-3 border border-border-subtle text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-border-default transition-colors flex-shrink-0 cursor-pointer"
+                  id="btn-ver-pdf-nutricao"
+                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg bg-surface-2 border border-border-subtle text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Ver PDF
@@ -652,16 +711,16 @@ export default function PlanoAlimentarPage() {
 
               {/* Legacy meals */}
               {legacyRefeicoes.length > 0 && (
-                <section>
+                <div className="mx-4 mb-4">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Refeições de hoje</p>
-                    <span className="text-xs text-text-tertiary">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">Refeições de hoje</p>
+                    <span className="text-xs text-text-muted">
                       {completedLegacyMeals} de {totalLegacyMeals} feitas
                     </span>
                   </div>
 
                   {/* Progress bar */}
-                  <div className="h-1.5 bg-surface-3 rounded-full mb-4 overflow-hidden">
+                  <div className="h-1 bg-surface-2 rounded-full mb-4 overflow-hidden">
                     <div
                       className="h-full bg-brand rounded-full transition-all duration-300"
                       style={{ width: totalLegacyMeals > 0 ? `${(completedLegacyMeals / totalLegacyMeals) * 100}%` : '0%' }}
@@ -678,64 +737,79 @@ export default function PlanoAlimentarPage() {
                         <div
                           key={r.id}
                           className={cn(
-                            'rounded-2xl border transition-all duration-200',
+                            'bg-surface-1 border rounded-lg overflow-hidden transition-colors duration-100',
                             feita
-                              ? 'bg-success-subtle border-success-border shadow-elev-1'
-                              : 'bg-surface-1 border-border-subtle shadow-elev-1'
+                              ? 'border-success/20 bg-success/5'
+                              : 'border-border-subtle'
                           )}
                         >
-                          <div className="flex items-center gap-3 p-3">
-                            <button
-                              onClick={() => toggleLegacyMeal(r.id)}
-                              disabled={togglingMealId === r.id}
+                          <button
+                            onClick={() => ingreds.length > 0 && setExpandedMeals(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
+                            className="w-full flex items-center gap-3 px-4 py-3"
+                          >
+                            {/* Check — caixa 20px */}
+                            <div
+                              onClick={(e) => { e.stopPropagation(); toggleLegacyMeal(r.id); }}
                               className={cn(
-                                'w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer',
+                                'w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 cursor-pointer',
                                 feita
-                                  ? 'bg-success border-success text-white'
-                                  : 'border-border-default bg-surface-3 text-transparent hover:border-brand'
+                                  ? 'bg-success border-success'
+                                  : 'border-border-default bg-surface-2'
                               )}
                             >
-                              <Check className="w-3.5 h-3.5" weight="bold" />
-                            </button>
+                              {feita && (
+                                <Check className="w-3 h-3 text-white" weight="bold" />
+                              )}
+                            </div>
 
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 text-left">
                               <p className={cn(
-                                'text-sm font-semibold leading-tight',
-                                feita ? 'text-success line-through opacity-70' : 'text-text-primary'
+                                'text-sm font-semibold',
+                                feita ? 'line-through text-text-muted' : 'text-text-primary'
                               )}>
                                 {r.nome}
                               </p>
                               {r.horario_sugerido && (
-                                <p className="text-2xs text-text-tertiary mt-0.5">{r.horario_sugerido.slice(0, 5)}</p>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <Clock className="w-3 h-3 text-text-muted" />
+                                  <p className="text-[11px] text-text-muted">{r.horario_sugerido.slice(0, 5)}</p>
+                                </div>
                               )}
                             </div>
 
                             {ingreds.length > 0 && (
-                              <button
-                                onClick={() => setExpandedMeals(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
-                                className="w-8 h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary transition-colors cursor-pointer"
-                              >
-                                {expanded ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
-                              </button>
+                              <CaretDown className={cn(
+                                'w-4 h-4 text-text-muted transition-transform duration-200',
+                                expanded ? 'rotate-180' : ''
+                              )} />
                             )}
-                          </div>
+                          </button>
 
                           {expanded && ingreds.length > 0 && (
-                            <div className="px-3 pb-3 pt-0 border-t border-border-subtle/50">
-                              <ul className="mt-2 space-y-1">
-                                {ingreds.map((ing: any, i: number) => (
-                                  <li key={i} className="flex items-center justify-between text-xs text-text-secondary">
-                                    <span>{ing.nome}</span>
-                                    {ing.quantidade && (
-                                      <span className="text-text-tertiary ml-2">{ing.quantidade}</span>
-                                    )}
-                                  </li>
-                                ))}
-                              </ul>
+                            <div className="px-4 pb-3 border-t border-border-subtle/50">
+                              {ingreds.map((ing: any, i: number) => (
+                                <div key={i} className="flex justify-between py-1.5 border-b border-border-subtle/30 last:border-0">
+                                  <p className="text-xs text-text-secondary">{ing.nome}</p>
+                                  {ing.quantidade && (
+                                    <p className="text-xs font-mono text-text-muted">{ing.quantidade}</p>
+                                  )}
+                                </div>
+                              ))}
                               {r.observacoes && (
-                                <p className="mt-2 text-xs text-text-tertiary italic border-t border-border-subtle/50 pt-2">
+                                <p className="mt-2 text-xs text-text-muted italic border-t border-border-subtle/50 pt-2">
                                   {r.observacoes}
                                 </p>
+                              )}
+                              {/* Botão marcar como feita dentro do expandido */}
+                              {!feita && (
+                                <button
+                                  onClick={() => toggleLegacyMeal(r.id)}
+                                  disabled={togglingMealId === r.id}
+                                  className="mt-3 w-full h-9 rounded-md bg-success/10 border border-success/20 text-xs font-semibold text-success flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" weight="bold" />
+                                  Marcar como feita
+                                </button>
                               )}
                             </div>
                           )}
@@ -743,63 +817,85 @@ export default function PlanoAlimentarPage() {
                       );
                     })}
                   </div>
-                </section>
+                </div>
               )}
             </>
           )}
 
-          {/* ── ÁGUA (Sempre visível se houver algum plano cadastrado) ── */}
+          {/* ── ÁGUA (Card de Hidratação refatorado — sempre visível se houver plano) ── */}
           {(digitalPlan || planoPDF) && (
-            <section className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-4">
+            <div className="mx-4 mb-6 bg-surface-1 border border-border-subtle rounded-lg p-4">
+
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Drop className="w-4 h-4 text-brand" />
-                  <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Hidratação</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+                    Hidratação
+                  </p>
                 </div>
-                <span className="text-xs text-text-tertiary">
-                  {agua.copos * agua.ml_por_copo}ml / {metaCopos * agua.ml_por_copo}ml
-                </span>
+                <p className="text-xs font-mono tabular-nums text-text-secondary">
+                  {mlAtual}ml / {mlMeta}ml
+                </p>
               </div>
 
-              {/* Copos visuais */}
-              <div className="flex gap-1.5 flex-wrap mb-4">
+              {/* Barra de progresso de água */}
+              <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden mb-3">
+                <div
+                  className="h-full bg-brand rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min((mlAtual / mlMeta) * 100, 100)}%` }}
+                />
+              </div>
+
+              {/* Copos — grid de ícones */}
+              <div className="grid grid-cols-8 gap-1.5 mb-3">
                 {Array.from({ length: metaCopos }).map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => updateAgua(i < agua.copos ? -(agua.copos - i) : i + 1 - agua.copos)}
+                    onClick={() => toggleCopo(i)}
                     disabled={savingAgua}
-                    className={cn(
-                      'w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer',
-                      i < agua.copos
-                        ? 'bg-brand/20 border-brand text-brand'
-                        : 'bg-surface-3 border-border-subtle text-text-tertiary'
-                    )}
                     aria-label={`${i + 1} copo${i > 0 ? 's' : ''}`}
+                    id={`btn-copo-${i}`}
+                    className={cn(
+                      'aspect-square rounded-md flex items-center justify-center transition-colors duration-100 cursor-pointer',
+                      i < agua.copos
+                        ? 'bg-brand/20 border border-brand/40'
+                        : 'bg-surface-2 border border-border-subtle'
+                    )}
                   >
-                    <Drop className="w-3.5 h-3.5" />
+                    <Drop className={cn(
+                      'w-3.5 h-3.5',
+                      i < agua.copos ? 'text-brand' : 'text-border-default'
+                    )} />
                   </button>
                 ))}
               </div>
 
               {/* Controles +/- */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => updateAgua(-1)}
                   disabled={savingAgua || agua.copos === 0}
-                  className="w-9 h-9 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary disabled:opacity-30 hover:text-text-primary transition-colors cursor-pointer"
+                  id="btn-remover-copo"
+                  className="w-10 h-10 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center disabled:opacity-30 active:bg-surface-3 cursor-pointer"
                 >
-                  <Minus className="w-4 h-4" />
+                  <Minus className="w-4 h-4 text-text-secondary" />
                 </button>
-                <div className="flex-1 text-center">
-                  <span className="text-lg font-bold text-text-primary">{agua.copos}</span>
-                  <span className="text-xs text-text-tertiary ml-1">/ {metaCopos} copos</span>
+
+                <div className="text-center">
+                  <p className="text-xl font-bold font-mono tabular-nums text-text-primary">
+                    {agua.copos}
+                  </p>
+                  <p className="text-[10px] text-text-muted">de {metaCopos} copos</p>
                 </div>
+
                 <button
                   onClick={() => updateAgua(1)}
                   disabled={savingAgua || agua.copos >= metaCopos}
-                  className="w-9 h-9 rounded-xl bg-brand text-text-on-brand flex items-center justify-center disabled:opacity-30 shadow-sm shadow-brand/30 transition-opacity cursor-pointer"
+                  id="btn-adicionar-copo"
+                  className="w-10 h-10 rounded-lg bg-brand flex items-center justify-center disabled:opacity-30 active:opacity-80 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 text-white" />
                 </button>
               </div>
 
@@ -808,29 +904,29 @@ export default function PlanoAlimentarPage() {
                   Meta atingida! Excelente hidratação hoje.
                 </p>
               )}
-            </section>
+            </div>
           )}
 
           {/* ── HISTÓRICO DE DOCUMENTOS PDF ADICIONAIS ── */}
           {historicoPDFs.length > 0 && (
-            <section className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4">
-              <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3 flex items-center gap-1.5">
+            <div className="mx-4 mb-6 bg-surface-1 border border-border-subtle rounded-lg p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3 flex items-center gap-1.5">
                 <FilePdf className="w-3.5 h-3.5" />
                 Documentos em PDF
               </p>
               <div className="flex flex-col gap-2">
                 {historicoPDFs.map(histPlano => (
-                  <div 
+                  <div
                     key={histPlano.id}
-                    className="bg-surface-2 border border-border-subtle/50 rounded-xl p-3 flex items-center justify-between gap-3"
+                    className="bg-surface-2 border border-border-subtle/50 rounded-lg p-3 flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <FilePdf className="w-4 h-4 text-text-secondary shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-text-primary truncate font-medium">
+                        <p className="text-xs font-semibold text-text-primary truncate">
                           {histPlano.nome_arquivo.replace('.pdf', '')}
                         </p>
-                        <p className="text-[10px] text-text-tertiary mt-0.5">
+                        <p className="text-[10px] text-text-muted mt-0.5">
                           Enviado em {new Date(histPlano.criado_em).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
@@ -844,7 +940,7 @@ export default function PlanoAlimentarPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            </div>
           )}
 
         </div>

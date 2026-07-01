@@ -13,6 +13,7 @@ export default function SubscriptionGuard({ children }: Props) {
   const [allowed, setAllowed] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [coachWhatsapp, setCoachWhatsapp] = useState("556781232717");
 
   useEffect(() => {
     const check = async () => {
@@ -29,7 +30,7 @@ export default function SubscriptionGuard({ children }: Props) {
 
         const { data: profile, error } = await supabaseClient
           .from("profiles")
-          .select("status_pagamento, data_expiracao, arquivado")
+          .select("status_pagamento, data_expiracao, arquivado, coach_id")
           .eq("id", user.id)
           .single();
 
@@ -41,6 +42,19 @@ export default function SubscriptionGuard({ children }: Props) {
           setAllowed(false);
           setStatus("arquivado");
         } else {
+          // Fetch coach whatsapp if coach_id is present
+          if (profile.coach_id) {
+            try {
+              const res = await fetch(`/api/aluno/coach-whatsapp?coachId=${profile.coach_id}`);
+              const data = await res.json();
+              if (data?.whatsapp) {
+                setCoachWhatsapp(data.whatsapp);
+              }
+            } catch (e) {
+              console.warn("Erro ao buscar whatsapp do coach:", e);
+            }
+          }
+
           const exp = profile.data_expiracao ? new Date(profile.data_expiracao) : null;
           const now = new Date();
           if (exp && exp >= now && profile.status_pagamento === 'pago') {
@@ -73,8 +87,7 @@ export default function SubscriptionGuard({ children }: Props) {
     check();
   }, []);
 
-  const WHATSAPP_NUMBER ="556781232717"; // international format without '+'
-  const waMessage = encodeURIComponent("Olá Auronfit, preciso renovar minha assinatura.");
+  const waMessage = encodeURIComponent("Olá, preciso renovar minha assinatura no Auronfit.");
 
   if (loading) {
     return (
@@ -88,24 +101,22 @@ export default function SubscriptionGuard({ children }: Props) {
 
   // Blocked view
   return (
-    <div className="w-full flex items-center justify-center py-12">
-      <div className="max-w-xl w-full card-glass text-center">
-        <h3 className="text-xl font-semibold text-white mb-3">Sua assinatura precisa de renovação</h3>
-        <p className="text-gray-300 mb-6">Sua assinatura precisa de renovação para liberar este conteúdo.</p>
+    <div className="w-full flex items-center justify-center py-12 px-4">
+      <div className="max-w-md w-full bg-surface-1 border border-border-subtle p-8 rounded-2xl text-center shadow-elev-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-3">Sua assinatura precisa de renovação</h3>
+        <p className="text-xs text-text-secondary mb-6 leading-relaxed">
+          Sua assinatura precisa de renovação para liberar este conteúdo. Fale com seu personal/coach para renovar seu acesso.
+        </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="flex flex-col items-stretch justify-center">
           <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`}
+            href={`https://wa.me/${coachWhatsapp}?text=${waMessage}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block px-6 py-4 bg-gradient-to-r from-[#B8860B] via-[#FFD700] to-[#B8860B] text-black text-[11px] uppercase tracking-[0.2em] rounded-xl border border-yellow-600/20 shadow-[0_10px_20px_-10px_rgba(212,175,55,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(212,175,55,0.5)] hover:scale-[1.02] transition-all duration-500 active:scale-[0.98]"
+            className="inline-flex items-center justify-center h-11 px-6 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-md"
           >
             Falar com Coach no WhatsApp
           </a>
-
-          <Link href="/login" className="mt-2 sm:mt-0 inline-block px-6 py-4 bg-white/[0.03] border border-white/10 text-white text-[11px] uppercase tracking-[0.2em] rounded-xl hover:bg-white/[0.05] transition-all duration-300">
-            Entrar / Gerenciar Assinatura
-          </Link>
         </div>
       </div>
     </div>

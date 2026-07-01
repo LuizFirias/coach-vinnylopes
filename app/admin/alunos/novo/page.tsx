@@ -38,7 +38,7 @@ export default function NovoAlunoPage() {
         const { data: profileData, error: profileError } = await supabaseClient
           .from("profiles").select("role").eq("id", user.id).single();
 
-        if (profileError || profileData?.role !== "coach") { router.replace("/aluno/treinos"); return; }
+        if (profileError || (profileData?.role !== "coach" && profileData?.role !== "super_admin")) { router.replace("/aluno/dashboard"); return; }
 
         setIsCoach(true);
       } finally {

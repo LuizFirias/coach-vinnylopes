@@ -112,202 +112,192 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
-      
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-50">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-brand-purple/10 flex items-center justify-center">
-              <Lock className="text-brand-purple" size={18} />
-            </div>
-            <div>
-              <h2 className="text-base md:text-lg text-slate-900">Trocar <span className="text-brand-purple">Senha</span></h2>
-              <p className="text-slate-400 font-medium text-xs">Atualize sua senha de acesso</p>
-            </div>
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+      <div className="relative bg-[#0F0F0F] rounded-3xl border border-[#D4AF37]/25 shadow-2xl max-w-md w-full p-10 overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-xl transition-all"
+          title="Fechar"
+        >
+          <X size={20} className="text-zinc-400 hover:text-white" />
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
+            <Lock size={24} />
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-red-500 rounded-lg transition-all"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
-          {message && (
-            <div className={`mb-3 p-3 rounded-xl flex items-start gap-2 ${
-              message.type === 'success'
-                ? 'bg-green-50 border border-green-100'
-                : 'bg-red-50 border border-red-100'
-            }`}>
-              {message.type === 'success' ? (
-                <CheckCircle className="text-green-600 mt-0.5 shrink-0" size={16} />
-              ) : (
-                <WarningCircle className="text-red-600 mt-0.5 shrink-0" size={16} />
-              )}
-              <p className={`text-sm font-medium ${
-                message.type === 'success' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {message.text}
-              </p>
-            </div>
-          )}
-
-        <form onSubmit={handleChangePassword} className="space-y-3">
-          {/* Senha Atual */}
-          <div className="space-y-1.5">
-            <label className="text-[8px] uppercase tracking-[0.3em] text-slate-400 ml-1">Senha Atual</label>
-            <div className="relative">
-              <input
-                type={showCurrentPassword ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Digite sua senha atual"
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-100 rounded-lg text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-purple/20 focus:border-brand-purple transition-all pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showCurrentPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Nova Senha */}
-          <div className="space-y-1.5">
-            <label className="text-[8px] uppercase tracking-[0.3em] text-slate-400 ml-1">Nova Senha</label>
-            <div className="relative">
-              <input
-                type={showNewPassword ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Crie uma nova senha forte"
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-100 rounded-lg text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-purple/20 focus:border-brand-purple transition-all pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showNewPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Password Requirements */}
-          {newPassword && (
-            <div className="bg-slate-50 rounded-lg p-2 space-y-1 border border-slate-100">
-              <p className="text-[8px] uppercase tracking-[0.2em] text-slate-400">Requisitos de Segurança</p>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
-                    passwordReq.minLength ? 'bg-green-100' : 'bg-slate-100'
-                  }`}>
-                    {passwordReq.minLength && <Check size={10} className="text-green-600" />}
-                  </div>
-                  <span className={`text-[9px] font-semibold ${
-                    passwordReq.minLength ? 'text-green-600' : 'text-slate-500'
-                  }`}>Mínimo 8 caracteres</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
-                    passwordReq.hasUpperCase ? 'bg-green-100' : 'bg-slate-100'
-                  }`}>
-                    {passwordReq.hasUpperCase && <Check size={10} className="text-green-600" />}
-                  </div>
-                  <span className={`text-[9px] font-semibold ${
-                    passwordReq.hasUpperCase ? 'text-green-600' : 'text-slate-500'
-                  }`}>Letra maiúscula (A-Z)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
-                    passwordReq.hasLowerCase ? 'bg-green-100' : 'bg-slate-100'
-                  }`}>
-                    {passwordReq.hasLowerCase && <Check size={10} className="text-green-600" />}
-                  </div>
-                  <span className={`text-[9px] font-semibold ${
-                    passwordReq.hasLowerCase ? 'text-green-600' : 'text-slate-500'
-                  }`}>Letra minúscula (a-z)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
-                    passwordReq.hasNumber ? 'bg-green-100' : 'bg-slate-100'
-                  }`}>
-                    {passwordReq.hasNumber && <Check size={10} className="text-green-600" />}
-                  </div>
-                  <span className={`text-[9px] font-semibold ${
-                    passwordReq.hasNumber ? 'text-green-600' : 'text-slate-500'
-                  }`}>Número (0-9)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
-                    passwordReq.hasSpecialChar ? 'bg-green-100' : 'bg-slate-100'
-                  }`}>
-                    {passwordReq.hasSpecialChar && <Check size={10} className="text-green-600" />}
-                  </div>
-                  <span className={`text-[9px] font-semibold ${
-                    passwordReq.hasSpecialChar ? 'text-green-600' : 'text-slate-500'
-                  }`}>Caractere especial (!@#$%^&...)</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Confirmar Nova Senha */}
-          <div className="space-y-1.5">
-            <label className="text-[8px] uppercase tracking-[0.3em] text-slate-400 ml-1">Confirmar Nova Senha</label>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repita a nova senha"
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-100 rounded-lg text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-brand-purple/20 focus:border-brand-purple transition-all pr-9"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showConfirmPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
-              {confirmPassword && (
-                <div className="absolute right-9 top-1/2 -translate-y-1/2">
-                  {passwordsMatch ? (
-                    <Check className="text-green-600" size={16} />
-                  ) : (
-                    <WarningCircle className="text-red-600" size={16} />
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Esqueci Minha Senha */}
-          <div className="flex items-center justify-center gap-1.5 p-2 bg-blue-50 rounded-lg border border-blue-100">
-            <Question size={14} className="text-blue-600 shrink-0" />
-            <p className="text-[9px] text-blue-600 font-medium">
-              Esqueceu a senha?{' '}
-              <Link 
-                href="/forgot-password" 
-                className="underline hover:text-blue-700"
-              >
-                Recuperar Acesso
-              </Link>
+          <div>
+            <h2 className="text-xl text-white uppercase tracking-tight">
+              Trocar Senha
+            </h2>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
+              Atualize sua credencial de acesso
             </p>
           </div>
-        </form>
         </div>
 
-        {/* Buttons - Fixed at bottom */}
-        <div className="flex gap-2 p-4 md:px-6 border-t border-slate-50 bg-white">
+        {/* Messages */}
+        {message && (
+          <div
+            className={`mb-6 p-4 rounded-2xl flex items-center gap-4 text-[10px] uppercase tracking-widest ${
+              message.type === 'success'
+                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
+                : 'bg-red-500/10 text-red-500 border border-red-500/20'
+            }`}
+          >
+            {message.type === 'success' ? (
+              <CheckCircle size={16} />
+            ) : (
+              <WarningCircle size={16} />
+            )}
+            {message.text}
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            {/* Senha Atual */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">Senha Atual</label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Digite sua senha atual"
+                  className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
+                >
+                  {showCurrentPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Nova Senha */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">Nova Senha</label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Crie uma nova senha forte"
+                  className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
+                >
+                  {showNewPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Password Requirements */}
+            {newPassword && (
+              <div className="bg-black border border-[#1a1a1a] rounded-2xl p-4 space-y-2">
+                <p className="text-[9px] uppercase tracking-[0.25em] text-[#D4AF37] font-bold mb-2">Requisitos de Segurança</p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                      passwordReq.minLength ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
+                    }`}>
+                      {passwordReq.minLength && <Check size={10} />}
+                    </div>
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
+                      passwordReq.minLength ? 'text-[#D4AF37]' : 'text-zinc-500'
+                    }`}>Mínimo 8 caracteres</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                      passwordReq.hasUpperCase ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
+                    }`}>
+                      {passwordReq.hasUpperCase && <Check size={10} />}
+                    </div>
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
+                      passwordReq.hasUpperCase ? 'text-[#D4AF37]' : 'text-zinc-500'
+                    }`}>Letra maiúscula (A-Z)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                      passwordReq.hasLowerCase ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
+                    }`}>
+                      {passwordReq.hasLowerCase && <Check size={10} />}
+                    </div>
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
+                      passwordReq.hasLowerCase ? 'text-[#D4AF37]' : 'text-zinc-500'
+                    }`}>Letra minúscula (a-z)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                      passwordReq.hasNumber ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
+                    }`}>
+                      {passwordReq.hasNumber && <Check size={10} />}
+                    </div>
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
+                      passwordReq.hasNumber ? 'text-[#D4AF37]' : 'text-zinc-500'
+                    }`}>Número (0-9)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                      passwordReq.hasSpecialChar ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
+                    }`}>
+                      {passwordReq.hasSpecialChar && <Check size={10} />}
+                    </div>
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
+                      passwordReq.hasSpecialChar ? 'text-[#D4AF37]' : 'text-zinc-500'
+                    }`}>Caractere especial (!@#$...)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Confirmar Nova Senha */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">Confirmar Nova Senha</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repita a nova senha"
+                  className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
+                >
+                  {showConfirmPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
+                </button>
+                {confirmPassword && (
+                  <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                    {passwordsMatch ? (
+                      <Check className="text-green-500" size={16} />
+                    ) : (
+                      <WarningCircle className="text-red-500" size={16} />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-4 pt-6 mt-2 border-t border-[#1a1a1a]">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-900 rounded-lg text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+            className="flex-1 px-6 py-3 bg-[#0F0F0F] border border-[#1a1a1a] text-zinc-500 text-[10px] uppercase tracking-[0.3em] rounded-xl hover:bg-white/5 transition-all"
           >
             Cancelar
           </button>
@@ -315,17 +305,17 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
             type="button"
             onClick={handleChangePassword}
             disabled={loading || !isPasswordValid || !passwordsMatch || !currentPassword}
-            className="flex-1 px-4 py-2.5 bg-brand-purple text-white rounded-lg text-[9px] uppercase tracking-widest hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            className="flex-1 px-6 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black text-[10px] uppercase tracking-[0.3em] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
-                <CircleNotch className="animate-spin" size={14} />
-                ATUALIZANDO...
+                <CircleNotch className="w-4 h-4 animate-spin" />
+                Atualizando...
               </>
             ) : (
               <>
                 <Lock size={14} />
-                ALTERAR SENHA
+                Confirmar
               </>
             )}
           </button>

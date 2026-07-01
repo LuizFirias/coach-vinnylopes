@@ -1,58 +1,46 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import {
   X,
-  Calendar,
+  User,
   CheckCircle,
   WarningCircle,
   CircleNotch
 } from '@phosphor-icons/react';
 
-interface DateOfBirthModalProps {
+interface ChangeNameModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
-  currentDate?: string;
-  onSuccess?: (newDate: string) => void;
+  currentName?: string;
+  onSuccess?: (newName: string) => void;
 }
 
-export default function DateOfBirthModal({ 
+export default function ChangeNameModal({ 
   isOpen, 
   onClose, 
   userId,
-  currentDate = '',
+  currentName = '',
   onSuccess 
-}: DateOfBirthModalProps) {
-  const [dateOfBirth, setDateOfBirth] = useState(currentDate);
+}: ChangeNameModalProps) {
+  const [fullName, setFullName] = useState(currentName);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleUpdateDate = async (e: React.FormEvent) => {
+  const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!dateOfBirth) {
-      setMessage({ type: 'error', text: 'Selecione uma data de nascimento' });
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
+      setMessage({ type: 'error', text: 'Insira seu nome completo' });
       return;
     }
 
-    // Validate date is not in the future
-    const selectedDate = new Date(dateOfBirth);
-    const today = new Date();
-    if (selectedDate > today) {
-      setMessage({ type: 'error', text: 'A data de nascimento não pode ser no futuro' });
+    if (trimmedName.split(' ').filter(Boolean).length < 2) {
+      setMessage({ type: 'error', text: 'Por favor, insira sobrenome também' });
       return;
-    }
-
-    // Validate minimum age (assuming 18 years old minimum for training)
-    const age = today.getFullYear() - selectedDate.getFullYear();
-    const monthDiff = today.getMonth() - selectedDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < selectedDate.getDate())) {
-      if (age < 18) {
-        setMessage({ type: 'error', text: 'Você deve ter no mínimo 18 anos' });
-        return;
-      }
     }
 
     setLoading(true);
@@ -61,18 +49,18 @@ export default function DateOfBirthModal({
     try {
       const { error } = await supabaseClient
         .from('profiles')
-        .update({ date_of_birth: dateOfBirth })
+        .update({ full_name: trimmedName })
         .eq('id', userId);
 
       if (error) throw error;
 
-      setMessage({ type: 'success', text: 'Data de nascimento atualizada com sucesso!' });
+      setMessage({ type: 'success', text: 'Nome atualizado com sucesso!' });
       setTimeout(() => {
-        onSuccess?.(dateOfBirth);
+        onSuccess?.(trimmedName);
         onClose();
       }, 1500);
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Erro ao atualizar data' });
+      setMessage({ type: 'error', text: err.message || 'Erro ao atualizar nome' });
     } finally {
       setLoading(false);
     }
@@ -96,14 +84,14 @@ export default function DateOfBirthModal({
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
-            <Calendar size={24} />
+            <User size={24} />
           </div>
           <div>
             <h2 className="text-xl text-white uppercase tracking-tight">
-              Data de Nascimento
+              Alterar Nome
             </h2>
             <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
-              Atualize sua informação pessoal
+              Atualize sua assinatura de atleta
             </p>
           </div>
         </div>
@@ -127,16 +115,17 @@ export default function DateOfBirthModal({
         )}
 
         {/* Form */}
-        <form onSubmit={handleUpdateDate} className="space-y-6">
+        <form onSubmit={handleUpdateName} className="space-y-6">
           <div className="space-y-3">
             <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">
-              Data
+              Nome Completo
             </label>
             <input
-              type="date"
-              value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
-              className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Digite seu nome e sobrenome"
+              className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700"
               disabled={loading}
               required
             />
@@ -154,27 +143,20 @@ export default function DateOfBirthModal({
             </button>
             <button
               type="submit"
-              disabled={loading || !dateOfBirth}
+              disabled={loading || !fullName.trim()}
               className="flex-1 px-6 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black text-[10px] uppercase tracking-[0.3em] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
                   <CircleNotch className="w-4 h-4 animate-spin" />
-                  Atualizando...
+                  Salvando...
                 </>
               ) : (
-                'Confirmar'
+                'Salvar'
               )}
             </button>
           </div>
         </form>
-
-        {/* Info */}
-        <div className="mt-8 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl">
-          <p className="text-[9px] text-blue-400 leading-relaxed">
-            💡 Sua data de nascimento é uma informação pessoal importante para o programa de treinamento personalizado.
-          </p>
-        </div>
       </div>
     </div>
   );

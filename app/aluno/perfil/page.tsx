@@ -10,9 +10,11 @@ import {
   Camera, SignOut, CaretRight, Lock, User, Envelope, Ruler, Scales,
   Bell, Trash, DownloadSimple, Warning, Check, X,
   TrendUp, Trophy, Target, EyeSlash, Barbell, UserCircle, Calendar,
+  Gear, ChartBar, Clock, CaretLeft
 } from '@phosphor-icons/react';
 import ChangePasswordModal from '@/app/components/ChangePasswordModal';
 import DateOfBirthModal from '@/app/components/DateOfBirthModal';
+import ChangeNameModal from '@/app/components/ChangeNameModal';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
 
@@ -119,9 +121,16 @@ export default function AlunoPerfil() {
 
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [dateOfBirthOpen, setDateOfBirthOpen] = useState(false);
+  const [changeNameOpen, setChangeNameOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  // Hevy Dashboard States
+  const [showSettings, setShowSettings] = useState(false);
+  const [loadingWorkouts, setLoadingWorkouts] = useState(true);
+  const [recentWorkouts, setRecentWorkouts] = useState<any[]>([]);
+  const [lastWorkout, setLastWorkout] = useState<any | null>(null);
 
   // ── Carregar ─────────────────────────────────────────────────────────────
 
@@ -165,6 +174,86 @@ export default function AlunoPerfil() {
   }, [router]);
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  // ── Buscar Histórico de Treinos do Aluno ──────────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    const fetchHistory = async () => {
+      setLoadingWorkouts(true);
+      try {
+        const { data: historicoData } = await supabaseClient
+          .from("historico_treinos")
+          .select("id, data_conclusao, dados_sessao, exercicio_id")
+          .eq("aluno_id", userId)
+          .order("data_conclusao", { ascending: false });
+
+        if (historicoData && historicoData.length > 0) {
+          // Agrupar por data_conclusao
+          const sessoesPorData = new Map<string, any[]>();
+          historicoData.forEach(h => {
+            const key = h.data_conclusao;
+            if (!sessoesPorData.has(key)) sessoesPorData.set(key, []);
+            sessoesPorData.get(key)!.push(h);
+          });
+
+          const sessoesList = Array.from(sessoesPorData.entries()).map(([data, exerciciosSessao]) => {
+            const firstEx = exerciciosSessao[0];
+            const nome_rotina = firstEx?.dados_sessao?.nome_rotina || "Treino";
+            
+            // Calcular volume total e quantidade de séries/reps
+            let volumeTotal = 0;
+            let totalSets = 0;
+            const parsedExercises = exerciciosSessao.map(ex => {
+              const ds = ex.dados_sessao || {};
+              const series = ds.series || [];
+              const completedSeries = series.filter((s: any) => s.completado);
+              totalSets += completedSeries.length;
+              
+              completedSeries.forEach((s: any) => {
+                const peso = Number(s.peso_atual) || 0;
+                const reps = Number(s.reps) || 0;
+                volumeTotal += peso * reps;
+              });
+
+              return {
+                nome: ds.nome_exercicio || "Exercício",
+                sets: series.length,
+                completedSets: completedSeries.length,
+              };
+            });
+
+            return {
+              data_conclusao: data,
+              nome_rotina,
+              volumeTotal,
+              totalSets,
+              exercises: parsedExercises,
+            };
+          });
+
+          setRecentWorkouts(sessoesList.slice(0, 10));
+          setLastWorkout(sessoesList[0] || null);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar histórico de treinos:", err);
+      } finally {
+        setLoadingWorkouts(false);
+      }
+    };
+    fetchHistory();
+  }, [userId]);
+
+  function formatWorkoutDate(isoString: string) {
+    const date = new Date(isoString);
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    };
+    const formatted = date.toLocaleDateString('pt-BR', options);
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }
 
   // ── Avatar ───────────────────────────────────────────────────────────────
 
@@ -281,9 +370,272 @@ export default function AlunoPerfil() {
 
   const avatarSrc = profile.avatar_url ? getPublicStorageUrl('avatars', profile.avatar_url) : null;
 
+  if (showSettings) {
+    return (
+      <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-28">
+        <div className="max-w-lg mx-auto flex flex-col gap-6">
+          {/* Header de Voltar */}
+          <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+            <button
+              onClick={() => setShowSettings(false)}
+              className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+            >
+              <CaretLeft size={16} /> Voltar para Perfil
+            </button>
+            <h1 className="text-xs font-bold text-text-primary uppercase tracking-wider font-display">Ajustes</h1>
+            <div className="w-10" />
+          </div>
+
+          {/* ── Toast ── */}
+          {toast && (
+            <div className={cn(
+              'fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium',
+              toast.type === 'ok' ? 'bg-success text-white' : 'bg-danger text-white'
+            )}>
+              {toast.type === 'ok' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+              {toast.text}
+            </div>
+          )}
+
+          {/* ── Foto no settings ── */}
+          <div className="flex items-center gap-4 px-4 py-6 bg-surface-1 border border-border-subtle rounded-2xl shadow-sm">
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-xl font-bold border border-brand">
+                {uploadingAvatar ? (
+                  <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                ) : avatarSrc ? (
+                  <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  getInitials(profile.full_name)
+                )}
+              </div>
+              <label
+                htmlFor="avatar-upload"
+                className="absolute bottom-0 right-0 w-6 h-6 bg-brand rounded-full flex items-center justify-center text-text-on-brand cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+              >
+                <Camera className="w-3 h-3" />
+              </label>
+              <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            </div>
+            <div>
+              <p className="text-base font-bold text-text-primary">{profile.full_name || 'Atleta'}</p>
+              <p className="text-xs text-text-tertiary">Foto de perfil</p>
+            </div>
+          </div>
+
+          {/* ── Dados pessoais ── */}
+          <SectionCard title="Dados pessoais">
+            <SettingsRow icon={User} label="Nome" value={profile.full_name} onClick={() => setChangeNameOpen(true)} />
+            <SettingsRow icon={Calendar} label="Data de nascimento" value={profile.date_of_birth ? new Date(profile.date_of_birth + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não informada'} onClick={() => setDateOfBirthOpen(true)} />
+            <SettingsRow icon={Envelope} label="E-mail" value={email.length > 22 ? email.slice(0, 20) + '…' : email} />
+            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
+              <div className="flex items-center gap-3">
+                <UserCircle className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                <span className="flex-1 text-sm text-text-primary">Sexo</span>
+              </div>
+              <select
+                value={profile.sexo || ''}
+                onChange={(e) => savePrefs({ sexo: (e.target.value as Profile['sexo']) || null })}
+                className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+              >
+                <option value="">Não informado</option>
+                <option value="masculino">Masculino</option>
+                <option value="feminino">Feminino</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
+              <div className="flex items-center gap-3">
+                <Target className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                <span className="flex-1 text-sm text-text-primary">Objetivo</span>
+              </div>
+              <select
+                value={profile.objetivo || ''}
+                onChange={(e) => savePrefs({ objetivo: (e.target.value as Profile['objetivo']) || null })}
+                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+              >
+                <option value="">Não informado</option>
+                <option value="cutting">Definição (Cutting)</option>
+                <option value="bulking">Ganho de massa (Bulking)</option>
+                <option value="manutencao">Manutenção</option>
+                <option value="recomposicao">Recomposição</option>
+              </select>
+            </div>
+          </SectionCard>
+
+          {/* ── Treino ── */}
+          <SectionCard title="Treino">
+            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
+              <div className="flex items-center gap-3">
+                <Scales className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                <span className="flex-1 text-sm text-text-primary">Unidade de peso</span>
+              </div>
+              <select
+                value={profile.unidade_peso}
+                onChange={(e) => savePrefs({ unidade_peso: e.target.value as 'kg' | 'lb' })}
+                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+              >
+                <option value="kg">KG</option>
+                <option value="lb">LB</option>
+              </select>
+            </div>
+            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
+              <div className="flex items-center gap-3">
+                <Ruler className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                <span className="flex-1 text-sm text-text-primary">Unidade de medida</span>
+              </div>
+              <select
+                value={profile.unidade_medida}
+                onChange={(e) => savePrefs({ unidade_medida: e.target.value as 'cm' | 'in' })}
+                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+              >
+                <option value="cm">CM</option>
+                <option value="in">IN</option>
+              </select>
+            </div>
+            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
+              <div className="flex items-center gap-3">
+                <Barbell className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+                <span className="flex-1 text-sm text-text-primary">Incremento padrão de carga</span>
+              </div>
+              <select
+                value={profile.incremento_peso_padrao}
+                onChange={(e) => savePrefs({ incremento_peso_padrao: Number(e.target.value) })}
+                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+              >
+                <option value="1">1 {profile.unidade_peso}</option>
+                <option value="1.25">1.25 {profile.unidade_peso}</option>
+                <option value="2.5">2.5 {profile.unidade_peso}</option>
+                <option value="5">5 {profile.unidade_peso}</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle last:border-b-0">
+              <EyeSlash className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+              <span className="flex-1 text-sm text-text-primary">Oculto no ranking</span>
+              <button
+                onClick={() => savePrefs({ oculto_no_ranking: !profile.oculto_no_ranking })}
+                className={cn(
+                  'relative w-10 h-6 rounded-full transition-colors',
+                  profile.oculto_no_ranking ? 'bg-brand' : 'bg-surface-3 border border-border-default'
+                )}
+              >
+                <span className={cn(
+                  'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all',
+                  profile.oculto_no_ranking ? 'left-[18px]' : 'left-0.5'
+                )} />
+              </button>
+            </div>
+          </SectionCard>
+
+          {/* ── Notificações ── */}
+          <SectionCard title="Notificações">
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <Bell className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+              <span className="flex-1 text-sm text-text-primary">Notificações ativas</span>
+              <button
+                onClick={() => savePrefs({ notificacoes_ativas: !profile.notificacoes_ativas })}
+                className={cn(
+                  'relative w-10 h-6 rounded-full transition-colors',
+                  profile.notificacoes_ativas ? 'bg-brand' : 'bg-surface-3 border border-border-default'
+                )}
+              >
+                <span className={cn(
+                  'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all',
+                  profile.notificacoes_ativas ? 'left-[18px]' : 'left-0.5'
+                )} />
+              </button>
+            </div>
+          </SectionCard>
+
+          {/* ── Segurança ── */}
+          <SectionCard title="Segurança">
+            <SettingsRow icon={Lock} label="Trocar senha" onClick={() => setChangePasswordOpen(true)} />
+          </SectionCard>
+
+          {/* ── Meus dados ── */}
+          <SectionCard title="Meus dados">
+            <SettingsRow icon={DownloadSimple} label="Exportar meus dados" onClick={handleExport} />
+          </SectionCard>
+
+          {/* ── Conta ── */}
+          <SectionCard title="Conta">
+            <SettingsRow icon={Trash} label="Excluir minha conta" onClick={() => setDeleteConfirmOpen(true)} danger />
+          </SectionCard>
+
+          {/* ── Logout ── */}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="w-full h-12 border border-danger/30 rounded-xl text-danger text-sm font-medium flex items-center justify-center gap-2 hover:bg-danger/5 transition-colors cursor-pointer"
+          >
+            <SignOut className="w-4 h-4" />
+            Sair da conta
+          </button>
+        </div>
+
+        {/* Modais */}
+        <ChangePasswordModal isOpen={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
+        <DateOfBirthModal
+          isOpen={dateOfBirthOpen}
+          onClose={() => setDateOfBirthOpen(false)}
+          userId={userId || ''}
+          currentDate={profile.date_of_birth || ''}
+          onSuccess={(newDate) => setProfile(p => ({ ...p, date_of_birth: newDate }))}
+        />
+        <ChangeNameModal
+          isOpen={changeNameOpen}
+          onClose={() => setChangeNameOpen(false)}
+          userId={userId || ''}
+          currentName={profile.full_name || ''}
+          onSuccess={(newName) => setProfile(p => ({ ...p, full_name: newName }))}
+        />
+        
+        {deleteConfirmOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-surface-2 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <div className="w-12 h-12 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-4">
+                <Warning className="w-6 h-6 text-danger" />
+              </div>
+              <h3 className="text-base font-bold text-text-primary text-center mb-1">Excluir conta</h3>
+              <p className="text-sm text-text-secondary text-center mb-4 leading-relaxed">
+                Todos os seus dados serão removidos permanentemente. Esta ação <span className="font-semibold text-text-primary">não pode ser desfeita</span>.
+              </p>
+              <p className="text-xs text-text-tertiary mb-2">
+                Digite <span className="font-semibold text-text-primary">excluir</span> para confirmar:
+              </p>
+              <input
+                type="text"
+                value={deleteInput}
+                onChange={e => setDeleteInput(e.target.value)}
+                placeholder="excluir"
+                className="w-full bg-surface-3 border border-border-default rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-danger mb-4"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setDeleteConfirmOpen(false); setDeleteInput(''); }}
+                  className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-border-subtle text-sm text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleteInput.toLowerCase() !== 'excluir' || deleting}
+                  className="flex-1 py-2.5 rounded-xl bg-danger text-white text-sm font-semibold disabled:opacity-40 transition-opacity"
+                >
+                  {deleting ? 'Excluindo…' : 'Excluir'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // RENDER THE NEW HEVY-STYLE PROFILE DASHBOARD
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-28">
-      <div className="max-w-lg mx-auto flex flex-col gap-6">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-36">
+      <div className="max-w-lg mx-auto flex flex-col gap-0">
 
         {/* ── Toast ── */}
         {toast && (
@@ -296,239 +648,186 @@ export default function AlunoPerfil() {
           </div>
         )}
 
-        {/* ── Cabeçalho de identidade ── */}
-        <div className="flex items-center gap-4 px-4 py-6">
-          <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-2xl font-bold border-2 border-brand">
-              {uploadingAvatar ? (
-                <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-              ) : avatarSrc ? (
-                <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                getInitials(profile.full_name)
+        {/* ── Header: Avatar + Nome + Gear Icon (igual ao Hevy) ── */}
+        <div className="flex items-start justify-between px-1 pt-2 pb-6">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-2xl font-bold border-2 border-brand">
+                {uploadingAvatar ? (
+                  <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                ) : avatarSrc ? (
+                  <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  getInitials(profile.full_name)
+                )}
+              </div>
+              <label
+                htmlFor="avatar-upload"
+                className="absolute bottom-0 right-0 w-7 h-7 bg-brand rounded-full flex items-center justify-center text-white cursor-pointer hover:opacity-90 transition-opacity shadow-md"
+              >
+                <Camera size={14} />
+              </label>
+              <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-text-primary leading-tight">{profile.full_name || 'Atleta'}</p>
+              {profile.created_at && (
+                <p className="text-xs text-text-tertiary mt-0.5">Cliente desde {fmtMembro(profile.created_at)}</p>
               )}
             </div>
-            <label
-              htmlFor="avatar-upload"
-              className="absolute bottom-0 right-0 w-7 h-7 bg-brand rounded-full flex items-center justify-center text-text-on-brand cursor-pointer hover:opacity-90 transition-opacity shadow-sm shadow-brand/40"
-            >
-              <Camera className="w-3.5 h-3.5" />
-            </label>
-            <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           </div>
-          <div>
-            <p className="text-xl font-bold text-text-primary">{profile.full_name || 'Atleta'}</p>
-            {profile.created_at ? (
-              <p className="text-xs text-text-tertiary">Cliente desde {fmtMembro(profile.created_at)}</p>
-            ) : (
-              <p className="text-xs text-text-tertiary">Membro</p>
-            )}
-          </div>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-10 h-10 rounded-full bg-surface-1 border border-border-subtle hover:border-brand/30 flex items-center justify-center text-text-tertiary hover:text-brand transition-all active:scale-95 cursor-pointer mt-1"
+            title="Ajustes"
+          >
+            <Gear size={20} />
+          </button>
         </div>
 
-        {/* ── Minha jornada ── */}
-        <div>
-          <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">
-            Minha jornada
-          </p>
+        {/* ── Quadros 2x2: Dashboard ── */}
+        <div className="mb-6">
+          <p className="text-xs font-semibold text-text-tertiary mb-3 px-1">Dashboard</p>
           <div className="grid grid-cols-2 gap-3">
             <Link
-              href="/aluno/medidas"
-              className="bg-surface-2 rounded-xl p-4 flex items-center gap-3 active:opacity-70 transition-opacity"
+              href="/aluno/estatisticas"
+              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
             >
-              <TrendUp className="w-5 h-5 text-brand flex-shrink-0" />
-              <span className="text-sm font-medium text-text-primary">Progresso</span>
+              <ChartBar size={22} className="text-brand flex-shrink-0" />
+              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Estatísticas</span>
             </Link>
+
             <Link
-              href="/aluno/ranking"
-              className="bg-surface-2 rounded-xl p-4 flex items-center gap-3 active:opacity-70 transition-opacity"
+              href="/aluno/treinos"
+              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
             >
-              <Trophy className="w-5 h-5 text-brand flex-shrink-0" />
-              <span className="text-sm font-medium text-text-primary">Ranking</span>
+              <Barbell size={22} className="text-brand flex-shrink-0" />
+              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Exercícios</span>
             </Link>
+
+            <Link
+              href="/aluno/medidas"
+              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
+            >
+              <TrendUp size={22} className="text-brand flex-shrink-0" />
+              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Medidas</span>
+            </Link>
+
             <Link
               href="/aluno/dashboard"
-              className="bg-surface-2 rounded-xl p-4 flex items-center gap-3 active:opacity-70 transition-opacity"
+              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
             >
-              <Calendar className="w-5 h-5 text-brand flex-shrink-0" />
-              <span className="text-sm font-medium text-text-primary">Calendário</span>
-            </Link>
-            <Link
-              href="/aluno/fotos"
-              className="bg-surface-2 rounded-xl p-4 flex items-center gap-3 active:opacity-70 transition-opacity"
-            >
-              <Camera className="w-5 h-5 text-brand flex-shrink-0" />
-              <span className="text-sm font-medium text-text-primary">Fotos</span>
+              <Calendar size={22} className="text-brand flex-shrink-0" />
+              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Calendário</span>
             </Link>
           </div>
         </div>
 
-        {/* ── Dados pessoais ── */}
-        <SectionCard title="Dados pessoais">
-          <SettingsRow icon={User} label="Nome" value={profile.full_name} onClick={() => setDateOfBirthOpen(true)} />
-          <SettingsRow icon={Envelope} label="E-mail" value={email.length > 22 ? email.slice(0, 20) + '…' : email} />
-          <SettingsRow
-            icon={UserCircle}
-            label="Sexo"
-            value={profile.sexo ? labelSexo[profile.sexo] : 'Não informado'}
-            onClick={() => {
-              const opts: Profile['sexo'][] = ['masculino', 'feminino', 'outro', null];
-              const idx = opts.indexOf(profile.sexo);
-              savePrefs({ sexo: opts[(idx + 1) % opts.length] });
-            }}
-          />
-          <SettingsRow
-            icon={Target}
-            label="Objetivo"
-            value={profile.objetivo ? labelObjetivo[profile.objetivo] : 'Não informado'}
-            onClick={() => {
-              const opts: Profile['objetivo'][] = ['cutting', 'bulking', 'manutencao', 'recomposicao', null];
-              const idx = opts.indexOf(profile.objetivo);
-              savePrefs({ objetivo: opts[(idx + 1) % opts.length] });
-            }}
-          />
-        </SectionCard>
+        {/* ── Últimos 10 Treinos (Workouts section — idêntico ao Hevy) ── */}
+        <div>
+          <p className="text-xs font-semibold text-text-tertiary mb-3 px-1">Treinos</p>
 
-        {/* ── Treino ── */}
-        <SectionCard title="Treino">
-          <SettingsRow
-            icon={Scales}
-            label="Unidade de peso"
-            value={profile.unidade_peso.toUpperCase()}
-            onClick={() => savePrefs({ unidade_peso: profile.unidade_peso === 'kg' ? 'lb' : 'kg' })}
-          />
-          <SettingsRow
-            icon={Ruler}
-            label="Unidade de medida"
-            value={profile.unidade_medida.toUpperCase()}
-            onClick={() => savePrefs({ unidade_medida: profile.unidade_medida === 'cm' ? 'in' : 'cm' })}
-          />
-          <SettingsRow
-            icon={Barbell}
-            label="Incremento padrão de carga"
-            value={`${profile.incremento_peso_padrao} ${profile.unidade_peso}`}
-            onClick={() => {
-              const opts = [1, 1.25, 2.5, 5];
-              const idx = opts.indexOf(Number(profile.incremento_peso_padrao));
-              savePrefs({ incremento_peso_padrao: opts[(idx + 1) % opts.length] });
-            }}
-          />
-          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle last:border-b-0">
-            <EyeSlash className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-            <span className="flex-1 text-sm text-text-primary">Oculto no ranking</span>
-            <button
-              onClick={() => savePrefs({ oculto_no_ranking: !profile.oculto_no_ranking })}
-              className={cn(
-                'relative w-10 h-6 rounded-full transition-colors',
-                profile.oculto_no_ranking ? 'bg-brand' : 'bg-surface-3 border border-border-default'
-              )}
-            >
-              <span className={cn(
-                'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all',
-                profile.oculto_no_ranking ? 'left-[18px]' : 'left-0.5'
-              )} />
-            </button>
-          </div>
-        </SectionCard>
+          {loadingWorkouts ? (
+            <div className="flex flex-col gap-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-surface-1 border border-border-subtle rounded-2xl p-5 animate-pulse">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-surface-3" />
+                    <div className="flex-1"><div className="h-3 bg-surface-3 rounded w-1/3 mb-1" /><div className="h-2.5 bg-surface-3 rounded w-1/2" /></div>
+                  </div>
+                  <div className="h-6 bg-surface-3 rounded w-2/3 mb-4" />
+                  <div className="flex gap-6 mb-4"><div className="h-3 bg-surface-3 rounded w-16" /><div className="h-3 bg-surface-3 rounded w-16" /></div>
+                  <div className="space-y-2"><div className="h-3 bg-surface-3 rounded w-3/4" /><div className="h-3 bg-surface-3 rounded w-2/3" /></div>
+                </div>
+              ))}
+            </div>
+          ) : recentWorkouts.length > 0 ? (
+            <div className="flex flex-col gap-0">
+              {recentWorkouts.map((workout, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    'bg-surface-0 py-5 px-1',
+                    idx < recentWorkouts.length - 1 && 'border-b border-border-subtle'
+                  )}
+                >
+                  {/* Linha: avatar + username + data */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-sm font-bold border border-brand/30 flex-shrink-0">
+                      {avatarSrc ? (
+                        <img src={avatarSrc} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(profile.full_name)
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text-primary leading-none truncate">{profile.full_name || 'Atleta'}</p>
+                      <p className="text-xs text-text-tertiary mt-0.5">{formatWorkoutDate(workout.data_conclusao)}</p>
+                    </div>
+                  </div>
 
-        {/* ── Notificações ── */}
-        <SectionCard title="Notificações">
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <Bell className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-            <span className="flex-1 text-sm text-text-primary">Notificações ativas</span>
-            <button
-              onClick={() => savePrefs({ notificacoes_ativas: !profile.notificacoes_ativas })}
-              className={cn(
-                'relative w-10 h-6 rounded-full transition-colors',
-                profile.notificacoes_ativas ? 'bg-brand' : 'bg-surface-3 border border-border-default'
-              )}
-            >
-              <span className={cn(
-                'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all',
-                profile.notificacoes_ativas ? 'left-[18px]' : 'left-0.5'
-              )} />
-            </button>
-          </div>
-        </SectionCard>
+                  {/* Nome do treino — grande e bold como no Hevy */}
+                  <h3 className="text-xl font-black text-text-primary mb-3 uppercase tracking-tight">{workout.nome_rotina}</h3>
 
-        {/* ── Segurança ── */}
-        <SectionCard title="Segurança">
-          <SettingsRow icon={Lock} label="Trocar senha" onClick={() => setChangePasswordOpen(true)} />
-        </SectionCard>
+                  {/* Métricas: Tempo | Volume | Séries */}
+                  <div className="flex items-start gap-6 mb-4">
+                    <div>
+                      <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-semibold mb-0.5">Tempo</p>
+                      <p className="text-sm font-bold text-text-primary">
+                        {(() => {
+                          const totalMin = Math.max(30, workout.totalSets * 4 + 10);
+                          const h = Math.floor(totalMin / 60);
+                          const m = totalMin % 60;
+                          return h > 0 ? `${h}h ${m}min` : `${m}min`;
+                        })()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-semibold mb-0.5">Volume</p>
+                      <p className="text-sm font-bold text-text-primary">
+                        {workout.volumeTotal > 0 ? `${workout.volumeTotal.toLocaleString('pt-BR')} kg` : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-semibold mb-0.5">Séries</p>
+                      <p className="text-sm font-bold text-text-primary">{workout.totalSets}</p>
+                    </div>
+                  </div>
 
-        {/* ── Meus dados ── */}
-        <SectionCard title="Meus dados">
-          <SettingsRow icon={DownloadSimple} label="Exportar meus dados" onClick={handleExport} />
-        </SectionCard>
-
-        {/* ── Conta ── */}
-        <SectionCard title="Conta">
-          <SettingsRow icon={Trash} label="Excluir minha conta" onClick={() => setDeleteConfirmOpen(true)} danger />
-        </SectionCard>
-
-        {/* ── Logout ── */}
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="w-full h-12 border border-danger/30 rounded-xl text-danger text-sm font-medium flex items-center justify-center gap-2"
-        >
-          <SignOut className="w-4 h-4" />
-          Sair da conta
-        </button>
+                  {/* Lista de exercícios: "X séries NomeExercício" (estilo Hevy) */}
+                  <div className="flex flex-col gap-2.5">
+                    {workout.exercises.slice(0, 4).map((ex: any, exIdx: number) => (
+                      <div key={exIdx} className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center flex-shrink-0">
+                          <Barbell size={15} className="text-text-tertiary" />
+                        </div>
+                        <span className="text-sm text-text-primary">
+                          <span className="font-semibold">{ex.completedSets} {ex.completedSets === 1 ? 'série' : 'séries'}</span>
+                          {' '}{ex.nome}
+                        </span>
+                      </div>
+                    ))}
+                    {workout.exercises.length > 4 && (
+                      <p className="text-xs text-text-tertiary pl-11">
+                        Ver mais {workout.exercises.length - 4} exercícios
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-surface-1 border border-dashed border-border-subtle rounded-2xl p-10 text-center flex flex-col items-center justify-center gap-3">
+              <Barbell size={32} className="text-text-disabled" />
+              <div>
+                <p className="text-sm font-semibold text-text-secondary">Nenhum treino concluído ainda</p>
+                <p className="text-xs text-text-tertiary mt-1">Complete seu primeiro treino para ver o histórico aqui</p>
+              </div>
+            </div>
+          )}
+        </div>
 
       </div>
-
-      {/* ── Modais ── */}
-
-      <ChangePasswordModal isOpen={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
-
-      <DateOfBirthModal
-        isOpen={dateOfBirthOpen}
-        onClose={() => setDateOfBirthOpen(false)}
-        userId={userId || ''}
-        currentDate={profile.date_of_birth || ''}
-        onSuccess={(newDate) => setProfile(p => ({ ...p, date_of_birth: newDate }))}
-      />
-
-      {/* Modal excluir conta */}
-      {deleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-surface-2 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <div className="w-12 h-12 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-4">
-              <Warning className="w-6 h-6 text-danger" />
-            </div>
-            <h3 className="text-base font-bold text-text-primary text-center mb-1">Excluir conta</h3>
-            <p className="text-sm text-text-secondary text-center mb-4 leading-relaxed">
-              Todos os seus dados serão removidos permanentemente. Esta ação <span className="font-semibold text-text-primary">não pode ser desfeita</span>.
-            </p>
-            <p className="text-xs text-text-tertiary mb-2">
-              Digite <span className="font-semibold text-text-primary">excluir</span> para confirmar:
-            </p>
-            <input
-              type="text"
-              value={deleteInput}
-              onChange={e => setDeleteInput(e.target.value)}
-              placeholder="excluir"
-              className="w-full bg-surface-3 border border-border-default rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-danger mb-4"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setDeleteConfirmOpen(false); setDeleteInput(''); }}
-                className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-border-subtle text-sm text-text-secondary hover:text-text-primary transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={deleteInput.toLowerCase() !== 'excluir' || deleting}
-                className="flex-1 py-2.5 rounded-xl bg-danger text-white text-sm font-semibold disabled:opacity-40 transition-opacity"
-              >
-                {deleting ? 'Excluindo…' : 'Excluir'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

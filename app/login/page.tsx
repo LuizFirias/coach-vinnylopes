@@ -159,15 +159,6 @@ function LoginForm() {
             return;
           }
         }
-
-        if (role === "aluno") {
-          const { data: userData } = await supabaseClient.auth.getUser();
-          if (userData.user?.user_metadata?.first_login !== false) {
-            router.push("/aluno/perfil?firstAccess=true");
-            return;
-          }
-        }
-
         router.push(defaultRoute);
       }
     } catch {

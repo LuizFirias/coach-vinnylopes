@@ -20,7 +20,7 @@ export default function RootPage() {
     if (userRole === "coach" || userRole === "super_admin") {
       router.replace("/admin/dashboard");
     } else {
-      router.replace("/aluno/treinos");
+      router.replace("/aluno/dashboard");
     }
   }, [loading, user, userRole, router]);
 

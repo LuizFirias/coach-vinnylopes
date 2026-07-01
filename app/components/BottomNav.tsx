@@ -58,31 +58,45 @@ export default function BottomNav() {
     return (
       <nav
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
-          'bg-surface-1/95 backdrop-blur-xl border-t border-border-subtle',
-          'pb-[env(safe-area-inset-bottom)]',
+          'fixed left-4 right-4 z-40 lg:hidden',
+          'bg-surface-1/90 backdrop-blur-2xl',
+          'rounded-[28px]',
+          'shadow-[0_8px_32px_rgba(0,0,0,0.5)]',
+          'border border-white/[0.06]',
+          'h-16',
         )}
+        style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
         aria-label="Navegação principal"
       >
-        <ul className="flex items-stretch justify-around h-16 max-w-mobile mx-auto">
+        <ul className="flex items-center justify-around h-full px-2">
           {STUDENT_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href);
+            const isActive = pathname.startsWith(href) ||
+              (href === '/aluno/perfil' && (
+                pathname.startsWith('/aluno/estatisticas') ||
+                pathname.startsWith('/aluno/medidas') ||
+                pathname.startsWith('/aluno/fotos') ||
+                pathname.startsWith('/aluno/ranking')
+              ));
             return (
-              <li key={href} className="flex-1">
+              <li key={href} className="flex-1 flex items-center justify-center">
                 <Link
                   href={href}
                   className={cn(
-                    'relative flex flex-col items-center justify-center gap-1 h-full transition-colors duration-fast',
+                    'flex flex-col items-center justify-center gap-1 transition-colors duration-fast w-full',
                     isActive ? 'text-brand' : 'text-text-tertiary',
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {isActive && (
-                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand rounded-full" />
-                  )}
-                  <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                  <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>
-                    {label}
+                  <span
+                    className={cn(
+                      'flex flex-col items-center gap-1 px-2 py-1 rounded-2xl transition-colors duration-fast',
+                      isActive && 'bg-brand/10',
+                    )}
+                  >
+                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                    <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>
+                      {label}
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -103,7 +117,7 @@ export default function BottomNav() {
           onClick={() => setFabOpen(false)}
         >
           <div
-            className="w-full px-4 pb-[calc(env(safe-area-inset-bottom)+76px)]"
+            className="w-full px-4 pb-[calc(max(12px,env(safe-area-inset-bottom))+76px)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-surface-2 border border-border-default rounded-3xl overflow-hidden shadow-elev-3">
@@ -112,7 +126,7 @@ export default function BottomNav() {
                   key={href}
                   onClick={() => { setFabOpen(false); router.push(href); }}
                   className={cn(
-                    'w-full flex items-center gap-4 px-5 py-4 text-left transition-colors active:bg-surface-3',
+                    'w-full flex items-center gap-4 px-5 py-4 text-left transition-colors active:bg-surface-3 cursor-pointer',
                     i < actions.length - 1 && 'border-b border-border-subtle',
                   )}
                 >
@@ -130,42 +144,51 @@ export default function BottomNav() {
       {/* Bottom bar */}
       <nav
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
-          'bg-surface-1/95 backdrop-blur-xl border-t border-border-subtle',
-          'pb-[env(safe-area-inset-bottom)]',
+          'fixed left-4 right-4 z-40 lg:hidden',
+          'bg-surface-1/90 backdrop-blur-2xl',
+          'rounded-[28px]',
+          'shadow-[0_8px_32px_rgba(0,0,0,0.5)]',
+          'border border-white/[0.06]',
+          'h-16',
         )}
+        style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
         aria-label="Navegação coach"
       >
-        <div className="flex items-center justify-around h-16 max-w-mobile mx-auto px-2">
+        <ul className="flex items-center justify-around h-full px-2">
 
           {/* Left 2 items */}
           {COACH_LEFT.map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href);
             return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors duration-fast',
-                  isActive ? 'text-brand' : 'text-text-tertiary',
-                )}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand rounded-full" />
-                )}
-                <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
-              </Link>
+              <li key={href} className="flex-1 flex items-center justify-center">
+                <Link
+                  href={href}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1 transition-colors duration-fast w-full',
+                    isActive ? 'text-brand' : 'text-text-tertiary',
+                  )}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <span
+                    className={cn(
+                      'flex flex-col items-center gap-1 px-2 py-1 rounded-2xl transition-colors duration-fast',
+                      isActive && 'bg-brand/10',
+                    )}
+                  >
+                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                    <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
+                  </span>
+                </Link>
+              </li>
             );
           })}
 
           {/* FAB */}
-          <div className="flex items-center justify-center shrink-0 px-3">
+          <li className="flex items-center justify-center shrink-0 px-2">
             <button
               onClick={() => setFabOpen(v => !v)}
               className={cn(
-                'w-12 h-12 rounded-2xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand',
+                'w-12 h-12 rounded-2xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand cursor-pointer',
                 'transition-all duration-fast active:scale-90',
               )}
               aria-label={fabOpen ? 'Fechar menu' : 'Mais seções'}
@@ -175,31 +198,36 @@ export default function BottomNav() {
                 : <List size={22} weight="bold" />
               }
             </button>
-          </div>
+          </li>
 
           {/* Right 2 items */}
           {COACH_RIGHT.map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href);
             return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors duration-fast',
-                  isActive ? 'text-brand' : 'text-text-tertiary',
-                )}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand rounded-full" />
-                )}
-                <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
-              </Link>
+              <li key={href} className="flex-1 flex items-center justify-center">
+                <Link
+                  href={href}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1 transition-colors duration-fast w-full',
+                    isActive ? 'text-brand' : 'text-text-tertiary',
+                  )}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <span
+                    className={cn(
+                      'flex flex-col items-center gap-1 px-2 py-1 rounded-2xl transition-colors duration-fast',
+                      isActive && 'bg-brand/10',
+                    )}
+                  >
+                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                    <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
+                  </span>
+                </Link>
+              </li>
             );
           })}
 
-        </div>
+        </ul>
       </nav>
     </>
   );

@@ -104,8 +104,8 @@ export default function NovaFichaCoachPage() {
       const { data: profile } = await supabaseClient
         .from("profiles").select("role").eq("id", userId).single();
 
-      if (profile?.role !== "coach" && profile?.role !== "admin") {
-        router.push("/aluno/treinos"); return;
+      if (profile?.role !== "coach" && profile?.role !== "super_admin") {
+        router.push("/aluno/dashboard"); return;
       }
 
       const { data: alunoLinks } = await supabaseClient

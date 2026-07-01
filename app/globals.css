@@ -487,3 +487,15 @@ h1, h2, h3, h4, h5, h6 {
   from { transform: translateX(24px); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
 }
+
+/* ── Mobile safe areas + bottom nav ── */
+
+/* Safe areas iOS */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+
+/* Bottom nav height — para calcular scroll padding */
+:root { --bottom-nav-height: 64px; }
+
+/* Scroll padding para não esconder conteúdo atrás da bottom nav */
+.scroll-content { padding-bottom: 0; }

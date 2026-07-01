@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -32,11 +32,24 @@ import {
   CheckCircle,
   Handshake,
   ArrowRight,
-  FilePdf
+  FilePdf,
+  ChartBar
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
+import {
+  ResponsiveContainer, ComposedChart, Line, Area, Scatter, XAxis, YAxis, Tooltip as ChartTooltip, CartesianGrid,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+} from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { BodyChart, ViewSide } from 'body-muscles';
+import {
+  ChartLine, ChartPieSlice, PersonSimpleRun, CalendarBlank, Fire, CaretRight, Question
+} from "@phosphor-icons/react";
+
+type Janela = '7d' | '30d' | '90d' | '1a';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -93,6 +106,141 @@ const fieldCls = cn(
   "appearance-none"
 );
 
+const METRICAS_COACH = [
+  { id: 'peso' as const, label: 'Peso', unit: 'kg', key: 'peso' },
+  { id: 'gordura_corporal' as const, label: '% Gordura', unit: '%', key: 'gordura_corporal' },
+  { id: 'cintura' as const, label: 'Cintura', unit: 'cm', key: 'cintura' },
+  { id: 'peitoral' as const, label: 'Tórax', unit: 'cm', key: 'peitoral' },
+  { id: 'braco_esquerdo' as const, label: 'Braço E', unit: 'cm', key: 'braco_esquerdo' },
+  { id: 'braco_direito' as const, label: 'Braço D', unit: 'cm', key: 'braco_direito' },
+  { id: 'coxa_esquerda' as const, label: 'Coxa E', unit: 'cm', key: 'coxa_esquerda' },
+  { id: 'coxa_direita' as const, label: 'Coxa D', unit: 'cm', key: 'coxa_direita' },
+  { id: 'panturrilha_direita' as const, label: 'Panturrilha', unit: 'cm', key: 'panturrilha_direita' },
+] as const;
+
+function fmtDataCoach(d: string, janela: string): string {
+  const date = new Date(d);
+  if (janela === '7d' || janela === '30d') {
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+  return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+}
+
+function filterByJanelaCoach(medicoes: any[], janela: string): any[] {
+  const now = Date.now();
+  const days = { '7d': 7, '30d': 30, '90d': 90, '1a': 365 }[janela as Janela] || 30;
+  const ms = days * 86400000;
+  return medicoes.filter(m => now - new Date(m.data_medicao).getTime() <= ms);
+}
+
+function calcularMediaMovelCoach(data: { label: string; valor: number }[], k = 7): number[] {
+  const valores = data.map(d => d.valor);
+  const result: number[] = [];
+  for (let i = 0; i < valores.length; i++) {
+    const start = Math.max(0, i - k + 1);
+    const subset = valores.slice(start, i + 1);
+    const sum = subset.reduce((a, b) => a + b, 0);
+    result.push(sum / subset.length);
+  }
+  return result;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  unit: string;
+}
+
+const CustomTooltip = ({ active, payload, label, unit }: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    const rawVal = payload.find(p => p.name === 'valorRaw')?.value;
+    const trendVal = payload.find(p => p.name === 'valorTrend')?.value;
+    
+    return (
+      <div className="bg-surface-2 border border-border-subtle rounded-md p-2 shadow-elev-2 text-2xs font-sans">
+        <p className="text-text-tertiary font-mono mb-1">{label}</p>
+        {rawVal !== undefined && (
+          <p className="text-text-primary">
+            Medido: <span className="font-semibold font-mono text-text-primary">{Number(rawVal).toFixed(1)} {unit}</span>
+          </p>
+        )}
+        {trendVal !== undefined && (
+          <p className="text-brand">
+            Tendência: <span className="font-semibold font-mono text-brand">{Number(trendVal).toFixed(1)} {unit}</span>
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+// ─── Muscle mapping for statistics ──────────────────────────────────────────
+const MUSCLE_MAP: Record<string, string[]> = {
+  'Peito Superior': ['chest-upper'],
+  'Peito Médio': ['chest-middle'],
+  'Peito Inferior': ['chest-lower'],
+  'Dorsais': ['lats-left', 'lats-right'],
+  'Trapézio': ['trapezius'],
+  'Lombar': ['lower-back'],
+  'Ombro Anterior': ['shoulders-front'],
+  'Ombro Lateral': ['shoulders-middle'],
+  'Ombro Posterior': ['shoulders-back'],
+  'Bíceps': ['biceps-left', 'biceps-right'],
+  'Tríceps': ['triceps-left', 'triceps-right'],
+  'Antebraço': ['forearms-left', 'forearms-right'],
+  'Quadríceps': ['quads-left', 'quads-right'],
+  'Posterior (Isquiotibiais)': ['hamstrings-left', 'hamstrings-right'],
+  'Panturrilha': ['calves-left', 'calves-right'],
+  'Glúteos': ['glutes'],
+  'Abdômen': ['abs'],
+  'Oblíquos': ['obliques-left', 'obliques-right'],
+};
+
+// Simplified muscle groups for radar
+const RADAR_GROUPS: Record<string, string[]> = {
+  'Costas': ['Dorsais', 'Trapézio', 'Lombar'],
+  'Peito': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
+  'Core': ['Abdômen', 'Oblíquos'],
+  'Braços': ['Bíceps', 'Tríceps', 'Antebraço'],
+  'Ombros': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
+  'Pernas': ['Quadríceps', 'Posterior (Isquiotibiais)', 'Panturrilha', 'Glúteos'],
+};
+
+function MuscleBodyChart({ muscleIntensity, side }: { muscleIntensity: Record<string, number>; side: ViewSide }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<BodyChart | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const bodyState: Record<string, { intensity: number; selected: boolean }> = {};
+    for (const [muscleGroup, ids] of Object.entries(MUSCLE_MAP)) {
+      const intensity = muscleIntensity[muscleGroup] || 0;
+      for (const id of ids) {
+        bodyState[id] = { intensity, selected: false };
+      }
+    }
+    try {
+      if (chartRef.current) chartRef.current.destroy();
+      chartRef.current = new BodyChart(containerRef.current, {
+        view: side,
+        bodyState,
+        className: 'muscle-chart-container h-full w-full max-h-[140px] md:max-h-[160px]',
+        showViewLabel: false,
+        enableTransitions: true,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+    return () => {
+      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+    };
+  }, [muscleIntensity, side]);
+
+  return <div ref={containerRef} className="w-full h-full max-h-[140px] md:max-h-[160px] flex items-center justify-center bg-transparent" />;
+}
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function AdminAlunoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -127,15 +275,21 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [mostrarAvisoRenovacao, setMostrarAvisoRenovacao] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [historicoTreinos, setHistoricoTreinos] = useState<any[]>([]);
+  const [exerciciosBiblioteca, setExerciciosBiblioteca] = useState<Record<string, string>>({});
   const [notasOriginais, setNotasOriginais] = useState<string>("");
   const [salvandoNotas, setSalvandoNotas] = useState(false);
 
   // Nutrition States
   const [digitalPlan, setDigitalPlan] = useState<any | null>(null);
   const [digitalCheckins, setDigitalCheckins] = useState<any[]>([]);
+  const [latestDigitalPlan, setLatestDigitalPlan] = useState<any | null>(null);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
+
+  // Coach Chart States
+  const [metricaCoach, setMetricaCoach] = useState<'peso' | 'gordura_corporal' | 'cintura' | 'peitoral' | 'braco_esquerdo' | 'braco_direito' | 'coxa_esquerda' | 'coxa_direita' | 'panturrilha_direita'>('peso');
+  const [janelaCoach, setJanelaCoach] = useState<Janela>('30d');
 
   useEffect(() => { load(); }, [id]);
 
@@ -285,12 +439,19 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         .from("pontuacao_alunos").select("total_pontos").eq("aluno_id", id).maybeSingle();
       setPontosTotais(pontuacaoData?.total_pontos || 0);
 
+      const { data: bibData } = await supabaseClient
+        .from('exercicios_biblioteca')
+        .select('id, grupo_muscular');
+      const bibMap: Record<string, string> = {};
+      bibData?.forEach(item => { if (item.grupo_muscular) bibMap[item.id] = item.grupo_muscular; });
+      setExerciciosBiblioteca(bibMap);
+
       const { data: historicoData } = await supabaseClient
         .from("historico_treinos")
-        .select("id, data_conclusao, dados_sessao")
+        .select("id, data_conclusao, dados_sessao, exercicio_id")
         .eq("aluno_id", id)
         .order("data_conclusao", { ascending: false })
-        .limit(30);
+        .limit(150);
       setHistoricoTreinos(historicoData || []);
 
       // Load active digital plan for the student
@@ -310,6 +471,16 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         .maybeSingle();
       
       setDigitalPlan(activeDigPlan);
+
+      // Load latest digital plan (any status) to check its creation date
+      const { data: latestDigPlan } = await supabaseClient
+        .from('nutrition_plans')
+        .select('id, created_at, status')
+        .eq('student_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setLatestDigitalPlan(latestDigPlan);
 
       if (activeDigPlan) {
         const sevenDaysAgo = new Date();
@@ -543,14 +714,45 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       tab: "treinos"
     });
   }
-  if (planosAlimentares.length === 0) {
+  const hasDigitalPlan = !!latestDigitalPlan;
+  const hasPdfPlan = planosAlimentares.length > 0;
+
+  if (!hasDigitalPlan && !hasPdfPlan) {
     studentPriorities.push({
       id: "nutrition",
       desc: "Nenhum plano alimentar prescrito",
       type: "info",
-      action: "Enviar PDF",
+      action: "Prescrever Plano",
       tab: "nutricao"
     });
+  } else {
+    // Calcular a data do último plano de nutrição gerado (digital ou pdf)
+    let lastPlanDate: Date | null = null;
+
+    if (hasPdfPlan) {
+      lastPlanDate = new Date(planosAlimentares[0].criado_em);
+    }
+
+    if (latestDigitalPlan) {
+      const digDate = new Date(latestDigitalPlan.created_at);
+      if (!lastPlanDate || digDate.getTime() > lastPlanDate.getTime()) {
+        lastPlanDate = digDate;
+      }
+    }
+
+    if (lastPlanDate) {
+      const diffTime = today.getTime() - lastPlanDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays >= 30) {
+        studentPriorities.push({
+          id: "nutrition-outdated",
+          desc: `Plano alimentar desatualizado (há ${diffDays} dias)`,
+          type: "warning",
+          action: "Atualizar Plano",
+          tab: "nutricao"
+        });
+      }
+    }
   }
   if (fotos.length === 0) {
     studentPriorities.push({
@@ -573,6 +775,318 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       });
     }
   }
+
+  // ── Derivações de Estatísticas de Treino do Aluno (Visão Coach) ─────────────
+  const weekMuscleIntensity = useMemo(() => {
+    const now = Date.now();
+    const countSets: Record<string, number> = {};
+    historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= 7 * 86400000).forEach(row => {
+      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
+      if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
+    });
+    const maxSets = Math.max(...Object.values(countSets), 1);
+    const intensity: Record<string, number> = {};
+    Object.entries(countSets).forEach(([g, c]) => { intensity[g] = Math.round((c / maxSets) * 10); });
+    return intensity;
+  }, [historicoTreinos, exerciciosBiblioteca]);
+
+  const radarData30 = useMemo(() => {
+    const now = Date.now();
+    const countSets: Record<string, number> = {};
+    historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= 30 * 86400000).forEach(row => {
+      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
+      if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
+    });
+    
+    return Object.entries(RADAR_GROUPS).map(([group, muscles]) => ({
+      subject: group,
+      value: muscles.reduce((sum, m) => sum + (countSets[m] || 0), 0),
+      fullMark: 100,
+    }));
+  }, [historicoTreinos, exerciciosBiblioteca]);
+
+  const stats30 = useMemo(() => {
+    const now = Date.now();
+    const limit30 = 30 * 86400000;
+    const filtered = historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= limit30);
+    
+    const uniqueDays = new Set(filtered.map(h => h.data_conclusao?.slice(0, 10))).size;
+    
+    let sets = 0;
+    let volume = 0;
+    filtered.forEach(row => {
+      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
+      sets += series.length;
+      series.forEach((s: any) => {
+        volume += (Number(s.peso_atual) || 0) * (Number(s.reps) || 0);
+      });
+    });
+    
+    const minutes = sets * 4 + uniqueDays * 10;
+    
+    return {
+      workouts: uniqueDays,
+      sets,
+      volume,
+      minutes
+    };
+  }, [historicoTreinos]);
+
+  // ── Derivações do Gráfico do Coach ──────────────────────────────────────────
+  const metricaCoachObj = METRICAS_COACH.find(m => m.id === metricaCoach) || METRICAS_COACH[0];
+  const metricaCoachKey = metricaCoachObj.key;
+
+  // Ordenar cronologicamente para o gráfico
+  const medidasCronologicoCoach = [...medidas].reverse();
+  const medidasJanelaCoach = filterByJanelaCoach(medidasCronologicoCoach, janelaCoach);
+
+  const rawChartDataCoach = medidasJanelaCoach
+    .map(m => {
+      const val = m[metricaCoachKey];
+      return {
+        label: fmtDataCoach(m.data_medicao, janelaCoach),
+        dataRaw: m.data_medicao,
+        valor: val !== null && val !== undefined ? Number(val) : null
+      };
+    })
+    .filter((d): d is { label: string; dataRaw: string; valor: number } => d.valor !== null);
+
+  const svalsCoach = calcularMediaMovelCoach(rawChartDataCoach, 7);
+  const chartDataCoach = rawChartDataCoach.map((d, index) => ({
+    label: d.label,
+    dataRaw: d.dataRaw,
+    valorRaw: d.valor,
+    valorTrend: svalsCoach[index],
+  }));
+
+  // Estatísticas do topo para o Coach
+  const todosValoresCoach = medidas
+    .map(m => ({ data: m.data_medicao, valor: m[metricaCoachKey] }))
+    .filter((v): v is { data: string; valor: number } => v.valor !== null && v.valor !== undefined);
+
+  const valorAtualCoach = todosValoresCoach[0]?.valor ?? null;
+  const valorAnteriorCoach = todosValoresCoach[1]?.valor ?? null;
+  const deltaAnteriorCoach = valorAtualCoach !== null && valorAnteriorCoach !== null ? valorAtualCoach - valorAnteriorCoach : null;
+
+  let delta30DiasCoach = null;
+  if (todosValoresCoach[0]) {
+    const dataAtualMs = new Date(todosValoresCoach[0].data).getTime();
+    const data30DiasMs = dataAtualMs - 30 * 86400000;
+    let closestObj = null;
+    let minDiff = Infinity;
+    for (let i = 1; i < todosValoresCoach.length; i++) {
+      const diff = Math.abs(new Date(todosValoresCoach[i].data).getTime() - data30DiasMs);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestObj = todosValoresCoach[i];
+      }
+    }
+    if (closestObj) {
+      delta30DiasCoach = todosValoresCoach[0].valor - closestObj.valor;
+    }
+  }
+
+  const handleExportPDF = () => {
+    if (medidas.length === 0) return;
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const addHeader = () => {
+      doc.setFillColor(37, 99, 235);
+      doc.rect(0, 0, 210, 30, "F");
+
+      doc.setTextColor(250, 250, 250);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("AURONFIT", 15, 12);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text("CONSULTORIA ESPORTIVA & AVALIAÇÃO FÍSICA", 15, 20);
+
+      const todayStr = new Date().toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+      doc.setFontSize(8);
+      doc.text(`Emitido em: ${todayStr}`, 195, 12, { align: "right" });
+    };
+
+    const addStudentInfo = () => {
+      doc.setTextColor(31, 31, 35);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("DADOS DO ALUNO", 15, 42);
+
+      doc.setDrawColor(228, 228, 231);
+      doc.setLineWidth(0.5);
+      doc.line(15, 45, 195, 45);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(113, 113, 122);
+      doc.text("Nome do Aluno:", 15, 52);
+      doc.text("E-mail:", 15, 58);
+      doc.text("Data de Nascimento:", 15, 64);
+      doc.text("Plano Ativo:", 110, 52);
+      doc.text("Total Avaliações:", 110, 58);
+
+      doc.setTextColor(31, 31, 35);
+      doc.setFont("helvetica", "bold");
+      doc.text(profile?.full_name || "Não informado", 45, 52);
+      doc.text(profile?.email || "Não informado", 45, 58);
+      
+      const dob = profile?.date_of_birth
+        ? new Date(profile.date_of_birth).toLocaleDateString("pt-BR")
+        : "Não informada";
+      doc.text(dob, 50, 64);
+
+      doc.text(profile?.tipo_plano || "Nenhum plano", 135, 52);
+      doc.text(`${medidas.length} registros`, 135, 58);
+    };
+
+    const addComparisonTable = () => {
+      const first = [...medidas].reverse()[0];
+      const last = medidas[0];
+
+      if (!first || !last) return;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(31, 31, 35);
+      doc.text("RESUMO DA EVOLUÇÃO DE MEDIDAS", 15, 78);
+
+      doc.line(15, 81, 195, 81);
+
+      const headers = [["Métrica", "Ponto de Partida", "Situação Atual", "Variação Total"]];
+      
+      const getDiff = (l: number | null, f: number | null, unit: string) => {
+        if (l === null || f === null) return "—";
+        const diff = l - f;
+        const sign = diff > 0 ? "+" : "";
+        return `${sign}${diff.toFixed(1)} ${unit}`;
+      };
+
+      const formatVal = (v: number | null, unit: string) => {
+        return v !== null && v !== undefined ? `${v.toFixed(1)} ${unit}` : "—";
+      };
+
+      const rows = [
+        ["Peso Corporal", formatVal(first.peso, "kg"), formatVal(last.peso, "kg"), getDiff(last.peso, first.peso, "kg")],
+        ["Gordura Corporal", formatVal(first.gordura_corporal, "%"), formatVal(last.gordura_corporal, "%"), getDiff(last.gordura_corporal, first.gordura_corporal, "%")],
+        ["Circunferência Cintura", formatVal(first.cintura, "cm"), formatVal(last.cintura, "cm"), getDiff(last.cintura, first.cintura, "cm")],
+        ["Circunferência Tórax", formatVal(first.peitoral, "cm"), formatVal(last.peitoral, "cm"), getDiff(last.peitoral, first.peitoral, "cm")],
+        ["Braço Esquerdo", formatVal(first.braco_esquerdo, "cm"), formatVal(last.braco_esquerdo, "cm"), getDiff(last.braco_esquerdo, first.braco_esquerdo, "cm")],
+        ["Braço Direito", formatVal(first.braco_direito, "cm"), formatVal(last.braco_direito, "cm"), getDiff(last.braco_direito, first.braco_direito, "cm")],
+        ["Coxa Esquerda", formatVal(first.coxa_esquerda, "cm"), formatVal(last.coxa_esquerda, "cm"), getDiff(last.coxa_esquerda, first.coxa_esquerda, "cm")],
+        ["Coxa Direito", formatVal(first.coxa_direita, "cm"), formatVal(last.coxa_direita, "cm"), getDiff(last.coxa_direita, first.coxa_direita, "cm")],
+      ];
+
+      autoTable(doc, {
+        startY: 85,
+        head: headers,
+        body: rows,
+        theme: "striped",
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: "bold",
+          halign: "left",
+        },
+        bodyStyles: {
+          fontSize: 8.5,
+          textColor: [31, 31, 35],
+        },
+        columnStyles: {
+          0: { cellWidth: 55 },
+          1: { cellWidth: 40, halign: "center" },
+          2: { cellWidth: 40, halign: "center" },
+          3: { cellWidth: 45, halign: "center", fontStyle: "bold" },
+        },
+      });
+    };
+
+    const addFullHistoryTable = () => {
+      doc.addPage();
+      addHeader();
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(31, 31, 35);
+      doc.text("HISTÓRICO COMPLETO DE MEDIDAS", 15, 42);
+
+      doc.setDrawColor(228, 228, 231);
+      doc.line(15, 45, 195, 45);
+
+      const headers = [
+        ["Data", "Peso", "% Gord.", "Cintura", "Tórax", "Braço E", "Braço D", "Coxa E", "Coxa D"]
+      ];
+
+      const rows = medidas.map((m: any) => [
+        new Date(m.data_medicao).toLocaleDateString("pt-BR"),
+        m.peso !== null && m.peso !== undefined ? `${m.peso.toFixed(1)} kg` : "—",
+        m.gordura_corporal !== null && m.gordura_corporal !== undefined ? `${m.gordura_corporal.toFixed(1)}%` : "—",
+        m.cintura !== null && m.cintura !== undefined ? `${m.cintura.toFixed(1)} cm` : "—",
+        m.peitoral !== null && m.peitoral !== undefined ? `${m.peitoral.toFixed(1)} cm` : "—",
+        m.braco_esquerdo !== null && m.braco_esquerdo !== undefined ? `${m.braco_esquerdo.toFixed(1)} cm` : "—",
+        m.braco_direito !== null && m.braco_direito !== undefined ? `${m.braco_direito.toFixed(1)} cm` : "—",
+        m.coxa_esquerda !== null && m.coxa_esquerda !== undefined ? `${m.coxa_esquerda.toFixed(1)} cm` : "—",
+        m.coxa_direita !== null && m.coxa_direita !== undefined ? `${m.coxa_direita.toFixed(1)} cm` : "—",
+      ]);
+
+      autoTable(doc, {
+        startY: 50,
+        head: headers,
+        body: rows,
+        theme: "striped",
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: [255, 255, 255],
+          fontSize: 8.5,
+          fontStyle: "bold",
+          halign: "center",
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [31, 31, 35],
+          halign: "center",
+        },
+        columnStyles: {
+          0: { halign: "left", fontStyle: "bold" },
+        },
+      });
+
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(113, 113, 122);
+        doc.text(
+          "AURONFIT Assessoria Esportiva — Relatório de Evolução Física",
+          15,
+          287
+        );
+        doc.text(`Página ${i} de ${totalPages}`, 195, 287, { align: "right" });
+      }
+    };
+
+    addHeader();
+    addStudentInfo();
+    addComparisonTable();
+    addFullHistoryTable();
+
+    const filename = `relatorio-medidas-${profile?.full_name?.toLowerCase().replace(/\s+/g, "-") || "aluno"}.pdf`;
+    doc.save(filename);
+  };
 
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans max-w-7xl mx-auto flex flex-col gap-6">
@@ -815,6 +1329,76 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     ))
                   )}
                 </div>
+              </div>
+
+              {/* Estatísticas Avançadas do Aluno */}
+              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-6">
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">Métricas de Treino & Fisiologia</h3>
+                  <p className="text-2xs text-text-tertiary">Análise de intensidade muscular e volume dos últimos 30 dias</p>
+                </div>
+
+                {historicoTreinos.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    {/* Coluna 1: Cartões de Resumo 2x2 (Desktop span 6, Mobile span 12) */}
+                    <div className="md:col-span-6 flex flex-col justify-between gap-4">
+                      <div className="grid grid-cols-2 gap-3 h-full">
+                        {[
+                          { label: 'Treinos', value: stats30.workouts.toString(), icon: CalendarBlank, color: 'text-brand' },
+                          { label: 'Duração estim.', value: `${Math.floor(stats30.minutes / 60)}h ${stats30.minutes % 60}m`, icon: Clock, color: 'text-amber-500' },
+                          { label: 'Volume total', value: stats30.volume > 0 ? `${(stats30.volume / 1000).toFixed(1)}k kg` : `${stats30.sets} séries`, icon: ChartLine, color: 'text-rose-500' },
+                          { label: 'Séries feitas', value: stats30.sets.toString(), icon: Barbell, color: 'text-purple-500' },
+                        ].map((stat) => {
+                          const Icon = stat.icon;
+                          return (
+                            <div key={stat.label} className="bg-surface-2 border border-border-subtle rounded-xl p-4 flex flex-col justify-between">
+                              <div className="flex items-center gap-1.5 text-text-tertiary">
+                                <Icon className={cn("w-3.5 h-3.5", stat.color)} />
+                                <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{stat.label}</span>
+                              </div>
+                              <p className="text-lg font-bold text-text-primary mt-2 font-mono">{stat.value}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Coluna 2: Muscle Body Chart (Heatmap) (Desktop span 6, Mobile span 12) */}
+                    <div className="md:col-span-6 flex flex-col gap-3 justify-center">
+                      <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Mapa de Calor Muscular (Semana)</p>
+                      <div className="flex justify-around items-center bg-surface-2 border border-border-subtle/50 py-3 px-2 rounded-xl h-full min-h-[160px]">
+                        <div className="w-[46%] h-[140px] flex items-center justify-center overflow-hidden">
+                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side={ViewSide.FRONT} />
+                        </div>
+                        <div className="w-[46%] h-[140px] flex items-center justify-center overflow-hidden">
+                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side={ViewSide.BACK} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Radar Chart (Distribuição Muscular) (Desktop span 12, Mobile span 12) */}
+                    <div className="md:col-span-12 flex flex-col gap-3">
+                      <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Distribuição Muscular (Radar - 30d)</p>
+                      <div className="w-full h-56 bg-surface-2 border border-border-subtle/50 rounded-xl p-2 flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData30}>
+                            <PolarGrid stroke="var(--color-border-subtle)" />
+                            <PolarAngleAxis dataKey="subject" stroke="var(--color-text-secondary)" fontSize={9} />
+                            <PolarRadiusAxis stroke="transparent" tick={false} />
+                            <Radar name="Intensidade" dataKey="value" stroke="var(--color-brand)" fill="var(--color-brand)" fillOpacity={0.25} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center bg-surface-2 border border-border-subtle rounded-xl flex flex-col items-center justify-center gap-2">
+                    <Barbell size={24} className="text-text-tertiary" />
+                    <p className="text-xs text-text-secondary max-w-sm px-4">
+                      Este aluno ainda não concluiu nenhum treino na plataforma. Estatísticas avançadas e mapa de calor muscular serão exibidos aqui assim que os primeiros treinos forem registrados.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Notas Rápidas */}
@@ -1263,6 +1847,166 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             {/* Coluna Esquerda: Cargas e Gráfico/Lista */}
             <div className="lg:col-span-8 flex flex-col gap-6">
               
+              {/* Gráfico de Evolução de Medidas */}
+              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">Gráfico de Evolução</h3>
+                    <p className="text-2xs text-text-tertiary">Acompanhamento visual de métricas corporais</p>
+                  </div>
+                  {medidas.length > 0 && (
+                    <button
+                      onClick={handleExportPDF}
+                      className="px-4 py-2 text-xs font-semibold text-text-primary bg-brand hover:bg-brand-hover rounded-lg flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer border border-transparent shadow-sm"
+                    >
+                      <FilePdf className="w-4 h-4" /> Exportar Relatório PDF
+                    </button>
+                  )}
+                </div>
+
+                {/* Seletor de Métricas */}
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-border-subtle">
+                  {METRICAS_COACH.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setMetricaCoach(m.id)}
+                      className={cn(
+                        'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap border transition-all duration-150 cursor-pointer font-sans',
+                        metricaCoach === m.id
+                          ? 'bg-brand text-text-primary border-brand shadow-sm'
+                          : 'bg-surface-2 text-text-secondary border-border-subtle hover:border-border-default'
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Estatísticas e Seletores da Janela */}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <div>
+                    <p className="text-2xs font-semibold text-text-tertiary mb-1">
+                      {metricaCoachObj.label} Atual
+                    </p>
+                    {valorAtualCoach !== null ? (
+                      <div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold text-text-primary font-mono tracking-tight">
+                            {valorAtualCoach.toFixed(1)}
+                          </span>
+                          <span className="text-xs text-text-tertiary font-mono">{metricaCoachObj.unit}</span>
+                        </div>
+                        <p className="text-[11px] text-text-tertiary mt-1 font-mono">
+                          Atualizado em {new Date(todosValoresCoach[0].data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-text-tertiary font-mono">Sem registros</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex gap-1.5">
+                      {deltaAnteriorCoach !== null && (
+                        <div className="bg-surface-2 border border-border-subtle rounded-lg px-2.5 py-1 flex flex-col justify-center min-w-[80px] transition-all duration-200">
+                          <span className="text-[9px] text-text-tertiary font-semibold">vs. Anterior</span>
+                          <span className="text-2xs font-semibold text-text-secondary font-mono flex items-center mt-0.5">
+                            {deltaAnteriorCoach > 0 ? '+' : ''}{deltaAnteriorCoach.toFixed(1)} {metricaCoachObj.unit}
+                          </span>
+                        </div>
+                      )}
+
+                      {delta30DiasCoach !== null && (
+                        <div className="bg-surface-2 border border-border-subtle rounded-lg px-2.5 py-1 flex flex-col justify-center min-w-[80px] transition-all duration-200">
+                          <span className="text-[9px] text-text-tertiary font-semibold">vs. 30d atrás</span>
+                          <span className="text-2xs font-semibold text-text-secondary font-mono flex items-center mt-0.5">
+                            {delta30DiasCoach > 0 ? '+' : ''}{delta30DiasCoach.toFixed(1)} {metricaCoachObj.unit}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1">
+                      {(['7d', '30d', '90d', '1a'] as Janela[]).map(j => (
+                        <button
+                          key={j}
+                          onClick={() => setJanelaCoach(j)}
+                          className={cn(
+                            'px-2 py-0.5 text-2xs rounded-md font-semibold transition-all duration-150 cursor-pointer border font-mono',
+                            janelaCoach === j
+                              ? 'bg-brand border-brand text-text-primary shadow-sm'
+                              : 'bg-surface-2 border-border-subtle text-text-tertiary hover:text-text-secondary hover:border-border-default'
+                          )}
+                        >
+                          {j}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Área do Gráfico */}
+                {chartDataCoach.length >= 2 ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <ComposedChart data={chartDataCoach} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="trendGradCoach" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-brand)" stopOpacity={0.08} />
+                          <stop offset="95%" stopColor="var(--color-brand)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="var(--color-border-subtle)" strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 10, fill: 'var(--color-text-tertiary)' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={[
+                          (dataMin: number) => Math.floor(dataMin - 1),
+                          (dataMax: number) => Math.ceil(dataMax + 1),
+                        ]}
+                        tickCount={4}
+                        tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <ChartTooltip content={<CustomTooltip unit={metricaCoachObj.unit} />} />
+                      <Area
+                        name="valorTrendArea"
+                        type="monotone"
+                        dataKey="valorTrend"
+                        stroke="none"
+                        fill="url(#trendGradCoach)"
+                      />
+                      <Line
+                        name="valorTrend"
+                        type="monotone"
+                        dataKey="valorTrend"
+                        stroke="var(--color-brand)"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                      <Scatter
+                        name="valorRaw"
+                        dataKey="valorRaw"
+                        fill="var(--color-text-tertiary)"
+                        opacity={0.5}
+                        r={3}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center bg-surface-2 border border-border-subtle rounded-lg">
+                    <ChartBar className="w-8 h-8 text-text-tertiary" />
+                    <p className="text-xs text-text-secondary max-w-sm px-4">
+                      Selecione {metricaCoachObj.label.toLowerCase()} e registre pelo menos 2 avaliações físicas para visualizar o gráfico.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Tabela de Medidas Corporais */}
               <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
