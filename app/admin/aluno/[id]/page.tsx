@@ -44,7 +44,7 @@ import {
 } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { BodyChart, ViewSide } from 'body-muscles';
+import Body from 'react-muscle-highlighter';
 import {
   ChartLine, ChartPieSlice, PersonSimpleRun, CalendarBlank, Fire, CaretRight, Question
 } from "@phosphor-icons/react";
@@ -208,37 +208,54 @@ const RADAR_GROUPS: Record<string, string[]> = {
   'Pernas': ['Quadríceps', 'Posterior (Isquiotibiais)', 'Panturrilha', 'Glúteos'],
 };
 
-function MuscleBodyChart({ muscleIntensity, side }: { muscleIntensity: Record<string, number>; side: ViewSide }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<BodyChart | null>(null);
+const HIGHLIGHTER_MAP: Record<string, string[]> = {
+  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
+  'upper-back': ['Dorsais'],
+  'trapezius': ['Trapézio'],
+  'lower-back': ['Lombar'],
+  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
+  'biceps': ['Bíceps'],
+  'triceps': ['Tríceps'],
+  'forearm': ['Antebraço'],
+  'quadriceps': ['Quadríceps'],
+  'hamstring': ['Posterior (Isquiotibiais)'],
+  'calves': ['Panturrilha'],
+  'gluteal': ['Glúteos'],
+  'abs': ['Abdômen'],
+  'obliques': ['Oblíquos'],
+};
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const bodyState: Record<string, { intensity: number; selected: boolean }> = {};
-    for (const [muscleGroup, ids] of Object.entries(MUSCLE_MAP)) {
-      const intensity = muscleIntensity[muscleGroup] || 0;
-      for (const id of ids) {
-        bodyState[id] = { intensity, selected: false };
+function MuscleBodyChart({ muscleIntensity, side }: { muscleIntensity: Record<string, number>; side: 'front' | 'back' }) {
+  const data = useMemo(() => {
+    const list: any[] = [];
+    Object.entries(HIGHLIGHTER_MAP).forEach(([slug, muscleGroups]) => {
+      const intensities = muscleGroups.map(g => muscleIntensity[g] || 0);
+      const maxIntensity = Math.max(...intensities, 0);
+
+      if (maxIntensity > 0) {
+        const opacity = 0.2 + (maxIntensity / 10) * 0.75;
+        list.push({
+          slug: slug,
+          color: `rgba(37, 99, 235, ${opacity.toFixed(2)})`
+        });
       }
-    }
-    try {
-      if (chartRef.current) chartRef.current.destroy();
-      chartRef.current = new BodyChart(containerRef.current, {
-        view: side,
-        bodyState,
-        className: 'muscle-chart-container h-full w-full max-h-[140px] md:max-h-[160px]',
-        showViewLabel: false,
-        enableTransitions: true,
-      });
-    } catch (e) {
-      console.error(e);
-    }
-    return () => {
-      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
-    };
-  }, [muscleIntensity, side]);
+    });
+    return list;
+  }, [muscleIntensity]);
 
-  return <div ref={containerRef} className="w-full h-full max-h-[140px] md:max-h-[160px] flex items-center justify-center bg-transparent" />;
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '260px', maxHeight: '300px' }}>
+      <Body
+        data={data}
+        side={side}
+        gender="male"
+        scale={0.85}
+        defaultFill="#27272a"
+        defaultStroke="#3f3f46"
+        defaultStrokeWidth={1}
+      />
+    </div>
+  );
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -1366,12 +1383,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     {/* Coluna 2: Muscle Body Chart (Heatmap) (Desktop span 6, Mobile span 12) */}
                     <div className="md:col-span-6 flex flex-col gap-3 justify-center">
                       <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Mapa de Calor Muscular (Semana)</p>
-                      <div className="flex justify-around items-center bg-surface-2 border border-border-subtle/50 py-3 px-2 rounded-xl h-full min-h-[160px]">
-                        <div className="w-[46%] h-[140px] flex items-center justify-center overflow-hidden">
-                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side={ViewSide.FRONT} />
+                      <div className="flex justify-around items-center bg-surface-2 border border-border-subtle/50 py-3 px-2 rounded-xl h-full min-h-[320px]">
+                        <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
+                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" />
                         </div>
-                        <div className="w-[46%] h-[140px] flex items-center justify-center overflow-hidden">
-                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side={ViewSide.BACK} />
+                        <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
+                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" />
                         </div>
                       </div>
                     </div>

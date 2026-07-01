@@ -27,7 +27,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from '@phosphor-icons/react';
-import { BodyChart, ViewSide } from 'body-muscles';
+import Body from 'react-muscle-highlighter';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
 
@@ -67,6 +67,13 @@ type Screen = 'main' | 'set-count' | 'muscle-chart' | 'body-distribution' | 'mai
 type WeekGranularity = 'week' | 'month';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+function toISODate(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function getWeekDays(referenceDate: Date) {
   const day = referenceDate.getDay(); // 0=Sun
   const diff = day === 0 ? -6 : 1 - day; // start on Monday
@@ -84,37 +91,54 @@ const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'
 const MONTHS_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 // ─── BodyChart component ──────────────────────────────────────────────────────
-function MuscleBodyChart({ muscleIntensity, side }: { muscleIntensity: Record<string, number>; side: ViewSide }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<BodyChart | null>(null);
+const HIGHLIGHTER_MAP: Record<string, string[]> = {
+  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
+  'upper-back': ['Dorsais'],
+  'trapezius': ['Trapézio'],
+  'lower-back': ['Lombar'],
+  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
+  'biceps': ['Bíceps'],
+  'triceps': ['Tríceps'],
+  'forearm': ['Antebraço'],
+  'quadriceps': ['Quadríceps'],
+  'hamstring': ['Posterior (Isquiotibiais)'],
+  'calves': ['Panturrilha'],
+  'gluteal': ['Glúteos'],
+  'abs': ['Abdômen'],
+  'obliques': ['Oblíquos'],
+};
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const bodyState: Record<string, { intensity: number; selected: boolean }> = {};
-    for (const [muscleGroup, ids] of Object.entries(MUSCLE_MAP)) {
-      const intensity = muscleIntensity[muscleGroup] || 0;
-      for (const id of ids) {
-        bodyState[id] = { intensity, selected: false };
+function MuscleBodyChart({ muscleIntensity, side }: { muscleIntensity: Record<string, number>; side: 'front' | 'back' }) {
+  const data = useMemo(() => {
+    const list: any[] = [];
+    Object.entries(HIGHLIGHTER_MAP).forEach(([slug, muscleGroups]) => {
+      const intensities = muscleGroups.map(g => muscleIntensity[g] || 0);
+      const maxIntensity = Math.max(...intensities, 0);
+
+      if (maxIntensity > 0) {
+        const opacity = 0.2 + (maxIntensity / 10) * 0.75;
+        list.push({
+          slug: slug,
+          color: `rgba(37, 99, 235, ${opacity.toFixed(2)})`
+        });
       }
-    }
-    try {
-      if (chartRef.current) chartRef.current.destroy();
-      chartRef.current = new BodyChart(containerRef.current, {
-        view: side,
-        bodyState,
-        className: 'muscle-chart-container h-full w-full max-h-[140px] md:max-h-[160px]',
-        showViewLabel: false,
-        enableTransitions: true,
-      });
-    } catch (e) {
-      console.error(e);
-    }
-    return () => {
-      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
-    };
-  }, [muscleIntensity, side]);
+    });
+    return list;
+  }, [muscleIntensity]);
 
-  return <div ref={containerRef} className="w-full h-full max-h-[140px] md:max-h-[160px] flex items-center justify-center bg-transparent" />;
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '260px', maxHeight: '300px' }}>
+      <Body
+        data={data}
+        side={side}
+        gender="male"
+        scale={0.85}
+        defaultFill="#27272a"
+        defaultStroke="#3f3f46"
+        defaultStrokeWidth={1}
+      />
+    </div>
+  );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -171,24 +195,34 @@ export default function EstatisticasPage() {
 
   const workoutDates = useMemo(() => {
     const set = new Set<string>();
-    historico.forEach(h => { if (h.data_conclusao) set.add(h.data_conclusao.slice(0, 10)); });
+    historico.forEach(h => { if (h.data_conclusao) set.add(toISODate(new Date(h.data_conclusao))); });
     return set;
   }, [historico]);
 
   // Sets + muscles for current week
   const weekMuscleIntensity = useMemo(() => {
-    const weekDateStrings = weekDays.map(d => d.toISOString().slice(0, 10));
     const countSets: Record<string, number> = {};
-    historico.filter(h => weekDateStrings.includes(h.data_conclusao?.slice(0, 10))).forEach(row => {
+    const now = Date.now();
+    const weekDateStrings = weekDays.map(d => toISODate(d));
+
+    historico.filter(h => {
+      if (!h.data_conclusao) return false;
+      if (weekOffset === 0) {
+        return now - new Date(h.data_conclusao).getTime() <= 7 * 86400000;
+      } else {
+        return weekDateStrings.includes(toISODate(new Date(h.data_conclusao)));
+      }
+    }).forEach(row => {
       const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
       const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
       if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
     });
+
     const maxSets = Math.max(...Object.values(countSets), 1);
     const intensity: Record<string, number> = {};
     Object.entries(countSets).forEach(([g, c]) => { intensity[g] = Math.round((c / maxSets) * 10); });
     return intensity;
-  }, [historico, weekDays, exerciciosBiblioteca]);
+  }, [historico, weekDays, weekOffset, exerciciosBiblioteca]);
 
   // Muscle sets data for "Set count per muscle" screen
   const muscleSetsData = useMemo(() => {
@@ -279,7 +313,7 @@ export default function EstatisticasPage() {
     // Stats
     const sessions = new Map<string, any[]>();
     monthHist.forEach(h => {
-      const key = h.data_conclusao?.slice(0, 10);
+      const key = h.data_conclusao ? toISODate(new Date(h.data_conclusao)) : '';
       if (!sessions.has(key)) sessions.set(key, []);
       sessions.get(key)!.push(h);
     });
@@ -341,7 +375,7 @@ export default function EstatisticasPage() {
       const count = new Set(
         historico
           .filter(h => { const d = new Date(h.data_conclusao); return d.getMonth() === m && d.getFullYear() === y; })
-          .map(h => h.data_conclusao?.slice(0, 10))
+          .map(h => h.data_conclusao ? toISODate(new Date(h.data_conclusao)) : '')
       ).size;
       const isCurrentSelected = m === selectedMonth && y === selectedYear;
       return { label: MONTHS_PT[m], value: count, active: isCurrentSelected, month: m, year: y };
@@ -475,7 +509,7 @@ export default function EstatisticasPage() {
             {/* Stats grid */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Treinos', value: new Set(historico.filter(h => { const d = new Date(h.data_conclusao); return Date.now() - d.getTime() <= 30 * 86400000; }).map(h => h.data_conclusao?.slice(0, 10))).size.toString() },
+                { label: 'Treinos', value: new Set(historico.filter(h => { const d = new Date(h.data_conclusao); return Date.now() - d.getTime() <= 30 * 86400000; }).map(h => h.data_conclusao ? toISODate(new Date(h.data_conclusao)) : '')).size.toString() },
                 { label: 'Duração estimada', value: (() => { const s = historico.filter(h => Date.now() - new Date(h.data_conclusao).getTime() <= 30 * 86400000); const sets = s.reduce((acc, r) => acc + (r.dados_sessao?.series || []).filter((x: any) => x.completado).length, 0); const m = sets * 4 + 10; return `${Math.floor(m / 60)}h ${m % 60}min`; })() },
               ].map(stat => (
                 <div key={stat.label} className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
@@ -533,9 +567,9 @@ export default function EstatisticasPage() {
             {/* Week days strip */}
             <div className="grid grid-cols-7 gap-1">
               {weekDays.map((day, i) => {
-                const ds = day.toISOString().slice(0, 10);
+                const ds = toISODate(day);
                 const hasWorkout = workoutDates.has(ds);
-                const isToday = ds === new Date().toISOString().slice(0, 10);
+                const isToday = ds === toISODate(new Date());
                 return (
                   <div key={i} className="flex flex-col items-center gap-1">
                     <span className="text-[10px] text-text-tertiary">{DAY_LABELS[i]}</span>
@@ -551,11 +585,11 @@ export default function EstatisticasPage() {
             </div>
             {/* Body charts FRONT + BACK side by side */}
             <div className="flex justify-around items-center bg-surface-1/50 border border-border-subtle/30 py-4 px-2 rounded-2xl">
-              <div className="w-[46%] h-[150px] flex items-center justify-center overflow-hidden">
-                <MuscleBodyChart muscleIntensity={intensity} side={ViewSide.FRONT} />
+              <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
+                <MuscleBodyChart muscleIntensity={intensity} side="front" />
               </div>
-              <div className="w-[46%] h-[150px] flex items-center justify-center overflow-hidden">
-                <MuscleBodyChart muscleIntensity={intensity} side={ViewSide.BACK} />
+              <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
+                <MuscleBodyChart muscleIntensity={intensity} side="back" />
               </div>
             </div>
             {/* Muscle table */}
@@ -843,9 +877,9 @@ export default function EstatisticasPage() {
           {/* Week selector */}
           <div className="grid grid-cols-7 gap-1">
             {weekDays.map((day, i) => {
-              const ds = day.toISOString().slice(0, 10);
+              const ds = toISODate(day);
               const hasWorkout = workoutDates.has(ds);
-              const isToday = ds === new Date().toISOString().slice(0, 10);
+              const isToday = ds === toISODate(new Date());
               return (
                 <div key={i} className="flex flex-col items-center gap-1">
                   <span className="text-[10px] text-text-tertiary">{DAY_LABELS[i]}</span>
@@ -862,11 +896,11 @@ export default function EstatisticasPage() {
 
           {/* Body charts FRONT + BACK */}
           <div className="flex justify-around items-center bg-surface-1/50 border border-border-subtle/30 py-4 px-2 rounded-2xl">
-            <div className="w-[46%] h-[150px] flex items-center justify-center overflow-hidden">
-              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side={ViewSide.FRONT} />
+            <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
+              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" />
             </div>
-            <div className="w-[46%] h-[150px] flex items-center justify-center overflow-hidden">
-              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side={ViewSide.BACK} />
+            <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
+              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" />
             </div>
           </div>
 

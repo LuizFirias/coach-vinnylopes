@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { BodyChart, ViewSide } from 'body-muscles';
+import { useMemo } from 'react';
+import Body from 'react-muscle-highlighter';
 
 interface ExerciseWithMuscles {
   nome: string;
@@ -13,27 +13,21 @@ interface MuscleChartProps {
   exercicios: ExerciseWithMuscles[];
 }
 
-// Mapeamento: Grupos Musculares (PT) → IDs da biblioteca body-muscles
-const MUSCLE_MAP: Record<string, string[]> = {
-  'Peito Superior': ['chest-upper'],
-  'Peito Médio': ['chest-middle'],
-  'Peito Inferior': ['chest-lower'],
-  'Dorsais': ['lats-left', 'lats-right'],
-  'Trapézio': ['trapezius'],
-  'Lombar': ['lower-back'],
-  'Ombro Anterior': ['shoulders-front'],
-  'Ombro Lateral': ['shoulders-middle'],
-  'Ombro Posterior': ['shoulders-back'],
-  'Bíceps': ['biceps-left', 'biceps-right'],
-  'Tríceps': ['triceps-left', 'triceps-right'],
-  'Antebraço': ['forearms-left', 'forearms-right'],
-  'Quadríceps': ['quads-left', 'quads-right'],
-  'Posterior (Isquiotibiais)': ['hamstrings-left', 'hamstrings-right'],
-  'Panturrilha': ['calves-left', 'calves-right'],
-  'Glúteos': ['glutes'],
-  'Abdômen': ['abs'],
-  'Oblíquos': ['obliques-left', 'obliques-right'],
-  'Cardio': [],
+const HIGHLIGHTER_MAP: Record<string, string[]> = {
+  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
+  'upper-back': ['Dorsais'],
+  'trapezius': ['Trapézio'],
+  'lower-back': ['Lombar'],
+  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
+  'biceps': ['Bíceps'],
+  'triceps': ['Tríceps'],
+  'forearm': ['Antebraço'],
+  'quadriceps': ['Quadríceps'],
+  'hamstring': ['Posterior (Isquiotibiais)'],
+  'calves': ['Panturrilha'],
+  'gluteal': ['Glúteos'],
+  'abs': ['Abdômen'],
+  'obliques': ['Oblíquos'],
 };
 
 function calculateMuscleIntensity(exercicios: ExerciseWithMuscles[]): Record<string, number> {
@@ -42,19 +36,15 @@ function calculateMuscleIntensity(exercicios: ExerciseWithMuscles[]): Record<str
   for (const exercicio of exercicios) {
     if (!exercicio.grupo_muscular) continue;
 
-    // Contar séries completadas
     const seriesCompletas = exercicio.series.filter(s => s.completado).length;
     if (seriesCompletas === 0) continue;
 
-    // Incrementar contador para este grupo muscular
     const grupo = exercicio.grupo_muscular.trim();
     muscleCount[grupo] = (muscleCount[grupo] || 0) + seriesCompletas;
   }
 
-  // Encontrar máximo
   const maxCount = Math.max(...Object.values(muscleCount), 1);
 
-  // Normalizar para 0-10 (escala de intensidade)
   const normalized: Record<string, number> = {};
   for (const [muscle, count] of Object.entries(muscleCount)) {
     normalized[muscle] = Math.round((count / maxCount) * 10);
@@ -64,57 +54,48 @@ function calculateMuscleIntensity(exercicios: ExerciseWithMuscles[]): Record<str
 }
 
 export default function MuscleChart({ exercicios }: MuscleChartProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<BodyChart | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Calcular intensidade por músculo
+  const data = useMemo(() => {
     const muscleIntensity = calculateMuscleIntensity(exercicios);
+    const list: any[] = [];
+    Object.entries(HIGHLIGHTER_MAP).forEach(([slug, muscleGroups]) => {
+      const intensities = muscleGroups.map(g => muscleIntensity[g] || 0);
+      const maxIntensity = Math.max(...intensities, 0);
 
-    // Montar bodyState com todos os músculos da biblioteca
-    const bodyState: Record<string, { intensity: number; selected: boolean }> = {};
-    for (const [muscleGroup, ids] of Object.entries(MUSCLE_MAP)) {
-      const intensity = muscleIntensity[muscleGroup] || 0;
-
-      for (const id of ids) {
-        bodyState[id] = { intensity, selected: false };
+      if (maxIntensity > 0) {
+        const opacity = 0.2 + (maxIntensity / 10) * 0.75;
+        list.push({
+          slug: slug,
+          color: `rgba(37, 99, 235, ${opacity.toFixed(2)})`
+        });
       }
-    }
-
-    // Criar chart
-    try {
-      chartRef.current = new BodyChart(containerRef.current, {
-        view: ViewSide.FRONT,
-        bodyState,
-        className: 'muscle-chart-container',
-        showViewLabel: false,
-        enableTransitions: true,
-      });
-    } catch (error) {
-      console.error('Erro ao criar BodyChart:', error);
-    }
-
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy();
-        chartRef.current = null;
-      }
-    };
+    });
+    return list;
   }, [exercicios]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100%',
-        height: '400px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'transparent',
-      }}
-    />
+    <div className="flex justify-around items-center bg-transparent py-4 px-2 rounded-2xl w-full h-[320px] md:h-[400px]">
+      <div className="w-[46%] h-full flex items-center justify-center overflow-hidden">
+        <Body
+          data={data}
+          side="front"
+          gender="male"
+          scale={1.3}
+          defaultFill="#27272a"
+          defaultStroke="#3f3f46"
+          defaultStrokeWidth={1}
+        />
+      </div>
+      <div className="w-[46%] h-full flex items-center justify-center overflow-hidden">
+        <Body
+          data={data}
+          side="back"
+          gender="male"
+          scale={1.3}
+          defaultFill="#27272a"
+          defaultStroke="#3f3f46"
+          defaultStrokeWidth={1}
+        />
+      </div>
+    </div>
   );
 }
