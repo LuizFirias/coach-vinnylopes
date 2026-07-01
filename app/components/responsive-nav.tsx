@@ -84,8 +84,14 @@ export default function ResponsiveNav() {
     userRole === 'coach' ? coachMenuItems : 
     menuItems;
 
-  // Hide the nav entirely on the login page
-  if (pathname === '/login') return null;
+  // Hide the nav entirely on login, landing, or signup pages
+  if (
+    pathname === '/login' || 
+    pathname === '/' || 
+    pathname?.startsWith('/signup')
+  ) {
+    return null;
+  }
 
   return (
     <>

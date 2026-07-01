@@ -2,9 +2,20 @@
 
 import React, { useState, useEffect, FormEvent, ChangeEvent, Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useRouter, useSearchParams } from "next/navigation";
-import { WarningCircle, SignIn, Eye, EyeSlash, ShieldCheck, ChatCircle, Barbell, ChartLine } from "@phosphor-icons/react";
+import { 
+  WarningCircle, 
+  Eye, 
+  EyeSlash, 
+  ShieldCheck, 
+  ChatCircle, 
+  Barbell, 
+  ChartLine,
+  X,
+  ArrowRight
+} from "@phosphor-icons/react";
 import PWAInstall from "../components/PWAInstall";
 import DumbbellLoader from "../components/DumbbellLoader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,7 +40,20 @@ function LoginForm() {
 
   const [roleTab, setRoleTab] = useState<"coach" | "aluno">("coach");
 
+  // Novas features da especificação de melhorias de login
+  const [rememberMe, setRememberMe] = useState(false);
+  const [capsLockActive, setCapsLockActive] = useState(false);
+
   useEffect(() => {
+    // Carregar e-mail salvo se a opção "Lembrar-me" estiver ativada
+    if (typeof window !== "undefined") {
+      const savedEmail = localStorage.getItem("auronfit-remember-email");
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    }
+
     // Se Supabase redirecionar para /login com tokens de recovery, reencaminhar para /reset-password
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.substring(1);
@@ -60,10 +84,25 @@ function LoginForm() {
       else router.replace("/aluno/dashboard");
     };
     checkExistingSession();
-  }, []);
+  }, [router]);
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => { setEmail(e.target.value); setError(null); };
   const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(null); };
+
+  // Validador de E-mail
+  const isValidEmail = (val: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+  };
+
+
+  // Detector de Caps Lock
+  const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.getModifierState && e.getModifierState("CapsLock")) {
+      setCapsLockActive(true);
+    } else {
+      setCapsLockActive(false);
+    }
+  };
 
   const handleRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +142,13 @@ function LoginForm() {
       }
 
       if (data?.session && data.user) {
+        // Gerenciamento da preferência Lembrar-me
+        if (rememberMe) {
+          localStorage.setItem("auronfit-remember-email", email);
+        } else {
+          localStorage.removeItem("auronfit-remember-email");
+        }
+
         if (typeof window !== "undefined" && data.session.access_token && data.session.refresh_token) {
           try {
             localStorage.setItem("sb-auth-token", JSON.stringify({
@@ -168,14 +214,14 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center lg:items-stretch lg:flex-row antialiased overflow-hidden">
+    <div className="min-h-screen bg-surface-0 flex flex-col lg:flex-row antialiased overflow-hidden selection:bg-brand/35 selection:text-white">
       <PWAInstall />
 
-      {/* Lado Esquerdo - Hero Panel (Desktop) */}
-      <div className="hidden lg:flex lg:w-[50%] flex-col justify-between p-12 bg-surface-1 border-r border-border-subtle relative overflow-hidden select-none">
+      {/* Lado Esquerdo - Hero Panel (Desktop + Mobile Banner) */}
+      <div className="w-full lg:w-[50%] h-[28vh] sm:h-[35vh] lg:h-auto flex flex-col justify-between p-6 lg:p-12 bg-surface-1 border-b lg:border-b-0 lg:border-r border-border-subtle relative overflow-hidden select-none">
         {/* Fundo com Imagem e Gradientes */}
         <div 
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-[10000ms] hover:scale-105" 
+          className="absolute inset-0 bg-cover bg-center" 
           style={{ 
             backgroundImage: `url('/images/auth/auron-login-hero.jpg')`,
             backgroundColor: 'var(--color-surface-0)'
@@ -194,52 +240,58 @@ function LoginForm() {
             height={32}
             className="w-8 h-8 object-contain"
           />
-          <span className="font-bold text-sm text-text-primary tracking-widest uppercase font-display">
+          <span className="font-bold text-xs lg:text-sm text-text-primary tracking-widest uppercase font-display">
             AURONFIT
           </span>
         </div>
 
         {/* Headline e Proposições de Valor */}
-        <div className="relative z-10 max-w-md my-auto space-y-6">
-          <div className="space-y-3">
-            <h2 className="text-2xl xl:text-3xl font-extrabold text-text-primary tracking-tight font-display leading-tight">
+        <div className="relative z-10 max-w-md lg:my-auto mt-2 lg:mt-0 space-y-6">
+          <div className="space-y-2 lg:space-y-3">
+            <h2 className="text-base sm:text-xl lg:text-2xl xl:text-3xl font-extrabold text-text-primary tracking-tight font-display leading-tight">
               Sua consultoria conectada à evolução dos seus alunos.
             </h2>
-            <p className="text-xs text-text-secondary leading-relaxed">
+            <p className="text-[10px] sm:text-xs text-text-secondary leading-relaxed hidden sm:block lg:block">
               Gerencie treinos, nutrição, progresso, feedbacks e cobranças em uma única plataforma.
             </p>
           </div>
 
-          {/* Pontos de valor */}
-          <div className="space-y-4 pt-6 border-t border-border-subtle/30">
-            <div className="flex items-start gap-2.5">
-              <Barbell className="w-4 h-4 text-brand mt-0.5 shrink-0" />
+          {/* Pontos de valor - Ocultados em mobile para otimizar espaço */}
+          <div className="space-y-4 pt-6 border-t border-border-subtle/30 hidden lg:block">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+                <Barbell className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-bold text-text-primary">Treinos digitais e PDFs</p>
-                <p className="text-[11px] text-text-secondary">Fichas completas, execuções guiadas e PDFs de nutrição em um só lugar.</p>
+                <p className="text-sm font-bold text-text-primary font-display">Treinos digitais e PDFs</p>
+                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Fichas completas, execuções guiadas e PDFs de nutrição em um só lugar.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2.5">
-              <ChartLine className="w-4 h-4 text-brand mt-0.5 shrink-0" />
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+                <ChartLine className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-bold text-text-primary">Dados reais de progresso</p>
-                <p className="text-[11px] text-text-secondary">Histórico de cargas, medidas antropométricas e fotos de evolução estruturadas.</p>
+                <p className="text-sm font-bold text-text-primary font-display">Dados reais de progresso</p>
+                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Histórico de cargas, medidas antropométricas e fotos de evolução estruturadas.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2.5">
-              <ChatCircle className="w-4 h-4 text-brand mt-0.5 shrink-0" />
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+                <ChatCircle className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-bold text-text-primary">Gestão e Feedbacks</p>
-                <p className="text-[11px] text-text-secondary">Caixa de entrada integrada para responder dúvidas e alertas de dor.</p>
+                <p className="text-sm font-bold text-text-primary font-display">Gestão e Feedbacks</p>
+                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Caixa de entrada integrada para responder dúvidas e alertas de dor.</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Rodapé do Hero */}
-        <div className="relative z-10">
+        {/* Rodapé do Hero - Ocultado em mobile */}
+        <div className="relative z-10 hidden lg:block">
           <p className="text-[9px] text-text-disabled uppercase tracking-widest leading-none">
             AURON conecta quem prescreve com quem evolui.
           </p>
@@ -247,7 +299,7 @@ function LoginForm() {
       </div>
 
       {/* Lado Direito - Form Panel */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-16 relative z-10 w-full max-w-lg lg:max-w-none mx-auto">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-16 relative z-10 w-full max-w-lg lg:max-w-none mx-auto overflow-y-auto">
         
         {/* Glow decorativo de fundo (Mobile Only) */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none lg:hidden">
@@ -256,36 +308,36 @@ function LoginForm() {
         </div>
 
         {/* Logo */}
-        <div className="flex flex-col items-center text-center mb-6">
+        <div className="flex flex-col items-center text-center mb-6 lg:mb-8">
           {!logoFailed ? (
             <Image
               src="/logo.png"
               alt="Auronfit"
-              width={140}
-              height={50}
+              width={200}
+              height={70}
               priority
               onError={() => setLogoFailed(true)}
-              className="w-36 h-auto drop-shadow-2xl"
+              className="w-36 lg:w-48 h-auto drop-shadow-2xl animate-fade-in"
             />
           ) : (
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck className="text-brand w-6 h-6" />
-              <h1 className="text-lg font-bold text-text-primary tracking-widest uppercase font-display">AURONFIT</h1>
+              <h1 className="text-lg lg:text-xl font-bold text-text-primary tracking-widest uppercase font-display">AURONFIT</h1>
             </div>
           )}
         </div>
 
-        {/* Seletor Coach/Aluno */}
+        {/* Seletor Coach/Aluno - Aba com estilo underline de alta fidelidade */}
         {mode === "login" && (
-          <div className="w-full max-w-[380px] bg-surface-2 p-0.5 rounded-lg border border-border-subtle flex mb-5 relative z-10 h-10 items-center">
+          <div className="w-full max-w-[380px] flex border-b border-border-subtle mb-6 relative z-10">
             <button
               type="button"
               onClick={() => { setRoleTab("coach"); setError(null); }}
               className={cn(
-                "flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all h-8.5",
+                "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2",
                 roleTab === "coach"
-                  ? "bg-surface-0 border border-brand/20 text-brand shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
+                  ? "border-brand text-brand"
+                  : "border-transparent text-text-secondary hover:text-text-primary"
               )}
             >
               Coach
@@ -294,10 +346,10 @@ function LoginForm() {
               type="button"
               onClick={() => { setRoleTab("aluno"); setError(null); }}
               className={cn(
-                "flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all h-8.5",
+                "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2",
                 roleTab === "aluno"
-                  ? "bg-surface-0 border border-brand/20 text-brand shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
+                  ? "border-brand text-brand"
+                  : "border-transparent text-text-secondary hover:text-text-primary"
               )}
             >
               Aluno
@@ -305,8 +357,8 @@ function LoginForm() {
           </div>
         )}
 
-        {/* Form Card */}
-        <div className="w-full max-w-[380px] bg-surface-1 border border-border-subtle shadow-sm p-6 md:p-7 rounded-xl relative overflow-hidden">
+        {/* Form Card (Loose styling applied on desktop) */}
+        <div className="w-full max-w-[380px] bg-surface-1 lg:bg-transparent border border-border-subtle lg:border-none shadow-sm lg:shadow-none p-6 md:p-7 lg:p-0 rounded-xl relative overflow-hidden">
           
           <AnimatePresence mode="wait">
             {/* ── Recuperar senha ── */}
@@ -331,17 +383,18 @@ function LoginForm() {
                   </div>
                 ) : (
                   <form onSubmit={handleRecovery} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary ml-0.5">
+                    <div className="space-y-2">
+                      <label htmlFor="recoveryEmail" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block ml-0.5">
                         E-mail de acesso
                       </label>
                       <input
+                        id="recoveryEmail"
                         type="email"
                         value={recoveryEmail}
                         onChange={(e) => { setRecoveryEmail(e.target.value); setRecoveryError(null); }}
                         placeholder="seu@email.com"
                         required
-                        className="w-full h-10 bg-surface-0 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                        className="w-full h-11 bg-surface-0 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200"
                       />
                     </div>
 
@@ -362,11 +415,16 @@ function LoginForm() {
                     <button
                       type="submit"
                       disabled={recoveryLoading}
-                      className="w-full h-10 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-full h-11 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {recoveryLoading
-                        ? <div className="w-3.5 h-3.5 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
-                        : "Enviar link de recuperação"}
+                      {recoveryLoading ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
+                          <span>Enviando...</span>
+                        </>
+                      ) : (
+                        "Enviar link de recuperação"
+                      )}
                     </button>
                   </form>
                 )}
@@ -391,24 +449,45 @@ function LoginForm() {
                 onSubmit={handleLogin}
                 className="space-y-4 relative z-10"
               >
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary ml-0.5">
+                {/* Email Input com validação inline */}
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block ml-0.5">
                     E-mail de acesso
                   </label>
                   <input
+                    id="email"
                     type="email"
                     value={email}
                     disabled={loading}
                     onChange={handleEmailChange}
                     placeholder="seu@email.com"
                     required
-                    className="w-full h-10 bg-surface-0 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors disabled:opacity-50"
+                    className="w-full h-11 bg-surface-0 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
                   />
+                  {email && (
+                    <div className={cn(
+                      "flex items-center gap-1.5 mt-1.5 text-xs font-medium transition-colors",
+                      isValidEmail(email) ? "text-success" : "text-danger"
+                    )}>
+                      {isValidEmail(email) ? (
+                        <>
+                          <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
+                          <span>E-mail em formato válido</span>
+                        </>
+                      ) : (
+                        <>
+                          <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
+                          <span>Formato de e-mail inválido</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-1.5">
+                {/* Senha Input com medidor de força e Caps Lock */}
+                <div className="space-y-2">
                   <div className="flex justify-between items-center ml-0.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
+                    <label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block">
                       Senha
                     </label>
                     <button
@@ -422,13 +501,16 @@ function LoginForm() {
                   </div>
                   <div className="relative">
                     <input
+                      id="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       disabled={loading}
                       onChange={handlePasswordChange}
+                      onKeyUp={handlePasswordKeyDown}
+                      onKeyDown={handlePasswordKeyDown}
                       placeholder="••••••••"
                       required
-                      className="w-full h-10 bg-surface-0 border border-border-subtle text-text-primary px-3.5 pr-10 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors disabled:opacity-50"
+                      className="w-full h-11 bg-surface-0 border border-border-subtle text-text-primary px-3.5 pr-10 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
                     />
                     <button
                       type="button"
@@ -438,19 +520,53 @@ function LoginForm() {
                       {showPassword ? <EyeSlash className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+
+                  {/* Alerta de Caps Lock */}
+                  {capsLockActive && (
+                    <div className="mt-2 flex items-center gap-1.5 text-xs text-warning animate-fade-in">
+                      <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
+                      <span>Caps Lock está ativado</span>
+                    </div>
+                  )}
                 </div>
 
+                {/* Lembrar-me Checkbox */}
+                <div className="flex items-center gap-2 py-1 select-none">
+                  <input
+                    id="rememberMe"
+                    type="checkbox"
+                    checked={rememberMe}
+                    disabled={loading}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-border-default bg-surface-2 text-brand focus:ring-2 focus:ring-brand/40 cursor-pointer disabled:opacity-50"
+                  />
+                  <label htmlFor="rememberMe" className="text-xs font-semibold text-text-secondary cursor-pointer hover:text-text-primary transition-colors">
+                    Lembrar-me neste dispositivo
+                  </label>
+                </div>
+
+                {/* Erros com slide-down e botão de fechar */}
                 <div className="pt-1">
                   <AnimatePresence mode="wait">
                     {error && (
                       <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="bg-danger/10 border border-danger/20 text-danger px-3 py-2 rounded-lg text-xs flex items-center gap-2 overflow-hidden mb-3.5"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-danger/10 border border-danger/20 text-danger px-3 py-2.5 rounded-lg text-xs flex items-start gap-2.5 relative mb-4 overflow-hidden"
                       >
-                        <WarningCircle className="w-4 h-4 flex-shrink-0" />
-                        <span>{error}</span>
+                        <WarningCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 pr-4">
+                          <p className="font-bold text-danger">Falha no Acesso</p>
+                          <p className="text-danger/80 mt-0.5">{error}</p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setError(null)}
+                          className="text-danger hover:text-danger/60 transition-colors p-0.5 absolute right-2 top-2"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -458,36 +574,46 @@ function LoginForm() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-10 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full h-11 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
-                      <div className="w-3.5 h-3.5 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
+                        <span>Entrando...</span>
+                      </>
                     ) : (
                       <>
-                        {roleTab === "coach" ? "Entrar como coach" : "Entrar como aluno"}
-                        <SignIn className="w-4 h-4" />
+                        <span>{roleTab === "coach" ? "Entrar como Coach" : "Entrar como Aluno"}</span>
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
+
+                  <div className="pt-4 border-t border-border-subtle/30 text-center">
+                    <Link href="/signup" 
+                          className="block w-full py-2.5 border border-brand/35 hover:border-brand text-brand rounded-lg text-xs font-semibold hover:bg-brand/5 active:scale-[0.98] transition-all">
+                      Não tenho uma conta
+                    </Link>
+                  </div>
                 </div>
               </motion.form>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
+        {/* Footer com suporte polido e ícone */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="mt-6 text-center"
+          className="mt-8 text-center"
         >
           <button
             onClick={handleSupportClick}
-            className="text-text-disabled text-xs hover:text-brand transition-colors flex items-center gap-2 mx-auto"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-border-subtle rounded-full bg-surface-1 text-text-secondary text-xs hover:text-brand hover:border-brand/40 transition-all shadow-sm active:scale-95"
           >
-            <ChatCircle className="w-3.5 h-3.5" />
-            Precisa de ajuda? Fale com o suporte
+            <ChatCircle className="w-4 h-4 text-[#10B981]" weight="fill" />
+            <span>Precisa de ajuda? Fale com o suporte</span>
           </button>
         </motion.div>
 

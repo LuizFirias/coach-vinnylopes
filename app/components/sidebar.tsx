@@ -82,7 +82,12 @@ export default function Sidebar() {
   console.log('[Sidebar] Rendered with role:', userRole, 'loading:', loading, 'user:', user?.id);
 
   // Ocultar em rotas públicas ou enquanto carrega
-  if (pathname === '/login' || pathname === '/' || loading) {
+  if (
+    pathname === '/login' || 
+    pathname === '/' || 
+    pathname?.startsWith('/signup') || 
+    loading
+  ) {
     return null;
   }
 

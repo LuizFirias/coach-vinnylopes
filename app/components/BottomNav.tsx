@@ -35,7 +35,13 @@ export default function BottomNav() {
   const { userRole, loading } = useAuth();
   const [fabOpen, setFabOpen] = useState(false);
 
-  if (pathname === '/login' || pathname === '/' || loading || pathname.endsWith('/executar')) {
+  if (
+    pathname === '/login' || 
+    pathname === '/' || 
+    pathname?.startsWith('/signup') || 
+    loading || 
+    pathname.endsWith('/executar')
+  ) {
     return null;
   }
 

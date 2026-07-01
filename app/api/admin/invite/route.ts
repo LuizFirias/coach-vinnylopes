@@ -2,6 +2,27 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { getStudentWelcomeEmailHtml } from "@/lib/emailTemplates";
+
+function generateRandomPassword(length = 12) {
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const digits = "0123456789";
+  const specials = "!@#$%&*";
+  const all = lowercase + uppercase + digits + specials;
+  
+  let password = "";
+  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+  password += digits.charAt(Math.floor(Math.random() * digits.length));
+  password += specials.charAt(Math.floor(Math.random() * specials.length));
+  
+  for (let i = 4; i < length; i++) {
+    password += all.charAt(Math.floor(Math.random() * all.length));
+  }
+  
+  return password.split('').sort(() => 0.5 - Math.random()).join('');
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
@@ -42,8 +63,9 @@ export async function POST(req: Request) {
     const objetivo = body?.objetivo ? String(body.objetivo) : null;
     const tipoPlano = body?.tipo_plano ? String(body.tipo_plano) : null;
     const dataExpiracao = body?.data_expiracao ? String(body.data_expiracao) : null;
+    const whatsapp = body?.whatsapp ? String(body.whatsapp).trim() : null;
 
-    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName, dateOfBirth, objetivo, tipoPlano, dataExpiracao });
+    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName, dateOfBirth, objetivo, tipoPlano, dataExpiracao, whatsapp });
 
     if (!email || !fullName) {
       return NextResponse.json({ error: "Nome e e-mail são obrigatórios" }, { status: 400 });
@@ -87,10 +109,10 @@ export async function POST(req: Request) {
     const userId = authData.user.id;
     console.log("[INVITE] ✓ Coach autenticado:", userId);
 
-    // Verificar role do coach
+    // Verificar role do coach e obter seu nome/referência
     const { data: profile, error: roleError } = await adminClient
       .from("profiles")
-      .select("role")
+      .select("role, full_name, coaching_reference")
       .eq("id", userId)
       .single();
 
@@ -98,6 +120,8 @@ export async function POST(req: Request) {
       console.error("[INVITE] ❌ Acesso negado - role:", profile?.role || "null");
       return NextResponse.json({ error: "Acesso negado - Apenas coaches podem convidar alunos" }, { status: 403 });
     }
+
+    const coachName = profile?.full_name || profile?.coaching_reference || "Seu Coach";
 
     console.log("[INVITE] ✓ Permissão verificada: Coach");
 
@@ -141,14 +165,15 @@ export async function POST(req: Request) {
     // ===== 5. CRIAR USUÁRIO COM SENHA TEMPORÁRIA (SEM SMTP) =====
     console.log("[INVITE] 👤 Criando usuário com senha temporária...");
     
-    const temporaryPassword = "Mudar123!";
+    const temporaryPassword = generateRandomPassword(12);
 
     const { data: createData, error: createError } = await adminClient.auth.admin.createUser({
       email: email,
       password: temporaryPassword,
       email_confirm: true, // Ativa a conta instantaneamente sem e-mail
       user_metadata: {
-        full_name: fullName
+        full_name: fullName,
+        phone: whatsapp
       }
     });
     
@@ -291,47 +316,7 @@ export async function POST(req: Request) {
         from: 'Auronfit <contato@auronfit.com.br>',
         to: email,
         subject: 'BEM-VINDO AO TIME | ACESSO LIBERADO',
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <style>
-              body { background-color: #000000; font-family: sans-serif; margin: 0; padding: 0; }
-              .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; text-align: center; }
-              .card { background-color: #0a0a0a; border: 1px solid #D4AF37; border-radius: 16px; padding: 40px; text-align: center; }
-              h1 { color: #D4AF37; font-size: 20px; letter-spacing: 3px; font-weight: 900; margin-bottom: 24px; text-transform: uppercase; }
-              p { color: #ffffff; font-size: 14px; line-height: 1.6; margin-bottom: 20px; opacity: 0.8; }
-              .credentials { background-color: rgba(212, 175, 55, 0.05); border: 1px dashed #D4AF37; border-radius: 8px; padding: 20px; margin: 24px 0; }
-              .label { color: #D4AF37; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-              .value { color: #ffffff; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
-              .button { background: linear-gradient(to right, #B8860B, #FFD700, #B8860B); color: #000000; padding: 18px 36px; text-decoration: none; border-radius: 8px; font-weight: 900; font-size: 12px; letter-spacing: 2px; display: inline-block; text-transform: uppercase; margin-top: 20px; }
-              .footer { color: #444444; font-size: 10px; margin-top: 32px; letter-spacing: 1px; text-transform: uppercase; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="card">
-                <h1>A Jornada Começa Agora</h1>
-                <p>Seu acesso ao ecossistema de treinamento exclusivo foi liberado. Utilize as credenciais abaixo para entrar na plataforma.</p>
-                
-                <div class="credentials">
-                  <div class="label">E-mail de Acesso</div>
-                  <div class="value">${email}</div>
-                  <div class="label">Senha Temporária</div>
-                  <div class="value">${temporaryPassword}</div>
-                </div>
-
-                <a href="${siteUrl}" class="button">Acessar Plataforma</a>
-                
-                <p style="font-size: 11px; margin-top: 30px;">* Recomendamos alterar sua senha no primeiro acesso.</p>
-              </div>
-              <div class="footer">
-                Ecossistema de Treinamento High Performance
-              </div>
-            </div>
-          </body>
-          </html>
-        `
+        html: getStudentWelcomeEmailHtml(fullName, email, temporaryPassword, coachName, siteUrl),
       });
 
       if (emailError) {
@@ -343,12 +328,33 @@ export async function POST(req: Request) {
       console.error("[INVITE] ❌ Erro inesperado no envio do e-mail:", err);
     }
 
+    // ===== 8. GERAR LINK DE CONVITE/ATIVAÇÃO (RECOVERY LINK) =====
+    let inviteLink = "";
+    try {
+      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: "recovery",
+        email: email,
+        options: {
+          redirectTo: `${siteUrl}/login`
+        }
+      });
+      if (!linkError && linkData?.properties?.action_link) {
+        inviteLink = linkData.properties.action_link;
+        console.log("[INVITE] ✓ Link de convite/senha gerado:", inviteLink);
+      } else {
+        console.warn("[INVITE] ⚠️ Erro ao gerar link de convite:", linkError?.message);
+      }
+    } catch (e) {
+      console.warn("[INVITE] ⚠️ Erro inesperado ao gerar link de convite:", e);
+    }
+
     console.log("[INVITE] 🎉 SUCESSO TOTAL! Aluno cadastrado:", { email, userId: newUserId });
     
     return NextResponse.json({ 
       success: true, 
       userId: newUserId,
       temporaryPassword: temporaryPassword,
+      inviteLink: inviteLink || `${siteUrl}/login`,
       message: `Aluno ${fullName} cadastrado com sucesso! Senha temporária: ${temporaryPassword}`
     });
     

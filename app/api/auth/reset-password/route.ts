@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
-import { getPasswordResetEmailHtml } from "@/lib/emailTemplates";
+import { 
+  getPersonalPasswordResetEmailHtml, 
+  getStudentPasswordResetEmailHtml 
+} from "@/lib/emailTemplates";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
@@ -53,18 +56,30 @@ export async function POST(req: Request) {
         // Buscar nome do usuário
         const { data: profile } = await adminClient
           .from("profiles")
-          .select("full_name, coaching_reference")
+          .select("full_name, coaching_reference, role")
           .eq("email", email.toLowerCase())
           .maybeSingle();
 
+        const role = profile?.role || "aluno";
         const fullName = profile?.coaching_reference || profile?.full_name || "Atleta";
+        
+        let emailHtml = "";
+        let emailSubject = "Redefinição de senha — Auronfit";
+        
+        if (role === "coach" || role === "super_admin") {
+          emailHtml = getPersonalPasswordResetEmailHtml(fullName, resetLink);
+          emailSubject = "Recuperação de Acesso - Personal Trainer";
+        } else {
+          emailHtml = getStudentPasswordResetEmailHtml(fullName, resetLink);
+          emailSubject = "Recuperação de Acesso - Auronfit";
+        }
 
         // Enviar e-mail com template customizado (botão dourado visível)
         await resend.emails.send({
           from: "Auronfit <contato@auronfit.com.br>",
           to: email,
-          subject: "Redefinição de senha — Auronfit",
-          html: getPasswordResetEmailHtml(fullName, resetLink),
+          subject: emailSubject,
+          html: emailHtml,
         });
       } catch (emailErr) {
         console.error("[RESET-PASSWORD] Erro ao enviar por Resend, acionando fallback nativo:", emailErr);
