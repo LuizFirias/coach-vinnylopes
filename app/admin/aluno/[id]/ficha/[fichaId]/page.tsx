@@ -57,6 +57,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
   const [exercicios, setExercicios] = useState<Exercicio[]>([]);
   const [catalogoExercicios, setCatalogoExercicios] = useState<any[]>([]);
   const [showAddExercicioModal, setShowAddExercicioModal] = useState(false);
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(new Set());
   const [searchExercicio, setSearchExercicio] = useState("");
 
   useEffect(() => {
@@ -158,6 +159,46 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
     setSearchExercicio("");
   };
 
+  const toggleSelectExercise = (id: string) => {
+    setSelectedExerciseIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleAddSelectedExercises = () => {
+    if (selectedExerciseIds.size === 0) {
+      setShowAddExercicioModal(false);
+      return;
+    }
+
+    const novos: Exercicio[] = [];
+    selectedExerciseIds.forEach(id => {
+      const ex = catalogoExercicios.find(e => e.id === id);
+      if (ex) {
+        novos.push({
+          id: ex.id,
+          nome: ex.nome,
+          grupo_muscular: ex.grupo_muscular,
+          descanso: "01:00",
+          video_url: ex.video_url,
+          observacoes: "",
+          series: [{ ordem: 1, reps_sugerido: "12", tecnica: "", tecnica_extra: "" }],
+        });
+      }
+    });
+
+    setExercicios([...exercicios, ...novos]);
+    setSelectedExerciseIds(new Set());
+    setShowAddExercicioModal(false);
+    setSearchExercicio("");
+  };
+
   const filteredCatalogo = catalogoExercicios.filter(ex => {
     const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     return normalize(ex.nome).includes(normalize(searchExercicio));
@@ -231,13 +272,13 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
         const tableData = exercicio.series.map((serie) => {
           const tec = serie.tecnica || '-';
-          const row: any[] = [serie.ordem, '-', serie.reps_sugerido || '-'];
+          const row: any[] = [serie.ordem, serie.reps_sugerido || '-'];
           if (hasTecnica) row.push(tec);
           if (hasTecnicaExtra) row.push((serie as any).tecnica_extra || '-');
           return row;
         });
 
-        const headers = ['Série', 'Peso (kg)', 'Reps'];
+        const headers = ['Série', 'Reps'];
         if (hasTecnica) headers.push('TÉC');
         if (hasTecnicaExtra) headers.push('Técnica Extra');
 
@@ -449,74 +490,93 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
               </div>
 
               {/* Séries */}
-              <div className="space-y-2 mb-4">
-                {/* Desktop — scrollable table */}
-                <div className="hidden md:block overflow-x-auto">
-                  {/* Header */}
-                  <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">#</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Reps</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70">TÉC</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70"></span>
-                    <span></span>
-                  </div>
-                  {ex.series.map((serie, serieIdx) => (
-                    <div key={serieIdx} className="grid gap-1 bg-surface-2 border border-border-subtle p-1 rounded-lg mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
-                      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-brand-subtle text-brand text-xs font-bold">{serie.ordem}</div>
-                      <input
-                        type="text"
-                        value={serie.reps_sugerido}
-                        onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)}
-                        placeholder="12"
-                        className="w-full h-7 px-2 bg-surface-0 border border-border-subtle rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 text-center"
-                      />
-                      {/* TÉC */}
-                      <select
-                        value={(serie as any).tecnica ?? ''}
-                        onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                        className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                      >
-                        {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                      </select>
-                      {/* Técnica Extra */}
-                      <select
-                        value={(serie as any).tecnica_extra ?? ''}
-                        onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
-                        className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                      >
-                        {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                      </select>
-                      <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="flex items-center justify-center text-text-disabled hover:text-danger transition-colors">
-                        <Trash className="w-3.5 h-3.5" />
-                      </button>
+              {(() => {
+                const temIsometria = ex.series.some(s => (s as any).tecnica_extra === "Isometria");
+                return (
+                  <div className="space-y-2 mb-4">
+                    {/* Desktop — scrollable table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      {/* Header */}
+                      <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">#</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">{temIsometria ? "Tempo" : "Reps"}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70">TÉC</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70"></span>
+                        <span></span>
+                      </div>
+                      {ex.series.map((serie, serieIdx) => (
+                        <div key={serieIdx} className="grid gap-1 bg-surface-2 border border-border-subtle p-1 rounded-lg mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
+                          <div className="flex items-center justify-center w-7 h-7 rounded-md bg-brand-subtle text-brand text-xs font-bold">{serie.ordem}</div>
+                          {temIsometria ? (
+                            <TimeInput
+                              value={(serie as any).tempo_sugerido ?? '00:00'}
+                              onChange={(v) => handleUpdateSerie(exIdx, serieIdx, "tempo_sugerido", v)}
+                              className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none text-center"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={serie.reps_sugerido}
+                              onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)}
+                              placeholder="12"
+                              className="w-full h-7 px-2 bg-surface-0 border border-border-subtle rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 text-center"
+                            />
+                          )}
+                          {/* TÉC */}
+                          <select
+                            value={(serie as any).tecnica ?? ''}
+                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
+                            className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
+                          >
+                            {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                          </select>
+                          {/* Técnica Extra */}
+                          <select
+                            value={(serie as any).tecnica_extra ?? ''}
+                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
+                            className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
+                          >
+                            {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                          </select>
+                          <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="flex items-center justify-center text-text-disabled hover:text-danger transition-colors">
+                            <Trash className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                {/* Mobile */}
-                {ex.series.map((serie, serieIdx) => (
-                  <div key={serieIdx} className="md:hidden bg-surface-2 rounded-lg border border-border-subtle p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="w-7 h-7 rounded-md bg-brand-subtle flex items-center justify-center text-brand text-xs font-bold">{serie.ordem}</div>
-                      <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="p-1.5 text-text-disabled hover:text-danger transition-colors"><Trash size={14} /></button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      <div className="space-y-0.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary px-1">Reps</label>
-                        <input type="text" value={serie.reps_sugerido} onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)} placeholder="12" className={cn(fieldCls, "text-center")} />
-                      </div>
-                    </div>
-                    <div className="border-t border-border-subtle/50 pt-2 grid grid-cols-2 gap-2">
-                      <div className="space-y-0.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">TÉC</label>
-                        <select
-                          value={(serie as any).tecnica ?? ''}
-                          onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                          className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                        >
-                          {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                        </select>
-                      </div>
+                    {/* Mobile */}
+                    {ex.series.map((serie, serieIdx) => (
+                      <div key={serieIdx} className="md:hidden bg-surface-2 rounded-lg border border-border-subtle p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="w-7 h-7 rounded-md bg-brand-subtle flex items-center justify-center text-brand text-xs font-bold">{serie.ordem}</div>
+                          <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="p-1.5 text-text-disabled hover:text-danger transition-colors"><Trash size={14} /></button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          <div className="space-y-0.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary px-1">{temIsometria ? "Tempo" : "Reps"}</label>
+                            {temIsometria ? (
+                              <TimeInput
+                                value={(serie as any).tempo_sugerido ?? '00:00'}
+                                onChange={(v) => handleUpdateSerie(exIdx, serieIdx, "tempo_sugerido", v)}
+                                className="w-full px-3 py-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none text-center h-10"
+                              />
+                            ) : (
+                              <input type="text" value={serie.reps_sugerido} onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)} placeholder="12" className={cn(fieldCls, "text-center")} />
+                            )}
+                          </div>
+                        </div>
+                        <div className="border-t border-border-subtle/50 pt-2 grid grid-cols-2 gap-2">
+                          <div className="space-y-0.5">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">TÉC</label>
+                            <select
+                              value={(serie as any).tecnica ?? ''}
+                              onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
+                              className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
+                            >
+                              {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
+                            </select>
+                          </div>
                       <div className="space-y-0.5">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">Técnica Extra</label>
                         <select
@@ -525,12 +585,14 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                           className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
                         >
                           {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                        </select>
+                       </select>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+            );
+          })()}
 
               <button
                 onClick={() => handleAddSerie(exIdx)}
@@ -617,25 +679,36 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                 {filteredCatalogo.length > 0 ? (
                   filteredCatalogo.map((exCatalogo) => {
                     const jáAdicionado = exercicios.some(e => e.id === exCatalogo.id);
+                    const isSelected = selectedExerciseIds.has(exCatalogo.id);
                     return (
-                      <div key={exCatalogo.id} className="p-4 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4">
+                      <button
+                        key={exCatalogo.id}
+                        type="button"
+                        onClick={() => {
+                          if (jáAdicionado) return;
+                          toggleSelectExercise(exCatalogo.id);
+                        }}
+                        disabled={jáAdicionado}
+                        className={cn(
+                          "w-full p-4 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4 text-left border-b border-border-subtle/50",
+                          isSelected && "bg-brand/5 border-l-2 border-l-brand",
+                          jáAdicionado && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-text-primary text-xs font-bold truncate">{exCatalogo.nome}</h3>
+                          <h3 className={cn("text-xs font-bold truncate", isSelected ? "text-brand" : "text-text-primary")}>{exCatalogo.nome}</h3>
                           <p className="text-text-tertiary text-[9px] font-bold uppercase tracking-wider mt-0.5">
                             {exCatalogo.grupo_muscular || 'Exercício'}
                           </p>
                         </div>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="h-8 rounded-lg text-xs"
-                          onClick={() => handleAddExercicio(exCatalogo)}
-                          disabled={jáAdicionado}
-                          leftIcon={<Plus size={12} />}
-                        >
-                          {jáAdicionado ? "Adicionado" : "Adicionar"}
-                        </Button>
-                      </div>
+                        {jáAdicionado ? (
+                          <span className="text-[10px] text-text-disabled font-semibold">Adicionado</span>
+                        ) : isSelected ? (
+                          <span className="w-4 h-4 rounded-full bg-brand flex items-center justify-center text-[9px] text-text-on-brand font-bold">✓</span>
+                        ) : (
+                          <span className="w-4 h-4 rounded-full border border-border-default flex items-center justify-center text-[10px] text-text-tertiary font-bold">+</span>
+                        )}
+                      </button>
                     );
                   })
                 ) : (
@@ -643,6 +716,25 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                     <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">Nenhum exercício encontrado</p>
                   </div>
                 )}
+              </div>
+
+              {/* Modal Footer with Add Button */}
+              <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedExerciseIds(new Set()); setShowAddExercicioModal(false); }}
+                  className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddSelectedExercises}
+                  disabled={selectedExerciseIds.size === 0}
+                  className="px-4 py-2 bg-brand disabled:opacity-40 text-text-on-brand rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  Adicionar ({selectedExerciseIds.size})
+                </button>
               </div>
             </div>
           </div>

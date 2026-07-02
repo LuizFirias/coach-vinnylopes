@@ -78,6 +78,7 @@ export default function NovaFichaCoachPage() {
   const [exerciciosFicha, setExerciciosFicha] = useState<ExercicioFicha[]>([]);
   const [modalExercicio, setModalExercicio] = useState<boolean>(false);
   const [modalNovoExercicio, setModalNovoExercicio] = useState<boolean>(false);
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(new Set());
   const [novoExercicioForm, setNovoExercicioForm] = useState({
     nome: "", grupo_muscular: "", descricao: "", video_url: "", equipamento: "", tipo_exercicio: "",
   });
@@ -166,6 +167,46 @@ export default function NovaFichaCoachPage() {
       series: criarSeriesPadrao(tipoEx),
     };
     setExerciciosFicha([...exerciciosFicha, novo]);
+    setModalExercicio(false);
+  };
+
+  const toggleSelectExercise = (id: string) => {
+    setSelectedExerciseIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleAddSelectedExercises = () => {
+    if (selectedExerciseIds.size === 0) {
+      setModalExercicio(false);
+      return;
+    }
+
+    const novos: ExercicioFicha[] = [];
+    selectedExerciseIds.forEach(id => {
+      const ex = exerciciosCatalogo.find((e: Exercicio) => e.id === id);
+      if (ex) {
+        const tipoEx = ex.tipo_exercicio || "Peso & Repetições";
+        novos.push({
+          id: ex.id,
+          nome: ex.nome,
+          tipo_exercicio: tipoEx,
+          descanso: "01:00",
+          video_url: ex.video_url || "",
+          observacoes: "",
+          series: criarSeriesPadrao(tipoEx),
+        });
+      }
+    });
+
+    setExerciciosFicha([...exerciciosFicha, ...novos]);
+    setSelectedExerciseIds(new Set());
     setModalExercicio(false);
   };
 
@@ -360,13 +401,13 @@ export default function NovaFichaCoachPage() {
         const hasTecnicaExtra = ex.series.some(s => !!s.tecnica_extra?.trim());
 
         const tableData = ex.series.map((serie) => {
-          const row: any[] = [serie.ordem, "-", serie.reps_sugerido || "-"];
+          const row: any[] = [serie.ordem, serie.reps_sugerido || "-"];
           if (hasTecnica) row.push(serie.tecnica || "-");
           if (hasTecnicaExtra) row.push(serie.tecnica_extra || "-");
           return row;
         });
 
-        const headers = ["Série", "Peso (kg)", "Reps"];
+        const headers = ["Série", "Reps"];
         if (hasTecnica) headers.push("TÉC");
         if (hasTecnicaExtra) headers.push("Técnica Extra");
 
@@ -418,7 +459,6 @@ export default function NovaFichaCoachPage() {
     switch (tipo) {
       case "Peso & Repetições":
         return [
-          { key: "peso_sugerido", label: "Carga (kg)", type: "number", step: "any", placeholder: "0" },
           { key: "reps_sugerido", label: "Reps", type: "text", placeholder: "12" }
         ];
       case "Repetições":
@@ -427,7 +467,6 @@ export default function NovaFichaCoachPage() {
         ];
       case "Peso Corporal com Peso Acrescido":
         return [
-          { key: "peso_sugerido", label: "Carga (+kg)", type: "number", step: "any", placeholder: "0" },
           { key: "reps_sugerido", label: "Reps", type: "text", placeholder: "12" }
         ];
       case "Duração":
@@ -436,7 +475,6 @@ export default function NovaFichaCoachPage() {
         ];
       case "Duração e Peso":
         return [
-          { key: "peso_sugerido", label: "Carga (kg)", type: "number", step: "any", placeholder: "0" },
           { key: "tempo_sugerido", label: "Tempo", type: "text", timeInput: true }
         ];
       case "Distância e Duração":
@@ -446,12 +484,10 @@ export default function NovaFichaCoachPage() {
         ];
       case "Peso e Distância":
         return [
-          { key: "peso_sugerido", label: "Carga (kg)", type: "number", step: "any", placeholder: "0" },
           { key: "distancia_sugerida", label: "Dist. (m)", type: "number", placeholder: "0" }
         ];
       default:
         return [
-          { key: "peso_sugerido", label: "Carga (kg)", type: "number", step: "any", placeholder: "0" },
           { key: "reps_sugerido", label: "Reps", type: "text", placeholder: "12" }
         ];
     }
@@ -585,7 +621,11 @@ export default function NovaFichaCoachPage() {
                 {/* Series Table */}
                 <div className="space-y-2">
                   {(() => {
-                    const colunas = getColunasPorTipo(exercicio.tipo_exercicio);
+                    const baseCols = getColunasPorTipo(exercicio.tipo_exercicio);
+                    const temIsometria = exercicio.series.some(s => s.tecnica_extra === "Isometria");
+                    const colunas = temIsometria
+                      ? baseCols.map(c => c.key === 'reps_sugerido' ? { key: 'tempo_sugerido', label: 'Tempo', type: 'text', timeInput: true } : c)
+                      : baseCols;
                     const gridTemplate = `2rem ${colunas.map(() => '5rem').join(' ')} 4rem 5.5rem 2rem`;
                     return (
                       <>
@@ -809,24 +849,56 @@ export default function NovaFichaCoachPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1.5">
-                {filteredExercicios.map((ex) => (
-                  <button
-                    key={ex.id}
-                    onClick={() => adicionarExercicio(ex)}
-                    className="w-full flex items-center justify-between p-3 rounded-lg border border-border-subtle bg-surface-2 hover:border-brand/30 hover:bg-brand-subtle/40 transition-all group"
-                  >
-                    <div className="text-left">
-                      <p className="text-xs font-bold text-text-primary group-hover:text-brand transition-colors">{ex.nome}</p>
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary mt-0.5">{ex.grupo_muscular}</p>
-                    </div>
-                    <CaretRight className="w-3.5 h-3.5 text-text-tertiary group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
-                  </button>
-                ))}
+                {filteredExercicios.map((ex) => {
+                  const isSelected = selectedExerciseIds.has(ex.id);
+                  return (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      onClick={() => toggleSelectExercise(ex.id)}
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-lg border transition-all group",
+                        isSelected 
+                          ? "border-brand bg-brand/5" 
+                          : "border-border-subtle bg-surface-2 hover:border-brand/30 hover:bg-brand-subtle/40"
+                      )}
+                    >
+                      <div className="text-left">
+                        <p className={cn("text-xs font-bold transition-colors", isSelected ? "text-brand" : "text-text-primary group-hover:text-brand")}>{ex.nome}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary mt-0.5">{ex.grupo_muscular}</p>
+                      </div>
+                      {isSelected ? (
+                        <span className="w-4 h-4 rounded-full bg-brand flex items-center justify-center text-[9px] text-text-on-brand font-bold">✓</span>
+                      ) : (
+                        <CaretRight className="w-3.5 h-3.5 text-text-tertiary group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
+                      )}
+                    </button>
+                  );
+                })}
                 {filteredExercicios.length === 0 && (
                   <div className="py-12 text-center">
                     <p className="text-xs text-text-tertiary">Nenhum exercício encontrado</p>
                   </div>
                 )}
+              </div>
+
+              {/* Modal Footer with Add Button */}
+              <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedExerciseIds(new Set()); setModalExercicio(false); }}
+                  className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddSelectedExercises}
+                  disabled={selectedExerciseIds.size === 0}
+                  className="px-4 py-2 bg-brand disabled:opacity-40 text-text-on-brand rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  Adicionar ({selectedExerciseIds.size})
+                </button>
               </div>
             </div>
           </div>
