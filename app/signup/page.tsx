@@ -140,19 +140,21 @@ export default function CoachSignup() {
       }
 
       if (data?.user) {
-        // 2. Update user profile to set 'coach' role, name, gender (sexo), and instagram in coaching_reference
-        const { error: profileError } = await supabaseClient
-          .from("profiles")
-          .update({
-            role: "coach",
-            full_name: fullName,
-            sexo: gender,
-            coaching_reference: cleanInsta
+        // 2. Atualizar perfil de Coach via endpoint seguro do servidor (bypassa RLS)
+        const profileResponse = await fetch("/api/auth/register-coach-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: data.user.id,
+            fullName,
+            gender,
+            instagram: cleanInsta
           })
-          .eq("id", data.user.id);
+        });
 
-        if (profileError) {
-          console.error("Erro ao atualizar o perfil para Coach:", profileError.message);
+        if (!profileResponse.ok) {
+          const profileErrData = await profileResponse.json().catch(() => ({}));
+          console.error("Erro ao atualizar o perfil para Coach via servidor:", profileErrData.error || "Erro desconhecido");
         }
 
         // 2.5. Send welcome email to Coach via our API endpoint
