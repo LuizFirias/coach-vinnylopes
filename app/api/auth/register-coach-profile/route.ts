@@ -59,6 +59,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Erro ao salvar perfil no banco de dados" }, { status: 500 });
     }
 
+    // 4. Auto-confirmar o e-mail via Admin API — permite login imediato sem clicar no link do Supabase
+    const { error: confirmError } = await adminClient.auth.admin.updateUserById(userId, {
+      email_confirm: true
+    });
+
+    if (confirmError) {
+      // Não bloqueia o fluxo, o perfil já foi salvo — o usuário pode confirmar depois pelo e-mail
+      console.warn("[REGISTER-COACH-PROFILE] ⚠️ Não foi possível auto-confirmar o e-mail:", confirmError.message);
+    } else {
+      console.log("[REGISTER-COACH-PROFILE] ✓ E-mail confirmado automaticamente. Login liberado.");
+    }
+
     console.log("[REGISTER-COACH-PROFILE] 🎉 Perfil de Coach atualizado com sucesso para o usuário:", userId);
     return NextResponse.json({ success: true });
 

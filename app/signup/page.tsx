@@ -118,63 +118,44 @@ export default function CoachSignup() {
       const combinedPhone = `${countryCode}${whatsappNumber.replace(/\D/g, "")}`;
       const cleanInsta = instagram.replace("@", "").trim();
 
-      // 1. SignUp user in Supabase Auth
-      const { data, error: signUpError } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            role: "coach",
-            phone: combinedPhone,
-            sexo: gender,
-            instagram: cleanInsta
-          }
-        }
+      // Fluxo 100% server-side: criação, definição de role e e-mail de boas-vindas em uma única chamada
+      const response = await fetch("/api/auth/signup-coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          fullName: fullName.trim(),
+          gender,
+          instagram: cleanInsta,
+          phone: combinedPhone,
+        }),
       });
 
-      if (signUpError) {
-        setError(signUpError.message);
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Erro ao criar conta. Tente novamente.");
         setLoading(false);
         return;
       }
 
-      if (data?.user) {
-        // 2. Atualizar perfil de Coach via endpoint seguro do servidor (bypassa RLS)
-        const profileResponse = await fetch("/api/auth/register-coach-profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: data.user.id,
-            fullName,
-            gender,
-            instagram: cleanInsta
-          })
-        });
+      // Conta criada com sucesso — fazer login automático com as credenciais informadas
+      const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-        if (!profileResponse.ok) {
-          const profileErrData = await profileResponse.json().catch(() => ({}));
-          console.error("Erro ao atualizar o perfil para Coach via servidor:", profileErrData.error || "Erro desconhecido");
-        }
-
-        // 2.5. Send welcome email to Coach via our API endpoint
-        try {
-          await fetch("/api/auth/welcome-personal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, fullName: fullName.trim() }),
-          });
-        } catch (e) {
-          console.error("Erro ao enviar e-mail de boas-vindas do personal:", e);
-        }
-
-        // 3. Routing depending on session auto-confirmation
-        if (data.session) {
-          router.push("/admin/dashboard");
-        } else {
-          router.push(`/signup/verify-email?email=${encodeURIComponent(email)}`);
-        }
+      if (signInError) {
+        // Conta criada, mas login automático falhou — redirecionar para login manual
+        console.warn("Login automático falhou após cadastro:", signInError.message);
+        router.push(`/login?email=${encodeURIComponent(email.trim().toLowerCase())}&novo=true`);
+        return;
       }
+
+      // Login feito com sucesso — ir direto para o dashboard
+      router.push("/admin/dashboard");
+
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "Erro inesperado";
       setError(`Erro inesperado ao realizar cadastro: ${errMsg}. Tente novamente.`);
@@ -182,6 +163,7 @@ export default function CoachSignup() {
     } finally {
       setLoading(false);
     }
+
   };
 
   return (
