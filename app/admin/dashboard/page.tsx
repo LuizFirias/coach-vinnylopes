@@ -544,49 +544,39 @@ export default function AdminDashboard() {
 
       setPrioridades(tempPrioridades.slice(0, 6));
 
-      // 7. Load monthly chart data (similar logic to reports page)
-      const vinteQuatroAtras = new Date();
-      vinteQuatroAtras.setMonth(vinteQuatroAtras.getMonth() - 11); // 12 month window
-      vinteQuatroAtras.setDate(1);
-      vinteQuatroAtras.setHours(0, 0, 0, 0);
-
-      const { data: historicoData } = await supabaseClient
-        .from('profiles')
-        .select('valor_plano, data_inicio, tipo_plano')
-        .eq('role', 'aluno')
-        .neq('arquivado', true)
-        .not('data_inicio', 'is', null)
-        .not('valor_plano', 'is', null)
-        .gte('data_inicio', vinteQuatroAtras.toISOString())
-        .in('id', alunosIds);
-
+      // 7. Faturamento mensal — série NORMALIZADA (valor rateado pela duração do plano).
+      // Eixo X: início fixo em Jan/2026 (início da operação) até mês atual + 6 (projeção).
+      const rangeStart = new Date(2026, 0, 1);
+      const rangeEnd = new Date(today.getFullYear(), today.getMonth() + 6, 1);
       const mesMap: Record<string, number> = {};
-      const mesAtualKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-      for (let i = 8; i >= -3; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
+      const mesKeys: string[] = [];
+      for (let d = new Date(rangeStart); d <= rangeEnd; d.setMonth(d.getMonth() + 1)) {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         mesMap[key] = 0;
+        mesKeys.push(key);
       }
+      const mesAtualKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
-      const duracaoPlano: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
-
-      for (const row of (historicoData || []) as { valor_plano: number; data_inicio: string; tipo_plano: string | null }[]) {
-        const meses = duracaoPlano[row.tipo_plano || 'mensal'] || 1;
-        const valorPorMes = (row.valor_plano ?? 0) / meses;
-        const inicio = new Date(row.data_inicio);
+      // Reutiliza os perfis já carregados (rows) — derivando o início do ciclo com fallback.
+      for (const r of rows) {
+        const valor = r.valor_plano ?? 0;
+        if (valor <= 0) continue;
+        const meses = DURACAO_PLANO_MESES[r.tipo_plano || 'mensal'] || 1;
+        const valorPorMes = valor / meses;
+        const inicio = inicioDoCiclo(r);
+        if (!inicio) continue;
         for (let m = 0; m < meses; m++) {
           const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
           if (key in mesMap) mesMap[key] += valorPorMes;
         }
       }
-      
-      const mesList = Object.entries(mesMap).map(([mes, receita]) => {
+
+      const mesList = mesKeys.map((mes) => {
         const [ano, m] = mes.split('-');
         const label = new Date(Number(ano), Number(m) - 1, 1)
           .toLocaleDateString('pt-BR', { month: 'short' });
-        return { mes: label, receita, futuro: mes > mesAtualKey };
+        return { mes: label, receita: Math.round(mesMap[mes]), futuro: mes > mesAtualKey };
       });
       setChartData(mesList);
 

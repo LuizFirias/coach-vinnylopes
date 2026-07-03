@@ -14,6 +14,21 @@ import {
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { cn } from '@/lib/utils/cn';
 
+const DURACAO_PLANO_MESES: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
+
+/** Deriva o início do ciclo vigente do plano com fallback progressivo. */
+function inicioDoCiclo(r: { data_inicio?: string | null; data_expiracao?: string | null; created_at?: string | null; tipo_plano?: string | null }): Date | null {
+  if (r.data_inicio) return new Date(r.data_inicio);
+  if (r.data_expiracao) {
+    const dur = DURACAO_PLANO_MESES[r.tipo_plano || 'mensal'] || 1;
+    const d = new Date(r.data_expiracao);
+    d.setMonth(d.getMonth() - dur);
+    return d;
+  }
+  if (r.created_at) return new Date(r.created_at);
+  return null;
+}
+
 export default function RelatoriosPage() {
   const [totalAlunos, setTotalAlunos] = useState(0);
   const [ativos, setAtivos] = useState(0);
@@ -115,49 +130,46 @@ export default function RelatoriosPage() {
           .filter((row) => row.tipo_plano === 'trimestral' || row.tipo_plano === 'semestral')
           .reduce((acc, row) => acc + (row.valor_plano ?? 0), 0);
 
-        // Receita por mês (últimos 12 meses) com distribuição proporcional por tipo de plano
-        const vinteQuatroAtras = new Date();
-        vinteQuatroAtras.setMonth(vinteQuatroAtras.getMonth() - 23);
-        vinteQuatroAtras.setDate(1);
-        vinteQuatroAtras.setHours(0, 0, 0, 0);
-
+        // Projeção & Receita por mês — série NORMALIZADA (valor rateado pela duração do plano).
+        // Eixo X: início fixo em Jan/2026 (início da operação) até mês atual + 6 (projeção).
         const { data: historicoData } = await supabaseClient
           .from('profiles')
-          .select('valor_plano, data_inicio, tipo_plano')
+          .select('valor_plano, data_inicio, data_expiracao, created_at, tipo_plano')
           .eq('role', 'aluno')
           .neq('arquivado', true)
-          .not('data_inicio', 'is', null)
           .not('valor_plano', 'is', null)
-          .gte('data_inicio', vinteQuatroAtras.toISOString())
           .in('id', alunosIds);
 
-        const mesMap: Record<string, number> = {};
         const hoje = new Date();
         const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-        for (let i = 11; i >= -6; i--) {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
+        const rangeStart = new Date(2026, 0, 1);
+        const rangeEnd = new Date(hoje.getFullYear(), hoje.getMonth() + 6, 1);
+        const mesMap: Record<string, number> = {};
+        const mesKeys: string[] = [];
+        for (let d = new Date(rangeStart); d <= rangeEnd; d.setMonth(d.getMonth() + 1)) {
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
           mesMap[key] = 0;
+          mesKeys.push(key);
         }
 
-        const duracaoPlano: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
-
-        for (const row of (historicoData || []) as { valor_plano: number; data_inicio: string; tipo_plano: string | null }[]) {
-          const meses = duracaoPlano[row.tipo_plano || 'mensal'] || 1;
-          const valorPorMes = (row.valor_plano ?? 0) / meses;
-          const inicio = new Date(row.data_inicio);
+        for (const row of (historicoData || []) as { valor_plano: number; data_inicio: string | null; data_expiracao: string | null; created_at: string | null; tipo_plano: string | null }[]) {
+          const valor = row.valor_plano ?? 0;
+          if (valor <= 0) continue;
+          const meses = DURACAO_PLANO_MESES[row.tipo_plano || 'mensal'] || 1;
+          const valorPorMes = valor / meses;
+          const inicio = inicioDoCiclo(row);
+          if (!inicio) continue;
           for (let m = 0; m < meses; m++) {
             const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             if (key in mesMap) mesMap[key] += valorPorMes;
           }
         }
-        const mesList = Object.entries(mesMap).map(([mes, receita]) => {
+        const mesList = mesKeys.map((mes) => {
           const [ano, m] = mes.split('-');
           const label = new Date(Number(ano), Number(m) - 1, 1)
             .toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-          return { mes: label, receita, futuro: mes > mesAtualKey };
+          return { mes: label, receita: Math.round(mesMap[mes]), futuro: mes > mesAtualKey };
         });
 
         // 2c. Fetch active digital plans
@@ -353,7 +365,7 @@ export default function RelatoriosPage() {
               <div className="flex items-start justify-between mb-2 gap-4">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Projeção & Receita por Mês</p>
-                  <p className="text-[10px] text-text-tertiary mt-0.5">Distribuição proporcional por plano · últimos 12 meses + projeção 6 meses</p>
+                  <p className="text-[10px] text-text-tertiary mt-0.5">Distribuição proporcional por plano · desde Jan/26 + projeção de 6 meses</p>
                 </div>
                 <div className="flex items-center gap-2.5 flex-shrink-0">
                   <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
