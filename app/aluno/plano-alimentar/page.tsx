@@ -83,14 +83,30 @@ export default function PlanoAlimentarPage() {
       const today = getTodayISO();
       setLoadedDate(today);
 
-      // 1. Tentar buscar o plano digital ativo do aluno via API otimizada
-      const resPlan = await fetch('/api/aluno/plano-alimentar/digital', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
+      // 1. Buscar plano digital, planos em PDF e registro de água em paralelo
+      const [resPlan, resPDFs, resAgua] = await Promise.all([
+        fetch('/api/aluno/plano-alimentar/digital', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        }),
+        supabaseClient
+          .from('plano_alimentar_pdf')
+          .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
+          .eq('aluno_id', uid)
+          .order('criado_em', { ascending: false }),
+        supabaseClient
+          .from('registros_agua')
+          .select('id, copos, ml_por_copo')
+          .eq('aluno_id', uid)
+          .eq('data_registro', today)
+          .maybeSingle()
+      ]);
+
       const resPlanData = await resPlan.json();
       const digitalPlanData = resPlanData?.plan;
+      const { data: plansPDFData } = resPDFs;
+      const { data: aguaData } = resAgua;
 
       if (digitalPlanData) {
         setDigitalPlan(digitalPlanData);
@@ -121,13 +137,6 @@ export default function PlanoAlimentarPage() {
           }
         }
       }
-
-      // 2. Buscar planos em PDF (para histórico ou se não houver digital ativo)
-      const { data: plansPDFData } = await supabaseClient
-        .from('plano_alimentar_pdf')
-        .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
-        .eq('aluno_id', uid)
-        .order('criado_em', { ascending: false });
 
       if (plansPDFData && plansPDFData.length > 0) {
         if (!digitalPlanData) {
@@ -160,14 +169,6 @@ export default function PlanoAlimentarPage() {
           setHistoricoPDFs(plansPDFData);
         }
       }
-
-      // 3. Carregar registro de água
-      const { data: aguaData } = await supabaseClient
-        .from('registros_agua')
-        .select('id, copos, ml_por_copo')
-        .eq('aluno_id', uid)
-        .eq('data_registro', today)
-        .maybeSingle();
 
       if (aguaData) {
         setAgua({ id: aguaData.id, copos: aguaData.copos, ml_por_copo: aguaData.ml_por_copo });
@@ -399,8 +400,84 @@ export default function PlanoAlimentarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <DumbbellLoader text="Carregando rotina alimentar..." />
+      <div className="min-h-screen bg-surface-0 pb-24 scroll-content">
+        <div className="max-w-2xl mx-auto flex flex-col pt-safe animate-pulse">
+          {/* Header */}
+          <div className="px-4 pt-4 pb-3">
+            <div className="h-3 w-28 bg-surface-2 rounded mb-2" />
+            <div className="h-6 w-20 bg-surface-2 rounded" />
+          </div>
+
+          {/* Active Plan Card Skeleton */}
+          <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-surface-2" />
+                <div className="h-3 w-16 bg-surface-2 rounded" />
+              </div>
+              <div className="text-right flex flex-col items-end">
+                <div className="h-4 w-10 bg-surface-2 rounded mb-1" />
+                <div className="h-3 w-16 bg-surface-2 rounded" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="h-4 w-48 bg-surface-2 rounded" />
+              <div className="h-3 w-32 bg-surface-2 rounded" />
+            </div>
+
+            <div className="w-full h-1 bg-surface-2 rounded-full" />
+
+            <div className="grid grid-cols-4 gap-2 pt-3 border-t border-border-subtle/50">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="text-center space-y-1">
+                  <div className="h-3 w-8 bg-surface-2 rounded mx-auto" />
+                  <div className="h-4 w-12 bg-surface-2 rounded mx-auto" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Water Card Skeleton */}
+          <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="h-3.5 w-3.5 bg-surface-2 rounded" />
+                <div className="h-3 w-20 bg-surface-2 rounded" />
+              </div>
+              <div className="h-4 w-12 bg-surface-2 rounded" />
+            </div>
+
+            <div className="w-full h-1.5 bg-surface-2 rounded-full" />
+
+            <div className="flex justify-between items-center">
+              <div className="h-8 w-24 bg-surface-2 rounded" />
+              <div className="flex gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="w-8 h-8 rounded-lg bg-surface-2" />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Meals List Skeleton */}
+          <div className="mx-4 space-y-3">
+            <div className="h-3 w-24 bg-surface-2 rounded mb-2" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-surface-1 border border-border-subtle rounded-lg p-4 flex items-center justify-between h-14">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-surface-2" />
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-24 bg-surface-2 rounded" />
+                    <div className="h-2.5 w-16 bg-surface-2 rounded" />
+                  </div>
+                </div>
+                <div className="h-4 w-4 bg-surface-2 rounded" />
+              </div>
+            ))}
+          </div>
+
+        </div>
       </div>
     );
   }

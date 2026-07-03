@@ -248,7 +248,7 @@ export default function RankingPage() {
                         {entry.streak > 0 && (
                           <div className="flex items-center gap-1 text-[9px] text-brand font-bold mt-0.5 uppercase tracking-wider">
                             <span className="w-1 h-1 rounded-full bg-brand animate-pulse" />
-                            <span>{entry.streak} dias ativos</span>
+                            <span>{entry.streak} {entry.streak === 1 ? 'semana ativa' : 'semanas ativas'}</span>
                           </div>
                         )}
                       </div>

@@ -23,6 +23,7 @@ import {
   Barbell,
   PencilSimple,
   AppleLogo,
+  Eye,
   Trophy,
   Ruler,
   Copy,
@@ -303,6 +304,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
+  const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
 
   // Coach Chart States
   const [metricaCoach, setMetricaCoach] = useState<'peso' | 'gordura_corporal' | 'cintura' | 'peitoral' | 'braco_esquerdo' | 'braco_direito' | 'coxa_esquerda' | 'coxa_direita' | 'panturrilha_direita'>('peso');
@@ -1507,46 +1509,56 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {fichas.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {fichas.map((ficha) => (
-                    <div key={ficha.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-2 border border-border-subtle hover:border-brand/20 transition-all">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-brand/10 flex items-center justify-center text-brand shrink-0">
-                          <Barbell size={16} />
-                        </div>
+                <div className="flex flex-col gap-2">
+                  {fichas.map((ficha) => {
+                    const exCount = (ficha.configuracao as any)?.exercicios?.length || 0;
+                    const totalSets = (ficha.configuracao as any)?.exercicios?.reduce(
+                      (acc: number, ex: any) => acc + (ex.series?.length || 0), 
+                      0
+                    ) || 0;
+
+                    return (
+                      <div key={ficha.id} className="p-3 bg-surface-2 border border-border-subtle rounded-xl flex items-center justify-between gap-3 hover:border-brand/20 transition-all">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-text-primary truncate">{ficha.nome_rotina}</p>
+                          <h4 className="text-xs font-bold text-text-primary truncate">{ficha.nome_rotina}</h4>
                           <p className="text-[10px] text-text-tertiary mt-0.5">
-                            Criado em: {new Date(ficha.criado_em).toLocaleDateString("pt-BR")}
+                            {exCount} exercícios • {totalSets} séries • Criado em: {new Date(ficha.criado_em).toLocaleDateString("pt-BR")}
                           </p>
                         </div>
+                        
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => setSelectedRoutineForPreview(ficha)}
+                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                            title="Visualizar Ficha"
+                          >
+                            <Eye size={13} />
+                          </button>
+                          <button
+                            onClick={() => router.push(`/admin/aluno/${id}/ficha/${ficha.id}`)}
+                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                            title="Editar Ficha"
+                          >
+                            <PencilSimple size={13} />
+                          </button>
+                          <button
+                            onClick={() => abrirClonarFicha(ficha)}
+                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                            title="Clonar Ficha"
+                          >
+                            <Copy size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFicha(ficha.id)}
+                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
+                            title="Desativar Ficha"
+                          >
+                            <Trash size={13} />
+                          </button>
+                        </div>
                       </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => router.push(`/admin/aluno/${id}/ficha/${ficha.id}`)}
-                          className="w-7 h-7 bg-brand/10 border border-brand/20 rounded-lg flex items-center justify-center text-brand hover:bg-brand hover:text-text-on-brand transition-all"
-                          title="Editar Ficha"
-                        >
-                          <PencilSimple size={12} />
-                        </button>
-                        <button
-                          onClick={() => abrirClonarFicha(ficha)}
-                          className="w-7 h-7 bg-surface-3 border border-border-default rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary transition-all"
-                          title="Clonar Ficha"
-                        >
-                          <Copy size={12} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteFicha(ficha.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-text-disabled hover:text-danger hover:bg-danger-subtle transition-all"
-                          title="Desativar Ficha"
-                        >
-                          <Trash size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="py-12 text-center flex flex-col items-center justify-center gap-3 bg-surface-2 border border-dashed border-border-subtle rounded-xl">
@@ -1795,7 +1807,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
             {/* Seção 2: Documentos em PDF */}
             <div className="border-t border-border-subtle/40 pt-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                 <div>
                   <h3 className="text-sm font-bold text-text-primary">Histórico de Planos PDF</h3>
                   <p className="text-2xs text-text-tertiary">Planejamentos alimentares enviados em arquivo PDF</p>
@@ -1805,6 +1817,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   size="sm"
                   leftIcon={<UploadSimple className="w-4 h-4" />}
                   onClick={() => setUploadNutritionOpen(true)}
+                  className="w-full md:w-auto shrink-0 whitespace-nowrap"
                 >
                   Enviar PDF
                 </Button>
@@ -2412,6 +2425,83 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       )}
-    </div>
-  );
-}
+
+        {/* Simplified Routine Preview Modal */}
+        {selectedRoutineForPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
+            <div className="bg-surface-1 border border-border-default rounded-3xl w-full max-w-lg overflow-hidden shadow-elev-3 flex flex-col max-h-[85vh]">
+              {/* Modal Header */}
+              <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-surface-2/40">
+                <div>
+                  <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/10 px-2 py-0.5 rounded border border-brand/20">Ficha Digital</span>
+                  <h3 className="text-sm font-bold text-text-primary mt-2 uppercase">{selectedRoutineForPreview.nome_rotina || selectedRoutineForPreview.nome}</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedRoutineForPreview(null)}
+                  className="w-8 h-8 rounded-full hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 overflow-y-auto space-y-4 flex-1">
+                {(() => {
+                  const exercises = (selectedRoutineForPreview.configuracao as any)?.exercicios || [];
+                  if (exercises.length === 0) {
+                    return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;
+                  }
+                  return exercises.map((ex: any, idx: number) => (
+                    <div key={idx} className="p-4 bg-surface-2 border border-border-subtle rounded-xl space-y-2">
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className="text-xs font-bold text-text-primary">{idx + 1}. {ex.nome}</h4>
+                        {ex.descanso && (
+                          <span className="text-[10px] text-text-tertiary font-mono bg-surface-3 px-1.5 py-0.5 rounded">
+                            Descanso: {ex.descanso}
+                          </span>
+                        )}
+                      </div>
+                      {ex.observacoes && (
+                        <p className="text-[11px] text-text-secondary italic">Obs: {ex.observacoes}</p>
+                      )}
+                      
+                      {/* Series List */}
+                      <div className="pt-2 border-t border-border-subtle/40 space-y-1.5">
+                        {ex.series?.map((s: any, sIdx: number) => (
+                          <div key={sIdx} className="flex items-center gap-3 text-[11px] text-text-secondary font-medium">
+                            <span className="w-5 h-5 rounded bg-brand/10 text-brand text-[9px] font-bold flex items-center justify-center">
+                              {s.ordem || (sIdx + 1)}
+                            </span>
+                            <span>
+                              {s.reps || s.reps_sugerido ? `${s.reps || s.reps_sugerido} reps` : ""}
+                              {s.tempo_sugerido ? `${s.tempo_sugerido} tempo` : ""}
+                              {s.distancia_sugerida ? ` • ${s.distancia_sugerida}m` : ""}
+                            </span>
+                            {(s.tecnica || s.tecnica_extra) && (
+                              <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/5 px-1 rounded">
+                                {[s.tecnica, s.tecnica_extra].filter(Boolean).join(" + ")}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end">
+                <button
+                  onClick={() => setSelectedRoutineForPreview(null)}
+                  className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }

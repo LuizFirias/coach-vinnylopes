@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
-import { getPersonalWelcomeEmailHtml } from "@/lib/emailTemplates";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
@@ -18,16 +17,15 @@ export async function POST(req: Request) {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { email, password, fullName, gender, instagram, phone } = await req.json();
+    const { email, password, fullName, goal } = await req.json();
 
-    if (!email || !password || !fullName) {
+    if (!email || !password || !fullName || !goal) {
       return NextResponse.json({ error: "Dados obrigatórios ausentes" }, { status: 400 });
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanInsta = (instagram || "").replace("@", "").trim();
 
-    console.log("[SIGNUP-COACH] 🚀 Iniciando cadastro de coach para:", cleanEmail);
+    console.log("[SIGNUP-ALUNO] 🚀 Iniciando cadastro de aluno para:", cleanEmail);
 
     // ── 1. Verificar se o e-mail já está cadastrado ──────────────────────
     const { data: existingProfile } = await adminClient
@@ -44,23 +42,20 @@ export async function POST(req: Request) {
       );
     }
 
-    // ── 2. Criar usuário via Admin API (bypassa confirmação de e-mail) ────
-    // email_confirm: true → conta ativada imediatamente, sem link do Supabase
+    // ── 2. Criar usuário via Admin API ────────────────────────────────────
     const { data: createData, error: createError } = await adminClient.auth.admin.createUser({
       email: cleanEmail,
       password,
-      email_confirm: true, // Ativa conta imediatamente — sem e-mail de confirmação genérico
+      email_confirm: true, // Ativa conta imediatamente
       user_metadata: {
         full_name: fullName,
-        role: "coach",
-        phone: phone || "",
-        sexo: gender || "",
-        instagram: cleanInsta,
+        role: "aluno",
+        objetivo: goal
       },
     });
 
     if (createError || !createData?.user) {
-      console.error("[SIGNUP-COACH] ❌ Erro ao criar usuário:", createError?.message);
+      console.error("[SIGNUP-ALUNO] ❌ Erro ao criar usuário:", createError?.message);
 
       if (createError?.message?.toLowerCase().includes("already registered") ||
           createError?.message?.toLowerCase().includes("already exists")) {
@@ -74,19 +69,18 @@ export async function POST(req: Request) {
     }
 
     const newUserId = createData.user.id;
-    console.log("[SIGNUP-COACH] ✓ Usuário criado no Auth. ID:", newUserId);
+    console.log("[SIGNUP-ALUNO] ✓ Usuário criado no Auth. ID:", newUserId);
 
-    // ── 3. Salvar perfil com role='coach' via Admin (bypassa RLS e trigger) ──
+    // ── 3. Salvar perfil com role='aluno' e objetivo ────────────────────────
     const { error: upsertError } = await adminClient
       .from("profiles")
       .upsert(
         {
           id: newUserId,
           email: cleanEmail,
-          role: "coach",          // ← definido com segurança no servidor
+          role: "aluno",
           full_name: fullName,
-          sexo: gender || null,
-          coaching_reference: cleanInsta || null,
+          objetivo: goal,
           status_pagamento: "pago",
           arquivado: false,
         },
@@ -94,13 +88,8 @@ export async function POST(req: Request) {
       );
 
     if (upsertError) {
-      console.error("[SIGNUP-COACH] ❌ Erro ao salvar perfil:", {
-        message: upsertError.message,
-        code: upsertError.code,
-        details: upsertError.details,
-        hint: upsertError.hint,
-      });
-      // Rollback: remover o usuário criado para não deixar conta sem perfil
+      console.error("[SIGNUP-ALUNO] ❌ Erro ao salvar perfil:", upsertError.message);
+      // Rollback: remover o usuário criado
       await adminClient.auth.admin.deleteUser(newUserId);
       return NextResponse.json(
         { error: "Erro ao salvar dados do perfil. Tente novamente." },
@@ -108,27 +97,47 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("[SIGNUP-COACH] ✓ Perfil de coach salvo com role='coach'.");
+    console.log("[SIGNUP-ALUNO] ✓ Perfil de aluno salvo.");
 
     // ── 4. Enviar e-mail de boas-vindas via Resend ────────────────────────
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.auronfit.com.br";
+      const goalLabel = 
+        goal === "cutting" ? "Emagrecimento (Definição)" : 
+        goal === "bulking" ? "Ganho de Massa (Hipertrofia)" : 
+        goal === "manutencao" ? "Manutenção de Peso" : 
+        "Recomposição Corporal";
+
       await resend.emails.send({
         from: "Auronfit <contato@auronfit.com.br>",
         to: cleanEmail,
-        subject: "Bem-vindo ao Auronfit | Painel do Personal",
-        html: getPersonalWelcomeEmailHtml(fullName, siteUrl),
+        subject: "Bem-vindo ao Auronfit | Painel do Aluno",
+        html: `
+          <div style="background-color: #09090B; color: #FAFAFA; font-family: sans-serif; padding: 40px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #2563EB; font-size: 28px; margin-bottom: 16px;">Bem-vindo ao Auronfit, ${fullName}!</h1>
+            <p style="font-size: 16px; line-height: 1.5; color: #A1A1AA;">Sua conta de aluno/atleta foi criada com sucesso.</p>
+            
+            <div style="background-color: #111113; padding: 20px; border: 1px solid #27272A; border-radius: 8px; margin: 24px 0;">
+              <p style="margin: 0; font-size: 14px; color: #A1A1AA;"><strong>Objetivo Inicial:</strong> ${goalLabel}</p>
+            </div>
+
+            <p style="font-size: 14px; color: #A1A1AA; line-height: 1.5;">Acesse seu painel para começar a registrar seus treinos, cargas e ver sua dieta.</p>
+            
+            <div style="margin-top: 32px;">
+              <a href="${siteUrl}/login" target="_blank" style="background-color: #FAFAFA; color: #09090B; padding: 12px 24px; border-radius: 8px; font-weight: bold; text-decoration: none; display: inline-block;">Acessar Plataforma</a>
+            </div>
+          </div>
+        `,
       });
-      console.log("[SIGNUP-COACH] ✓ E-mail de boas-vindas enviado.");
+      console.log("[SIGNUP-ALUNO] ✓ E-mail de boas-vindas enviado.");
     } catch (emailErr) {
-      // Não bloqueia o fluxo se o e-mail falhar
-      console.warn("[SIGNUP-COACH] ⚠️ Falha ao enviar e-mail de boas-vindas:", emailErr);
+      console.warn("[SIGNUP-ALUNO] ⚠️ Falha ao enviar e-mail de boas-vindas:", emailErr);
     }
 
     return NextResponse.json({ success: true, userId: newUserId });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : "Erro interno do servidor";
-    console.error("[SIGNUP-COACH] ❌ Erro interno:", err);
+    console.error("[SIGNUP-ALUNO] ❌ Erro interno:", err);
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }

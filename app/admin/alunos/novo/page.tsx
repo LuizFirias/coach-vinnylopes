@@ -21,6 +21,7 @@ export default function NovoAlunoPage() {
   const [objetivo, setObjetivo] = useState("bulking");
   const [tipoPlano, setTipoPlano] = useState("mensal");
   const [dataExpiracao, setDataExpiracao] = useState("");
+  const [valorPlano, setValorPlano] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,9 @@ export default function NovoAlunoPage() {
 
   // Autopopulate dataExpiracao based on plan selection (today + X days)
   useEffect(() => {
+    // 'outros' não tem validade automática — o coach define manualmente
+    if (tipoPlano === "outros") return;
+
     const today = new Date();
     let daysToAdd = 30;
     if (tipoPlano === "trimestral") daysToAdd = 90;
@@ -94,9 +98,16 @@ export default function NovoAlunoPage() {
         cleanedPhone = `55${cleanedPhone}`;
       }
 
+      // Buscar o token de sessão ativo para enviar no header Authorization
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const accessToken = sessionData?.session?.access_token || "";
+
       const res = await fetch("/api/admin/invite", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({ 
           full_name: fullName.trim(), 
           email: email.trim(),
@@ -105,6 +116,7 @@ export default function NovoAlunoPage() {
           objetivo: objetivo || null,
           tipo_plano: tipoPlano || null,
           data_expiracao: dataExpiracao || null,
+          valor_plano: valorPlano ? parseFloat(valorPlano) : null,
         }),
       });
 
@@ -257,11 +269,24 @@ export default function NovoAlunoPage() {
                     { value: "trimestral", label: "Trimestral" },
                     { value: "semestral", label: "Semestral" },
                     { value: "anual", label: "Anual" },
+                    { value: "outros", label: "Outros" },
                   ]}
                 />
 
                 <Input
-                  label="Data de vencimento / próxima renovação"
+                  label="Valor do plano (R$)"
+                  name="valorPlano"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={valorPlano}
+                  onChange={(e) => setValorPlano(e.target.value)}
+                  placeholder="Ex: 350,00"
+                  disabled={loading}
+                />
+
+                <Input
+                  label={tipoPlano === "outros" ? "Data de vencimento (informe manualmente)" : "Data de vencimento / próxima renovação"}
                   name="dataExpiracao"
                   type="date"
                   value={dataExpiracao}

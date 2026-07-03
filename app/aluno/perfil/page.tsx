@@ -685,24 +685,16 @@ export default function AlunoPerfil() {
           </button>
         </div>
 
-        {/* ── Quadros 2x2: Dashboard ── */}
+        {/* ── Quadros: Dashboard ── */}
         <div className="mb-6">
           <p className="text-xs font-semibold text-text-tertiary mb-3 px-1">Dashboard</p>
           <div className="grid grid-cols-2 gap-3">
             <Link
               href="/aluno/estatisticas"
-              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
+              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group col-span-2"
             >
               <ChartBar size={22} className="text-brand flex-shrink-0" />
               <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Estatísticas</span>
-            </Link>
-
-            <Link
-              href="/aluno/treinos"
-              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
-            >
-              <Barbell size={22} className="text-brand flex-shrink-0" />
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Exercícios</span>
             </Link>
 
             <Link
@@ -714,7 +706,7 @@ export default function AlunoPerfil() {
             </Link>
 
             <Link
-              href="/aluno/dashboard"
+              href="/aluno/calendario"
               className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
             >
               <Calendar size={22} className="text-brand flex-shrink-0" />

@@ -33,8 +33,8 @@ export function WeekStreakDots({ days, streakCount }: WeekStreakDotsProps) {
       {streakCount != null && streakCount > 0 && (
         <p className="text-sm text-text-secondary text-center">
           Você está em{' '}
-          <span className="font-semibold text-text-primary">{streakCount} dias</span>{' '}
-          {streakCount >= 7 ? '🔥' : ''}
+          <span className="font-semibold text-text-primary">{streakCount} {streakCount === 1 ? 'semana' : 'semanas'}</span>{' '}
+          {streakCount >= 1 ? '🔥' : ''}
         </p>
       )}
     </div>

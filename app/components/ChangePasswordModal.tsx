@@ -1,19 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import {
-  X,
-  Lock,
-  CheckCircle,
-  WarningCircle,
-  Eye,
-  EyeSlash,
-  CircleNotch,
-  Check,
-  Question
+  X, Lock, CheckCircle, WarningCircle, Eye, EyeSlash, CircleNotch, Check
 } from '@phosphor-icons/react';
-import Link from 'next/link';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -27,81 +18,43 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  // Password validation
-  const validatePassword = (password: string) => {
-    return {
-      minLength: password.length >= 8,
-      hasUpperCase: /[A-Z]/.test(password),
-      hasLowerCase: /[a-z]/.test(password),
-      hasNumber: /[0-9]/.test(password),
-      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
-    };
+  const req = {
+    minLength: newPassword.length >= 8,
+    hasUpper: /[A-Z]/.test(newPassword),
+    hasLower: /[a-z]/.test(newPassword),
+    hasNumber: /[0-9]/.test(newPassword),
+    hasSpecial: /[!@#$%&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(newPassword),
   };
+  const isValid = Object.values(req).every(Boolean);
+  const match = newPassword === confirmPassword && newPassword.length > 0;
 
-  const passwordReq = validatePassword(newPassword);
-  const isPasswordValid = Object.values(passwordReq).every(req => req);
-  const passwordsMatch = newPassword === confirmPassword && newPassword.length > 0;
-
-  const handleChangePassword = async (e?: React.FormEvent | React.MouseEvent) => {
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
     e?.preventDefault();
-    
-    if (!currentPassword) {
-      setMessage({ type: 'error', text: 'Digite sua senha atual' });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'As senhas não coincidem' });
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setMessage({ type: 'error', text: 'A senha não atende aos requisitos de segurança' });
-      return;
-    }
+    if (!currentPassword) { setMessage({ type: 'error', text: 'Digite sua senha atual' }); return; }
+    if (!isValid) { setMessage({ type: 'error', text: 'A senha não atende aos requisitos de segurança' }); return; }
+    if (!match) { setMessage({ type: 'error', text: 'As senhas não coincidem' }); return; }
 
     setLoading(true);
     setMessage(null);
 
     try {
-      // Verificar senha atual
       const { data: authData } = await supabaseClient.auth.getUser();
       const email = authData?.user?.email;
+      if (!email) throw new Error('Usuário não autenticado');
 
-      if (!email) {
-        throw new Error('Usuário não autenticado');
-      }
+      const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password: currentPassword });
+      if (signInError) throw new Error('Senha atual incorreta');
 
-      // Tentar fazer login com senha atual para validar
-      const { error: signInError } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password: currentPassword,
-      });
-
-      if (signInError) {
-        throw new Error('Senha atual incorreta');
-      }
-
-      // Atualizar para nova senha
-      const { error: updateError } = await supabaseClient.auth.updateUser({
-        password: newPassword,
-      });
-
+      const { error: updateError } = await supabaseClient.auth.updateUser({ password: newPassword });
       if (updateError) throw updateError;
 
       setMessage({ type: 'success', text: 'Senha atualizada com sucesso!' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      
-      setTimeout(() => {
-        onClose();
-        onSuccess?.();
-      }, 2000);
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      setTimeout(() => { onClose(); onSuccess?.(); }, 2000);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Erro ao atualizar senha' });
     } finally {
@@ -111,213 +64,128 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
-      <div className="relative bg-[#0F0F0F] rounded-3xl border border-[#D4AF37]/25 shadow-2xl max-w-md w-full p-10 overflow-hidden flex flex-col max-h-[90vh]">
-        
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-xl transition-all"
-          title="Fechar"
-        >
-          <X size={20} className="text-zinc-400 hover:text-white" />
+  const PasswordField = ({
+    label, value, onChange, show, onToggle, placeholder,
+  }: {
+    label: string; value: string; onChange: (v: string) => void;
+    show: boolean; onToggle: () => void; placeholder: string;
+  }) => (
+    <div className="space-y-1.5">
+      <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">{label}</label>
+      <div className="relative">
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => { onChange(e.target.value); setMessage(null); }}
+          placeholder={placeholder}
+          className="w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 pr-12 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+        />
+        <button type="button" onClick={onToggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors">
+          {show ? <EyeSlash size={18} /> : <Eye size={18} />}
         </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="relative bg-surface-1 border border-border-subtle rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
-            <Lock size={24} />
+        <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-border-subtle flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-brand/10 flex items-center justify-center text-brand flex-shrink-0">
+              <Lock size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-text-primary">Trocar senha</h2>
+              <p className="text-xs text-text-tertiary mt-0.5">Atualize sua credencial de acesso</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl text-white uppercase tracking-tight">
-              Trocar Senha
-            </h2>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
-              Atualize sua credencial de acesso
-            </p>
-          </div>
+          <button onClick={onClose} className="p-2 hover:bg-surface-2 rounded-xl transition-colors text-text-tertiary hover:text-text-primary">
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Messages */}
-        {message && (
-          <div
-            className={`mb-6 p-4 rounded-2xl flex items-center gap-4 text-[10px] uppercase tracking-widest ${
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {message && (
+            <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-medium ${
               message.type === 'success'
-                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
-                : 'bg-red-500/10 text-red-500 border border-red-500/20'
-            }`}
-          >
-            {message.type === 'success' ? (
-              <CheckCircle size={16} />
-            ) : (
-              <WarningCircle size={16} />
-            )}
-            {message.text}
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            {/* Senha Atual */}
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">Senha Atual</label>
-              <div className="relative">
-                <input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Digite sua senha atual"
-                  className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700 pr-12"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
-                >
-                  {showCurrentPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
+                ? 'bg-success/10 text-success border border-success/20'
+                : 'bg-danger/10 text-danger border border-danger/20'
+            }`}>
+              {message.type === 'success' ? <CheckCircle size={15} weight="fill" /> : <WarningCircle size={15} weight="fill" />}
+              {message.text}
             </div>
+          )}
 
-            {/* Nova Senha */}
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">Nova Senha</label>
-              <div className="relative">
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Crie uma nova senha forte"
-                  className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700 pr-12"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
-                >
-                  {showNewPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <PasswordField label="Senha Atual" value={currentPassword} onChange={setCurrentPassword} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder="Digite sua senha atual" />
+            <PasswordField label="Nova Senha" value={newPassword} onChange={setNewPassword} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder="Crie uma senha forte" />
 
-            {/* Password Requirements */}
-            {newPassword && (
-              <div className="bg-black border border-[#1a1a1a] rounded-2xl p-4 space-y-2">
-                <p className="text-[9px] uppercase tracking-[0.25em] text-[#D4AF37] font-bold mb-2">Requisitos de Segurança</p>
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
-                      passwordReq.minLength ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
-                    }`}>
-                      {passwordReq.minLength && <Check size={10} />}
+            {/* Requisitos */}
+            {newPassword.length > 0 && (
+              <div className="bg-surface-0 border border-border-subtle rounded-xl p-4 space-y-2">
+                <p className="text-2xs font-bold uppercase tracking-caps text-brand mb-2">Requisitos de segurança</p>
+                {[
+                  [req.minLength, 'Mínimo 8 caracteres'],
+                  [req.hasUpper, 'Letra maiúscula (A-Z)'],
+                  [req.hasLower, 'Letra minúscula (a-z)'],
+                  [req.hasNumber, 'Número (0-9)'],
+                  [req.hasSpecial, 'Caractere especial (!@#$…)'],
+                ].map(([ok, label]) => (
+                  <div key={label as string} className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${ok ? 'bg-brand/20 text-brand' : 'bg-surface-2 text-text-disabled'}`}>
+                      {ok && <Check size={9} weight="bold" />}
                     </div>
-                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
-                      passwordReq.minLength ? 'text-[#D4AF37]' : 'text-zinc-500'
-                    }`}>Mínimo 8 caracteres</span>
+                    <span className={`text-xs transition-colors ${ok ? 'text-brand' : 'text-text-tertiary'}`}>{label as string}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
-                      passwordReq.hasUpperCase ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
-                    }`}>
-                      {passwordReq.hasUpperCase && <Check size={10} />}
-                    </div>
-                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
-                      passwordReq.hasUpperCase ? 'text-[#D4AF37]' : 'text-zinc-500'
-                    }`}>Letra maiúscula (A-Z)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
-                      passwordReq.hasLowerCase ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
-                    }`}>
-                      {passwordReq.hasLowerCase && <Check size={10} />}
-                    </div>
-                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
-                      passwordReq.hasLowerCase ? 'text-[#D4AF37]' : 'text-zinc-500'
-                    }`}>Letra minúscula (a-z)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
-                      passwordReq.hasNumber ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
-                    }`}>
-                      {passwordReq.hasNumber && <Check size={10} />}
-                    </div>
-                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
-                      passwordReq.hasNumber ? 'text-[#D4AF37]' : 'text-zinc-500'
-                    }`}>Número (0-9)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
-                      passwordReq.hasSpecialChar ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-zinc-900 text-zinc-700'
-                    }`}>
-                      {passwordReq.hasSpecialChar && <Check size={10} />}
-                    </div>
-                    <span className={`text-[10px] uppercase tracking-wider font-semibold ${
-                      passwordReq.hasSpecialChar ? 'text-[#D4AF37]' : 'text-zinc-500'
-                    }`}>Caractere especial (!@#$...)</span>
-                  </div>
-                </div>
+                ))}
               </div>
             )}
 
-            {/* Confirmar Nova Senha */}
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">Confirmar Nova Senha</label>
+            <div className="space-y-1.5">
+              <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">Confirmar Nova Senha</label>
               <div className="relative">
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirm ? 'text' : 'password'}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setMessage(null); }}
                   placeholder="Repita a nova senha"
-                  className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700 pr-12"
+                  className={`w-full h-12 bg-surface-0 border text-text-primary px-4 pr-20 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none transition-colors ${
+                    confirmPassword.length > 0
+                      ? match ? 'border-success/40 focus:border-success/60' : 'border-danger/40 focus:border-danger/60'
+                      : 'border-border-subtle focus:border-brand/40'
+                  }`}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
-                >
-                  {showConfirmPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
-                </button>
-                {confirmPassword && (
-                  <div className="absolute right-12 top-1/2 -translate-y-1/2">
-                    {passwordsMatch ? (
-                      <Check className="text-green-500" size={16} />
-                    ) : (
-                      <WarningCircle className="text-red-500" size={16} />
-                    )}
-                  </div>
-                )}
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {confirmPassword && (
+                    match
+                      ? <Check className="text-success" size={15} />
+                      : <WarningCircle className="text-danger" size={15} />
+                  )}
+                  <button type="button" onClick={() => setShowConfirm(v => !v)} className="text-text-tertiary hover:text-text-secondary transition-colors">
+                    {showConfirm ? <EyeSlash size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
           </form>
         </div>
 
-        {/* Buttons */}
-        <div className="flex gap-4 pt-6 mt-2 border-t border-[#1a1a1a]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-6 py-3 bg-[#0F0F0F] border border-[#1a1a1a] text-zinc-500 text-[10px] uppercase tracking-[0.3em] rounded-xl hover:bg-white/5 transition-all"
-          >
+        {/* Footer */}
+        <div className="flex gap-3 px-6 py-5 border-t border-border-subtle flex-shrink-0">
+          <button type="button" onClick={onClose} disabled={loading} className="flex-1 h-11 bg-surface-2 border border-border-subtle text-text-secondary text-xs font-semibold rounded-xl hover:bg-surface-3 transition-colors disabled:opacity-50">
             Cancelar
           </button>
           <button
             type="button"
-            onClick={handleChangePassword}
-            disabled={loading || !isPasswordValid || !passwordsMatch || !currentPassword}
-            className="flex-1 px-6 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black text-[10px] uppercase tracking-[0.3em] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            onClick={handleSubmit}
+            disabled={loading || !isValid || !match || !currentPassword}
+            className="flex-1 h-11 bg-brand hover:opacity-90 text-text-on-brand text-xs font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading ? (
-              <>
-                <CircleNotch className="w-4 h-4 animate-spin" />
-                Atualizando...
-              </>
-            ) : (
-              <>
-                <Lock size={14} />
-                Confirmar
-              </>
-            )}
+            {loading ? (<><CircleNotch className="w-4 h-4 animate-spin" />Atualizando…</>) : (<><Lock size={14} />Confirmar</>)}
           </button>
         </div>
       </div>

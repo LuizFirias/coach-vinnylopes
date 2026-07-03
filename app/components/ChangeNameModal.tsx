@@ -2,13 +2,7 @@
 
 import { useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import {
-  X,
-  User,
-  CheckCircle,
-  WarningCircle,
-  CircleNotch
-} from '@phosphor-icons/react';
+import { X, User, CheckCircle, WarningCircle, CircleNotch } from '@phosphor-icons/react';
 
 interface ChangeNameModalProps {
   isOpen: boolean;
@@ -18,12 +12,12 @@ interface ChangeNameModalProps {
   onSuccess?: (newName: string) => void;
 }
 
-export default function ChangeNameModal({ 
-  isOpen, 
-  onClose, 
+export default function ChangeNameModal({
+  isOpen,
+  onClose,
   userId,
   currentName = '',
-  onSuccess 
+  onSuccess,
 }: ChangeNameModalProps) {
   const [fullName, setFullName] = useState(currentName);
   const [loading, setLoading] = useState(false);
@@ -31,13 +25,12 @@ export default function ChangeNameModal({
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const trimmedName = fullName.trim();
+
     if (!trimmedName) {
       setMessage({ type: 'error', text: 'Insira seu nome completo' });
       return;
     }
-
     if (trimmedName.split(' ').filter(Boolean).length < 2) {
       setMessage({ type: 'error', text: 'Por favor, insira sobrenome também' });
       return;
@@ -69,91 +62,78 @@ export default function ChangeNameModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="relative bg-[#0F0F0F] rounded-3xl border border-[#D4AF37]/20 shadow-2xl max-w-md w-full p-10 overflow-hidden">
-        
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-xl transition-all"
-          title="Fechar"
-        >
-          <X size={20} className="text-zinc-400 hover:text-white" />
-        </button>
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="relative bg-surface-1 border border-border-subtle rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
-            <User size={24} />
+        <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-border-subtle">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-brand/10 flex items-center justify-center text-brand flex-shrink-0">
+              <User size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-text-primary">Alterar nome</h2>
+              <p className="text-xs text-text-tertiary mt-0.5">Atualize sua assinatura de atleta</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl text-white uppercase tracking-tight">
-              Alterar Nome
-            </h2>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
-              Atualize sua assinatura de atleta
-            </p>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-surface-2 rounded-xl transition-colors text-text-tertiary hover:text-text-primary"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Messages */}
-        {message && (
-          <div
-            className={`mb-8 p-4 rounded-2xl flex items-center gap-4 text-[10px] uppercase tracking-widest ${
+        {/* Body */}
+        <form onSubmit={handleUpdateName} className="px-6 py-5 space-y-4">
+          {message && (
+            <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-medium ${
               message.type === 'success'
-                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
-                : 'bg-red-500/10 text-red-500 border border-red-500/20'
-            }`}
-          >
-            {message.type === 'success' ? (
-              <CheckCircle size={16} />
-            ) : (
-              <WarningCircle size={16} />
-            )}
-            {message.text}
-          </div>
-        )}
+                ? 'bg-success/10 text-success border border-success/20'
+                : 'bg-danger/10 text-danger border border-danger/20'
+            }`}>
+              {message.type === 'success'
+                ? <CheckCircle size={15} weight="fill" />
+                : <WarningCircle size={15} weight="fill" />}
+              {message.text}
+            </div>
+          )}
 
-        {/* Form */}
-        <form onSubmit={handleUpdateName} className="space-y-6">
-          <div className="space-y-3">
-            <label className="text-[10px] uppercase tracking-[0.4em] text-zinc-700 ml-1">
+          <div className="space-y-1.5">
+            <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">
               Nome Completo
             </label>
             <input
               type="text"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => { setFullName(e.target.value); setMessage(null); }}
               placeholder="Digite seu nome e sobrenome"
-              className="w-full bg-black border border-[#1a1a1a] text-white px-4 py-4 rounded-2xl text-sm focus:outline-none focus:border-[#D4AF37] transition-all font-medium placeholder:text-zinc-700"
               disabled={loading}
               required
+              className="w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
             />
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-[#0F0F0F] border border-[#1a1a1a] text-zinc-500 text-[10px] uppercase tracking-[0.3em] rounded-xl hover:bg-white/5 transition-all disabled:opacity-50"
+              className="flex-1 h-11 bg-surface-2 border border-border-subtle text-text-secondary text-xs font-semibold rounded-xl hover:bg-surface-3 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading || !fullName.trim()}
-              className="flex-1 px-6 py-3 bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-black text-[10px] uppercase tracking-[0.3em] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 h-11 bg-brand hover:opacity-90 text-text-on-brand text-xs font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
                   <CircleNotch className="w-4 h-4 animate-spin" />
-                  Salvando...
+                  Salvando…
                 </>
-              ) : (
-                'Salvar'
-              )}
+              ) : 'Salvar'}
             </button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { 
@@ -16,6 +16,7 @@ import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { NutritionFood, NutritionFoodCategory, NutritionMealType } from '@/lib/nutrition/types';
 import { cn } from '@/lib/utils/cn';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface NutritionPlanBuilderProps {
   initialPlanData?: any;
@@ -53,6 +54,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const [searchOpen, setSearchOpen] = useState<{ mealIndex: number; itemIndex?: number; subIndex?: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [activeGroup, setActiveGroup] = useState<'todos' | 'macros' | 'outros'>('todos');
 
   // Load students and foods
   useEffect(() => {
@@ -63,10 +65,57 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         const coachId = authData?.user?.id;
         if (!coachId) return;
 
-        // Load linked students
-        const { data: links } = await supabaseClient
-          .from('coach_alunos')
-          .select('aluno_id');
+        // Check local storage cache for foods (24h cache)
+        const cacheKey = 'auron_food_library';
+        const cacheTimeKey = 'auron_food_library_time';
+        const cachedData = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null;
+        const cachedTime = typeof window !== 'undefined' ? localStorage.getItem(cacheTimeKey) : null;
+        const isCacheValid = cachedData && cachedTime && (Date.now() - Number(cachedTime) < 86400000);
+
+        let foods: any[] | null = null;
+        let foodsPromise: Promise<any> | null = null;
+
+        if (isCacheValid && cachedData) {
+          try {
+            foods = JSON.parse(cachedData);
+          } catch (e) {
+            foods = null;
+          }
+        }
+
+        if (!foods) {
+          foodsPromise = Promise.resolve(
+            supabaseClient
+              .from('nutrition_foods')
+              .select('*, portions:nutrition_food_portions(*)')
+              .eq('is_active', true)
+          );
+        }
+
+        // Buscar alimentos ativos (se necessário) e vínculos de alunos em paralelo
+        const [linksResult, foodsResult] = await Promise.all([
+          supabaseClient
+            .from('coach_alunos')
+            .select('aluno_id'),
+          foodsPromise || Promise.resolve({ data: null })
+        ]);
+
+        const { data: links } = linksResult;
+        
+        if (foodsResult && foodsResult.data) {
+          foods = foodsResult.data;
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(foods));
+              localStorage.setItem(cacheTimeKey, Date.now().toString());
+            } catch (e) {
+              console.warn('Failed to save foods to localStorage:', e);
+            }
+          }
+        }
+
+        setFoodLibrary(foods || []);
+
         const ids = links?.map(l => l.aluno_id) || [];
 
         if (ids.length > 0) {
@@ -78,13 +127,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
             .order('coaching_reference', { ascending: true });
           setAlunos(profiles || []);
         }
-
-        // Load active foods
-        const { data: foods } = await supabaseClient
-          .from('nutrition_foods')
-          .select('*, portions:nutrition_food_portions(*)')
-          .eq('is_active', true);
-        setFoodLibrary(foods || []);
 
         // Prepopulate if editing
         if (initialPlanData) {
@@ -197,12 +239,14 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
     setSearchOpen({ mealIndex });
     setSearchQuery('');
     setCategoryFilter('');
+    setActiveGroup('todos');
   };
 
   const handleAddSubstitution = (mealIndex: number, itemIndex: number) => {
     setSearchOpen({ mealIndex, itemIndex });
     setSearchQuery('');
     setCategoryFilter('');
+    setActiveGroup('todos');
   };
 
   const handleRemoveFoodItem = (mealIndex: number, itemIndex: number) => {
@@ -355,6 +399,14 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
     const matchesQuery = food.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter ? food.category === categoryFilter : true;
     return matchesQuery && matchesCategory;
+  });
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filteredFoods.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 60,
+    overscan: 5,
   });
 
   if (loading) {
@@ -1041,53 +1093,148 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
             </div>
 
             {/* Filtros rápidos por categoria */}
-            <div className="flex gap-1 overflow-x-auto pb-1.5 scrollbar-hide">
-              <button
-                onClick={() => setCategoryFilter('')}
-                className={cn(
-                  "px-2.5 py-1 rounded text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer",
-                  categoryFilter === '' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-border-subtle text-text-secondary hover:text-text-primary"
-                )}
-              >
-                Todos
-              </button>
-              {['carboidrato', 'proteina', 'gordura', 'fruta', 'vegetal', 'leguminosa', 'laticinio', 'suplemento'].map(cat => (
+            <div className="flex flex-col gap-2 py-1">
+              {/* Filtros Principais */}
+              <div className="flex items-center gap-1.5">
                 <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
+                  type="button"
+                  onClick={() => {
+                    setActiveGroup('todos');
+                    setCategoryFilter('');
+                  }}
                   className={cn(
-                    "px-2.5 py-1 rounded text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer",
-                    categoryFilter === cat ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-border-subtle text-text-secondary hover:text-text-primary"
+                    "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer",
+                    activeGroup === 'todos' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-border-subtle text-text-secondary hover:text-text-primary"
                   )}
                 >
-                  {cat}
+                  Todos
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveGroup('macros');
+                    if (!['carboidrato', 'proteina', 'gordura'].includes(categoryFilter)) {
+                      setCategoryFilter('carboidrato');
+                    }
+                  }}
+                  className={cn(
+                    "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1",
+                    activeGroup === 'macros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-border-subtle text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  Macros <span className="text-[8px] opacity-75">▼</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveGroup('outros');
+                    if (!['fruta', 'vegetal', 'leguminosa', 'laticinio', 'suplemento'].includes(categoryFilter)) {
+                      setCategoryFilter('fruta');
+                    }
+                  }}
+                  className={cn(
+                    "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1",
+                    activeGroup === 'outros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-border-subtle text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  Outros <span className="text-[8px] opacity-75">▼</span>
+                </button>
+              </div>
+
+              {/* Sub-categorias (só aparece se macros ou outros estiver selecionado) */}
+              {activeGroup === 'macros' && (
+                <div className="flex flex-wrap items-center gap-1.5 pl-2 border-l border-border-subtle py-0.5 mt-0.5">
+                  {[
+                    { val: 'carboidrato', label: 'Carboidrato' },
+                    { val: 'proteina', label: 'Proteína' },
+                    { val: 'gordura', label: 'Gordura' }
+                  ].map(sub => (
+                    <button
+                      key={sub.val}
+                      type="button"
+                      onClick={() => setCategoryFilter(sub.val)}
+                      className={cn(
+                        "h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer",
+                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-border-subtle text-text-secondary hover:text-text-primary"
+                      )}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {activeGroup === 'outros' && (
+                <div className="flex flex-wrap items-center gap-1.5 pl-2 border-l border-border-subtle py-0.5 mt-0.5">
+                  {[
+                    { val: 'fruta', label: 'Fruta' },
+                    { val: 'vegetal', label: 'Vegetal' },
+                    { val: 'leguminosa', label: 'Leguminosa' },
+                    { val: 'laticinio', label: 'Laticínio' },
+                    { val: 'suplemento', label: 'Suplemento' }
+                  ].map(sub => (
+                    <button
+                      key={sub.val}
+                      type="button"
+                      onClick={() => setCategoryFilter(sub.val)}
+                      className={cn(
+                        "h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer",
+                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-border-subtle text-text-secondary hover:text-text-primary"
+                      )}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Listagem de resultados no modal */}
-            <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-surface-3 [&::-webkit-scrollbar-thumb]:rounded">
+            <div
+              ref={parentRef}
+              className="flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-surface-3 [&::-webkit-scrollbar-thumb]:rounded relative"
+            >
               {filteredFoods.length === 0 ? (
                 <p className="text-xs text-text-disabled text-center py-6">Nenhum alimento encontrado.</p>
               ) : (
-                filteredFoods.map(food => (
-                  <div
-                    key={food.id}
-                    onClick={() => handleSelectFood(food)}
-                    className="p-3 bg-surface-2 border border-border-subtle/50 hover:border-brand/40 rounded-lg flex items-center justify-between gap-4 cursor-pointer transition-all hover:scale-[1.01]"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-text-primary leading-tight truncate">{food.name}</p>
-                      <span className="text-[8px] uppercase font-bold tracking-wider text-text-tertiary">
-                        {food.category} · {food.calories_per_100g} kcal
-                      </span>
-                    </div>
-                    <div className="text-[10px] font-mono text-text-secondary shrink-0 text-right">
-                      <p>P: {food.protein_per_100g}g</p>
-                      <p>C: {food.carbs_per_100g}g</p>
-                    </div>
-                  </div>
-                ))
+                <div
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                    const food = filteredFoods[virtualItem.index];
+                    if (!food) return null;
+                    return (
+                      <div
+                        key={virtualItem.key}
+                        onClick={() => handleSelectFood(food)}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: `${virtualItem.size - 8}px`,
+                          transform: `translateY(${virtualItem.start}px)`,
+                        }}
+                        className="p-3 bg-surface-2 border border-border-subtle/50 hover:border-brand/40 rounded-lg flex items-center justify-between gap-4 cursor-pointer transition-all hover:scale-[1.01]"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-text-primary leading-tight truncate">{food.name}</p>
+                          <span className="text-[8px] uppercase font-bold tracking-wider text-text-tertiary">
+                            {food.category} · {food.calories_per_100g} kcal
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-mono text-text-secondary shrink-0 text-right">
+                          <p>P: {food.protein_per_100g}g</p>
+                          <p>C: {food.carbs_per_100g}g</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </Card>

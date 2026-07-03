@@ -64,8 +64,9 @@ export async function POST(req: Request) {
     const tipoPlano = body?.tipo_plano ? String(body.tipo_plano) : null;
     const dataExpiracao = body?.data_expiracao ? String(body.data_expiracao) : null;
     const whatsapp = body?.whatsapp ? String(body.whatsapp).trim() : null;
+    const valorPlano = body?.valor_plano != null ? Number(body.valor_plano) : null;
 
-    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName, dateOfBirth, objetivo, tipoPlano, dataExpiracao, whatsapp });
+    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName, dateOfBirth, objetivo, tipoPlano, dataExpiracao, whatsapp, valorPlano });
 
     if (!email || !fullName) {
       return NextResponse.json({ error: "Nome e e-mail são obrigatórios" }, { status: 400 });
@@ -219,21 +220,22 @@ export async function POST(req: Request) {
       .from("profiles")
       .upsert({
         id: newUserId,
-        coaching_reference: fullName,  // Coach's reference name (stored separately)
-        full_name: null,  // Aluno deve definir na primeira vez (onboarding)
+        coaching_reference: fullName,
+        full_name: null,
         email: email,
         role: "aluno",
         coach_id: userId,
         status_pagamento: "pago",
         arquivado: false,
-        first_access_completed: false,  // Flag da primeira vez (onboarding)
+        first_access_completed: false,
         date_of_birth: dateOfBirth || null,
         objetivo: objetivo || null,
         tipo_plano: tipoPlano || null,
         data_expiracao: dataExpiracao || null,
+        valor_plano: valorPlano,
       }, {
-        onConflict: "id", // Se o ID já existir, atualiza em vez de falhar
-        ignoreDuplicates: false // Força atualização dos campos
+        onConflict: "id",
+        ignoreDuplicates: false
       });
 
     if (upsertError) {
@@ -335,7 +337,7 @@ export async function POST(req: Request) {
         type: "recovery",
         email: email,
         options: {
-          redirectTo: `${siteUrl}/login`
+          redirectTo: `${siteUrl}/reset-password`
         }
       });
       if (!linkError && linkData?.properties?.action_link) {

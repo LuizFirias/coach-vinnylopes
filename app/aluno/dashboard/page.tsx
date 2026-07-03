@@ -585,7 +585,7 @@ export default function AlunoDashboardPage() {
 
   const nomeRotina = treinoHoje?.nome ?? '';
   const totalExercicios = treinoHoje?.qtdExercicios ?? 0;
-  const streakDias = kpis?.streak_atual ?? 0;
+  const streakSemanas = kpis?.streak_atual ?? 0;
   const treinosSemana = diasSemana.filter(dia => dia.treinoConcluido).length;
   const metaSemana = 5;
 
@@ -866,7 +866,7 @@ export default function AlunoDashboardPage() {
                 <span>Sequência</span>
               </p>
               <p className="text-lg font-bold font-mono tabular-nums text-text-primary mt-0.5">
-                {streakDias} <span className="text-[10px] font-normal text-text-muted font-sans">{streakDias === 1 ? 'dia' : 'dias'}</span>
+                {streakSemanas} <span className="text-[10px] font-normal text-text-muted font-sans">{streakSemanas === 1 ? 'semana' : 'semanas'}</span>
               </p>
             </div>
           </div>

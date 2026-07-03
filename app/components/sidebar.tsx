@@ -117,7 +117,7 @@ export default function Sidebar() {
         <div className="flex flex-col items-center gap-3 mb-5 px-2 relative">
           <Link href={userRole === 'aluno' ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
             <Image 
-              src="/logo.png" 
+              src="/logo.webp" 
               alt="Auronfit" 
               width={isExpanded ? 48 : 40} 
               height={isExpanded ? 48 : 40} 
@@ -232,7 +232,7 @@ export default function Sidebar() {
       <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         <div className="p-6 pb-4 flex items-center justify-between">
           <div className="w-11 h-11 bg-surface-1 rounded-lg flex items-center justify-center shadow-lg border border-border-subtle overflow-hidden">
-            <Image src="/logo.png" alt="Auronfit" width={36} height={36} className="object-contain" />
+            <Image src="/logo.webp" alt="Auronfit" width={36} height={36} className="object-contain" />
           </div>
           <button
             onClick={() => setOpen(false)}

@@ -95,7 +95,7 @@ function ResetPasswordForm() {
       const { error: updateError } = await supabaseClient.auth.updateUser({ password });
       if (updateError) throw updateError;
       setSuccess(true);
-      setTimeout(() => router.replace("/login"), 3000);
+      setTimeout(() => router.replace("/aluno/dashboard"), 2500);
     } catch (err: any) {
       setError(err.message || "Erro ao atualizar senha. O link pode ter expirado.");
     } finally {
@@ -127,9 +127,9 @@ function ResetPasswordForm() {
           >
             <ShieldCheck className="text-brand w-10 h-10" />
           </motion.div>
-          <h1 className="text-xl font-semibold text-text-primary tracking-tight">Nova senha</h1>
+          <h1 className="text-xl font-semibold text-text-primary tracking-tight">Crie sua senha</h1>
           <p className="text-text-tertiary text-xs mt-2 max-w-[260px] leading-relaxed">
-            Escolha uma senha segura para acessar sua conta.
+            Bem-vindo! Defina sua senha para acessar a plataforma.
           </p>
         </div>
 
@@ -145,8 +145,8 @@ function ResetPasswordForm() {
                 className="flex flex-col items-center gap-4 text-center"
               >
                 <CheckCircle className="text-brand w-12 h-12" />
-                <p className="text-text-primary text-sm font-semibold">Senha atualizada com sucesso!</p>
-                <p className="text-text-tertiary text-xs">Redirecionando para o login…</p>
+                <p className="text-text-primary text-sm font-semibold">Senha criada com sucesso!</p>
+                <p className="text-text-tertiary text-xs">Entrando na plataforma…</p>
               </motion.div>
             ) : hashError ? (
               <motion.div
@@ -250,7 +250,7 @@ function ResetPasswordForm() {
                   {loading ? (
                     <div className="w-4 h-4 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
                   ) : (
-                    "Salvar nova senha"
+                    "Criar senha e entrar"
                   )}
                 </button>
               </motion.form>

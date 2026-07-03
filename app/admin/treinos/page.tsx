@@ -21,7 +21,10 @@ import {
   ShieldCheck,
   CheckCircle,
   Receipt,
-  ArrowCounterClockwise
+  ArrowCounterClockwise,
+  Eye,
+  PencilSimple,
+  X
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -58,6 +61,7 @@ export default function TreinosPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPdfUpload, setShowPdfUpload] = useState(false);
+  const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
 
   // Fichas & Listagem States
   const [fichas, setFichas] = useState<RoutineItem[]>([]);
@@ -95,32 +99,37 @@ export default function TreinosPage() {
       }
 
       // 2. Fetch profiles
-      const { data: profilesData, error: profilesError } = await supabaseClient
-        .from('profiles').select('id, coaching_reference, full_name, email')
-        .in('id', ids).eq('arquivado', false).order('coaching_reference', { ascending: true });
+      let profilesList: Aluno[] = [];
+      if (ids.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabaseClient
+          .from('profiles').select('id, coaching_reference, full_name, email')
+          .in('id', ids).eq('arquivado', false).order('coaching_reference', { ascending: true });
 
-      if (profilesError) throw profilesError;
-      const profilesList = (profilesData as Aluno[]) || [];
-      setAlunos(profilesList);
+        if (profilesError) throw profilesError;
+        profilesList = (profilesData as Aluno[]) || [];
+        setAlunos(profilesList);
+      } else {
+        setAlunos([]);
+      }
 
       // Dates
       const trintaDiasAtras = new Date();
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
 
-      // 3. Fetch Digital sheets (fichas_treino)
+      // 3. Fetch Digital sheets (fichas_treino) by coach_id
       const { data: digitalData, error: digitalError } = await supabaseClient
         .from('fichas_treino')
         .select('id, aluno_id, nome_rotina, configuracao, ativo, criado_em')
-        .in('aluno_id', ids)
+        .eq('coach_id', coachId)
         .order('criado_em', { ascending: false });
 
       if (digitalError) throw digitalError;
 
-      // 4. Fetch PDF sheets (treinos_alunos)
+      // 4. Fetch PDF sheets (treinos_alunos) by coach_id
       const { data: pdfData, error: pdfError } = await supabaseClient
         .from('treinos_alunos')
         .select('id, aluno_id, nome_arquivo, url_pdf, data_upload')
-        .in('aluno_id', ids)
+        .eq('coach_id', coachId)
         .order('data_upload', { ascending: false });
 
       if (pdfError) throw pdfError;
@@ -185,11 +194,15 @@ export default function TreinosPage() {
       setFichas(combinedRoutines);
 
       // 5. Fetch executions in the last 30 days (historico_treinos)
-      const { count: executionsCount } = await supabaseClient
-        .from('historico_treinos')
-        .select('id', { count: 'exact', head: true })
-        .in('aluno_id', ids)
-        .gte('data_conclusao', trintaDiasAtras.toISOString());
+      let executionsCount = 0;
+      if (ids.length > 0) {
+        const { count } = await supabaseClient
+          .from('historico_treinos')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', ids)
+          .gte('data_conclusao', trintaDiasAtras.toISOString());
+        executionsCount = count || 0;
+      }
 
       setFichasAtivas(activeCount);
       setFichasCriadasMes(monthCreatedCount);
@@ -264,22 +277,23 @@ export default function TreinosPage() {
     }
   };
 
-  const handleDeletePDFRoutine = async (id: string, urlPdf: string) => {
-    if (!window.confirm("Deseja remover este treino em PDF permanentemente?")) return;
+  const handleDeleteRoutine = async (id: string, tipo: string, urlPdf?: string | null) => {
+    if (!window.confirm("Deseja remover este planejamento permanentemente?")) return;
     setLoading(true);
     try {
-      // Remove file from storage
-      const filePath = urlPdf;
-      await supabaseClient.storage.from('treinos-pdf').remove([filePath]);
-      
-      // Delete record
-      const { error } = await supabaseClient.from('treinos_alunos').delete().eq('id', id);
-      if (error) throw error;
+      if (tipo === 'pdf' && urlPdf) {
+        await supabaseClient.storage.from('treinos-pdf').remove([urlPdf]);
+        const { error } = await supabaseClient.from('treinos_alunos').delete().eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseClient.from('fichas_treino').delete().eq('id', id);
+        if (error) throw error;
+      }
       await loadData();
-      setSuccess("Treino PDF removido com sucesso.");
+      setSuccess("Planejamento removido com sucesso.");
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError("Erro ao remover treino: " + err.message);
+      setError("Erro ao remover: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -502,32 +516,46 @@ export default function TreinosPage() {
                                 {new Date(item.criado_em).toLocaleDateString('pt-BR')}
                               </td>
                               <td className="p-3 text-right">
-                                {item.tipo === 'digital' ? (
-                                  <button
-                                    onClick={() => router.push(`/admin/aluno/${item.aluno_id}/ficha/${item.id}`)}
-                                    className="px-2.5 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle hover:border-brand/30 text-text-secondary hover:text-brand text-[10px] font-bold uppercase rounded transition-colors"
-                                  >
-                                    Editar
-                                  </button>
-                                ) : (
-                                  <div className="inline-flex items-center gap-1.5 justify-end">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {item.tipo === 'digital' ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedRoutineForPreview(item)}
+                                        className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                                        title="Visualizar Ficha"
+                                      >
+                                        <Eye size={13} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => router.push(`/admin/aluno/${item.aluno_id}/ficha/${item.id}`)}
+                                        className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                                        title="Editar Ficha"
+                                      >
+                                        <PencilSimple size={13} />
+                                      </button>
+                                    </>
+                                  ) : (
                                     <a
                                       href={item.pdf_url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-2.5 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle hover:border-brand/30 text-text-secondary hover:text-brand text-[10px] font-bold uppercase rounded transition-colors"
+                                      className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                                      title="Visualizar PDF"
                                     >
-                                      Baixar
+                                      <Eye size={13} />
                                     </a>
-                                    <button
-                                      onClick={() => handleDeletePDFRoutine(item.id, item.pdf_url || '')}
-                                      className="text-text-disabled hover:text-danger p-1 transition-colors"
-                                      title="Remover PDF"
-                                    >
-                                      <Trash size={12} />
-                                    </button>
-                                  </div>
-                                )}
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteRoutine(item.id, item.tipo, item.pdf_url)}
+                                    className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
+                                    title="Excluir Planejamento"
+                                  >
+                                    <Trash size={13} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -679,6 +707,83 @@ export default function TreinosPage() {
         )}
 
       </div>
+
+      {/* Simplified Routine Preview Modal */}
+      {selectedRoutineForPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
+          <div className="bg-surface-1 border border-border-default rounded-3xl w-full max-w-lg overflow-hidden shadow-elev-3 flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-surface-2/40">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/10 px-2 py-0.5 rounded border border-brand/20">Ficha Digital</span>
+                <h3 className="text-sm font-bold text-text-primary mt-2 uppercase">{selectedRoutineForPreview.nome_rotina || selectedRoutineForPreview.nome}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedRoutineForPreview(null)}
+                className="w-8 h-8 rounded-full hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {(() => {
+                const exercises = (selectedRoutineForPreview.configuracao as any)?.exercicios || [];
+                if (exercises.length === 0) {
+                  return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;
+                }
+                return exercises.map((ex: any, idx: number) => (
+                  <div key={idx} className="p-4 bg-surface-2 border border-border-subtle rounded-xl space-y-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <h4 className="text-xs font-bold text-text-primary">{idx + 1}. {ex.nome}</h4>
+                      {ex.descanso && (
+                        <span className="text-[10px] text-text-tertiary font-mono bg-surface-3 px-1.5 py-0.5 rounded">
+                          Descanso: {ex.descanso}
+                        </span>
+                      )}
+                    </div>
+                    {ex.observacoes && (
+                      <p className="text-[11px] text-text-secondary italic">Obs: {ex.observacoes}</p>
+                    )}
+                    
+                    {/* Series List */}
+                    <div className="pt-2 border-t border-border-subtle/40 space-y-1.5">
+                      {ex.series?.map((s: any, sIdx: number) => (
+                        <div key={sIdx} className="flex items-center gap-3 text-[11px] text-text-secondary font-medium">
+                          <span className="w-5 h-5 rounded bg-brand/10 text-brand text-[9px] font-bold flex items-center justify-center">
+                            {s.ordem || (sIdx + 1)}
+                          </span>
+                          <span>
+                            {s.reps_sugerido ? `${s.reps_sugerido} reps` : ""}
+                            {s.tempo_sugerido ? `${s.tempo_sugerido} tempo` : ""}
+                            {s.distancia_sugerida ? ` • ${s.distancia_sugerida}m` : ""}
+                          </span>
+                          {(s.tecnica || s.tecnica_extra) && (
+                            <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/5 px-1 rounded">
+                              {[s.tecnica, s.tecnica_extra].filter(Boolean).join(" + ")}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end">
+              <button
+                onClick={() => setSelectedRoutineForPreview(null)}
+                className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

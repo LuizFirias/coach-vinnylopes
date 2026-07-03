@@ -258,7 +258,7 @@ export default function CoachPerfilPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-10 text-xs rounded-lg flex-1"
+                    className="h-12 text-sm rounded-lg flex-1"
                     leftIcon={<Lock className="w-4 h-4" />}
                     onClick={() => setChangePasswordModalOpen(true)}
                   >
@@ -267,7 +267,7 @@ export default function CoachPerfilPage() {
                   <Button
                     type="submit"
                     variant="primary"
-                    className="h-10 text-xs rounded-lg flex-1"
+                    className="h-12 text-sm rounded-lg flex-1"
                     loading={saving || uploadingAvatar}
                   >
                     Salvar alterações
