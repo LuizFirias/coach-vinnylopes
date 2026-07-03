@@ -400,25 +400,25 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                     <Card key={mealIdx} className="rounded-xl border border-border-subtle/80 shadow-sm p-4 md:p-5 flex flex-col gap-3 bg-surface-1">
                       
                       {/* Meal Title Header */}
-                      <div className="flex items-center justify-between gap-4 border-b border-border-subtle/40 pb-2">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-start justify-between gap-3 border-b border-border-subtle/40 pb-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
-                          <span className="text-xs font-extrabold text-text-primary">{meal.title}</span>
+                          <span className="text-xs font-extrabold text-text-primary truncate">{meal.title}</span>
                           {meal.time_suggestion && (
-                            <span className="bg-surface-2 border border-border-subtle text-[9px] px-1 rounded font-mono text-text-secondary">
+                            <span className="bg-surface-2 border border-border-subtle text-[9px] px-1 rounded font-mono text-text-secondary shrink-0">
                               {meal.time_suggestion.slice(0, 5)}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-[10px] font-mono text-text-tertiary">
+                        <div className="flex flex-col items-end sm:flex-row sm:items-center gap-0.5 sm:gap-3 text-[10px] font-mono text-text-tertiary shrink-0 text-right">
                           <span>{mMacros.calories} kcal</span>
                           <span>P: {mMacros.protein}g · C: {mMacros.carbs}g · G: {mMacros.fat}g</span>
                         </div>
                       </div>
 
-                      {/* Items */}
-                      <div className="flex flex-col gap-2.5">
+                      {/* Items — Fase 8: lista, sem card aninhado */}
+                      <div className="flex flex-col divide-y divide-border-subtle/40">
                         {(!meal.items || meal.items.length === 0) ? (
                           <p className="text-[10px] text-text-disabled">Nenhum item adicionado.</p>
                         ) : (
@@ -428,9 +428,9 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                             const calculated = calculateItemMacros(food, item.quantity_grams);
 
                             return (
-                              <div key={itemIdx} className="p-2.5 bg-surface-2 border border-border-subtle/50 rounded-lg flex flex-col gap-1.5">
-                                <div className="flex justify-between items-baseline gap-4">
-                                  <p className="text-xs font-bold text-text-primary">{food.name}</p>
+                              <div key={itemIdx} className="py-2.5 first:pt-0 flex flex-col gap-1">
+                                <div className="flex justify-between items-baseline gap-3">
+                                  <p className="text-xs font-bold text-text-primary min-w-0 truncate">{food.name}</p>
                                   <span className="text-xs font-mono font-bold text-text-secondary shrink-0">
                                     {item.quantity_grams}g {item.portion_label ? `(${item.portion_label})` : ''}
                                   </span>

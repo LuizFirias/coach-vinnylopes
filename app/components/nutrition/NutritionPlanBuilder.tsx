@@ -676,8 +676,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                       </div>
                     </div>
 
-                    {/* Meal items (list) */}
-                    <div className="flex flex-col gap-3">
+                    {/* Meal items (list) — Fase 8: linha de lista, sem card aninhado */}
+                    <div className="flex flex-col divide-y divide-border-subtle/40">
                       {(meal.items || []).length === 0 ? (
                         <p className="text-[10px] text-text-disabled text-center py-4 border border-dashed border-border-subtle rounded-lg">
                           Nenhum alimento prescrito para esta refeição.
@@ -689,9 +689,9 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                           const calculated = calculateItemMacros(food, Number(item.quantity_grams));
 
                           return (
-                            <div key={itemIdx} className="p-3 bg-surface-2 border border-border-subtle/50 rounded-lg flex flex-col gap-2">
+                            <div key={itemIdx} className="py-3 first:pt-0 flex flex-col gap-2">
                               {/* Main Item Row */}
-                              <div className="flex items-center justify-between gap-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <div className="min-w-0">
                                   <p className="text-xs font-bold text-text-primary leading-tight truncate">{food.name}</p>
                                   <span className="text-[9px] font-mono text-text-tertiary">
@@ -699,7 +699,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                   </span>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
                                   {/* Grams Input */}
                                   <div className="flex items-center gap-1 bg-surface-3 border border-border-subtle rounded-md px-2 h-7 w-20">
                                     <input
@@ -922,15 +922,15 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 );
               })}
 
-              {/* Add Meal Select Bar */}
-              <div className="flex items-center gap-2 mt-4 bg-surface-1 p-3 rounded-lg border border-border-subtle justify-center">
-                <span className="text-[10px] uppercase font-bold text-text-secondary tracking-wider mr-2">Adicionar Refeição:</span>
-                <div className="flex flex-wrap gap-1.5">
+              {/* Add Meal Select Bar — Fase 8: grid uniforme */}
+              <div className="flex flex-col gap-2 mt-4 bg-surface-1 p-3 rounded-lg border border-border-subtle">
+                <span className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Adicionar Refeição:</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {Object.entries(mealTypeLabels).map(([type, label]) => (
                     <button
                       key={type}
                       onClick={() => handleAddMeal(type as NutritionMealType)}
-                      className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded border border-border-subtle bg-surface-2 hover:bg-surface-3 text-text-secondary hover:text-brand transition-all cursor-pointer"
+                      className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded border border-border-subtle bg-surface-2 hover:bg-surface-3 text-text-secondary hover:text-brand transition-all cursor-pointer text-center"
                     >
                       + {label}
                     </button>
