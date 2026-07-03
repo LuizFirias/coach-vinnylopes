@@ -437,7 +437,7 @@ export default function AdminDashboard() {
 
       const { data: recentManual } = await supabaseClient
         .from('treinos_manuais')
-        .select('id, aluno_id, nome_treino, data_treino')
+        .select('id, aluno_id, descricao, data_treino')
         .in('aluno_id', alunosIds)
         .eq('concluido', true)
         .order('data_treino', { ascending: false })
@@ -480,7 +480,7 @@ export default function AdminDashboard() {
           aluno_id: m.aluno_id,
           aluno_nome: student?.coaching_reference || student?.full_name || "Atleta",
           tipo: 'treino_manual',
-          descricao: `Registrou treino manual: ${m.nome_treino}`,
+          descricao: `Registrou treino manual: ${m.descricao || 'Treino livre'}`,
           data: timeAgo(m.data_treino) || "recentemente",
           created_at_date: new Date(m.data_treino)
         });
