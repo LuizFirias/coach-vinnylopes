@@ -282,15 +282,15 @@ export default function AdminAlunosPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-                {/* Status Filter */}
-                <div className="flex items-center gap-1 bg-surface-2 border border-border-subtle rounded-md p-1 h-8.5">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto lg:justify-end">
+                {/* Status Filter — segmented control (largura igual no mobile) */}
+                <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 bg-surface-2 border border-border-subtle rounded-md p-1 h-8.5">
                   {(['todos', 'ativos', 'pendentes', 'inativos'] as const).map((status) => (
                     <button
                       key={status}
                       onClick={() => setStatusFilter(status)}
                       className={cn(
-                        "px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all h-6.5 flex items-center justify-center",
+                        "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all h-6.5 flex items-center justify-center",
                         statusFilter === status
                           ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm"
                           : "text-text-secondary hover:text-text-primary"
@@ -301,39 +301,42 @@ export default function AdminAlunosPage() {
                   ))}
                 </div>
 
-                {/* Plan Filter */}
-                <select
-                  value={planoFilter}
-                  onChange={(e) => setPlanoFilter(e.target.value as any)}
-                  className="px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
-                >
-                  <option value="todos">Todos os planos</option>
-                  <option value="mensal">Mensal</option>
-                  <option value="trimestral">Trimestral</option>
-                  <option value="semestral">Semestral</option>
-                  <option value="anual">Anual</option>
-                </select>
+                {/* Dropdowns + reset — mesma linha e altura */}
+                <div className="grid grid-cols-[1fr_1fr_auto] sm:flex sm:items-center gap-2 sm:gap-2.5">
+                  {/* Plan Filter */}
+                  <select
+                    value={planoFilter}
+                    onChange={(e) => setPlanoFilter(e.target.value as any)}
+                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                  >
+                    <option value="todos">Todos os planos</option>
+                    <option value="mensal">Mensal</option>
+                    <option value="trimestral">Trimestral</option>
+                    <option value="semestral">Semestral</option>
+                    <option value="anual">Anual</option>
+                  </select>
 
-                {/* Sorting Select */}
-                <select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value as any)}
-                  className="px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
-                >
-                  <option value="atividade">Última atividade</option>
-                  <option value="recentes">Mais recentes</option>
-                  <option value="vencimento">Vencimento</option>
-                  <option value="nome">Nome</option>
-                </select>
+                  {/* Sorting Select */}
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value as any)}
+                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                  >
+                    <option value="atividade">Última atividade</option>
+                    <option value="recentes">Mais recentes</option>
+                    <option value="vencimento">Vencimento</option>
+                    <option value="nome">Nome</option>
+                  </select>
 
-                {/* Reset filters */}
-                <button
-                  onClick={handleResetFilters}
-                  className="w-8.5 h-8.5 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-md transition-colors"
-                  title="Limpar filtros"
-                >
-                  <ArrowCounterClockwise size={13} />
-                </button>
+                  {/* Reset filters */}
+                  <button
+                    onClick={handleResetFilters}
+                    className="w-8.5 h-8.5 shrink-0 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-md transition-colors"
+                    title="Limpar filtros"
+                  >
+                    <ArrowCounterClockwise size={13} />
+                  </button>
+                </div>
               </div>
             </div>
 
