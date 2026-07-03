@@ -32,6 +32,17 @@ interface ExercicioConfig {
   gif_url?: string;
   observacoes?: string;
   series: SerieConfig[];
+  biset_parceiro_id?: string;
+}
+
+interface ExercicioConfig {
+  id: string;
+  nome: string;
+  descanso?: string;
+  video_url?: string;
+  gif_url?: string;
+  observacoes?: string;
+  series: SerieConfig[];
 }
 
 interface SerieState {
@@ -53,6 +64,7 @@ interface ExercicioState {
   observacoes?: string;
   grupo_muscular?: string;
   series: SerieState[];
+  biset_parceiro_id?: string;
 }
 
 interface VolumePoint {
@@ -334,7 +346,6 @@ export default function ExecucaoTreinoPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [volumeHistory, setVolumeHistory] = useState<VolumePoint[]>([]);
-  const [showConfirmFinish, setShowConfirmFinish] = useState(false);
   const [showConfirmAbandon, setShowConfirmAbandon] = useState(false);
   const [coachUsername, setCoachUsername] = useState('coach');
   const [prsCount, setPrsCount] = useState(0);
@@ -360,6 +371,15 @@ export default function ExecucaoTreinoPage() {
   const [showSeriesHistory, setShowSeriesHistory] = useState(false);
   const [modalTecnicaAberto, setModalTecnicaAberto] = useState(false);
   const [tecnicaAtual, setTecnicaAtual] = useState<string | null>(null);
+
+  // Bi-Set: estado de retorno após completar o exercício parceiro
+  const [bisetReturnState, setBisetReturnState] = useState<{ originExIdx: number; nextSerieIdx: number } | null>(null);
+
+  // Termômetro de treino — feedback após finalização
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackSatisfacao, setFeedbackSatisfacao] = useState('');
+  const [feedbackDor, setFeedbackDor] = useState(5);
+  const [savedTimestamp, setSavedTimestamp] = useState<string | null>(null);
 
   // Vídeo
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -472,6 +492,7 @@ export default function ExecucaoTreinoPage() {
           gif_url: gifsExercicios[ex.id] || '',
           observacoes: ex.observacoes,
           grupo_muscular: gruposMusculares[ex.id] || '',
+          biset_parceiro_id: ex.biset_parceiro_id,
           series: (ex.series || []).map((s, idx) => {
             const prev = seriesPrev[idx];
             const anterior = prev ? `${prev.peso_atual || 0}kg × ${prev.reps || 0}` : '—';
@@ -798,6 +819,53 @@ export default function ExecucaoTreinoPage() {
     const isUltimaSerie = modalSerieIdx >= ex.series.length - 1;
     const isUltimoExercicio = modalExIdx >= exercicios.length - 1;
 
+    // ── Lógica de Bi-Set ────────────────────────────────────────────────────
+    const isBiSet = serie.tecnica_extra === 'Bi-Set';
+    if (isBiSet && ex.biset_parceiro_id) {
+      const partnerExIdx = exercicios.findIndex(e => e.id === ex.biset_parceiro_id);
+      if (partnerExIdx >= 0) {
+        const partnerEx = exercicios[partnerExIdx];
+        if (bisetReturnState === null) {
+          // Fase A → ir para o Exercício B (sem descanso entre A e B)
+          const partnerSerieIdx = partnerEx.series.findIndex(s => !s.completado);
+          const targetSerieIdx = partnerSerieIdx >= 0 ? partnerSerieIdx : 0;
+          // Salvar estado de retorno para voltar a A na próxima série
+          if (!isUltimaSerie) {
+            setBisetReturnState({ originExIdx: modalExIdx, nextSerieIdx: modalSerieIdx + 1 });
+          }
+          const nextCarga = partnerEx.series[targetSerieIdx]?.peso_atual || 0;
+          setModalExIdx(partnerExIdx);
+          setModalSerieIdx(targetSerieIdx);
+          setModalCarga(nextCarga);
+          setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+          setShowSeriesHistory(false);
+          return;
+        } else {
+          // Fase B → descanso e depois volta para Exercício A na próxima série
+          const { originExIdx, nextSerieIdx } = bisetReturnState;
+          setBisetReturnState(null);
+          iniciarRest(ex.descanso, () => {
+            const originEx = exercicios[originExIdx];
+            if (nextSerieIdx < originEx.series.length) {
+              const nextCarga = originEx.series[nextSerieIdx]?.peso_atual || 0;
+              setModalExIdx(originExIdx);
+              setModalSerieIdx(nextSerieIdx);
+              setModalCarga(nextCarga);
+              setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+              setShowSeriesHistory(false);
+            } else {
+              // Todas as séries de A concluídas — avançar para próximo exercício
+              const proxExIdx = isUltimoExercicio ? null : modalExIdx + 1;
+              if (proxExIdx !== null) abrirModalExercicio(proxExIdx);
+              else setModalExIdx(null);
+            }
+          });
+          return;
+        }
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     if (isUltimaSerie) {
       // Último exercício → fechar modal
       if (isUltimoExercicio) {
@@ -821,19 +889,14 @@ export default function ExecucaoTreinoPage() {
 
   // ── Finalizar treino ─────────────────────────────────────────────────────────
 
-  const handleFinalizar = async () => {
-    const setsCompletos = calcSetsCompletos(exercicios);
-    const totalSets = calcTotalSets(exercicios);
-    if (setsCompletos < totalSets) {
-      setShowConfirmFinish(true);
-      return;
-    }
-    await finalizarConfirmado();
+  const handleFinalizar = () => {
+    // Sempre abre o modal de feedback (que também confirma finalização)
+    setShowFeedbackModal(true);
   };
 
   const finalizarConfirmado = async () => {
     if (!userId || saving) return;
-    setShowConfirmFinish(false);
+    setShowFeedbackModal(false);
     setSaving(true);
     haptic('medium');
 
@@ -860,6 +923,8 @@ export default function ExecucaoTreinoPage() {
             anterior: s.anterior || '—',
           })),
           data_sessao: agora,
+          satisfacao_treino: feedbackSatisfacao || null,
+          nivel_dor: feedbackDor,
         },
         data_conclusao: agora,
       }));
@@ -1144,28 +1209,107 @@ export default function ExecucaoTreinoPage() {
         </div>
       )}
 
-      {/* ── Modal de confirmação para finalizar ── */}
-      {showConfirmFinish && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-1 border border-border-subtle shadow-elev-2 rounded-2xl p-6">
-            <div className="w-14 h-14 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-7 h-7 text-brand" />
+      {/* ── Modal de Termômetro de Treino (Feedback) ── */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/70 backdrop-blur-sm">
+          <div className="w-full bg-surface-1 border-t border-border-subtle rounded-t-2xl p-5 pb-safe-bottom" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+            {/* Aviso se treino incompleto */}
+            {setsCompletos < totalSets && (
+              <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-warning-subtle border border-warning-border rounded-lg">
+                <Clock className="w-4 h-4 text-warning shrink-0" />
+                <p className="text-xs text-warning font-medium">
+                  {totalSets - setsCompletos} série{totalSets - setsCompletos > 1 ? 's' : ''} não concluída{totalSets - setsCompletos > 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
+
+            <h3 className="text-sm font-bold text-text-primary mb-4">Como foi o treino?</h3>
+
+            {/* Escala de Satisfação */}
+            <div className="mb-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2">Dificuldade</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { label: 'Muito Fácil', emoji: '😴', color: 'bg-blue-500/15 border-blue-500/40 text-blue-400' },
+                  { label: 'Fácil',       emoji: '😊', color: 'bg-success/15 border-success/40 text-success' },
+                  { label: 'Moderado',    emoji: '💪', color: 'bg-yellow-500/15 border-yellow-500/40 text-yellow-400' },
+                  { label: 'Difícil',     emoji: '🔥', color: 'bg-danger/15 border-danger/40 text-danger' },
+                ].map(({ label, emoji, color }) => (
+                  <button
+                    key={label}
+                    onClick={() => setFeedbackSatisfacao(feedbackSatisfacao === label ? '' : label)}
+                    className={cn(
+                      'flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border text-center transition-all',
+                      feedbackSatisfacao === label
+                        ? color
+                        : 'bg-surface-2 border-border-subtle text-text-muted'
+                    )}
+                  >
+                    <span className="text-lg leading-none">{emoji}</span>
+                    <span className="text-[9px] font-semibold leading-tight">{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-text-primary text-center mb-2">Treino Incompleto</h3>
-            <p className="text-sm text-text-secondary text-center mb-6 leading-relaxed">
-              {calcTotalSets(exercicios) - setsCompletos} séries ainda não concluídas. Deseja finalizar mesmo assim?
-            </p>
+
+            {/* Escala de Dor */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Nível de Dor / Desconforto</p>
+                <span className="text-xs font-bold text-text-primary">{feedbackDor}/10</span>
+              </div>
+              <div className="relative flex items-center gap-2">
+                <span className="text-base">😌</span>
+                <div className="flex-1 relative">
+                  <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${(feedbackDor - 1) / 9 * 100}%`,
+                        background: feedbackDor <= 3
+                          ? '#22c55e'
+                          : feedbackDor <= 6
+                          ? '#eab308'
+                          : '#ef4444',
+                      }}
+                    />
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={feedbackDor}
+                    onChange={(e) => setFeedbackDor(Number(e.target.value))}
+                    className="absolute inset-0 w-full opacity-0 cursor-pointer h-6 -top-2.5"
+                    style={{ touchAction: 'none' }}
+                  />
+                  {/* Thumb visual */}
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-surface-1 border-2 flex items-center justify-center text-[10px] pointer-events-none shadow-sm"
+                    style={{
+                      left: `calc(${(feedbackDor - 1) / 9 * 100}% - 12px)`,
+                      borderColor: feedbackDor <= 3 ? '#22c55e' : feedbackDor <= 6 ? '#eab308' : '#ef4444',
+                    }}
+                  >
+                    🫀
+                  </div>
+                </div>
+                <span className="text-base">😣</span>
+              </div>
+            </div>
+
+            {/* Botões */}
             <div className="flex flex-col gap-2">
               <button
-                onClick={finalizarConfirmado}
+                onClick={() => finalizarConfirmado()}
                 disabled={saving}
-                className="w-full h-11 bg-brand text-text-on-brand rounded-xl text-xs font-semibold shadow-sm shadow-brand/30 hover:opacity-90 disabled:opacity-50"
+                className="w-full h-11 bg-brand text-text-on-brand rounded-xl text-sm font-semibold shadow-sm shadow-brand/30 hover:opacity-90 disabled:opacity-50"
               >
-                Sim, Finalizar
+                {saving ? '...' : 'Finalizar Treino'}
               </button>
               <button
-                onClick={() => setShowConfirmFinish(false)}
-                className="w-full h-11 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
+                onClick={() => setShowFeedbackModal(false)}
+                className="w-full h-10 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
               >
                 Continuar Treinando
               </button>
@@ -1223,8 +1367,13 @@ export default function ExecucaoTreinoPage() {
               <X className="w-4 h-4" />
             </button>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-brand">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-brand flex items-center gap-1.5">
                 Exercício {(modalExIdx ?? 0) + 1}/{exercicios.length}
+                {modalEx.biset_parceiro_id && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-brand/10 border border-brand/20 rounded-full text-[9px] font-bold text-brand">
+                    🔗 Bi-Set {bisetReturnState !== null ? '← B' : '→ B'}
+                  </span>
+                )}
               </p>
               <h2 className="text-sm font-semibold text-text-primary leading-tight truncate">{toTitleCase(modalEx.nome)}</h2>
             </div>
@@ -1773,7 +1922,7 @@ function CardCoach({ nomeRotina, duracao, volume, sets, coachUsername, exercicio
       <div style={{ width: '100%', padding: '64px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
         <div style={{ borderBottom: `1px solid ${t.border}`, paddingBottom: '18px' }}>
           <p style={{ fontSize: '14px', color: t.textSecondary }}>Treinando com</p>
-          <p style={{ fontSize: '30px', fontWeight: 800, color: t.textPrimary, marginTop: '4px' }}>{coachUsername.replace('@', '')}</p>
+          <p style={{ fontSize: '30px', fontWeight: 800, color: t.textPrimary, marginTop: '4px' }}>@{coachUsername.replace('@', '').trim()}</p>
         </div>
         <div style={{ marginTop: '28px' }}>
           <p style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.08em', color: t.textSecondary, fontWeight: 700 }}>Treino concluído</p>

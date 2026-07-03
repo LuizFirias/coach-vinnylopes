@@ -57,6 +57,7 @@ interface ExercicioFicha {
   video_url: string;
   observacoes: string;
   series: SerieDefinicao[];
+  biset_parceiro_id?: string;
 }
 
 const EQUIPAMENTOS = ["Nenhum", "Banda de Resistência", "Banda de Suspensão", "Barra", "Disco de Peso", "Haltere", "Kettlebell", "Máquina", "Outro"];
@@ -617,6 +618,30 @@ export default function NovaFichaCoachPage() {
                     rows={1}
                   />
                 </div>
+
+                {/* Bi-Set partner selector — aparece quando qualquer série tem técnica Bi-Set */}
+                {exercicio.series.some(s => s.tecnica_extra === 'Bi-Set') && (
+                  <div className="mb-4 pb-3 border-b border-border-subtle/50 flex items-center gap-2.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand shrink-0">🔗 Parceiro Bi-Set</span>
+                    <select
+                      value={exercicio.biset_parceiro_id || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setExerciciosFicha(prev => prev.map((ex, i) =>
+                          i !== exIndex ? ex : { ...ex, biset_parceiro_id: val || undefined }
+                        ));
+                      }}
+                      className="flex-1 h-7 px-2 bg-surface-0 border border-brand/30 rounded-md text-xs text-text-primary focus:outline-none"
+                    >
+                      <option value="">— Selecionar exercício parceiro —</option>
+                      {exerciciosFicha
+                        .filter((_, i) => i !== exIndex)
+                        .map((partnerEx) => (
+                          <option key={partnerEx.id} value={partnerEx.id}>{partnerEx.nome}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Series Table */}
                 <div className="space-y-2">

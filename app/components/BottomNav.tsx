@@ -65,10 +65,10 @@ export default function BottomNav() {
       <nav
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
-          'bg-surface-1/90 backdrop-blur-2xl',
+          'bg-surface-1/75 backdrop-blur-2xl backdrop-saturate-200',
           'rounded-[28px]',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.5)]',
-          'border border-white/[0.06]',
+          'shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.06)]',
+          'border border-white/[0.09]',
           'h-16',
         )}
         style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
@@ -88,19 +88,19 @@ export default function BottomNav() {
                 <Link
                   href={href}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-1 transition-colors duration-fast w-full',
+                    'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
                     isActive ? 'text-brand' : 'text-text-tertiary',
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <span
                     className={cn(
-                      'flex flex-col items-center gap-1 px-2 py-1 rounded-2xl transition-colors duration-fast',
+                      'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-2xl transition-colors duration-fast',
                       isActive && 'bg-brand/10',
                     )}
                   >
-                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                    <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>
+                    <Icon className={cn('w-[18px] h-[18px] transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                    <span className={cn('text-[9px]', isActive ? 'font-semibold' : 'font-medium')}>
                       {label}
                     </span>
                   </span>
@@ -151,10 +151,10 @@ export default function BottomNav() {
       <nav
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
-          'bg-surface-1/90 backdrop-blur-2xl',
+          'bg-surface-1/75 backdrop-blur-2xl backdrop-saturate-200',
           'rounded-[28px]',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.5)]',
-          'border border-white/[0.06]',
+          'shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.06)]',
+          'border border-white/[0.09]',
           'h-16',
         )}
         style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
@@ -170,19 +170,19 @@ export default function BottomNav() {
                 <Link
                   href={href}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-1 transition-colors duration-fast w-full',
+                    'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
                     isActive ? 'text-brand' : 'text-text-tertiary',
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <span
                     className={cn(
-                      'flex flex-col items-center gap-1 px-2 py-1 rounded-2xl transition-colors duration-fast',
+                      'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-2xl transition-colors duration-fast',
                       isActive && 'bg-brand/10',
                     )}
                   >
-                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                    <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
+                    <Icon className={cn('w-[18px] h-[18px] transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                    <span className={cn('text-[9px]', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
                   </span>
                 </Link>
               </li>
@@ -214,19 +214,19 @@ export default function BottomNav() {
                 <Link
                   href={href}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-1 transition-colors duration-fast w-full',
+                    'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
                     isActive ? 'text-brand' : 'text-text-tertiary',
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <span
                     className={cn(
-                      'flex flex-col items-center gap-1 px-2 py-1 rounded-2xl transition-colors duration-fast',
+                      'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-2xl transition-colors duration-fast',
                       isActive && 'bg-brand/10',
                     )}
                   >
-                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                    <span className={cn('text-2xs', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
+                    <Icon className={cn('w-[18px] h-[18px] transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
+                    <span className={cn('text-[9px]', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
                   </span>
                 </Link>
               </li>

@@ -27,6 +27,7 @@ interface Exercicio {
   video_url?: string;
   observacoes?: string;
   series: Serie[];
+  biset_parceiro_id?: string;
 }
 
 interface Ficha {
@@ -488,6 +489,30 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                   />
                 </div>
               </div>
+
+              {/* Bi-Set partner selector — aparece quando qualquer série tem técnica Bi-Set */}
+              {ex.series.some(s => s.tecnica_extra === 'Bi-Set') && (
+                <div className="mb-4 pb-3 border-b border-border-subtle flex items-center gap-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand shrink-0">🔗 Parceiro Bi-Set</span>
+                  <select
+                    value={ex.biset_parceiro_id || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const updated = [...exercicios];
+                      updated[exIdx] = { ...updated[exIdx], biset_parceiro_id: val || undefined };
+                      setExercicios(updated);
+                    }}
+                    className="flex-1 h-7 px-2 bg-surface-0 border border-brand/30 rounded-md text-xs text-text-primary focus:outline-none"
+                  >
+                    <option value="">— Selecionar exercício parceiro —</option>
+                    {exercicios
+                      .filter((_, i) => i !== exIdx)
+                      .map((partnerEx) => (
+                        <option key={partnerEx.id} value={partnerEx.id}>{partnerEx.nome}</option>
+                      ))}
+                  </select>
+                </div>
+              )}
 
               {/* Séries */}
               {(() => {
