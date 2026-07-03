@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getSafeSession } from '@/lib/authErrorHandler';
@@ -12,10 +12,54 @@ import {
   Bell, CaretLeft, CaretRight, Clock, TrendUp,
   Lightning, Drop, Plus, Minus, X,
 } from '@phosphor-icons/react';
+import Body from 'react-muscle-highlighter';
 import { cn } from '@/lib/utils/cn';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { getTodayBrazil } from '@/lib/dateUtils';
 import { CoachCard } from '@/app/components/dashboard/CoachCard';
+
+// ─── Muscle mapping (espelho de estatisticas/page.tsx) ────────────────────────
+const HIGHLIGHTER_MAP: Record<string, string[]> = {
+  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
+  'upper-back': ['Dorsais'],
+  'trapezius': ['Trapézio'],
+  'lower-back': ['Lombar'],
+  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
+  'biceps': ['Bíceps'],
+  'triceps': ['Tríceps'],
+  'forearm': ['Antebraço'],
+  'quadriceps': ['Quadríceps'],
+  'hamstring': ['Posterior (Isquiotibiais)'],
+  'calves': ['Panturrilha'],
+  'gluteal': ['Glúteos'],
+  'abs': ['Abdômen'],
+  'obliques': ['Oblíquos'],
+};
+
+// Grupos musculares → intensidade 0-10 para o MuscleBodyChart
+function MuscleBodyFront({ muscleGroups }: { muscleGroups: string[] }) {
+  const data: any[] = useMemo(() => {
+    const activeSet = new Set(muscleGroups);
+    return Object.entries(HIGHLIGHTER_MAP)
+      .filter(([, groups]) => groups.some(g => activeSet.has(g)))
+      .map(([slug]) => ({
+        slug,
+        color: 'rgba(37, 99, 235, 0.72)',
+      }));
+  }, [muscleGroups]);
+
+  return (
+    <Body
+      data={data}
+      side="front"
+      gender="male"
+      scale={0.85}
+      defaultFill="#27272a"
+      defaultStroke="#3f3f46"
+      defaultStrokeWidth={1}
+    />
+  );
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -145,6 +189,7 @@ export default function AlunoDashboardPage() {
     fichaId?: string;
     qtdExercicios?: number;
   } | null>(null);
+  const [treinoMuscleGroups, setTreinoMuscleGroups] = useState<string[]>([]);
 
   // Nutrição
   const [planoNutricao, setPlanoNutricao] = useState<{
@@ -416,13 +461,25 @@ export default function AlunoDashboardPage() {
           setTreinoHoje({ status: 'concluido' });
         } else if (agendaHoje.ficha_id) {
           const config = (agendaHoje as any).fichas_treino?.configuracao as any;
-          const numEx = config?.exercicios?.length || 0;
+          const exercicios: any[] = config?.exercicios || [];
+          const numEx = exercicios.length;
           setTreinoHoje({
             status: 'pendente',
             nome: (agendaHoje as any).fichas_treino?.nome_rotina,
             fichaId: agendaHoje.ficha_id,
             qtdExercicios: numEx,
           });
+
+          // Buscar grupos musculares dos exercícios da ficha
+          const exIds = exercicios.map((e: any) => e.id).filter(Boolean);
+          if (exIds.length > 0) {
+            const { data: bibData } = await supabaseClient
+              .from('exercicios_biblioteca')
+              .select('grupo_muscular')
+              .in('id', exIds);
+            const groups = [...new Set((bibData || []).map(b => b.grupo_muscular).filter(Boolean))];
+            setTreinoMuscleGroups(groups);
+          }
         } else if (agendaHoje.treino_pdf_id) {
           setTreinoHoje({ status: 'pendente', nome: 'Treino PDF' });
         } else {
@@ -662,28 +719,9 @@ export default function AlunoDashboardPage() {
 
           {/* Label + nome */}
           <div className="px-4 pt-4 pb-3 border-b border-[#29303D]/50 relative">
-            {/* Muscle illustration — decorative */}
-            <div className="absolute right-4 top-3 bottom-2 flex items-center pointer-events-none select-none" style={{ width: 52 }}>
-              <svg viewBox="0 0 52 90" className="h-full w-auto opacity-80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Torso */}
-                <ellipse cx="26" cy="14" rx="12" ry="10" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
-                {/* Hips */}
-                <ellipse cx="26" cy="30" rx="13" ry="8" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
-                {/* Left quad — highlighted */}
-                <path d="M15,35 Q12,50 13,65 Q16,70 20,68 Q23,55 22,38 Z" fill="url(#quad-glow)" stroke="#4191F3" strokeWidth="0.6" opacity="0.9"/>
-                {/* Right quad — highlighted */}
-                <path d="M37,35 Q40,50 39,65 Q36,70 32,68 Q29,55 30,38 Z" fill="url(#quad-glow)" stroke="#4191F3" strokeWidth="0.6" opacity="0.9"/>
-                {/* Left calf */}
-                <path d="M13,66 Q12,76 14,84 Q17,87 19,85 Q20,76 20,68 Z" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
-                {/* Right calf */}
-                <path d="M39,66 Q40,76 38,84 Q35,87 33,85 Q32,76 32,68 Z" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
-                <defs>
-                  <linearGradient id="quad-glow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4191F3" stopOpacity="0.35"/>
-                    <stop offset="100%" stopColor="#1E58E4" stopOpacity="0.15"/>
-                  </linearGradient>
-                </defs>
-              </svg>
+            {/* Muscle body — frente, grupos musculares do treino de hoje */}
+            <div className="absolute right-2 top-1 bottom-1 flex items-center pointer-events-none select-none overflow-hidden" style={{ width: 56 }}>
+              <MuscleBodyFront muscleGroups={treinoMuscleGroups} />
             </div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-0.5" style={{ color: '#487CD7' }}>
               Treino de hoje
