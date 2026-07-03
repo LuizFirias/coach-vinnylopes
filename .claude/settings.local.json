@@ -20,7 +20,10 @@
       "Bash(awk '{print $5\" bytes\"}')",
       "Bash(awk '{print \\($1*16777216+$2*65536+$3*256+$4\\)\"x\"\\($5*16777216+$6*65536+$7*256+$8\\)}')",
       "Bash(python \"C:/Users/lfern/AppData/Local/Temp/claude/C--Users-lfern-Documents-Apps-Auronfit/07fbe91f-5cc0-4d07-9b55-e37624305383/scratchpad/remove-bg.py\")",
-      "Bash(py \"C:/Users/lfern/AppData/Local/Temp/claude/C--Users-lfern-Documents-Apps-Auronfit/07fbe91f-5cc0-4d07-9b55-e37624305383/scratchpad/remove-bg.py\")"
+      "Bash(py \"C:/Users/lfern/AppData/Local/Temp/claude/C--Users-lfern-Documents-Apps-Auronfit/07fbe91f-5cc0-4d07-9b55-e37624305383/scratchpad/remove-bg.py\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright OK'\\)}catch\\(e\\){console.log\\('no playwright'\\)} try{require.resolve\\('puppeteer'\\);console.log\\('puppeteer OK'\\)}catch\\(e\\){console.log\\('no puppeteer'\\)}\")"
     ]
   }
 }

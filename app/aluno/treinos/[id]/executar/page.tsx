@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download, ShareNetwork, Barbell } from '@phosphor-icons/react';
 import { toPng } from 'html-to-image';
+import Body from 'react-muscle-highlighter';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
@@ -1733,30 +1734,77 @@ interface ShareCardProps {
 
 const shareThemeTokens = {
   escuro: {
-    bg: '#09090B',
-    surface: '#111113',
-    textPrimary: '#FAFAFA',
-    textSecondary: '#A1A1AA',
-    accent: '#2563EB',
-    border: '#27272A',
+    bg: 'radial-gradient(120% 100% at 50% 0%, #0A1428 0%, #000A1E 70%)',
+    surface: '#011434',
+    textPrimary: '#FFFFFF',
+    textSecondary: '#9CA3AF',
+    accent: '#0087F0',
+    border: 'rgba(255,255,255,0.08)',
+    muscleFill: '#0A2038',
+    muscleStroke: 'rgba(255,255,255,0.14)',
   },
   claro: {
     bg: '#FFFFFF',
-    surface: '#F4F4F5',
-    textPrimary: '#09090B',
-    textSecondary: '#71717A',
-    accent: '#2563EB',
-    border: '#E4E4E7',
+    surface: '#EEF3FA',
+    textPrimary: '#00142E',
+    textSecondary: '#5B6B7F',
+    accent: '#0087F0',
+    border: 'rgba(0,20,52,0.10)',
+    muscleFill: '#E2E9F2',
+    muscleStroke: 'rgba(0,20,52,0.16)',
   },
   transparente: {
     bg: 'transparent',
     surface: 'rgba(255,255,255,0.08)',
     textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.7)',
-    accent: '#60A5FA',
-    border: 'rgba(255,255,255,0.15)',
+    textSecondary: 'rgba(255,255,255,0.72)',
+    accent: '#38A9FF',
+    border: 'rgba(255,255,255,0.16)',
+    muscleFill: 'rgba(255,255,255,0.10)',
+    muscleStroke: 'rgba(255,255,255,0.22)',
   },
 } as const;
+
+// Mapa grupo muscular (biblioteca) → slugs do react-muscle-highlighter
+const POSTER_MUSCLE_MAP: Record<string, string[]> = {
+  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
+  'upper-back': ['Dorsais'],
+  'trapezius': ['Trapézio'],
+  'lower-back': ['Lombar'],
+  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
+  'biceps': ['Bíceps'],
+  'triceps': ['Tríceps'],
+  'forearm': ['Antebraço'],
+  'quadriceps': ['Quadríceps'],
+  'hamstring': ['Posterior (Isquiotibiais)'],
+  'calves': ['Panturrilha'],
+  'gluteal': ['Glúteos'],
+  'abs': ['Abdômen'],
+  'obliques': ['Oblíquos'],
+};
+
+// Soma volume por grupo muscular treinado e devolve dados para o <Body> destacando
+// cada músculo em azul-marinho, com opacidade proporcional à intensidade.
+function buildMuscleHighlightData(exercicios: ExercicioState[]): any[] {
+  const muscleCount: Record<string, number> = {};
+  for (const ex of exercicios) {
+    if (!ex.grupo_muscular) continue;
+    const feitas = ex.series.filter((s) => s.completado).length || ex.series.length;
+    if (feitas === 0) continue;
+    const grupo = ex.grupo_muscular.trim();
+    muscleCount[grupo] = (muscleCount[grupo] || 0) + feitas;
+  }
+  const max = Math.max(...Object.values(muscleCount), 1);
+  const list: any[] = [];
+  Object.entries(POSTER_MUSCLE_MAP).forEach(([slug, groups]) => {
+    const intensidade = Math.max(0, ...groups.map((g) => muscleCount[g] || 0));
+    if (intensidade > 0) {
+      const opacity = 0.4 + (intensidade / max) * 0.55;
+      list.push({ slug, color: `rgba(0, 135, 240, ${opacity.toFixed(2)})` });
+    }
+  });
+  return list;
+}
 
 function parseCargaAnterior(serieAnterior?: string): number {
   if (!serieAnterior) return 0;
@@ -1811,9 +1859,9 @@ function CardMetricas({ nomeRotina, duracao, volume, sets, theme, coachUsername 
           <p style={{ marginTop: '6px', fontSize: '22px', fontWeight: 800, color: t.textPrimary }}>Treino concluído</p>
         </div>
         <div style={{ marginTop: '52px', display: 'grid', gap: '28px' }}>
-          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Duração</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.textPrimary }}>{formatDuration(duracao)}</p></div>
-          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Volume Total</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.textPrimary }}>{formatVolume(volume)}</p></div>
-          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Séries</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.textPrimary }}>{sets}</p></div>
+          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Duração</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.accent }}>{formatDuration(duracao)}</p></div>
+          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Volume Total</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.accent }}>{formatVolume(volume)}</p></div>
+          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Séries</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.accent }}>{sets}</p></div>
         </div>
         <CardRodape theme={theme} coachUsername={coachUsername} />
       </div>
@@ -1940,6 +1988,45 @@ function CardCoach({ nomeRotina, duracao, volume, sets, coachUsername, exercicio
   );
 }
 
+function CardPoster({ nomeRotina, duracao, volume, sets, exercicios, coachUsername, theme }: ShareCardProps) {
+  const t = shareThemeTokens[theme];
+  const muscleData = buildMuscleHighlightData(exercicios);
+  const metricas: Array<[string, string]> = [
+    ['Duração', formatDuration(duracao)],
+    ['Volume', formatVolume(volume)],
+    ['Séries', String(sets)],
+  ];
+  return (
+    <InstagramCardShell theme={theme}>
+      <div style={{ width: '100%', padding: '56px 60px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, color: t.textSecondary }}>Treino concluído</p>
+          <p style={{ fontSize: '48px', fontWeight: 800, color: t.textPrimary, marginTop: '6px', textTransform: 'uppercase', letterSpacing: '-0.5px', lineHeight: 1.04 }}>{nomeRotina}</p>
+        </div>
+
+        {/* <Body> renderiza SVG de 200×400 * scale; scale 1.6 → 320×640px, cabe na área. */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', height: 680, overflow: 'hidden', margin: '18px 0' }}>
+          <Body data={muscleData} side="front" gender="male" scale={1.6} defaultFill={t.muscleFill} defaultStroke={t.muscleStroke} defaultStrokeWidth={1} />
+          <Body data={muscleData} side="back" gender="male" scale={1.6} defaultFill={t.muscleFill} defaultStroke={t.muscleStroke} defaultStrokeWidth={1} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+          {metricas.map(([label, value]) => (
+            <div key={label} style={{ flex: 1, textAlign: 'center' }}>
+              <p style={{ fontSize: '13px', color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
+              <p style={{ fontSize: '38px', fontWeight: 800, color: t.textPrimary, marginTop: '4px' }}>{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: '18px' }}>
+          <CardRodape theme={theme} coachUsername={coachUsername} />
+        </div>
+      </div>
+    </InstagramCardShell>
+  );
+}
+
 function CompletionScreenWithExport({
   nomeRotina,
   duracao,
@@ -1984,6 +2071,23 @@ function CompletionScreenWithExport({
     .slice(0, 4);
 
   const cards = [
+    {
+      id: 'poster',
+      label: 'Anatomia',
+      render: (theme: ShareTheme) => (
+        <CardPoster
+          nomeRotina={nomeRotina}
+          duracao={duracao}
+          volume={volume}
+          sets={sets}
+          exercicios={exercicios}
+          coachUsername={coachUsername}
+          theme={theme}
+          monthDays={monthDays}
+          comparativo={comparativo}
+        />
+      ),
+    },
     {
       id: 'metricas',
       label: 'Métricas',
