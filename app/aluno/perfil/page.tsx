@@ -71,6 +71,7 @@ function SettingsRow({
         'w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-border-subtle last:border-b-0',
         danger ? 'text-danger hover:text-danger/80' : 'hover:opacity-80'
       )}
+      style={{ borderColor: 'rgba(41,48,61,0.5)' }}
     >
       {Icon && <Icon className={cn('w-4 h-4 flex-shrink-0', danger ? 'text-danger' : 'text-text-tertiary')} />}
       <span className={cn('flex-1 text-sm', danger ? 'text-danger font-medium' : 'text-text-primary')}>
@@ -84,8 +85,14 @@ function SettingsRow({
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl overflow-hidden">
-      <div className="px-4 py-2.5 bg-surface-2 border-b border-border-subtle">
+    <div
+      className="border shadow-elev-1 rounded-2xl overflow-hidden"
+      style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+    >
+      <div
+        className="px-4 py-2.5 border-b"
+        style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+      >
         <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">{title}</span>
       </div>
       <div>{children}</div>
@@ -369,7 +376,10 @@ export default function AlunoPerfil() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <DumbbellLoader text="Carregando perfil..." />
       </div>
     );
@@ -379,10 +389,13 @@ export default function AlunoPerfil() {
 
   if (showSettings) {
     return (
-      <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-28">
+      <div
+        className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-28"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <div className="max-w-lg mx-auto flex flex-col gap-6">
           {/* Header de Voltar */}
-          <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+          <div className="flex items-center justify-between border-b border-border-subtle pb-4" style={{ borderColor: 'rgba(41,48,61,0.5)' }}>
             <button
               onClick={() => setShowSettings(false)}
               className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
@@ -405,7 +418,10 @@ export default function AlunoPerfil() {
           )}
 
           {/* ── Foto no settings ── */}
-          <div className="flex items-center gap-4 px-4 py-6 bg-surface-1 border border-border-subtle rounded-2xl shadow-sm">
+          <div
+            className="flex items-center gap-4 px-4 py-6 border rounded-2xl shadow-sm"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+          >
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-xl font-bold border border-brand">
                 {uploadingAvatar ? (
@@ -444,7 +460,10 @@ export default function AlunoPerfil() {
             <SettingsRow icon={Scales} label="Unidade de peso" value={profile.unidade_peso.toUpperCase()} onClick={() => setEditingUnidadePeso(true)} />
             <SettingsRow icon={Ruler} label="Unidade de medida" value={profile.unidade_medida.toUpperCase()} onClick={() => setEditingUnidadeMedida(true)} />
             <SettingsRow icon={Barbell} label="Incremento padrão de carga" value={`${profile.incremento_peso_padrao} ${profile.unidade_peso}`} onClick={() => setEditingIncrementoPeso(true)} />
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle last:border-b-0">
+            <div
+              className="flex items-center gap-3 px-4 py-3.5 border-b last:border-b-0"
+              style={{ borderColor: 'rgba(41,48,61,0.5)' }}
+            >
               <EyeSlash className="w-4 h-4 text-text-tertiary flex-shrink-0" />
               <span className="flex-1 text-sm text-text-primary">Oculto no ranking</span>
               <button
@@ -528,7 +547,7 @@ export default function AlunoPerfil() {
         {/* Modal de Sexo */}
         {editingSexo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione seu sexo</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -545,8 +564,9 @@ export default function AlunoPerfil() {
                     }}
                     className={cn(
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
-                      profile.sexo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                      profile.sexo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
+                    style={profile.sexo === opt.value ? undefined : { background: '#0D1829' }}
                   >
                     {opt.label}
                   </button>
@@ -565,7 +585,7 @@ export default function AlunoPerfil() {
         {/* Modal de Objetivo */}
         {editingObjetivo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione seu objetivo</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -583,8 +603,9 @@ export default function AlunoPerfil() {
                     }}
                     className={cn(
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
-                      profile.objetivo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                      profile.objetivo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
+                    style={profile.objetivo === opt.value ? undefined : { background: '#0D1829' }}
                   >
                     {opt.label}
                   </button>
@@ -603,7 +624,7 @@ export default function AlunoPerfil() {
         {/* Modal de Unidade de Peso */}
         {editingUnidadePeso && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione a unidade de peso</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -618,8 +639,9 @@ export default function AlunoPerfil() {
                     }}
                     className={cn(
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
-                      profile.unidade_peso === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                      profile.unidade_peso === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
+                    style={profile.unidade_peso === opt.value ? undefined : { background: '#0D1829' }}
                   >
                     {opt.label}
                   </button>
@@ -638,7 +660,7 @@ export default function AlunoPerfil() {
         {/* Modal de Unidade de Medida */}
         {editingUnidadeMedida && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione a unidade de medida</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -653,8 +675,9 @@ export default function AlunoPerfil() {
                     }}
                     className={cn(
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
-                      profile.unidade_medida === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                      profile.unidade_medida === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
+                    style={profile.unidade_medida === opt.value ? undefined : { background: '#0D1829' }}
                   >
                     {opt.label}
                   </button>
@@ -673,7 +696,7 @@ export default function AlunoPerfil() {
         {/* Modal de Incremento de Peso */}
         {editingIncrementoPeso && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
               <h3 className="text-base font-bold text-text-primary mb-4">Incremento padrão de carga</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[1, 1.25, 2.5, 5].map((opt) => (
@@ -685,8 +708,9 @@ export default function AlunoPerfil() {
                     }}
                     className={cn(
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
-                      profile.incremento_peso_padrao === opt ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                      profile.incremento_peso_padrao === opt ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
+                    style={profile.incremento_peso_padrao === opt ? undefined : { background: '#0D1829' }}
                   >
                     {opt} {profile.unidade_peso}
                   </button>
@@ -704,7 +728,7 @@ export default function AlunoPerfil() {
         
         {deleteConfirmOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface-2 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0D1829' }}>
               <div className="w-12 h-12 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-4">
                 <Warning className="w-6 h-6 text-danger" />
               </div>
@@ -746,7 +770,10 @@ export default function AlunoPerfil() {
 
   // RENDER THE NEW HEVY-STYLE PROFILE DASHBOARD
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-36">
+    <div
+      className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-36"
+      style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+    >
       <div className="max-w-lg mx-auto flex flex-col gap-0">
 
         {/* ── Toast ── */}
@@ -790,7 +817,8 @@ export default function AlunoPerfil() {
           </div>
           <button
             onClick={() => setShowSettings(true)}
-            className="w-10 h-10 rounded-full bg-surface-1 border border-border-subtle hover:border-brand/30 flex items-center justify-center text-text-tertiary hover:text-brand transition-all active:scale-95 cursor-pointer mt-1"
+            className="w-10 h-10 rounded-full border hover:border-brand/30 flex items-center justify-center text-text-tertiary hover:text-brand transition-all active:scale-95 cursor-pointer mt-1"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
             title="Ajustes"
           >
             <Gear size={20} />
@@ -803,7 +831,8 @@ export default function AlunoPerfil() {
           <div className="grid grid-cols-2 gap-3">
             <Link
               href="/aluno/estatisticas"
-              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group col-span-2"
+              className="border rounded-2xl p-4 flex items-center justify-center gap-3 transition-all active:scale-[0.98] group col-span-2"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
             >
               <ChartBar size={22} className="text-brand flex-shrink-0" />
               <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Estatísticas</span>
@@ -811,7 +840,8 @@ export default function AlunoPerfil() {
 
             <Link
               href="/aluno/medidas"
-              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
+              className="border rounded-2xl p-4 flex items-center gap-3 transition-all active:scale-[0.98] group"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
             >
               <TrendUp size={22} className="text-brand flex-shrink-0" />
               <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Medidas</span>
@@ -819,7 +849,8 @@ export default function AlunoPerfil() {
 
             <Link
               href="/aluno/calendario"
-              className="bg-surface-1 border border-border-subtle rounded-2xl p-4 flex items-center gap-3 hover:bg-surface-2 transition-all active:scale-[0.98] group"
+              className="border rounded-2xl p-4 flex items-center gap-3 transition-all active:scale-[0.98] group"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
             >
               <Calendar size={22} className="text-brand flex-shrink-0" />
               <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Calendário</span>
@@ -834,7 +865,11 @@ export default function AlunoPerfil() {
           {loadingWorkouts ? (
             <div className="flex flex-col gap-4">
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-surface-1 border border-border-subtle rounded-2xl p-5 animate-pulse">
+                <div
+                  key={i}
+                  className="border rounded-2xl p-5 animate-pulse"
+                  style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                >
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full bg-surface-3" />
                     <div className="flex-1"><div className="h-3 bg-surface-3 rounded w-1/3 mb-1" /><div className="h-2.5 bg-surface-3 rounded w-1/2" /></div>
@@ -851,9 +886,10 @@ export default function AlunoPerfil() {
                 <div
                   key={idx}
                   className={cn(
-                    'bg-surface-0 py-5 px-1',
+                    'py-5 px-1',
                     idx < recentWorkouts.length - 1 && 'border-b border-border-subtle'
                   )}
+                  style={idx < recentWorkouts.length - 1 ? { borderColor: 'rgba(41,48,61,0.5)' } : undefined}
                 >
                   {/* Linha: avatar + username + data */}
                   <div className="flex items-center gap-3 mb-3">
@@ -902,7 +938,10 @@ export default function AlunoPerfil() {
                   <div className="flex flex-col gap-2.5">
                     {workout.exercises.slice(0, 4).map((ex: any, exIdx: number) => (
                       <div key={exIdx} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center flex-shrink-0">
+                        <div
+                          className="w-8 h-8 rounded-lg border flex items-center justify-center flex-shrink-0"
+                          style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+                        >
                           <Barbell size={15} className="text-text-tertiary" />
                         </div>
                         <span className="text-sm text-text-primary">
@@ -921,7 +960,10 @@ export default function AlunoPerfil() {
               ))}
             </div>
           ) : (
-            <div className="bg-surface-1 border border-dashed border-border-subtle rounded-2xl p-10 text-center flex flex-col items-center justify-center gap-3">
+            <div
+              className="border border-dashed rounded-2xl p-10 text-center flex flex-col items-center justify-center gap-3"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               <Barbell size={32} className="text-text-disabled" />
               <div>
                 <p className="text-sm font-semibold text-text-secondary">Nenhum treino concluído ainda</p>
