@@ -428,86 +428,136 @@ export default function AlunoPerfil() {
             <SettingsRow icon={User} label="Nome" value={profile.full_name} onClick={() => setChangeNameOpen(true)} />
             <SettingsRow icon={Calendar} label="Data de nascimento" value={profile.date_of_birth ? new Date(profile.date_of_birth + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não informada'} onClick={() => setDateOfBirthOpen(true)} />
             <SettingsRow icon={Envelope} label="E-mail" value={email.length > 22 ? email.slice(0, 20) + '…' : email} />
-            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
-              <div className="flex items-center gap-3">
-                <UserCircle className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-                <span className="flex-1 text-sm text-text-primary">Sexo</span>
-              </div>
-              <select
-                value={profile.sexo || ''}
-                onChange={(e) => savePrefs({ sexo: (e.target.value as Profile['sexo']) || null })}
-                className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+            <div className="w-full border-b border-border-subtle last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
               >
-                <option value="">Não informado</option>
-                <option value="masculino">Masculino</option>
-                <option value="feminino">Feminino</option>
-                <option value="outro">Outro</option>
-              </select>
+                <UserCircle className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
+                <div className="flex-1">
+                  <span className="block text-sm text-text-primary">Sexo</span>
+                  <select
+                    value={profile.sexo || ''}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      savePrefs({ sexo: (e.target.value as Profile['sexo']) || null });
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
+                  >
+                    <option value="">Não informado</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="feminino">Feminino</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+              </button>
             </div>
-            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
-              <div className="flex items-center gap-3">
-                <Target className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-                <span className="flex-1 text-sm text-text-primary">Objetivo</span>
-              </div>
-              <select
-                value={profile.objetivo || ''}
-                onChange={(e) => savePrefs({ objetivo: (e.target.value as Profile['objetivo']) || null })}
-                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+            <div className="w-full border-b border-border-subtle last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
               >
-                <option value="">Não informado</option>
-                <option value="cutting">Definição (Cutting)</option>
-                <option value="bulking">Ganho de massa (Bulking)</option>
-                <option value="manutencao">Manutenção</option>
-                <option value="recomposicao">Recomposição</option>
-              </select>
+                <Target className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
+                <div className="flex-1">
+                  <span className="block text-sm text-text-primary">Objetivo</span>
+                  <select
+                    value={profile.objetivo || ''}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      savePrefs({ objetivo: (e.target.value as Profile['objetivo']) || null });
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
+                  >
+                    <option value="">Não informado</option>
+                    <option value="cutting">Definição (Cutting)</option>
+                    <option value="bulking">Ganho de massa (Bulking)</option>
+                    <option value="manutencao">Manutenção</option>
+                    <option value="recomposicao">Recomposição</option>
+                  </select>
+                </div>
+              </button>
             </div>
           </SectionCard>
 
           {/* ── Treino ── */}
           <SectionCard title="Treino">
-            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
-              <div className="flex items-center gap-3">
-                <Scales className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-                <span className="flex-1 text-sm text-text-primary">Unidade de peso</span>
-              </div>
-              <select
-                value={profile.unidade_peso}
-                onChange={(e) => savePrefs({ unidade_peso: e.target.value as 'kg' | 'lb' })}
-                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+            <div className="w-full border-b border-border-subtle last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
               >
-                <option value="kg">KG</option>
-                <option value="lb">LB</option>
-              </select>
+                <Scales className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
+                <div className="flex-1">
+                  <span className="block text-sm text-text-primary">Unidade de peso</span>
+                  <select
+                    value={profile.unidade_peso}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      savePrefs({ unidade_peso: e.target.value as 'kg' | 'lb' });
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
+                  >
+                    <option value="kg">KG</option>
+                    <option value="lb">LB</option>
+                  </select>
+                </div>
+              </button>
             </div>
-            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
-              <div className="flex items-center gap-3">
-                <Ruler className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-                <span className="flex-1 text-sm text-text-primary">Unidade de medida</span>
-              </div>
-              <select
-                value={profile.unidade_medida}
-                onChange={(e) => savePrefs({ unidade_medida: e.target.value as 'cm' | 'in' })}
-                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+            <div className="w-full border-b border-border-subtle last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
               >
-                <option value="cm">CM</option>
-                <option value="in">IN</option>
-              </select>
+                <Ruler className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
+                <div className="flex-1">
+                  <span className="block text-sm text-text-primary">Unidade de medida</span>
+                  <select
+                    value={profile.unidade_medida}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      savePrefs({ unidade_medida: e.target.value as 'cm' | 'in' });
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
+                  >
+                    <option value="cm">CM</option>
+                    <option value="in">IN</option>
+                  </select>
+                </div>
+              </button>
             </div>
-            <div className="flex flex-col px-4 py-3 border-b border-border-subtle last:border-b-0 gap-2">
-              <div className="flex items-center gap-3">
-                <Barbell className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-                <span className="flex-1 text-sm text-text-primary">Incremento padrão de carga</span>
-              </div>
-              <select
-                value={profile.incremento_peso_padrao}
-                onChange={(e) => savePrefs({ incremento_peso_padrao: Number(e.target.value) })}
-                className="w-full bg-surface-2 border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium"
+            <div className="w-full border-b border-border-subtle last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
               >
-                <option value="1">1 {profile.unidade_peso}</option>
-                <option value="1.25">1.25 {profile.unidade_peso}</option>
-                <option value="2.5">2.5 {profile.unidade_peso}</option>
-                <option value="5">5 {profile.unidade_peso}</option>
-              </select>
+                <Barbell className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
+                <div className="flex-1">
+                  <span className="block text-sm text-text-primary">Incremento padrão de carga</span>
+                  <select
+                    value={profile.incremento_peso_padrao}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      savePrefs({ incremento_peso_padrao: Number(e.target.value) });
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
+                  >
+                    <option value="1">1 {profile.unidade_peso}</option>
+                    <option value="1.25">1.25 {profile.unidade_peso}</option>
+                    <option value="2.5">2.5 {profile.unidade_peso}</option>
+                    <option value="5">5 {profile.unidade_peso}</option>
+                  </select>
+                </div>
+              </button>
             </div>
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle last:border-b-0">
               <EyeSlash className="w-4 h-4 text-text-tertiary flex-shrink-0" />
