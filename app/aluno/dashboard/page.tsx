@@ -593,7 +593,7 @@ export default function AlunoDashboardPage() {
   const today = getTodayBrazil();
 
   return (
-    <div className="min-h-screen bg-surface-0 scroll-content">
+    <div className="min-h-screen scroll-content" style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}>
       <div className="max-w-md mx-auto flex flex-col pt-safe">
 
         {/* ── 1. Header ── */}
@@ -604,19 +604,21 @@ export default function AlunoDashboardPage() {
               {diaSemanaStr}, {diaNumStr} de {mesStr}
             </p>
             {/* Saudação */}
-            <h1 className="text-xl font-bold text-text-primary mt-0.5">
-              Olá, {primeiroNome}
+            <h1 className="text-xl font-bold mt-0.5">
+              <span className="text-text-primary">Olá, </span>
+              <span style={{ color: '#D6DBE6' }}>{primeiroNome}</span>
             </h1>
           </div>
           {/* Notificações */}
           <button
             id="btn-notificacoes-dashboard"
-            className="w-9 h-9 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center relative"
+            className="w-9 h-9 rounded-lg border flex items-center justify-center relative"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
             aria-label="Notificações"
           >
             <Bell className="w-4 h-4 text-text-secondary" />
             {(coachPendings.feedbacks > 0 || coachPendings.mensagens > 0) && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#EF4444] border-2 border-surface-1" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border-2" style={{ background: '#217CFD', borderColor: '#010713' }} />
             )}
           </button>
         </div>
@@ -653,11 +655,37 @@ export default function AlunoDashboardPage() {
         )}
 
         {/* ── 4. Card: Treino de Hoje (principal) ── */}
-        <div className="mx-4 mb-3 bg-surface-1 border border-border-subtle rounded-lg overflow-hidden">
+        <div
+          className="mx-4 mb-3 rounded-[20px] overflow-hidden border"
+          style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 24px rgba(30,88,228,0.10)' }}
+        >
 
           {/* Label + nome */}
-          <div className="px-4 pt-4 pb-3 border-b border-border-subtle/50">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-0.5">
+          <div className="px-4 pt-4 pb-3 border-b border-[#29303D]/50 relative">
+            {/* Muscle illustration — decorative */}
+            <div className="absolute right-4 top-3 bottom-2 flex items-center pointer-events-none select-none" style={{ width: 52 }}>
+              <svg viewBox="0 0 52 90" className="h-full w-auto opacity-80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Torso */}
+                <ellipse cx="26" cy="14" rx="12" ry="10" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
+                {/* Hips */}
+                <ellipse cx="26" cy="30" rx="13" ry="8" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
+                {/* Left quad — highlighted */}
+                <path d="M15,35 Q12,50 13,65 Q16,70 20,68 Q23,55 22,38 Z" fill="url(#quad-glow)" stroke="#4191F3" strokeWidth="0.6" opacity="0.9"/>
+                {/* Right quad — highlighted */}
+                <path d="M37,35 Q40,50 39,65 Q36,70 32,68 Q29,55 30,38 Z" fill="url(#quad-glow)" stroke="#4191F3" strokeWidth="0.6" opacity="0.9"/>
+                {/* Left calf */}
+                <path d="M13,66 Q12,76 14,84 Q17,87 19,85 Q20,76 20,68 Z" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
+                {/* Right calf */}
+                <path d="M39,66 Q40,76 38,84 Q35,87 33,85 Q32,76 32,68 Z" fill="#1C2535" stroke="#2A3347" strokeWidth="0.8"/>
+                <defs>
+                  <linearGradient id="quad-glow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#4191F3" stopOpacity="0.35"/>
+                    <stop offset="100%" stopColor="#1E58E4" stopOpacity="0.15"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-0.5" style={{ color: '#487CD7' }}>
               Treino de hoje
             </p>
             {treinoHoje?.status === 'off' ? (
@@ -771,7 +799,7 @@ export default function AlunoDashboardPage() {
 
           {/* Preview do treino selecionado na semana */}
           {selectedDia && (
-            <div className="px-4 py-2 border-t border-border-subtle/50 bg-surface-2/30 flex items-center justify-between transition-colors">
+            <div className="px-4 py-2 border-t border-[#29303D]/50 bg-[#0D1829]/30 flex items-center justify-between transition-colors">
               <div className="min-w-0">
                 <p className="text-[11px] font-medium text-text-muted">
                   {selectedDia.isOff ? (
@@ -819,12 +847,17 @@ export default function AlunoDashboardPage() {
           )}
 
           {/* Botão iniciar treino principal (sempre hoje) */}
-          <div className="px-4 pb-4 pt-3 border-t border-border-subtle/20">
+          <div className="px-4 pb-4 pt-3 border-t border-[#29303D]/20">
             {treinoHoje?.status === 'pendente' ? (
               <Link
                 href={treinoHoje.fichaId ? `/aluno/treinos/${treinoHoje.fichaId}/executar` : '/aluno/treinos'}
                 id="btn-iniciar-treino-dashboard"
-                className="w-full h-11 bg-brand rounded-lg text-sm font-semibold text-text-on-brand flex items-center justify-center gap-2 active:opacity-90"
+                className="w-full h-11 text-sm font-semibold text-white flex items-center justify-center gap-2 active:opacity-90"
+                style={{
+                  background: 'linear-gradient(135deg, #2F6FFF 0%, #1B56E2 60%, #1846B8 100%)',
+                  boxShadow: '0 8px 24px rgba(30, 88, 228, 0.35)',
+                  borderRadius: '16px',
+                }}
               >
                 <Barbell className="w-4 h-4" />
                 Iniciar treino
@@ -832,14 +865,16 @@ export default function AlunoDashboardPage() {
             ) : treinoHoje?.status === 'concluido' ? (
               <Link
                 href="/aluno/treinos"
-                className="w-full h-11 bg-surface-2 border border-border-subtle rounded-lg text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
+                className="w-full h-11 border rounded-[16px] text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
+                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
               >
                 Ver treinos
               </Link>
             ) : treinoHoje?.status === 'off' ? (
               <Link
                 href="/aluno/medidas"
-                className="w-full h-11 bg-surface-2 border border-border-subtle rounded-lg text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
+                className="w-full h-11 border rounded-[16px] text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
+                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
               >
                 <Ruler className="w-4 h-4" />
                 Registrar evolução
@@ -847,7 +882,8 @@ export default function AlunoDashboardPage() {
             ) : (
               <Link
                 href="/aluno/treinos"
-                className="w-full h-11 bg-surface-2 border border-border-subtle rounded-lg text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
+                className="w-full h-11 border rounded-[16px] text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
+                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
               >
                 Ver treinos disponíveis
               </Link>
@@ -859,23 +895,40 @@ export default function AlunoDashboardPage() {
         <div className="mx-4 mb-2 grid grid-cols-2 gap-2">
 
           {/* Streak */}
-          <div className="bg-surface-1 border border-border-subtle rounded-lg px-3 py-2 flex items-center justify-between">
-            <div className="min-w-0">
+          <div
+            className="rounded-[16px] px-3 py-2 flex items-center justify-between border relative overflow-hidden"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(236,126,82,0.08)' }}
+          >
+            <div className="min-w-0 relative z-10">
               <p className="text-[9px] font-semibold uppercase tracking-[0.06em] text-text-muted flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 shrink-0" weight="fill" color="#FF6B35" />
+                <Flame className="w-3.5 h-3.5 shrink-0" weight="fill" style={{ color: '#EC7E52' }} />
                 <span>Sequência</span>
               </p>
               <p className="text-lg font-bold font-mono tabular-nums text-text-primary mt-0.5">
                 {streakSemanas} <span className="text-[10px] font-normal text-text-muted font-sans">{streakSemanas === 1 ? 'semana' : 'semanas'}</span>
               </p>
             </div>
+            {/* Sparkline laranja decorativa */}
+            <svg className="absolute bottom-0 left-0 right-0 w-full" height="28" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="spark-orange" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#EA8A5D" stopOpacity="0.22"/>
+                  <stop offset="100%" stopColor="#EA8A5D" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,22 C15,18 25,14 35,16 C45,18 55,10 65,8 C75,6 85,4 100,2" stroke="#EA8A5D" strokeWidth="1.5" fill="none"/>
+              <path d="M0,22 C15,18 25,14 35,16 C45,18 55,10 65,8 C75,6 85,4 100,2 L100,28 L0,28 Z" fill="url(#spark-orange)"/>
+            </svg>
           </div>
 
           {/* Frequência semanal */}
-          <div className="bg-surface-1 border border-border-subtle rounded-lg px-3 py-2 flex items-center justify-between">
-            <div className="min-w-0">
+          <div
+            className="rounded-[16px] px-3 py-2 flex items-center justify-between border relative overflow-hidden"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(65,145,243,0.08)' }}
+          >
+            <div className="min-w-0 relative z-10">
               <p className="text-[9px] font-semibold uppercase tracking-[0.06em] text-text-muted flex items-center gap-1">
-                <Lightning className="w-3.5 h-3.5 shrink-0 text-text-muted" weight="fill" />
+                <Lightning className="w-3.5 h-3.5 shrink-0" weight="fill" style={{ color: '#4191F3' }} />
                 <span>Esta semana</span>
               </p>
               <p className="text-lg font-bold font-mono tabular-nums text-text-primary mt-0.5">
@@ -883,15 +936,40 @@ export default function AlunoDashboardPage() {
                 <span className="text-[10px] font-normal text-text-muted font-sans ml-1">treinos</span>
               </p>
             </div>
+            {/* Sparkline azul decorativa */}
+            <svg className="absolute bottom-0 left-0 right-0 w-full" height="28" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="spark-blue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4191F3" stopOpacity="0.22"/>
+                  <stop offset="100%" stopColor="#4191F3" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,24 C12,20 22,17 34,14 C46,11 56,8 68,6 C80,4 90,3 100,1" stroke="#4191F3" strokeWidth="1.5" fill="none"/>
+              <path d="M0,24 C12,20 22,17 34,14 C46,11 56,8 68,6 C80,4 90,3 100,1 L100,28 L0,28 Z" fill="url(#spark-blue)"/>
+            </svg>
           </div>
         </div>
 
         {/* ── 6. Card: Nutrição (simplificado — sem "HORA DE COMER") ── */}
         {planoNutricao && (
-          <div className="mx-4 mb-2 bg-surface-1 border border-border-subtle rounded-lg px-4 py-3 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted mb-0.5">
-                Nutrição
+          <div
+            className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border relative overflow-hidden"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(95,191,143,0.07)' }}
+          >
+            {/* Plate/fork illustration decorativa */}
+            <div className="absolute right-4 top-0 bottom-0 flex items-center pointer-events-none select-none opacity-10">
+              <svg viewBox="0 0 40 40" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="16" stroke="#5FBF8F" strokeWidth="1.5"/>
+                <circle cx="20" cy="20" r="10" stroke="#5FBF8F" strokeWidth="1"/>
+                <path d="M13,20 L27,20" stroke="#5FBF8F" strokeWidth="1.2" strokeLinecap="round"/>
+                <path d="M31,10 C31,10 33,13 33,16 C33,19 31,20 31,20 L31,30" stroke="#5FBF8F" strokeWidth="1.2" strokeLinecap="round"/>
+                <path d="M9,10 L9,16 M9,16 C9,18 11,20 11,20 L11,30 M11,10 L11,16" stroke="#5FBF8F" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] mb-0.5 flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full border flex-shrink-0 inline-block" style={{ borderColor: '#5FBF8F', background: 'rgba(95,191,143,0.15)' }} />
+                <span style={{ color: '#5FBF8F' }}>Nutrição</span>
               </p>
               <p className="text-sm font-semibold text-text-primary">
                 {planoNutricao.nome}
@@ -912,7 +990,7 @@ export default function AlunoDashboardPage() {
             <button
               onClick={() => router.push('/aluno/plano-alimentar')}
               id="btn-ver-plano-nutricao"
-              className="flex items-center gap-1 text-xs font-medium text-brand cursor-pointer"
+              className="flex items-center gap-1 text-xs font-medium text-brand cursor-pointer relative z-10 flex-shrink-0 ml-2"
             >
               Ver plano
               <CaretRight className="w-3.5 h-3.5" />
@@ -921,11 +999,14 @@ export default function AlunoDashboardPage() {
         )}
 
         {/* ── 7. Hidratação (Compacto) ── */}
-        <div className="mx-4 mb-2 bg-surface-1 border border-border-subtle rounded-lg px-4 py-3 flex items-center justify-between">
+        <div
+          className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border"
+          style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(72,128,216,0.07)' }}
+        >
           <div className="flex items-center gap-2">
-            <Drop className="w-4 h-4 text-brand" />
+            <Drop className="w-4 h-4" style={{ color: '#4880D8' }} />
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em]" style={{ color: '#4880D8' }}>
                 Hidratação
               </p>
               <p className="text-xs font-bold text-text-primary mt-0.5">
@@ -939,7 +1020,8 @@ export default function AlunoDashboardPage() {
               onClick={() => updateAgua(-1)}
               disabled={savingAgua || agua.copos === 0}
               id="btn-dashboard-remover-copo"
-              className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center disabled:opacity-30 cursor-pointer"
+              className="w-8 h-8 rounded-lg border flex items-center justify-center disabled:opacity-30 cursor-pointer"
+              style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
             >
               <Minus className="w-3.5 h-3.5 text-text-secondary" />
             </button>
@@ -950,7 +1032,8 @@ export default function AlunoDashboardPage() {
               onClick={() => updateAgua(1)}
               disabled={savingAgua || agua.copos >= metaCopos}
               id="btn-dashboard-adicionar-copo"
-              className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center disabled:opacity-30 cursor-pointer text-white"
+              className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30 cursor-pointer text-white"
+              style={{ background: 'linear-gradient(135deg, #2F6FFF 0%, #1B56E2 60%, #1846B8 100%)' }}
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -961,7 +1044,8 @@ export default function AlunoDashboardPage() {
         {parceiros.length > 0 && (
           <Link
             href="/aluno/parceiros"
-            className="mx-4 mb-2 flex items-center justify-between px-4 py-3 bg-surface-1 border border-border-subtle rounded-lg text-sm text-text-secondary hover:text-text-primary transition-colors"
+            className="mx-4 mb-2 flex items-center justify-between px-4 py-3 rounded-[16px] border text-sm text-text-secondary hover:text-text-primary transition-colors"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
           >
             <span>Benefícios exclusivos disponíveis</span>
             <ArrowRight className="w-4 h-4 flex-shrink-0 text-text-muted" />
@@ -973,7 +1057,8 @@ export default function AlunoDashboardPage() {
           <Link
             href="/aluno/medidas"
             id="btn-registrar-evolucao"
-            className="h-11 bg-surface-1 border border-border-subtle rounded-lg text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
+            className="h-11 rounded-[16px] border text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
           >
             <TrendUp className="w-3.5 h-3.5" />
             Registrar evolução
@@ -981,7 +1066,8 @@ export default function AlunoDashboardPage() {
           <Link
             href="/aluno/treinos"
             id="btn-ver-historico"
-            className="h-11 bg-surface-1 border border-border-subtle rounded-lg text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
+            className="h-11 rounded-[16px] border text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
           >
             <Clock className="w-3.5 h-3.5" />
             Ver histórico

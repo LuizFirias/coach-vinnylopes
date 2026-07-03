@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   House, Barbell, ForkKnife, User,
   Users, Chat, Plus, BookOpen, X, Handshake, ChartBar, ShieldWarning,
-  AppleLogo, Trophy, List,
+  AppleLogo, Trophy, List, Link as LinkIcon,
 } from '@phosphor-icons/react';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
@@ -89,21 +89,25 @@ export default function BottomNav() {
                   href={href}
                   className={cn(
                     'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
-                    isActive ? 'text-brand' : 'text-text-tertiary',
+                    isActive ? 'text-[#1C65E8]' : 'text-text-tertiary',
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <span
                     className={cn(
                       'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-2xl transition-colors duration-fast',
-                      isActive && 'bg-brand/10',
+                      isActive && 'bg-[#1C65E8]/10',
                     )}
                   >
                     <Icon className={cn('w-[18px] h-[18px] transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                    <span className={cn('text-[9px]', isActive ? 'font-semibold' : 'font-medium')}>
+                    <span className={cn('text-[9px]', isActive ? 'font-semibold text-[#77ACF3]' : 'font-medium')}>
                       {label}
                     </span>
                   </span>
+                  {/* Indicador de aba ativa */}
+                  {isActive && (
+                    <span className="w-1 h-1 rounded-full mt-0.5 flex-shrink-0" style={{ background: '#1C65E8' }} />
+                  )}
                 </Link>
               </li>
             );
@@ -201,7 +205,7 @@ export default function BottomNav() {
             >
               {fabOpen
                 ? <X size={22} weight="bold" />
-                : <List size={22} weight="bold" />
+                : <LinkIcon size={22} weight="bold" />
               }
             </button>
           </li>
