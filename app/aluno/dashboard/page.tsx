@@ -644,7 +644,7 @@ export default function AlunoDashboardPage() {
   const totalExercicios = treinoHoje?.qtdExercicios ?? 0;
   const streakSemanas = kpis?.streak_atual ?? 0;
   const treinosSemana = diasSemana.filter(dia => dia.treinoConcluido).length;
-  const metaSemana = 5;
+  const metaSemana = diasSemana.filter(dia => dia.temTreino && !dia.isOff).length;
 
   const weekLabel = getWeekLabel(weekOffset);
   const today = getTodayBrazil();
