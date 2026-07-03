@@ -31,6 +31,7 @@ import {
   Cell
 } from "recharts";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { MobileListRow } from "@/app/components/MobileListRow";
 import { cn } from "@/lib/utils/cn";
 
 // Interfaces
@@ -970,7 +971,8 @@ export default function AdminDashboard() {
                 </Link>
               </div>
 
-              <div className="overflow-x-auto scrollbar-hide">
+              {/* Desktop: tabela */}
+              <div className="hidden md:block overflow-x-auto scrollbar-hide">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="border-b border-border-subtle">
@@ -991,7 +993,7 @@ export default function AdminDashboard() {
 
                       return (
                         <tr key={aluno.id} className="border-b border-border-subtle/50 last:border-b-0 hover:bg-surface-2/40 transition-colors">
-                          <td className="py-2.5 text-xs font-bold text-text-primary">
+                          <td className="py-2.5 text-xs font-bold text-text-primary max-w-[160px] truncate">
                             {aluno.coaching_reference || aluno.full_name || "Aluno"}
                           </td>
                           <td className="py-2.5 text-xs">
@@ -1021,6 +1023,49 @@ export default function AdminDashboard() {
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile: lista de cards */}
+              <div className="md:hidden">
+                {saudeAlunos.slice(0, 5).map((aluno) => {
+                  const expiration = aluno.data_expiracao ? new Date(aluno.data_expiracao) : null;
+                  const isPaid = aluno.status_pagamento === 'pago';
+                  const isExpired = expiration && expiration < today;
+                  const isActive = isPaid && (!expiration || expiration >= today);
+
+                  return (
+                    <MobileListRow
+                      key={aluno.id}
+                      name={aluno.coaching_reference || aluno.full_name || "Aluno"}
+                      badge={
+                        <span className={cn(
+                          "shrink-0 px-2 py-0.5 rounded-full font-semibold uppercase text-[8px] tracking-wider",
+                          isActive ? "bg-success-subtle text-success border border-success/10" : "bg-danger-subtle text-danger border border-danger/10"
+                        )}>
+                          {isActive ? "Ativo" : isExpired ? "Expirado" : "Pendente"}
+                        </span>
+                      }
+                      topRight={
+                        <Link href={`/admin/aluno/${aluno.id}`} className="text-brand text-xs font-semibold inline-flex items-center gap-0.5 active:opacity-70">
+                          Perfil <ArrowRight size={10} />
+                        </Link>
+                      }
+                      meta={
+                        <>
+                          <span className="capitalize">{aluno.tipo_plano || "Sem plano"}</span>
+                          <span className="text-text-tertiary">•</span>
+                          <span>{aluno.ultimo_checkin ? timeAgo(aluno.ultimo_checkin) : "Sem treinos"}</span>
+                          {expiration && (
+                            <>
+                              <span className="text-text-tertiary">•</span>
+                              <span className="text-text-tertiary">vence {expiration.toLocaleDateString('pt-BR')}</span>
+                            </>
+                          )}
+                        </>
+                      }
+                    />
+                  );
+                })}
               </div>
             </div>
 
