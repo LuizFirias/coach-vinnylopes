@@ -125,6 +125,13 @@ export default function AlunoPerfil() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
+  
+  // Modais de edição de campos selecionáveis
+  const [editingSexo, setEditingSexo] = useState(false);
+  const [editingObjetivo, setEditingObjetivo] = useState(false);
+  const [editingUnidadePeso, setEditingUnidadePeso] = useState(false);
+  const [editingUnidadeMedida, setEditingUnidadeMedida] = useState(false);
+  const [editingIncrementoPeso, setEditingIncrementoPeso] = useState(false);
 
   // Hevy Dashboard States
   const [showSettings, setShowSettings] = useState(false);
@@ -428,137 +435,15 @@ export default function AlunoPerfil() {
             <SettingsRow icon={User} label="Nome" value={profile.full_name} onClick={() => setChangeNameOpen(true)} />
             <SettingsRow icon={Calendar} label="Data de nascimento" value={profile.date_of_birth ? new Date(profile.date_of_birth + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não informada'} onClick={() => setDateOfBirthOpen(true)} />
             <SettingsRow icon={Envelope} label="E-mail" value={email.length > 22 ? email.slice(0, 20) + '…' : email} />
-            <div className="w-full border-b border-border-subtle last:border-b-0">
-              <button
-                type="button"
-                onClick={() => setShowSettings(true)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
-              >
-                <UserCircle className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
-                <div className="flex-1">
-                  <span className="block text-sm text-text-primary">Sexo</span>
-                  <select
-                    value={profile.sexo || ''}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      savePrefs({ sexo: (e.target.value as Profile['sexo']) || null });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
-                  >
-                    <option value="">Não informado</option>
-                    <option value="masculino">Masculino</option>
-                    <option value="feminino">Feminino</option>
-                    <option value="outro">Outro</option>
-                  </select>
-                </div>
-              </button>
-            </div>
-            <div className="w-full border-b border-border-subtle last:border-b-0">
-              <button
-                type="button"
-                onClick={() => setShowSettings(true)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
-              >
-                <Target className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
-                <div className="flex-1">
-                  <span className="block text-sm text-text-primary">Objetivo</span>
-                  <select
-                    value={profile.objetivo || ''}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      savePrefs({ objetivo: (e.target.value as Profile['objetivo']) || null });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
-                  >
-                    <option value="">Não informado</option>
-                    <option value="cutting">Definição (Cutting)</option>
-                    <option value="bulking">Ganho de massa (Bulking)</option>
-                    <option value="manutencao">Manutenção</option>
-                    <option value="recomposicao">Recomposição</option>
-                  </select>
-                </div>
-              </button>
-            </div>
+            <SettingsRow icon={UserCircle} label="Sexo" value={profile.sexo ? labelSexo[profile.sexo] : 'Não informado'} onClick={() => setEditingSexo(true)} />
+            <SettingsRow icon={Target} label="Objetivo" value={profile.objetivo ? labelObjetivo[profile.objetivo] : 'Não informado'} onClick={() => setEditingObjetivo(true)} />
           </SectionCard>
 
           {/* ── Treino ── */}
           <SectionCard title="Treino">
-            <div className="w-full border-b border-border-subtle last:border-b-0">
-              <button
-                type="button"
-                onClick={() => setShowSettings(true)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
-              >
-                <Scales className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
-                <div className="flex-1">
-                  <span className="block text-sm text-text-primary">Unidade de peso</span>
-                  <select
-                    value={profile.unidade_peso}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      savePrefs({ unidade_peso: e.target.value as 'kg' | 'lb' });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
-                  >
-                    <option value="kg">KG</option>
-                    <option value="lb">LB</option>
-                  </select>
-                </div>
-              </button>
-            </div>
-            <div className="w-full border-b border-border-subtle last:border-b-0">
-              <button
-                type="button"
-                onClick={() => setShowSettings(true)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
-              >
-                <Ruler className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
-                <div className="flex-1">
-                  <span className="block text-sm text-text-primary">Unidade de medida</span>
-                  <select
-                    value={profile.unidade_medida}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      savePrefs({ unidade_medida: e.target.value as 'cm' | 'in' });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
-                  >
-                    <option value="cm">CM</option>
-                    <option value="in">IN</option>
-                  </select>
-                </div>
-              </button>
-            </div>
-            <div className="w-full border-b border-border-subtle last:border-b-0">
-              <button
-                type="button"
-                onClick={() => setShowSettings(true)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-80"
-              >
-                <Barbell className="w-4 h-4 flex-shrink-0 text-text-tertiary" />
-                <div className="flex-1">
-                  <span className="block text-sm text-text-primary">Incremento padrão de carga</span>
-                  <select
-                    value={profile.incremento_peso_padrao}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      savePrefs({ incremento_peso_padrao: Number(e.target.value) });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-surface-2 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand font-medium mt-1"
-                  >
-                    <option value="1">1 {profile.unidade_peso}</option>
-                    <option value="1.25">1.25 {profile.unidade_peso}</option>
-                    <option value="2.5">2.5 {profile.unidade_peso}</option>
-                    <option value="5">5 {profile.unidade_peso}</option>
-                  </select>
-                </div>
-              </button>
-            </div>
+            <SettingsRow icon={Scales} label="Unidade de peso" value={profile.unidade_peso.toUpperCase()} onClick={() => setEditingUnidadePeso(true)} />
+            <SettingsRow icon={Ruler} label="Unidade de medida" value={profile.unidade_medida.toUpperCase()} onClick={() => setEditingUnidadeMedida(true)} />
+            <SettingsRow icon={Barbell} label="Incremento padrão de carga" value={`${profile.incremento_peso_padrao} ${profile.unidade_peso}`} onClick={() => setEditingIncrementoPeso(true)} />
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle last:border-b-0">
               <EyeSlash className="w-4 h-4 text-text-tertiary flex-shrink-0" />
               <span className="flex-1 text-sm text-text-primary">Oculto no ranking</span>
@@ -639,6 +524,183 @@ export default function AlunoPerfil() {
           currentName={profile.full_name || ''}
           onSuccess={(newName) => setProfile(p => ({ ...p, full_name: newName }))}
         />
+        
+        {/* Modal de Sexo */}
+        {editingSexo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <h3 className="text-base font-bold text-text-primary mb-4">Selecione seu sexo</h3>
+              <div className="flex flex-col gap-3 mb-4">
+                {[
+                  { value: 'masculino', label: 'Masculino' },
+                  { value: 'feminino', label: 'Feminino' },
+                  { value: 'outro', label: 'Outro' },
+                  { value: null, label: 'Não informado' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value || 'null'}
+                    onClick={() => {
+                      savePrefs({ sexo: opt.value as Profile['sexo'] || null });
+                      setEditingSexo(false);
+                    }}
+                    className={cn(
+                      'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
+                      profile.sexo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEditingSexo(false)}
+                className="w-full h-10 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Modal de Objetivo */}
+        {editingObjetivo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <h3 className="text-base font-bold text-text-primary mb-4">Selecione seu objetivo</h3>
+              <div className="flex flex-col gap-3 mb-4">
+                {[
+                  { value: 'cutting', label: 'Definição (Cutting)' },
+                  { value: 'bulking', label: 'Ganho de massa (Bulking)' },
+                  { value: 'manutencao', label: 'Manutenção' },
+                  { value: 'recomposicao', label: 'Recomposição' },
+                  { value: null, label: 'Não informado' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value || 'null'}
+                    onClick={() => {
+                      savePrefs({ objetivo: opt.value as Profile['objetivo'] || null });
+                      setEditingObjetivo(false);
+                    }}
+                    className={cn(
+                      'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
+                      profile.objetivo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEditingObjetivo(false)}
+                className="w-full h-10 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Modal de Unidade de Peso */}
+        {editingUnidadePeso && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <h3 className="text-base font-bold text-text-primary mb-4">Selecione a unidade de peso</h3>
+              <div className="flex flex-col gap-3 mb-4">
+                {[
+                  { value: 'kg', label: 'Quilogramas (kg)' },
+                  { value: 'lb', label: 'Libras (lb)' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      savePrefs({ unidade_peso: opt.value as 'kg' | 'lb' });
+                      setEditingUnidadePeso(false);
+                    }}
+                    className={cn(
+                      'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
+                      profile.unidade_peso === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEditingUnidadePeso(false)}
+                className="w-full h-10 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Modal de Unidade de Medida */}
+        {editingUnidadeMedida && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <h3 className="text-base font-bold text-text-primary mb-4">Selecione a unidade de medida</h3>
+              <div className="flex flex-col gap-3 mb-4">
+                {[
+                  { value: 'cm', label: 'Centímetros (cm)' },
+                  { value: 'in', label: 'Polegadas (in)' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      savePrefs({ unidade_medida: opt.value as 'cm' | 'in' });
+                      setEditingUnidadeMedida(false);
+                    }}
+                    className={cn(
+                      'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
+                      profile.unidade_medida === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEditingUnidadeMedida(false)}
+                className="w-full h-10 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Modal de Incremento de Peso */}
+        {editingIncrementoPeso && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-surface-1 border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <h3 className="text-base font-bold text-text-primary mb-4">Incremento padrão de carga</h3>
+              <div className="flex flex-col gap-3 mb-4">
+                {[1, 1.25, 2.5, 5].map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      savePrefs({ incremento_peso_padrao: opt });
+                      setEditingIncrementoPeso(false);
+                    }}
+                    className={cn(
+                      'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
+                      profile.incremento_peso_padrao === opt ? 'bg-brand text-text-on-brand border-brand' : 'bg-surface-2 text-text-primary border-border-default hover:border-brand'
+                    )}
+                  >
+                    {opt} {profile.unidade_peso}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setEditingIncrementoPeso(false)}
+                className="w-full h-10 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
         
         {deleteConfirmOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
