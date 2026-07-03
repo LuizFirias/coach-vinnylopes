@@ -384,7 +384,10 @@ export default function EstatisticasPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <DumbbellLoader text="Carregando estatísticas..." />
       </div>
     );
@@ -397,11 +400,18 @@ export default function EstatisticasPage() {
     const top3 = muscleSetsData.slice(0, 3).map(m => m.name);
     const COLORS = ['var(--color-brand)', '#a855f7', '#eab308'];
     return (
-      <div className="min-h-screen bg-surface-0 pb-32 text-text-primary">
+      <div
+        className="min-h-screen pb-32 text-text-primary"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <div className="max-w-lg mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-            <button onClick={() => setScreen('main')} className="w-9 h-9 rounded-full bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors">
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+            <button
+              onClick={() => setScreen('main')}
+              className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               <ArrowLeft size={18} />
             </button>
             <h1 className="text-sm font-semibold text-text-primary">Séries por músculo</h1>
@@ -413,14 +423,16 @@ export default function EstatisticasPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setSetCountPeriod(p => p === 'last30' ? 'last90' : 'last30')}
-                className="flex items-center gap-1.5 px-3 py-2 bg-surface-1 border border-border-subtle rounded-xl text-xs font-semibold text-text-primary hover:bg-surface-2 transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary hover:bg-white/5 transition-all"
+                style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
               >
                 {setCountPeriod === 'last30' ? 'Últimos 30 dias' : 'Últimos 90 dias'}
                 <CaretRight size={12} className="rotate-90 opacity-60" />
               </button>
               <button
                 onClick={() => setSetCountGranularity(g => g === 'week' ? 'month' : 'week')}
-                className="flex items-center gap-1.5 px-3 py-2 bg-surface-1 border border-border-subtle rounded-xl text-xs font-semibold text-text-primary hover:bg-surface-2 transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary hover:bg-white/5 transition-all"
+                style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
               >
                 {setCountGranularity === 'week' ? 'Semana' : 'Mês'}
                 <CaretRight size={12} className="rotate-90 opacity-60" />
@@ -448,7 +460,7 @@ export default function EstatisticasPage() {
 
             {/* Table: Muscle | Sets */}
             <div>
-              <div className="flex justify-between items-center py-2 border-b border-border-subtle mb-1">
+              <div className="flex justify-between items-center py-2 border-b mb-1" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
                 <span className="text-xs text-text-tertiary font-semibold">Músculo</span>
                 <span className="text-xs text-text-tertiary font-semibold">Séries: {MONTHS_PT[new Date().getMonth()]}</span>
               </div>
@@ -479,17 +491,27 @@ export default function EstatisticasPage() {
   // Muscle Distribution Chart screen (Radar)
   if (screen === 'muscle-chart') {
     return (
-      <div className="min-h-screen bg-surface-0 pb-32 text-text-primary">
+      <div
+        className="min-h-screen pb-32 text-text-primary"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-            <button onClick={() => setScreen('main')} className="w-9 h-9 rounded-full bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors">
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+            <button
+              onClick={() => setScreen('main')}
+              className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               <ArrowLeft size={18} />
             </button>
             <h1 className="text-sm font-semibold text-text-primary">Distribuição muscular</h1>
             <div className="w-9" />
           </div>
           <div className="p-4 flex flex-col gap-5">
-            <button className="flex items-center gap-1.5 px-3 py-2 bg-surface-1 border border-border-subtle rounded-xl text-xs font-semibold text-text-primary self-start">
+            <button
+              className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary self-start"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               Últimos 30 dias <CaretRight size={12} className="rotate-90 opacity-60" />
             </button>
             {/* Radar */}
@@ -512,7 +534,11 @@ export default function EstatisticasPage() {
                 { label: 'Treinos', value: new Set(historico.filter(h => { const d = new Date(h.data_conclusao); return Date.now() - d.getTime() <= 30 * 86400000; }).map(h => h.data_conclusao ? toISODate(new Date(h.data_conclusao)) : '')).size.toString() },
                 { label: 'Duração estimada', value: (() => { const s = historico.filter(h => Date.now() - new Date(h.data_conclusao).getTime() <= 30 * 86400000); const sets = s.reduce((acc, r) => acc + (r.dados_sessao?.series || []).filter((x: any) => x.completado).length, 0); const m = sets * 4 + 10; return `${Math.floor(m / 60)}h ${m % 60}min`; })() },
               ].map(stat => (
-                <div key={stat.label} className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
+                <div
+                  key={stat.label}
+                  className="border rounded-2xl p-4"
+                  style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                >
                   <p className="text-xs text-text-tertiary mb-1">{stat.label}</p>
                   <p className="text-xl font-bold text-text-primary">{stat.value}</p>
                 </div>
@@ -546,10 +572,17 @@ export default function EstatisticasPage() {
     const totalSets = Object.values(allMuscleSets).reduce((a, b) => a + b, 0);
 
     return (
-      <div className="min-h-screen bg-surface-0 pb-32 text-text-primary">
+      <div
+        className="min-h-screen pb-32 text-text-primary"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-            <button onClick={() => setScreen('main')} className="w-9 h-9 rounded-full bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors">
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+            <button
+              onClick={() => setScreen('main')}
+              className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               <ArrowLeft size={18} />
             </button>
             <h1 className="text-sm font-semibold text-text-primary">Distribuição corporal</h1>
@@ -584,7 +617,10 @@ export default function EstatisticasPage() {
               })}
             </div>
             {/* Body charts FRONT + BACK side by side */}
-            <div className="flex justify-around items-center bg-surface-1/50 border border-border-subtle/30 py-4 px-2 rounded-2xl">
+            <div
+              className="flex justify-around items-center border py-4 px-2 rounded-2xl"
+              style={{ background: 'rgba(11,19,32,0.5)', borderColor: 'rgba(41,48,61,0.3)' }}
+            >
               <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
                 <MuscleBodyChart muscleIntensity={intensity} side="front" />
               </div>
@@ -593,8 +629,14 @@ export default function EstatisticasPage() {
               </div>
             </div>
             {/* Muscle table */}
-            <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
-              <div className="flex justify-between items-center px-4 py-3 border-b border-border-subtle bg-surface-2">
+            <div
+              className="border rounded-2xl overflow-hidden"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
+              <div
+                className="flex justify-between items-center px-4 py-3 border-b"
+                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+              >
                 <span className="text-xs font-semibold text-text-tertiary">Músculo</span>
                 <span className="text-xs font-semibold text-text-tertiary">Séries</span>
               </div>
@@ -623,22 +665,35 @@ export default function EstatisticasPage() {
   // Main Exercises screen
   if (screen === 'main-exercises') {
     return (
-      <div className="min-h-screen bg-surface-0 pb-32 text-text-primary">
+      <div
+        className="min-h-screen pb-32 text-text-primary"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-            <button onClick={() => setScreen('main')} className="w-9 h-9 rounded-full bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors">
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+            <button
+              onClick={() => setScreen('main')}
+              className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               <ArrowLeft size={18} />
             </button>
             <h1 className="text-sm font-semibold text-text-primary">Exercícios principais</h1>
             <div className="w-9" />
           </div>
           <div className="p-4 flex flex-col gap-4">
-            <button className="flex items-center gap-1.5 px-3 py-2 bg-surface-1 border border-border-subtle rounded-xl text-xs font-semibold text-text-primary self-start">
+            <button
+              className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary self-start"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               Últimos 30 dias <CaretRight size={12} className="rotate-90 opacity-60" />
             </button>
             {mainExercises.map((item, idx) => (
               <div key={idx} className="flex items-center gap-4 py-3 border-b border-border-subtle/50 last:border-b-0">
-                <div className="w-12 h-12 rounded-full bg-surface-2 border border-border-subtle flex items-center justify-center flex-shrink-0">
+                <div
+                  className="w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0"
+                  style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+                >
                   <span className="text-lg">🏋️</span>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -673,11 +728,18 @@ export default function EstatisticasPage() {
     };
 
     return (
-      <div className="min-h-screen bg-surface-0 pb-32 text-text-primary">
+      <div
+        className="min-h-screen pb-32 text-text-primary"
+        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      >
         <div className="max-w-lg mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-            <button onClick={() => setScreen('main')} className="w-9 h-9 rounded-full bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors">
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+            <button
+              onClick={() => setScreen('main')}
+              className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               <ArrowLeft size={18} />
             </button>
             <h1 className="text-sm font-semibold text-text-primary">Relatório de {MONTHS_FULL[selectedMonth]}</h1>
@@ -712,7 +774,11 @@ export default function EstatisticasPage() {
             {/* Filter pills */}
             <div className="flex gap-2 flex-wrap">
               {['Treinos', 'Duração', 'Volume', 'Séries'].map((label, i) => (
-                <button key={label} className={cn('px-3 py-1.5 rounded-full text-xs font-semibold transition-all', i === 0 ? 'bg-brand text-white' : 'bg-surface-1 border border-border-subtle text-text-secondary hover:text-text-primary')}>
+                <button
+                  key={label}
+                  className={cn('px-3 py-1.5 rounded-full text-xs font-semibold transition-all', i === 0 ? 'bg-brand text-white' : 'border text-text-secondary hover:text-text-primary')}
+                  style={i === 0 ? undefined : { background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                >
                   {label}
                 </button>
               ))}
@@ -728,7 +794,11 @@ export default function EstatisticasPage() {
                   { label: 'Volume', value: totalVolume > 0 ? `${(totalVolume / 1000).toFixed(1)}k kg` : `${totalSets} séries` },
                   { label: 'Séries', value: totalSets.toString() },
                 ].map(stat => (
-                  <div key={stat.label} className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
+                  <div
+                    key={stat.label}
+                    className="border rounded-2xl p-4"
+                    style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                  >
                     <p className="text-xs text-text-tertiary mb-1">{stat.label}</p>
                     <p className="text-xl font-bold text-text-primary">{stat.value}</p>
                   </div>
@@ -746,7 +816,10 @@ export default function EstatisticasPage() {
                 </div>
               </div>
 
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
+              <div
+                className="border rounded-2xl p-4"
+                style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              >
                 {/* Calendar header */}
                 <div className="flex justify-between items-center mb-3">
                   <button onClick={prevMonth} className="text-brand text-lg px-1">‹</button>
@@ -817,7 +890,7 @@ export default function EstatisticasPage() {
                         <span className="text-sm text-text-primary">{muscle}</span>
                         <span className="text-sm font-bold text-text-primary">{sets}</span>
                       </div>
-                      <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#0D1829' }}>
                         <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${Math.round((sets / maxGroupSets) * 100)}%` }} />
                       </div>
                     </div>
@@ -835,7 +908,10 @@ export default function EstatisticasPage() {
                 <p className="text-xs font-semibold text-text-tertiary mb-3">Exercícios em Destaque</p>
                 {topExercises.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 py-3 border-b border-border-subtle/50 last:border-b-0">
-                    <div className="w-12 h-12 rounded-full bg-surface-2 border border-border-subtle flex items-center justify-center flex-shrink-0">
+                    <div
+                      className="w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0"
+                      style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+                    >
                       <span className="text-lg">🏋️</span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -855,12 +931,19 @@ export default function EstatisticasPage() {
 
   // ── MAIN STATISTICS SCREEN (identical to Hevy image 4) ────────────────────
   return (
-    <div className="min-h-screen bg-surface-0 pb-32 text-text-primary">
+    <div
+      className="min-h-screen pb-32 text-text-primary"
+      style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+    >
       <div className="max-w-lg mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-          <Link href="/aluno/perfil" className="w-9 h-9 rounded-full bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors">
+        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+          <Link
+            href="/aluno/perfil"
+            className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+          >
             <ArrowLeft size={18} />
           </Link>
           <h1 className="text-sm font-semibold text-text-primary">Estatísticas</h1>
@@ -895,7 +978,10 @@ export default function EstatisticasPage() {
           </div>
 
           {/* Body charts FRONT + BACK */}
-          <div className="flex justify-around items-center bg-surface-1/50 border border-border-subtle/30 py-4 px-2 rounded-2xl">
+          <div
+            className="flex justify-around items-center border py-4 px-2 rounded-2xl"
+            style={{ background: 'rgba(11,19,32,0.5)', borderColor: 'rgba(41,48,61,0.3)' }}
+          >
             <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
               <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" />
             </div>
@@ -905,8 +991,14 @@ export default function EstatisticasPage() {
           </div>
 
           {/* Advanced Statistics menu (like Hevy) */}
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 bg-surface-2 border-b border-border-subtle">
+          <div
+            className="border rounded-2xl overflow-hidden"
+            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+          >
+            <div
+              className="px-4 py-3 border-b"
+              style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+            >
               <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Estatísticas avançadas</span>
             </div>
 
@@ -946,9 +1038,10 @@ export default function EstatisticasPage() {
                 key={item.screen}
                 onClick={() => setScreen(item.screen)}
                 className={cn(
-                  'w-full flex items-center gap-4 px-4 py-4 text-left hover:bg-surface-2 transition-colors active:bg-surface-3',
-                  idx < arr.length - 1 && 'border-b border-border-subtle'
+                  'w-full flex items-center gap-4 px-4 py-4 text-left hover:bg-white/5 transition-colors active:bg-white/10',
+                  idx < arr.length - 1 && 'border-b'
                 )}
+                style={idx < arr.length - 1 ? { borderColor: 'rgba(41,48,61,0.8)' } : undefined}
               >
                 <item.icon size={24} className="text-text-secondary flex-shrink-0" />
                 <div className="flex-1 min-w-0">

@@ -663,7 +663,7 @@ export default function AlunoDashboardPage() {
             {/* Saudação */}
             <h1 className="text-xl font-bold mt-0.5">
               <span className="text-text-primary">Olá, </span>
-              <span style={{ color: '#D6DBE6' }}>{primeiroNome}</span>
+              <span style={{ color: '#1E5AE1' }}>{primeiroNome}</span>
             </h1>
           </div>
           {/* Notificações */}
@@ -892,8 +892,8 @@ export default function AlunoDashboardPage() {
                 id="btn-iniciar-treino-dashboard"
                 className="w-full h-11 text-sm font-semibold text-white flex items-center justify-center gap-2 active:opacity-90"
                 style={{
-                  background: 'linear-gradient(135deg, #2F6FFF 0%, #1B56E2 60%, #1846B8 100%)',
-                  boxShadow: '0 8px 24px rgba(30, 88, 228, 0.35)',
+                    background: 'linear-gradient(180deg, #3A75F5 0%, #1E5AE1 60%, #1846B8 100%)',
+                    boxShadow: '0 4px 16px rgba(47,111,255,0.55), 0 12px 40px rgba(47,111,255,0.22), inset 0 1px 0 rgba(255,255,255,0.15)',
                   borderRadius: '16px',
                 }}
               >
@@ -939,7 +939,7 @@ export default function AlunoDashboardPage() {
           >
             <div className="min-w-0 relative z-10">
               <p className="text-[9px] font-semibold uppercase tracking-[0.06em] text-text-muted flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 shrink-0" weight="fill" style={{ color: '#EC7E52' }} />
+                <Flame className="w-3.5 h-3.5 shrink-0" weight="fill" style={{ color: '#F0692D' }} />
                 <span>Sequência</span>
               </p>
               <p className="text-lg font-bold font-mono tabular-nums text-text-primary mt-0.5">
@@ -995,13 +995,20 @@ export default function AlunoDashboardPage() {
             style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(95,191,143,0.07)' }}
           >
             {/* Plate/fork illustration decorativa */}
-            <div className="absolute right-4 top-0 bottom-0 flex items-center pointer-events-none select-none opacity-10">
-              <svg viewBox="0 0 40 40" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="20" cy="20" r="16" stroke="#5FBF8F" strokeWidth="1.5"/>
-                <circle cx="20" cy="20" r="10" stroke="#5FBF8F" strokeWidth="1"/>
-                <path d="M13,20 L27,20" stroke="#5FBF8F" strokeWidth="1.2" strokeLinecap="round"/>
-                <path d="M31,10 C31,10 33,13 33,16 C33,19 31,20 31,20 L31,30" stroke="#5FBF8F" strokeWidth="1.2" strokeLinecap="round"/>
-                <path d="M9,10 L9,16 M9,16 C9,18 11,20 11,20 L11,30 M11,10 L11,16" stroke="#5FBF8F" strokeWidth="1.2" strokeLinecap="round"/>
+            <div className="absolute right-0 top-0 bottom-0 flex items-center pointer-events-none select-none">
+              <svg
+                viewBox="0 0 180 120"
+                width="180"
+                height="120"
+                fill="none"
+                aria-hidden="true"
+                style={{ color: '#1E3C2D', opacity: 0.55 }}
+              >
+                {/* Prato: círculo externo + interno */}
+                <circle cx="70" cy="60" r="55" stroke="currentColor" strokeWidth="3"/>
+                <circle cx="70" cy="60" r="40" stroke="currentColor" strokeWidth="2"/>
+                {/* Garfo */}
+                <path d="M140,15 L140,45 M148,15 L148,45 M156,15 L156,45 M144,45 L152,45 L152,105 L144,105 Z" stroke="currentColor" strokeWidth="2.5" fill="currentColor"/>
               </svg>
             </div>
             <div className="relative z-10">
@@ -1042,7 +1049,7 @@ export default function AlunoDashboardPage() {
           style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(72,128,216,0.07)' }}
         >
           <div className="flex items-center gap-2">
-            <Drop className="w-4 h-4" style={{ color: '#4880D8' }} />
+            <Drop className="w-4 h-4" weight="fill" style={{ color: '#4880D8' }} />
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em]" style={{ color: '#4880D8' }}>
                 Hidratação

@@ -39,6 +39,32 @@ function getTodayISO() {
   return getTodayBrazil();
 }
 
+const pageBackgroundStyle = {
+  background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)'
+};
+const nutritionCardStyle = {
+  background: '#0B1320',
+  borderColor: 'rgba(41,48,61,0.8)',
+  boxShadow: '0 0 20px rgba(95,191,143,0.07)'
+};
+const hydrationCardStyle = {
+  background: '#0B1320',
+  borderColor: 'rgba(41,48,61,0.8)',
+  boxShadow: '0 0 20px rgba(72,128,216,0.07)'
+};
+const secondarySurfaceStyle = {
+  background: '#0D1829'
+};
+const cardBorderStyle = {
+  borderColor: 'rgba(41,48,61,0.8)'
+};
+const separatorBorderStyle = {
+  borderColor: 'rgba(41,48,61,0.4)'
+};
+const faintSeparatorBorderStyle = {
+  borderColor: 'rgba(41,48,61,0.24)'
+};
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function PlanoAlimentarPage() {
@@ -400,61 +426,61 @@ export default function PlanoAlimentarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 pb-24 scroll-content">
+      <div className="min-h-screen pb-24 scroll-content" style={pageBackgroundStyle}>
         <div className="max-w-2xl mx-auto flex flex-col pt-safe animate-pulse">
           {/* Header */}
           <div className="px-4 pt-4 pb-3">
-            <div className="h-3 w-28 bg-surface-2 rounded mb-2" />
-            <div className="h-6 w-20 bg-surface-2 rounded" />
+            <div className="h-3 w-28 rounded mb-2" style={secondarySurfaceStyle} />
+            <div className="h-6 w-20 rounded" style={secondarySurfaceStyle} />
           </div>
 
           {/* Active Plan Card Skeleton */}
-          <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4 space-y-4">
+          <div className="mx-4 mb-4 border rounded-[16px] p-4 space-y-4" style={nutritionCardStyle}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-surface-2" />
-                <div className="h-3 w-16 bg-surface-2 rounded" />
+                <span className="w-1.5 h-1.5 rounded-full" style={secondarySurfaceStyle} />
+                <div className="h-3 w-16 rounded" style={secondarySurfaceStyle} />
               </div>
               <div className="text-right flex flex-col items-end">
-                <div className="h-4 w-10 bg-surface-2 rounded mb-1" />
-                <div className="h-3 w-16 bg-surface-2 rounded" />
+                <div className="h-4 w-10 rounded mb-1" style={secondarySurfaceStyle} />
+                <div className="h-3 w-16 rounded" style={secondarySurfaceStyle} />
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="h-4 w-48 bg-surface-2 rounded" />
-              <div className="h-3 w-32 bg-surface-2 rounded" />
+              <div className="h-4 w-48 rounded" style={secondarySurfaceStyle} />
+              <div className="h-3 w-32 rounded" style={secondarySurfaceStyle} />
             </div>
 
-            <div className="w-full h-1 bg-surface-2 rounded-full" />
+            <div className="w-full h-1 rounded-full" style={secondarySurfaceStyle} />
 
-            <div className="grid grid-cols-4 gap-2 pt-3 border-t border-border-subtle/50">
+            <div className="grid grid-cols-4 gap-2 pt-3 border-t" style={separatorBorderStyle}>
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="text-center space-y-1">
-                  <div className="h-3 w-8 bg-surface-2 rounded mx-auto" />
-                  <div className="h-4 w-12 bg-surface-2 rounded mx-auto" />
+                  <div className="h-3 w-8 rounded mx-auto" style={secondarySurfaceStyle} />
+                  <div className="h-4 w-12 rounded mx-auto" style={secondarySurfaceStyle} />
                 </div>
               ))}
             </div>
           </div>
 
           {/* Water Card Skeleton */}
-          <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4 space-y-4">
+          <div className="mx-4 mb-4 border rounded-[16px] p-4 space-y-4" style={hydrationCardStyle}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <div className="h-3.5 w-3.5 bg-surface-2 rounded" />
-                <div className="h-3 w-20 bg-surface-2 rounded" />
+                <div className="h-3.5 w-3.5 rounded" style={secondarySurfaceStyle} />
+                <div className="h-3 w-20 rounded" style={secondarySurfaceStyle} />
               </div>
-              <div className="h-4 w-12 bg-surface-2 rounded" />
+              <div className="h-4 w-12 rounded" style={secondarySurfaceStyle} />
             </div>
 
-            <div className="w-full h-1.5 bg-surface-2 rounded-full" />
+            <div className="w-full h-1.5 rounded-full" style={secondarySurfaceStyle} />
 
             <div className="flex justify-between items-center">
-              <div className="h-8 w-24 bg-surface-2 rounded" />
+              <div className="h-8 w-24 rounded" style={secondarySurfaceStyle} />
               <div className="flex gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="w-8 h-8 rounded-lg bg-surface-2" />
+                  <div key={i} className="w-8 h-8 rounded-lg" style={secondarySurfaceStyle} />
                 ))}
               </div>
             </div>
@@ -462,17 +488,17 @@ export default function PlanoAlimentarPage() {
 
           {/* Meals List Skeleton */}
           <div className="mx-4 space-y-3">
-            <div className="h-3 w-24 bg-surface-2 rounded mb-2" />
+            <div className="h-3 w-24 rounded mb-2" style={secondarySurfaceStyle} />
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-surface-1 border border-border-subtle rounded-lg p-4 flex items-center justify-between h-14">
+              <div key={i} className="border rounded-[16px] p-4 flex items-center justify-between h-14" style={nutritionCardStyle}>
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-surface-2" />
+                  <div className="w-5 h-5 rounded-full" style={secondarySurfaceStyle} />
                   <div className="space-y-1.5">
-                    <div className="h-3 w-24 bg-surface-2 rounded" />
-                    <div className="h-2.5 w-16 bg-surface-2 rounded" />
+                    <div className="h-3 w-24 rounded" style={secondarySurfaceStyle} />
+                    <div className="h-2.5 w-16 rounded" style={secondarySurfaceStyle} />
                   </div>
                 </div>
-                <div className="h-4 w-4 bg-surface-2 rounded" />
+                <div className="h-4 w-4 rounded" style={secondarySurfaceStyle} />
               </div>
             ))}
           </div>
@@ -502,10 +528,9 @@ export default function PlanoAlimentarPage() {
   // Water
   const mlAtual = agua.copos * agua.ml_por_copo;
   const mlMeta = metaCopos * agua.ml_por_copo;
-
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-surface-0 pb-24 scroll-content">
+      <div className="min-h-screen pb-24 scroll-content" style={pageBackgroundStyle}>
         <div className="max-w-2xl mx-auto flex flex-col pt-safe">
 
           {/* ── Header — padrão igual ao dashboard, sem "← DASHBOARD" azul ── */}
@@ -513,7 +538,7 @@ export default function PlanoAlimentarPage() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted capitalize">
               {diaSemanaStr}, {diaNumStr} de {mesStr}
             </p>
-            <h1 className="text-xl font-bold text-text-primary mt-0.5">Nutrição</h1>
+            <h1 className="text-xl font-bold mt-0.5" style={{ color: '#5FBF8F' }}>Nutrição</h1>
           </div>
 
           {/* Feedback error toast */}
@@ -527,7 +552,7 @@ export default function PlanoAlimentarPage() {
           {/* ── SEM PLANO (Nem digital nem PDF) ── */}
           {!digitalPlan && !planoPDF && (
             <div className="flex flex-col items-center text-center gap-4 px-4 py-8">
-              <div className="w-16 h-16 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center">
+              <div className="w-16 h-16 border rounded-2xl flex items-center justify-center" style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}>
                 <ForkKnife className="w-8 h-8 text-brand" />
               </div>
               <div>
@@ -545,7 +570,7 @@ export default function PlanoAlimentarPage() {
                   { icon: '🥩', text: 'Consuma fontes limpas de proteínas em todas as refeições' },
                   { icon: '⏰', text: 'Tente comer a cada 3 ou 4 horas para manter o metabolismo ativo' },
                 ].map((tip, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-surface-1 border border-border-subtle rounded-xl px-4 py-3">
+                  <div key={i} className="flex items-start gap-3 border rounded-[16px] px-4 py-3" style={nutritionCardStyle}>
                     <span className="text-lg leading-none flex-shrink-0">{tip.icon}</span>
                     <span className="text-xs text-text-secondary leading-relaxed font-medium">{tip.text}</span>
                   </div>
@@ -558,7 +583,7 @@ export default function PlanoAlimentarPage() {
           {digitalPlan && (
             <>
               {/* Card de Plano Ativo — refatorado */}
-              <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4">
+              <div className="mx-4 mb-4 border rounded-[16px] p-4" style={nutritionCardStyle}>
 
                 {/* Status + adesão lado a lado */}
                 <div className="flex items-start justify-between mb-3">
@@ -580,7 +605,7 @@ export default function PlanoAlimentarPage() {
                 <p className="text-xs text-text-muted mt-0.5">Foco: {digitalPlan.goal || 'Hipertrofia'}</p>
 
                 {/* Barra de progresso */}
-                <div className="mt-3 w-full h-1 bg-surface-2 rounded-full overflow-hidden">
+                <div className="mt-3 w-full h-1 rounded-full overflow-hidden" style={secondarySurfaceStyle}>
                   <div
                     className="h-full bg-brand rounded-full transition-all duration-300"
                     style={{ width: `${totalMealsCount > 0 ? (completedMealsCount / totalMealsCount) * 100 : 0}%` }}
@@ -589,7 +614,7 @@ export default function PlanoAlimentarPage() {
 
                 {/* Macros — grid 4 colunas */}
                 {digitalPlan.calories_target && (
-                  <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border-subtle/50">
+                  <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t" style={separatorBorderStyle}>
                     {[
                       { label: 'Kcal',     atual: digitalPlanMacros.calories,  meta: digitalPlan.calories_target,   unit: '' },
                       { label: 'Proteína', atual: digitalPlanMacros.protein,   meta: digitalPlan.protein_target,    unit: 'g' },
@@ -622,12 +647,8 @@ export default function PlanoAlimentarPage() {
                   return (
                     <div
                       key={meal.id}
-                      className={cn(
-                        'bg-surface-1 border rounded-lg overflow-hidden transition-colors duration-100',
-                        isMealDone
-                          ? 'border-success/20 bg-success/5'
-                          : 'border-border-subtle'
-                      )}
+                      className="border rounded-[16px] overflow-hidden transition-colors duration-100"
+                      style={isMealDone ? { ...nutritionCardStyle, borderColor: 'rgba(34,197,94,0.2)' } : nutritionCardStyle}
                     >
                       {/* Header da refeição — sempre visível */}
                       <button
@@ -642,8 +663,9 @@ export default function PlanoAlimentarPage() {
                             'w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 cursor-pointer',
                             isMealDone
                               ? 'bg-success border-success'
-                              : 'border-border-default bg-surface-2'
+                              : 'border-border-default'
                           )}
+                          style={!isMealDone ? secondarySurfaceStyle : undefined}
                         >
                           {isMealDone && (
                             <Check className="w-3 h-3 text-white" weight="bold" />
@@ -681,7 +703,7 @@ export default function PlanoAlimentarPage() {
 
                       {/* Detalhes expandíveis */}
                       {isExpanded && (
-                        <div className="px-4 pb-3 border-t border-border-subtle/50">
+                        <div className="px-4 pb-3 border-t" style={separatorBorderStyle}>
                           {/* Foods list */}
                           {meal.items && meal.items.length > 0 && (
                             <div className="mt-3 flex flex-col gap-1.5">
@@ -689,7 +711,7 @@ export default function PlanoAlimentarPage() {
                                 const food = item.food;
                                 if (!food) return null;
                                 return (
-                                  <div key={itIdx} className="flex justify-between py-1.5 border-b border-border-subtle/30 last:border-0">
+                                  <div key={itIdx} className="flex justify-between py-1.5 border-b last:border-0" style={faintSeparatorBorderStyle}>
                                     <div>
                                       <p className="text-xs text-text-secondary">{food.name}</p>
                                       {/* Substituições */}
@@ -744,7 +766,8 @@ export default function PlanoAlimentarPage() {
                             <button
                               onClick={() => toggleDigitalMeal(meal.id)}
                               disabled={togglingMealId === meal.id}
-                              className="mt-3 w-full h-9 rounded-md bg-surface-2 border border-border-subtle text-xs font-semibold text-text-secondary flex items-center justify-center gap-1.5 cursor-pointer"
+                              className="mt-3 w-full h-9 rounded-md border text-xs font-semibold text-text-secondary flex items-center justify-center gap-1.5 cursor-pointer"
+                              style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
                             >
                               Desmarcar refeição
                             </button>
@@ -762,9 +785,9 @@ export default function PlanoAlimentarPage() {
           {!digitalPlan && planoPDF && (
             <>
               {/* PDF Highlight Card */}
-              <div className="mx-4 mb-4 bg-surface-1 border border-border-subtle rounded-lg p-4 flex items-center justify-between gap-3">
+              <div className="mx-4 mb-4 border rounded-[16px] p-4 flex items-center justify-between gap-3" style={nutritionCardStyle}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-brand flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg border flex items-center justify-center text-brand flex-shrink-0" style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}>
                     <ForkKnife className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
@@ -779,7 +802,8 @@ export default function PlanoAlimentarPage() {
                 <button
                   onClick={openPdf}
                   id="btn-ver-pdf-nutricao"
-                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg bg-surface-2 border border-border-subtle text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg border text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 cursor-pointer"
+                  style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Ver PDF
@@ -797,7 +821,7 @@ export default function PlanoAlimentarPage() {
                   </div>
 
                   {/* Progress bar */}
-                  <div className="h-1 bg-surface-2 rounded-full mb-4 overflow-hidden">
+                  <div className="h-1 rounded-full mb-4 overflow-hidden" style={secondarySurfaceStyle}>
                     <div
                       className="h-full bg-brand rounded-full transition-all duration-300"
                       style={{ width: totalLegacyMeals > 0 ? `${(completedLegacyMeals / totalLegacyMeals) * 100}%` : '0%' }}
@@ -813,12 +837,8 @@ export default function PlanoAlimentarPage() {
                       return (
                         <div
                           key={r.id}
-                          className={cn(
-                            'bg-surface-1 border rounded-lg overflow-hidden transition-colors duration-100',
-                            feita
-                              ? 'border-success/20 bg-success/5'
-                              : 'border-border-subtle'
-                          )}
+                          className="border rounded-[16px] overflow-hidden transition-colors duration-100"
+                          style={feita ? { ...nutritionCardStyle, borderColor: 'rgba(34,197,94,0.2)' } : nutritionCardStyle}
                         >
                           <button
                             onClick={() => ingreds.length > 0 && setExpandedMeals(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
@@ -831,8 +851,9 @@ export default function PlanoAlimentarPage() {
                                 'w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 cursor-pointer',
                                 feita
                                   ? 'bg-success border-success'
-                                  : 'border-border-default bg-surface-2'
+                                  : 'border-border-default'
                               )}
+                              style={!feita ? secondarySurfaceStyle : undefined}
                             >
                               {feita && (
                                 <Check className="w-3 h-3 text-white" weight="bold" />
@@ -863,9 +884,9 @@ export default function PlanoAlimentarPage() {
                           </button>
 
                           {expanded && ingreds.length > 0 && (
-                            <div className="px-4 pb-3 border-t border-border-subtle/50">
+                            <div className="px-4 pb-3 border-t" style={separatorBorderStyle}>
                               {ingreds.map((ing: any, i: number) => (
-                                <div key={i} className="flex justify-between py-1.5 border-b border-border-subtle/30 last:border-0">
+                                <div key={i} className="flex justify-between py-1.5 border-b last:border-0" style={faintSeparatorBorderStyle}>
                                   <p className="text-xs text-text-secondary">{ing.nome}</p>
                                   {ing.quantidade && (
                                     <p className="text-xs font-mono text-text-muted">{ing.quantidade}</p>
@@ -873,7 +894,7 @@ export default function PlanoAlimentarPage() {
                                 </div>
                               ))}
                               {r.observacoes && (
-                                <p className="mt-2 text-xs text-text-muted italic border-t border-border-subtle/50 pt-2">
+                                <p className="mt-2 text-xs text-text-muted italic border-t pt-2" style={separatorBorderStyle}>
                                   {r.observacoes}
                                 </p>
                               )}
@@ -901,13 +922,13 @@ export default function PlanoAlimentarPage() {
 
           {/* ── ÁGUA (Card de Hidratação refatorado — sempre visível se houver plano) ── */}
           {(digitalPlan || planoPDF) && (
-            <div className="mx-4 mb-6 bg-surface-1 border border-border-subtle rounded-lg p-4">
+            <div className="mx-4 mb-6 border rounded-[16px] p-4" style={hydrationCardStyle}>
 
               {/* Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Drop className="w-4 h-4 text-brand" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+                  <Drop className="w-4 h-4" weight="fill" style={{ color: '#4880D8' }} />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: '#4880D8' }}>
                     Hidratação
                   </p>
                 </div>
@@ -917,7 +938,7 @@ export default function PlanoAlimentarPage() {
               </div>
 
               {/* Barra de progresso de água */}
-              <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden mb-3">
+              <div className="w-full h-1.5 rounded-full overflow-hidden mb-3" style={secondarySurfaceStyle}>
                 <div
                   className="h-full bg-brand rounded-full transition-all duration-300"
                   style={{ width: `${Math.min((mlAtual / mlMeta) * 100, 100)}%` }}
@@ -937,13 +958,14 @@ export default function PlanoAlimentarPage() {
                       'aspect-square rounded-md flex items-center justify-center transition-colors duration-100 cursor-pointer',
                       i < agua.copos
                         ? 'bg-brand/20 border border-brand/40'
-                        : 'bg-surface-2 border border-border-subtle'
+                        : 'border'
                     )}
+                    style={i < agua.copos ? undefined : { ...secondarySurfaceStyle, ...cardBorderStyle }}
                   >
                     <Drop className={cn(
                       'w-3.5 h-3.5',
                       i < agua.copos ? 'text-brand' : 'text-border-default'
-                    )} />
+                    )} weight="fill" style={i < agua.copos ? { color: '#4880D8' } : { color: '#4880D8' }} />
                   </button>
                 ))}
               </div>
@@ -954,7 +976,8 @@ export default function PlanoAlimentarPage() {
                   onClick={() => updateAgua(-1)}
                   disabled={savingAgua || agua.copos === 0}
                   id="btn-remover-copo"
-                  className="w-10 h-10 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center disabled:opacity-30 active:bg-surface-3 cursor-pointer"
+                  className="w-10 h-10 rounded-lg border flex items-center justify-center disabled:opacity-30 active:opacity-80 cursor-pointer"
+                  style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
                 >
                   <Minus className="w-4 h-4 text-text-secondary" />
                 </button>
@@ -986,7 +1009,7 @@ export default function PlanoAlimentarPage() {
 
           {/* ── HISTÓRICO DE DOCUMENTOS PDF ADICIONAIS ── */}
           {historicoPDFs.length > 0 && (
-            <div className="mx-4 mb-6 bg-surface-1 border border-border-subtle rounded-lg p-4">
+            <div className="mx-4 mb-6 border rounded-[16px] p-4" style={nutritionCardStyle}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3 flex items-center gap-1.5">
                 <FilePdf className="w-3.5 h-3.5" />
                 Documentos em PDF
@@ -995,7 +1018,8 @@ export default function PlanoAlimentarPage() {
                 {historicoPDFs.map(histPlano => (
                   <div
                     key={histPlano.id}
-                    className="bg-surface-2 border border-border-subtle/50 rounded-lg p-3 flex items-center justify-between gap-3"
+                    className="border rounded-lg p-3 flex items-center justify-between gap-3"
+                    style={{ ...secondarySurfaceStyle, ...separatorBorderStyle }}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <FilePdf className="w-4 h-4 text-text-secondary shrink-0" />
@@ -1010,7 +1034,8 @@ export default function PlanoAlimentarPage() {
                     </div>
                     <button
                       onClick={() => openPdfForPlan(histPlano)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-3 border border-border-subtle text-[10px] font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 cursor-pointer"
+                      style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
                     >
                       Abrir PDF
                     </button>
