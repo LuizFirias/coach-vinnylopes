@@ -312,6 +312,16 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => { load(); }, [id]);
 
+  // Abre a aba indicada pela URL (?tab=), ex.: vindo da "Atividade recente" do dashboard
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    const abasPermitidas = ["visao-geral", "treinos", "nutricao", "evolucao", "financeiro", "fotos", "observacoes"];
+    if (tab && abasPermitidas.includes(tab)) {
+      setActiveTab(tab as typeof activeTab);
+    }
+  }, []);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleDelete = async () => {

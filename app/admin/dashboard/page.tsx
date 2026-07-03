@@ -864,22 +864,32 @@ export default function AdminDashboard() {
                         Nenhuma atividade recente encontrada.
                       </div>
                     ) : (
-                      atividades.map((act) => (
-                        <div key={act.id} className="flex items-start justify-between gap-4 border-b border-border-subtle/50 pb-2.5 last:border-b-0 last:pb-0">
-                          <div className="flex gap-3 min-w-0">
-                            <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 border border-border-subtle bg-surface-2 text-text-secondary">
-                              {act.tipo === 'feedback' && <ChatCircle size={14} />}
-                              {act.tipo === 'treino_digital' && <Barbell size={14} />}
-                              {act.tipo === 'treino_manual' && <Calendar size={14} />}
+                      atividades.map((act) => {
+                        const tabDestino = act.tipo === 'feedback' ? 'visao-geral' : 'treinos';
+                        return (
+                          <Link
+                            key={act.id}
+                            href={`/admin/aluno/${act.aluno_id}?tab=${tabDestino}`}
+                            className="group flex items-center justify-between gap-3 border-b border-border-subtle/50 pb-2.5 last:border-b-0 last:pb-0 -mx-2 px-2 py-1 rounded-lg hover:bg-surface-2/60 active:bg-surface-2 transition-colors"
+                          >
+                            <div className="flex gap-3 min-w-0 items-start">
+                              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 border border-border-subtle bg-surface-2 text-text-secondary">
+                                {act.tipo === 'feedback' && <ChatCircle size={14} />}
+                                {act.tipo === 'treino_digital' && <Barbell size={14} />}
+                                {act.tipo === 'treino_manual' && <Calendar size={14} />}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-bold text-text-primary leading-tight truncate">{act.aluno_nome}</span>
+                                <span className="text-[11px] text-text-secondary mt-0.5 leading-tight truncate">{act.descricao}</span>
+                              </div>
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-bold text-text-primary leading-tight truncate">{act.aluno_nome}</span>
-                              <span className="text-[11px] text-text-secondary mt-0.5 leading-tight truncate">{act.descricao}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[9px] text-text-tertiary whitespace-nowrap">{act.data}</span>
+                              <ArrowRight size={12} className="text-text-tertiary group-hover:text-brand transition-colors" />
                             </div>
-                          </div>
-                          <span className="text-[9px] text-text-tertiary whitespace-nowrap shrink-0 pt-0.5">{act.data}</span>
-                        </div>
-                      ))
+                          </Link>
+                        );
+                      })
                     )}
                   </div>
                 </div>
