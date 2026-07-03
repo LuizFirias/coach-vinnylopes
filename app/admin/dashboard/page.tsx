@@ -7,7 +7,6 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/components/AuthProvider";
 import {
   Users,
-  TrendUp,
   WarningCircle,
   ChatCircle,
   Calendar,
@@ -45,8 +44,26 @@ interface ProfileRow {
   ultimo_checkin?: string | null;
   avatar_url?: string | null;
   data_expiracao?: string | null;
+  data_inicio?: string | null;
+  created_at?: string | null;
   valor_plano?: number | null;
   arquivado?: boolean | null;
+}
+
+// Duração dos ciclos por tipo de plano (usado para caixa e projeção)
+const DURACAO_PLANO_MESES: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
+
+/** Deriva o início do ciclo vigente do plano com fallback progressivo. */
+function inicioDoCiclo(r: { data_inicio?: string | null; data_expiracao?: string | null; created_at?: string | null; tipo_plano?: string | null }): Date | null {
+  if (r.data_inicio) return new Date(r.data_inicio);
+  if (r.data_expiracao) {
+    const dur = DURACAO_PLANO_MESES[r.tipo_plano || 'mensal'] || 1;
+    const d = new Date(r.data_expiracao);
+    d.setMonth(d.getMonth() - dur);
+    return d;
+  }
+  if (r.created_at) return new Date(r.created_at);
+  return null;
 }
 
 interface PriorityAction {
@@ -142,7 +159,7 @@ export default function AdminDashboard() {
       // 2. Fetch profiles
       const { data: profiles, error: profilesError } = await supabaseClient
         .from('profiles')
-        .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, valor_plano, arquivado')
+        .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, created_at, valor_plano, arquivado')
         .in('id', alunosIds)
         .eq('arquivado', false);
 
@@ -186,11 +203,13 @@ export default function AdminDashboard() {
         : { data: [] };
 
       // 3. Compute Financial and Operation Base Metrics
-      let tempReceitaMes = 0;
+      let tempReceitaMes = 0; // Faturamento do mês = regime de CAIXA (entrou neste mês civil)
       let tempMrr = 0;
       let tempPendencias = 0;
       let tempActiveCount = 0;
       let tempRiscoCount = 0;
+
+      const inicioDoMes = new Date(today.getFullYear(), today.getMonth(), 1);
 
       const tempPrioridades: PriorityAction[] = [];
 
@@ -210,8 +229,14 @@ export default function AdminDashboard() {
         // Operational calculations
         if (isActive) {
           tempActiveCount++;
-          tempReceitaMes += valor;
-          
+
+          // Faturamento do mês (CAIXA): conta o valor cheio do plano se o ciclo
+          // vigente iniciou dentro do mês corrente (venda/renovação neste mês).
+          const cicloInicio = inicioDoCiclo(r);
+          if (cicloInicio && cicloInicio >= inicioDoMes && cicloInicio <= today) {
+            tempReceitaMes += valor;
+          }
+
           if (r.tipo_plano === 'trimestral') {
             tempMrr += valor / 3;
           } else if (r.tipo_plano === 'semestral') {
@@ -654,16 +679,14 @@ export default function AdminDashboard() {
               <h2 className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase border-t border-border-subtle/50 pt-3 mt-1 mb-2.5 block">Faturamento & Prospecção</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
-                {/* Receita do mês */}
+                {/* Faturamento do mês (caixa) */}
                 <div className="bg-surface-1 border border-border-subtle rounded-lg p-4 shadow-sm flex flex-col justify-center h-20">
                   <div className="flex items-center gap-1.5 leading-none">
                     <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-brand" />
-                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Receita do Mês</span>
+                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Faturamento do Mês</span>
                   </div>
                   <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1 leading-none">{fmt(receitaMes)}</div>
-                  <div className="text-[9px] text-success flex items-center gap-0.5 font-semibold mt-1">
-                    <TrendUp size={11} /> +12% vs anterior
-                  </div>
+                  <span className="text-[9px] text-text-disabled mt-1 leading-none">Entrou no caixa neste mês</span>
                 </div>
 
                 {/* MRR ativo */}

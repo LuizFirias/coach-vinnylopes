@@ -231,6 +231,7 @@ export async function POST(req: Request) {
         date_of_birth: dateOfBirth || null,
         objetivo: objetivo || null,
         tipo_plano: tipoPlano || null,
+        data_inicio: new Date().toISOString().slice(0, 10),
         data_expiracao: dataExpiracao || null,
         valor_plano: valorPlano,
       }, {
