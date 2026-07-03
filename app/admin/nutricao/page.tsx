@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { MobileListRow } from '@/app/components/MobileListRow';
 import { cn } from '@/lib/utils/cn';
 
 interface Aluno {
@@ -591,7 +592,8 @@ export default function NutricaoPage() {
               {studentNutritionList.length === 0 ? (
                 <p className="text-xs text-text-disabled text-center py-6">Nenhum aluno vinculado.</p>
               ) : (
-                <div className="overflow-x-auto scrollbar-hide">
+                <>
+                <div className="hidden md:block overflow-x-auto scrollbar-hide">
                   <table className="w-full text-left border-collapse min-w-[600px] text-xs">
                     <thead>
                       <tr className="border-b border-border-subtle">
@@ -673,6 +675,62 @@ export default function NutricaoPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile — card list (Fase 7) */}
+                <div className="md:hidden">
+                  {studentNutritionList.map((student) => {
+                    const statusLabels = {
+                      'em-dia': 'Em dia',
+                      'atencao': 'Atenção',
+                      'sem-checkin': 'Sem check-in',
+                      'sem-plano': 'Sem plano'
+                    };
+                    const statusColors = {
+                      'em-dia': 'bg-success/10 text-success border-success/20',
+                      'atencao': 'bg-warning/10 text-warning border-warning/20',
+                      'sem-checkin': 'bg-danger/10 text-danger border-danger/20',
+                      'sem-plano': 'bg-surface-3 text-text-tertiary border-border-subtle'
+                    };
+                    const temPlano = student.planName !== 'Sem plano';
+                    return (
+                      <MobileListRow
+                        key={student.id}
+                        name={student.name}
+                        badge={
+                          <span className={cn(
+                            "inline-flex px-1.5 py-0.5 border rounded text-[8px] font-bold uppercase tracking-wider shrink-0",
+                            statusColors[student.status]
+                          )}>
+                            {statusLabels[student.status]}
+                          </span>
+                        }
+                        topRight={
+                          <>
+                            <span className="font-mono font-bold text-xs text-text-secondary">
+                              {temPlano ? `${student.adherence7d}%` : '—'}
+                            </span>
+                            <Link
+                              href={student.planId ? `/admin/nutricao/planos/${student.planId}` : `/admin/nutricao/novo-plano`}
+                              className="text-[11px] font-medium text-brand whitespace-nowrap"
+                            >
+                              {student.planId ? 'Ver plano →' : 'Criar →'}
+                            </Link>
+                          </>
+                        }
+                        meta={
+                          <>
+                            <span className="truncate max-w-[45%]">{student.planName}</span>
+                            <span className="text-text-tertiary">•</span>
+                            <span className="font-mono">{student.todayMeals} hoje</span>
+                            <span className="text-text-tertiary">•</span>
+                            <span className="truncate">{student.lastCheckin}</span>
+                          </>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+                </>
               )}
             </Card>
 
