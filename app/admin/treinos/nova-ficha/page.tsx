@@ -18,6 +18,7 @@ import {
   WarningCircle,
   FileArrowDown,
   CircleNotch,
+  LinkSimple,
 } from "@phosphor-icons/react";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -608,21 +609,23 @@ export default function NovaFichaCoachPage() {
                 </div>
 
                 {/* Observações */}
-                <div className="space-y-1 mb-4 pb-3 border-b border-border-subtle/50">
+                <div className="space-y-1 mb-3 pb-3 border-b border-border-subtle/50">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Observações para o Aluno</label>
                   <textarea
                     value={exercicio.observacoes}
                     onChange={(e) => atualizarExercicio(exIndex, "observacoes", e.target.value)}
                     placeholder="Ex: Manter o core contraído, não arquear as costas..."
-                    className="w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40 resize-none h-10 py-1.5"
-                    rows={1}
+                    className="w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40 resize-none min-h-13"
+                    rows={2}
                   />
                 </div>
 
                 {/* Bi-Set partner selector — aparece quando qualquer série tem técnica Bi-Set */}
                 {exercicio.series.some(s => s.tecnica_extra === 'Bi-Set') && (
-                  <div className="mb-4 pb-3 border-b border-border-subtle/50 flex items-center gap-2.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand shrink-0">🔗 Parceiro Bi-Set</span>
+                  <div className="mb-3 pb-3 border-b border-border-subtle/50 flex flex-col gap-1.5 w-full">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand">
+                      <LinkSimple className="w-3.5 h-3.5" weight="bold" /> Parceiro Bi-Set
+                    </label>
                     <select
                       value={exercicio.biset_parceiro_id || ''}
                       onChange={(e) => {
@@ -631,7 +634,7 @@ export default function NovaFichaCoachPage() {
                           i !== exIndex ? ex : { ...ex, biset_parceiro_id: val || undefined }
                         ));
                       }}
-                      className="flex-1 h-7 px-2 bg-surface-0 border border-brand/30 rounded-md text-xs text-text-primary focus:outline-none"
+                      className="w-full min-w-0 truncate h-9 px-2.5 bg-surface-0 border border-brand/30 rounded-md text-xs text-text-primary focus:outline-none"
                     >
                       <option value="">— Selecionar exercício parceiro —</option>
                       {exerciciosFicha
@@ -651,25 +654,25 @@ export default function NovaFichaCoachPage() {
                     const colunas = temIsometria
                       ? baseCols.map(c => c.key === 'reps_sugerido' ? { key: 'tempo_sugerido', label: 'Tempo', type: 'text', timeInput: true } : c)
                       : baseCols;
-                    const gridTemplate = `2rem ${colunas.map(() => '5rem').join(' ')} 4rem 5.5rem 2rem`;
+                    // Linha compacta única (mesma densidade em mobile e desktop) — Fase 4
+                    const gridTemplate = `1.5rem ${colunas.map(() => 'minmax(0,1fr)').join(' ')} 2.75rem minmax(0,1.3fr) 1.25rem`;
                     return (
                       <>
-                        {/* Desktop — scrollable table */}
-                        <div className="hidden md:block overflow-x-auto">
+                        <div>
                           {/* Header row */}
-                          <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: gridTemplate }}>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">#</span>
+                          <div className="grid gap-1.5 px-1.5 mb-1" style={{ gridTemplateColumns: gridTemplate }}>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary">#</span>
                             {colunas.map((col) => (
-                              <span key={col.key} className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary truncate">{col.label}</span>
+                              <span key={col.key} className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary truncate">{col.label}</span>
                             ))}
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70 truncate">TÉC</span>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70 truncate"></span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-brand/70 truncate">TÉC</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-brand/70 truncate">Extra</span>
                             <span></span>
                           </div>
 
                           {exercicio.series.map((serie, sIndex) => (
-                            <div key={sIndex} className="grid gap-1 bg-surface-2 border border-border-subtle/50 p-1 rounded-lg mb-1 min-w-max" style={{ gridTemplateColumns: gridTemplate }}>
-                              <div className="flex items-center justify-center text-xs font-bold text-text-secondary">#{serie.ordem}</div>
+                            <div key={sIndex} className="grid gap-1.5 items-center bg-surface-2 border border-border-subtle/50 px-1.5 py-1 rounded-lg mb-1" style={{ gridTemplateColumns: gridTemplate }}>
+                              <div className="flex items-center justify-center text-xs font-bold text-text-secondary">{serie.ordem}</div>
                               {colunas.map((col) =>
                                 col.type === 'select' ? (
                                   <select
@@ -722,70 +725,6 @@ export default function NovaFichaCoachPage() {
                           ))}
                         </div>
 
-                        {/* Mobile layout */}
-                        {exercicio.series.map((serie, sIndex) => (
-                          <div key={sIndex} className="md:hidden bg-surface-2 border border-border-subtle/50 p-3 rounded-lg space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-text-primary">Série #{serie.ordem}</span>
-                              <button onClick={() => removerSerie(exIndex, sIndex)} className="w-7 h-7 flex items-center justify-center text-text-tertiary hover:text-danger transition-colors">
-                                <Trash className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {colunas.map((col) => (
-                                <div key={col.key} className="space-y-0.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary px-1">{col.label}</label>
-                                  {col.type === 'select' ? (
-                                    <select
-                                      value={(serie as any)[col.key] ?? ''}
-                                      onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, e.target.value)}
-                                      className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none"
-                                    >
-                                      {(col as any).options?.map((opt: string) => <option key={opt} value={opt}>{opt || '-'}</option>)}
-                                    </select>
-                                  ) : (col as any).timeInput ? (
-                                    <TimeInput
-                                      value={(serie as any)[col.key] ?? '00:00'}
-                                      onChange={(v) => atualizarSerie(exIndex, sIndex, col.key, v)}
-                                      className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none text-center"
-                                    />
-                                  ) : (
-                                    <input
-                                      type={col.type}
-                                      step={(col as any).step}
-                                      placeholder={(col as any).placeholder}
-                                      value={(serie as any)[col.key] ?? (col.type === 'number' ? 0 : '')}
-                                      onChange={(e) => atualizarSerie(exIndex, sIndex, col.key, col.type === 'number' ? Number(e.target.value) : e.target.value)}
-                                      className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none"
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                            <div className="border-t border-border-subtle/50 pt-2 grid grid-cols-2 gap-2">
-                              <div className="space-y-0.5">
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">TÉC</label>
-                                <select
-                                  value={(serie as any).tecnica ?? ''}
-                                  onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica', e.target.value)}
-                                  className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                                >
-                                  {TECNICAS_BASE.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                                </select>
-                              </div>
-                              <div className="space-y-0.5">
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">Técnica Extra</label>
-                                <select
-                                  value={(serie as any).tecnica_extra ?? ''}
-                                  onChange={(e) => atualizarSerie(exIndex, sIndex, 'tecnica_extra', e.target.value)}
-                                  className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                                >
-                                  {TECNICAS_EXTRA_OPCOES.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                                </select>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
                       </>
                     );
                   })()}
