@@ -341,25 +341,27 @@ export default function TreinosPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
             <button
               onClick={() => router.push('/admin/treinos/nova-ficha')}
-              className="inline-flex items-center gap-1.5 px-3 h-9 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
             >
               <PlusCircle size={14} weight="bold" /> Nova Ficha Digital
             </button>
-            <button
-              onClick={() => setShowPdfUpload(!showPdfUpload)}
-              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
-            >
-              <FileArrowUp size={14} /> Upload de PDF
-            </button>
-            <Link
-              href="/admin/biblioteca-exercicios"
-              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all"
-            >
-              <BookOpen size={14} /> Biblioteca
-            </Link>
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5">
+              <button
+                onClick={() => setShowPdfUpload(!showPdfUpload)}
+                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
+              >
+                <FileArrowUp size={14} /> Upload de PDF
+              </button>
+              <Link
+                href="/admin/biblioteca-exercicios"
+                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all"
+              >
+                <BookOpen size={14} /> Biblioteca
+              </Link>
+            </div>
           </div>
         </div>
 
