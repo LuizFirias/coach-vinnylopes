@@ -89,6 +89,7 @@ export default function NovaFichaCoachPage() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
+  const [obsAbertas, setObsAbertas] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadData();
@@ -578,9 +579,9 @@ export default function NovaFichaCoachPage() {
           <div className="space-y-3">
             {exerciciosFicha.map((exercicio, exIndex) => (
               <div key={exIndex} className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl p-4 md:p-5">
-                {/* Exercise Header */}
-                <div className="flex flex-col md:flex-row gap-3 mb-4 pb-3 border-b border-border-subtle/50">
-                  <div className="flex-1 space-y-1">
+                {/* Exercise Header — linha compacta única */}
+                <div className="flex items-start gap-3 mb-3 pb-3 border-b border-border-subtle/50">
+                  <div className="flex-1 min-w-0 space-y-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Exercício</label>
                     <input
                       type="text"
@@ -589,36 +590,55 @@ export default function NovaFichaCoachPage() {
                       className="w-full text-sm font-bold text-text-primary bg-transparent border-none p-0 focus:ring-0 focus:outline-none"
                     />
                   </div>
-                  <div className="w-full md:w-28 space-y-1">
+                  <div className="shrink-0 space-y-1">
                     <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
                       <Clock className="w-3 h-3" /> Descanso
                     </label>
                     <TimeInput
                       value={exercicio.descanso}
                       onChange={(v) => atualizarExercicio(exIndex, "descanso", v)}
-                      className="w-full px-2.5 py-1.5 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40"
+                      className="w-16 px-2 py-1.5 bg-surface-2 border border-border-subtle rounded-lg text-xs text-center text-text-primary focus:outline-none focus:border-brand/40"
                     />
                   </div>
                   <button
                     onClick={() => removerExercicio(exIndex)}
-                    className="self-end w-8 h-8 flex items-center justify-center bg-danger/10 border border-danger/20 text-danger rounded-lg hover:opacity-80 transition-opacity"
+                    className="self-end shrink-0 w-7 h-7 flex items-center justify-center text-text-tertiary hover:text-danger hover:bg-danger/10 rounded-md transition-colors"
                     title="Excluir exercício"
                   >
-                    <Trash className="w-4 h-4" />
+                    <Trash className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Observações */}
-                <div className="space-y-1 mb-3 pb-3 border-b border-border-subtle/50">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Observações para o Aluno</label>
-                  <textarea
-                    value={exercicio.observacoes}
-                    onChange={(e) => atualizarExercicio(exIndex, "observacoes", e.target.value)}
-                    placeholder="Ex: Manter o core contraído, não arquear as costas..."
-                    className="w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40 resize-none min-h-13"
-                    rows={2}
-                  />
-                </div>
+                {/* Observações (colapsável) */}
+                {(() => {
+                  const obsAberta = obsAbertas[exercicio.id] ?? Boolean(exercicio.observacoes);
+                  return (
+                    <div className="mb-3 pb-3 border-b border-border-subtle/50">
+                      <button
+                        type="button"
+                        onClick={() => setObsAbertas(prev => ({ ...prev, [exercicio.id]: !obsAberta }))}
+                        className="w-full flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-text-tertiary hover:text-text-secondary transition-colors"
+                      >
+                        <span className="flex items-center gap-1.5 min-w-0">
+                          Observações para o Aluno
+                          {!obsAberta && exercicio.observacoes && (
+                            <span className="normal-case font-medium text-text-disabled truncate">— {exercicio.observacoes}</span>
+                          )}
+                        </span>
+                        <CaretRight className={cn("w-3.5 h-3.5 shrink-0 transition-transform", obsAberta && "rotate-90")} />
+                      </button>
+                      {obsAberta && (
+                        <textarea
+                          value={exercicio.observacoes}
+                          onChange={(e) => atualizarExercicio(exIndex, "observacoes", e.target.value)}
+                          placeholder="Ex: Manter o core contraído, não arquear as costas..."
+                          className="mt-2 w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40 resize-none min-h-13"
+                          rows={2}
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Bi-Set partner selector — aparece quando qualquer série tem técnica Bi-Set */}
                 {exercicio.series.some(s => s.tecnica_extra === 'Bi-Set') && (
