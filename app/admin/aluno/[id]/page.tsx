@@ -1137,32 +1137,28 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* Quick action buttons */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Quick action buttons — Nova Ficha full-width, Gerir/Enviar 50/50 abaixo */}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 w-full lg:w-auto">
           <button
             onClick={() => router.push("/admin/treinos/nova-ficha")}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand hover:bg-brand-hover text-text-on-brand text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 shadow-sm shadow-brand/10"
+            className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-2.5 py-1.5 bg-brand hover:bg-brand-hover text-text-on-brand text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 shadow-sm shadow-brand/10"
           >
             <Plus size={10} weight="bold" /> Nova Ficha
           </button>
-          <button
-            onClick={() => { setActiveTab('nutricao'); setUploadNutritionOpen(true); }}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
-          >
-            <UploadSimple size={10} /> Enviar Plano
-          </button>
-          <button
-            onClick={() => { setActiveTab('financeiro'); setEditingProfile(!editingProfile); }}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
-          >
-            <Gear size={10} /> Gerir Plano
-          </button>
-          <button
-            onClick={() => setActiveTab('fotos')}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
-          >
-            <ImageIcon size={10} /> Ver Fotos
-          </button>
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5">
+            <button
+              onClick={() => { setActiveTab('financeiro'); setEditingProfile(!editingProfile); }}
+              className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-2.5 py-1.5 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
+            >
+              <Gear size={10} /> Gerir Plano
+            </button>
+            <button
+              onClick={() => { setActiveTab('nutricao'); setUploadNutritionOpen(true); }}
+              className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-2.5 py-1.5 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
+            >
+              <UploadSimple size={10} /> Enviar Plano
+            </button>
+          </div>
         </div>
       </div>
 
