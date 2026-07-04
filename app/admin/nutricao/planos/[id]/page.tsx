@@ -291,7 +291,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
       <div className="max-w-7xl mx-auto px-4">
         
         {/* Header */}
-        <div className="flex items-center justify-between py-6 border-b border-border-subtle/50 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-6 border-b border-border-subtle/50 mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/admin/nutricao')}
@@ -317,23 +317,25 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => setShowTemplateModal(true)}
-              className="h-9 px-3 rounded-lg text-xs font-bold gap-1.5 cursor-pointer border border-border-subtle hover:border-brand/40"
-            >
-              Salvar Template
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setShowDuplicateModal(true)}
-              className="h-9 px-3 rounded-lg text-xs font-bold gap-1.5 cursor-pointer border border-border-subtle hover:border-brand/40"
-            >
-              Duplicar Plano
-            </Button>
-            <Link href={`/admin/nutricao/planos/${plan.id}/editar`}>
-              <Button variant="primary" className="h-9 px-3 rounded-lg text-xs font-bold gap-1.5 cursor-pointer">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowTemplateModal(true)}
+                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-border-subtle hover:border-brand/40 w-full sm:w-auto justify-center"
+              >
+                Salvar Template
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowDuplicateModal(true)}
+                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-border-subtle hover:border-brand/40 w-full sm:w-auto justify-center"
+              >
+                Duplicar Plano
+              </Button>
+            </div>
+            <Link href={`/admin/nutricao/planos/${plan.id}/editar`} className="w-full sm:w-auto">
+              <Button variant="primary" className="h-9 px-3 rounded-lg text-xs font-bold gap-1.5 cursor-pointer w-full justify-center">
                 <PencilSimple className="w-4 h-4" />
                 Editar Plano
               </Button>
