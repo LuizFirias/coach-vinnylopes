@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { 
   Plus, Trash, ArrowLeft, FloppyDisk, CheckCircle, 
-  MagnifyingGlass, Barbell, Info, Calendar, Sparkle, Note, Copy
+  MagnifyingGlass, Barbell, Info, Calendar, Sparkle, Note, Copy, CaretRight
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -49,6 +49,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
   // Meals data structure
   const [meals, setMeals] = useState<any[]>([]);
+  // Accordion: quais refeições estão expandidas (por índice)
+  const [mealsAbertas, setMealsAbertas] = useState<Record<number, boolean>>({});
 
   // Search combobox states
   const [searchOpen, setSearchOpen] = useState<{ mealIndex: number; itemIndex?: number; subIndex?: number } | null>(null);
@@ -210,6 +212,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
       items: []
     };
     setMeals([...meals, newMeal]);
+    setMealsAbertas(prev => ({ ...prev, [meals.length]: true }));
   };
 
   const handleDuplicateMeal = (index: number) => {
@@ -228,6 +231,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
       });
     });
     setMeals([...meals, clonedMeal]);
+    setMealsAbertas(prev => ({ ...prev, [meals.length]: true }));
   };
 
   const handleRemoveMeal = (index: number) => {
@@ -619,13 +623,21 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
               {meals.map((meal, mealIdx) => {
                 const macros = getMealMacros(meal);
+                const aberta = mealsAbertas[mealIdx] ?? (mealIdx === 0);
                 return (
-                  <Card key={mealIdx} className="rounded-xl border border-border-subtle/80 shadow-sm p-4 md:p-5 flex flex-col gap-4 bg-surface-1">
+                  <Card key={mealIdx} className={cn("rounded-xl border border-border-subtle/80 shadow-sm p-4 md:p-5 flex flex-col bg-surface-1", aberta ? "gap-4" : "gap-0")}>
                     
                     {/* Meal Header */}
-                    <div className="flex items-center justify-between gap-4 border-b border-border-subtle/40 pb-2">
+                    <div className={cn("flex items-center justify-between gap-4", aberta && "border-b border-border-subtle/40 pb-2")}>
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
+                        <button
+                          type="button"
+                          onClick={() => setMealsAbertas(prev => ({ ...prev, [mealIdx]: !aberta }))}
+                          className="shrink-0 text-text-tertiary hover:text-text-primary transition-colors"
+                          title={aberta ? 'Recolher refeição' : 'Expandir refeição'}
+                        >
+                          <CaretRight size={14} className={cn("transition-transform", aberta && "rotate-90")} />
+                        </button>
                         <input
                           type="text"
                           value={meal.title}
@@ -634,7 +646,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                             updated[mealIdx].title = e.target.value;
                             setMeals(updated);
                           }}
-                          className="bg-transparent border-none text-xs font-extrabold text-text-primary focus:outline-none w-32 md:w-48"
+                          className="bg-transparent border-none text-xs font-extrabold text-text-primary focus:outline-none w-28 md:w-48 min-w-0"
                         />
                         <input
                           type="time"
@@ -644,8 +656,13 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                             updated[mealIdx].time_suggestion = e.target.value;
                             setMeals(updated);
                           }}
-                          className="bg-surface-2 border border-border-subtle text-[10px] px-1.5 py-0.5 rounded font-mono text-text-secondary"
+                          className="bg-surface-2 border border-border-subtle text-[10px] px-1.5 py-0.5 rounded font-mono text-text-secondary shrink-0"
                         />
+                        {!aberta && (meal.items?.length ?? 0) > 0 && (
+                          <span className="text-[9px] text-text-tertiary shrink-0 whitespace-nowrap">
+                            · {meal.items.length} {meal.items.length === 1 ? 'item' : 'itens'}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -676,6 +693,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                       </div>
                     </div>
 
+                    {aberta && (
+                    <>
                     {/* Meal items (list) — Fase 8: linha de lista, sem card aninhado */}
                     <div className="flex flex-col divide-y divide-border-subtle/40">
                       {(meal.items || []).length === 0 ? (
@@ -918,6 +937,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                         Alimento
                       </Button>
                     </div>
+                    </>
+                    )}
                   </Card>
                 );
               })}
