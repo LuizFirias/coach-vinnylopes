@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download, ShareNetwork, Barbell } from '@phosphor-icons/react';
+import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download, ShareNetwork } from '@phosphor-icons/react';
 import { toPng } from 'html-to-image';
 import Body from 'react-muscle-highlighter';
 import { supabaseClient } from '@/lib/supabaseClient';
@@ -384,6 +384,8 @@ export default function ExecucaoTreinoPage() {
 
   // Vídeo
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  // Imagem de demonstração — aberta sob demanda, para não ficar em loop enquanto a ficha está aberta
+  const [demoImg, setDemoImg] = useState<string | null>(null);
 
   // Ref sempre atualizado — usado nos listeners de pagehide/visibilitychange
   const persistRef = useRef<{
@@ -1388,21 +1390,19 @@ export default function ExecucaoTreinoPage() {
 
           {/* Corpo do modal */}
           <div className="flex-1 overflow-y-auto pb-24">
-            {/* GIF de demonstração — quando disponível */}
-            {modalEx.gif_url ? (
-              <div className="mx-4 mt-4 mb-4 rounded-lg overflow-hidden bg-surface-1 border border-border-subtle aspect-square">
-                <img
-                  src={modalEx.gif_url}
-                  alt={`Demonstração: ${modalEx.nome}`}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            ) : (
-              /* Placeholder quando não há GIF */
-              <div className="mx-4 mt-4 mb-4 rounded-lg bg-surface-1 border border-border-subtle aspect-square flex flex-col items-center justify-center gap-2">
-                <Barbell className="w-8 h-8 text-text-muted" strokeWidth={1} />
-                <p className="text-xs text-text-muted">Sem demonstração</p>
+            {/* Demonstração sob demanda — botão que abre em modal (não fica em loop enquanto a ficha está aberta) */}
+            {(modalEx.video_url || modalEx.gif_url) && (
+              <div className="px-4 mt-4 mb-4">
+                <button
+                  onClick={() => {
+                    if (modalEx.video_url) setVideoUrl(modalEx.video_url);
+                    else if (modalEx.gif_url) setDemoImg(modalEx.gif_url);
+                  }}
+                  className="w-full h-11 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center gap-2 text-sm font-medium text-text-secondary hover:text-brand hover:border-brand transition-colors"
+                >
+                  <Play className="w-4 h-4" fill="currentColor" />
+                  Ver demonstração
+                </button>
               </div>
             )}
 
@@ -1669,6 +1669,22 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── YouTube player ── */}
       {videoUrl && <YouTubePlayer videoUrl={videoUrl} onClose={() => setVideoUrl(null)} />}
+
+      {/* ── Demonstração em imagem (sob demanda) ── */}
+      {demoImg && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setDemoImg(null)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-brand/20 overflow-hidden bg-surface-0">
+            <button
+              onClick={() => setDemoImg(null)}
+              className="absolute top-3 right-3 w-9 h-9 bg-black/50 text-brand rounded-full flex items-center justify-center z-10 backdrop-blur-md hover:bg-brand hover:text-black transition-all"
+            >
+              <X size={18} />
+            </button>
+            <img src={demoImg} alt="Demonstração" className="w-full h-auto object-contain" loading="lazy" />
+          </div>
+        </div>
+      )}
 
       {/* ── Modal de instrução da técnica ── */}
       {modalTecnicaAberto && (
