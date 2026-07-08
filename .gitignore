@@ -49,3 +49,5 @@ next-env.d.ts
 
 # relatorios de scan de segredos
 gitleaks-report.json
+
+diff-*.txt
