@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { 
   ArrowLeft, 
@@ -27,7 +27,23 @@ const COUNTRIES = [
 ];
 
 export default function CoachSignup() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-surface-0 flex items-center justify-center text-text-secondary text-sm">
+          Carregando...
+        </div>
+      }
+    >
+      <CoachSignupForm />
+    </Suspense>
+  );
+}
+
+function CoachSignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteCode = searchParams.get("convite") ?? undefined;
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
@@ -129,6 +145,7 @@ export default function CoachSignup() {
           gender,
           instagram: cleanInsta,
           phone: combinedPhone,
+          inviteCode,
         }),
       });
 
@@ -140,7 +157,11 @@ export default function CoachSignup() {
         return;
       }
 
-      // Conta criada com sucesso — fazer login automático com as credenciais informadas
+      // Conta criada — encerrar sessão anterior (ex.: super_admin na mesma aba) antes do login
+      await supabaseClient.auth.signOut({ scope: "local" });
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("user_id");
+
       const { error: signInError } = await supabaseClient.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,

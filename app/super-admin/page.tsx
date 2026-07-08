@@ -1,8 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { ShieldCheck, UserPlus, Envelope, Shield, CaretDown, CheckCircle, WarningCircle } from "@phosphor-icons/react";
+import {
+  UserPlus,
+  Ticket,
+  CheckCircle,
+  WarningCircle,
+  ArrowRight,
+} from "@phosphor-icons/react";
+import { SuperAdminPageShell } from "@/app/super-admin/SuperAdminPageShell";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
 export default function SuperAdminPage() {
@@ -39,131 +51,135 @@ export default function SuperAdminPage() {
       setMessage({ type: "success", text: data.message });
       setEmail("");
       setFullName("");
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message });
+    } catch (err: unknown) {
+      const text = err instanceof Error ? err.message : "Erro ao atualizar papel";
+      setMessage({ type: "error", text });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 antialiased">
-      <div className="max-w-2xl mx-auto flex flex-col gap-6">
-
-        {/* Header */}
-        <div className="flex flex-col items-center text-center pt-4 pb-2">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-subtle border border-brand-border rounded-xl mb-6">
-            <ShieldCheck className="w-4 h-4 text-brand" />
-            <span className="text-2xs font-semibold uppercase tracking-caps text-brand">Controle Executivo</span>
+    <SuperAdminPageShell
+      title="Master Control"
+      subtitle="Permissões de usuários e convites de acesso"
+      maxWidth="7xl"
+      headerAction={
+        <Link
+          href="/super-admin/convites"
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10"
+        >
+          <Ticket size={13} weight="bold" />
+          Convites
+        </Link>
+      }
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
+        <Card className="lg:col-span-3 rounded-xl border border-border-subtle/80 p-4 md:p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5 pb-4 border-b border-border-subtle">
+            <div className="w-9 h-9 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center shrink-0">
+              <UserPlus className="w-4 h-4 text-brand" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-text-primary">Gerenciar acessos</h2>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                Promova usuários ou defina papel no sistema
+              </p>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-text-primary tracking-tight uppercase mb-2">
-            Gerenciar <span className="text-brand">Acessos</span>
-          </h1>
-          <p className="text-xs text-text-tertiary uppercase tracking-caps">
-            Controle de permissões e expansão da plataforma
-          </p>
-        </div>
 
-        {/* Form Card */}
-        <div className="bg-surface-1 border border-border-subtle shadow-elev-2 rounded-2xl p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-brand-subtle border border-brand-border rounded-xl flex items-center justify-center">
-              <UserPlus className="w-5 h-5 text-brand" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-text-primary">Novo Professor</h2>
-              <p className="text-xs text-text-tertiary">Promova alunos ou conceda credenciais de Coach</p>
-            </div>
-          </div>
+          <form onSubmit={handlePromote} className="flex flex-col gap-4">
+            <Input
+              label="Nome completo"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Ex: Dr. Ricardo Silva"
+              disabled={loading}
+            />
 
-          <form onSubmit={handlePromote} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">
-                Nome Completo do Profissional
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ex: Dr. Ricardo Silva"
-                className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
-              />
-            </div>
+            <Input
+              label="E-mail de cadastro"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@consultoria.com"
+              required
+              disabled={loading}
+            />
 
-            <div className="space-y-2">
-              <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">
-                E-mail de Cadastro
-              </label>
-              <div className="relative">
-                <Envelope className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@consultoria.com"
-                  required
-                  className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary pl-12 pr-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">
-                Nível de Autoridade
-              </label>
-              <div className="relative">
-                <Shield className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary pl-12 pr-10 rounded-2xl text-sm focus:outline-none focus:border-brand/40 transition-colors appearance-none cursor-pointer uppercase tracking-wide"
-                >
-                  <option value="coach">Professor / Coach</option>
-                  <option value="aluno">Usuário Aluno</option>
-                  <option value="super_admin">Administrador Master</option>
-                </select>
-                <CaretDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary pointer-events-none" />
-              </div>
-            </div>
+            <Select
+              label="Nível de autoridade"
+              value={role}
+              onChange={setRole}
+              disabled={loading}
+              options={[
+                { value: "coach", label: "Professor / Coach" },
+                { value: "aluno", label: "Usuário Aluno" },
+                { value: "super_admin", label: "Administrador Master" },
+              ]}
+            />
 
             {message && (
-              <div className={cn(
-                "p-4 rounded-2xl text-xs flex items-center gap-3",
-                message.type === "success"
-                  ? "bg-brand-subtle border border-brand-border text-brand"
-                  : "bg-danger/10 border border-danger/20 text-danger"
-              )}>
-                <div className={cn(
-                  "p-1.5 rounded-lg flex-shrink-0",
-                  message.type === "success" ? "bg-brand/20" : "bg-danger/20"
-                )}>
-                  {message.type === "success"
-                    ? <CheckCircle className="w-4 h-4"  />
-                    : <WarningCircle className="w-4 h-4"  />
-                  }
-                </div>
+              <div
+                className={cn(
+                  "flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs",
+                  message.type === "success"
+                    ? "bg-success-subtle border border-success-border text-success"
+                    : "bg-danger-subtle border border-danger-border text-danger"
+                )}
+              >
+                {message.type === "success" ? (
+                  <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                ) : (
+                  <WarningCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                )}
                 <span className="font-medium">{message.text}</span>
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-13 bg-brand text-text-on-brand rounded-2xl text-xs font-semibold uppercase tracking-caps shadow-sm shadow-brand/30 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
-              ) : (
-                "Aplicar Permissões Agora"
-              )}
-            </button>
+            <Button type="submit" size="sm" loading={loading} fullWidth className="mt-1">
+              Aplicar permissões
+            </Button>
           </form>
-        </div>
+        </Card>
 
-        <p className="text-center text-text-disabled text-2xs uppercase tracking-caps px-4 leading-relaxed">
-          O sistema processará o convite via e-mail e configurará o perfil automaticamente.
-        </p>
+        <div className="lg:col-span-2 flex flex-col gap-4">
+          <Link href="/super-admin/convites" className="block group">
+            <Card
+              variant="interactive"
+              className="rounded-xl border border-border-subtle/80 p-4 md:p-5 h-full shadow-sm group-hover:border-brand/30"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center shrink-0">
+                    <Ticket className="w-4 h-4 text-brand" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-bold text-text-primary group-hover:text-brand transition-colors">
+                      Convites teste e parceiro
+                    </h2>
+                    <p className="text-xs text-text-tertiary mt-1 leading-relaxed">
+                      Gere links de cadastro com limite de alunos, sem Mercado Pago.
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-text-tertiary group-hover:text-brand shrink-0 mt-1 transition-colors" />
+              </div>
+            </Card>
+          </Link>
+
+          <Card className="rounded-xl border border-border-subtle/80 p-4 md:p-5 shadow-sm">
+            <p className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase mb-2">
+              Sobre este painel
+            </p>
+            <ul className="text-xs text-text-secondary space-y-2 leading-relaxed">
+              <li>· Acessos alteram o papel no perfil do usuário.</li>
+              <li>· Convites criam contas coach com tipo teste ou parceiro.</li>
+              <li>· Novos usuários recebem e-mail quando aplicável.</li>
+            </ul>
+          </Card>
+        </div>
       </div>
-    </div>
+    </SuperAdminPageShell>
   );
 }

@@ -132,6 +132,9 @@ export default function AdminDashboard() {
   const [adesaoAlimentar, setAdesaoAlimentar] = useState(0);
   const [alunosSemPlanoDig, setAlunosSemPlanoDig] = useState(0);
   const [alunosBaixaAdesaoDig, setAlunosBaixaAdesaoDig] = useState(0);
+  const [coachAccountType, setCoachAccountType] = useState<string>("padrao");
+  const [coachStudentLimit, setCoachStudentLimit] = useState<number | null>(null);
+  const [linkedStudentCount, setLinkedStudentCount] = useState(0);
 
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
@@ -140,6 +143,23 @@ export default function AdminDashboard() {
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
       if (!coachId) { setError("Sessão inválida"); setLoading(false); return; }
+
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session?.access_token) {
+        try {
+          const statusRes = await fetch("/api/subscriptions/status", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (statusRes.ok) {
+            const statusJson = await statusRes.json();
+            setCoachAccountType(statusJson.accountType ?? "padrao");
+            setCoachStudentLimit(statusJson.studentLimit ?? null);
+            setLinkedStudentCount(statusJson.activeStudentCount ?? 0);
+          }
+        } catch {
+          // indicador de limite é opcional no dashboard
+        }
+      }
 
       // 1. Fetch coach's student associations
       const { data: coachAlunosData, error: coachAlunosError } = await supabaseClient
@@ -642,6 +662,14 @@ export default function AdminDashboard() {
             </h1>
             <p className="text-xs text-text-secondary mt-0.5">
               Visão geral da sua consultoria
+              {coachStudentLimit !== null && (
+                <span className="ml-2 text-text-tertiary">
+                  · {linkedStudentCount}/{coachStudentLimit} alunos
+                </span>
+              )}
+              {coachStudentLimit === null && coachAccountType === "parceiro" && (
+                <span className="ml-2 text-text-tertiary">· Alunos ilimitados</span>
+              )}
             </p>
           </div>
           
@@ -734,7 +762,13 @@ export default function AdminDashboard() {
                     <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Alunos Ativos</span>
                   </div>
                   <div className="text-xl font-bold tracking-tight text-text-primary font-mono tabular-nums mt-1.5 leading-none">{alunosAtivos}</div>
-                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">Perfis pagantes vigentes</span>
+                  <span className="text-[9px] text-text-disabled mt-1.5 leading-none">
+                    {coachStudentLimit !== null
+                      ? `${linkedStudentCount}/${coachStudentLimit} vinculados`
+                      : coachAccountType === "parceiro"
+                        ? "Ilimitados na conta parceiro"
+                        : "Perfis pagantes vigentes"}
+                  </span>
                 </div>
 
                 {/* Adesão média */}

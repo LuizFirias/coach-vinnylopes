@@ -44,6 +44,7 @@ const coachMenuItems = [
 
 const superAdminMenuItems = [
   { name:"GERENCIAR ACESSOS", href:"/super-admin", icon: ShieldCheck },
+  { name:"CONVITES", href:"/super-admin/convites", icon: Handshake },
   { name:"PERFIL", href:"/super-admin/perfil", icon: User },
 ];
 

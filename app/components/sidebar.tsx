@@ -55,6 +55,7 @@ const coachMenuItems = [
 
 const superAdminMenuItems = [
   { name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
+  { name: 'Convites', href: '/super-admin/convites', icon: Handshake },
   { name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
 ];
 
@@ -106,6 +107,7 @@ export default function Sidebar() {
         ? [
             ...coachMenuItems.filter(item => item.name !== 'Perfil'),
             { name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
+            { name: 'Convites', href: '/super-admin/convites', icon: Handshake },
             { name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
           ]
         : coachMenuItems;

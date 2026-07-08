@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { getPersonalWelcomeEmailHtml } from "@/lib/emailTemplates";
+import { applyInviteCode } from "@/lib/invites/applyInviteCode";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
@@ -18,7 +19,8 @@ export async function POST(req: Request) {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { email, password, fullName, gender, instagram, phone } = await req.json();
+    const { email, password, fullName, gender, instagram, phone, inviteCode } =
+      await req.json();
 
     if (!email || !password || !fullName) {
       return NextResponse.json({ error: "Dados obrigatórios ausentes" }, { status: 400 });
@@ -76,6 +78,8 @@ export async function POST(req: Request) {
     const newUserId = createData.user.id;
     console.log("[SIGNUP-COACH] ✓ Usuário criado no Auth. ID:", newUserId);
 
+    const { accountType, studentLimit } = await applyInviteCode(inviteCode);
+
     // ── 3. Salvar perfil com role='coach' via Admin (bypassa RLS e trigger) ──
     const { error: upsertError } = await adminClient
       .from("profiles")
@@ -87,6 +91,8 @@ export async function POST(req: Request) {
           full_name: fullName,
           sexo: gender || null,
           coaching_reference: cleanInsta || null,
+          account_type: accountType,
+          student_limit: studentLimit,
           status_pagamento: "pago",
           arquivado: false,
         },

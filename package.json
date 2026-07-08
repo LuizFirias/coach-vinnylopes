@@ -12,7 +12,8 @@
     "media:wger": "node scripts/backfill-wger-media.js",
     "rebuild:wger": "node scripts/rebuild-wger-library.js",
     "media:supabase": "node scripts/upload-wger-media-to-supabase.js",
-    "mp:create-plans": "node scripts/create-mp-preapproval-plans.js"
+    "mp:create-plans": "node scripts/create-mp-preapproval-plans.js",
+    "create-invite": "node scripts/create-invite.js"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

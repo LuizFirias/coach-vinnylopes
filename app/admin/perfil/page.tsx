@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/Card";
 import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { cn } from "@/lib/utils/cn";
 import { isAccessGranted } from "@/lib/subscriptions/display";
+import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { formatStudentUsage, getPlanLabel } from "@/lib/subscriptions/plans";
 
 export default function CoachPerfilPage() {
@@ -94,7 +95,7 @@ export default function CoachPerfilPage() {
 
           const active = subData
             ? isAccessGranted(subData.status, subData.current_period_end)
-            : Boolean(profileData?.subscription_active);
+            : hasActiveAccess(profileData ?? {});
           setSubscriptionActive(active);
           setSubscriptionStatus(subData?.status ?? null);
         }

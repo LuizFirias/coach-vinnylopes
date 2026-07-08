@@ -59,7 +59,10 @@ export default function BottomNav() {
     { label: 'Feedbacks',  href: '/admin/feedbacks',            icon: Chat      },
     { label: 'Ranking',    href: '/admin/ranking',              icon: Trophy    },
     { label: 'Perfil',     href: profileRoute,                  icon: User      },
-    ...(userRole === 'super_admin' ? [{ label: 'Master Control', href: '/super-admin', icon: ShieldWarning }] : [])
+    ...(userRole === 'super_admin' ? [
+      { label: 'Master Control', href: '/super-admin', icon: ShieldWarning },
+      { label: 'Convites', href: '/super-admin/convites', icon: LinkIcon },
+    ] : [])
   ];
 
   // ── Student ─────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import "server-only";
+import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getActiveStudentCount } from "@/lib/subscriptions/getActiveStudentCount";
 import { getPlanLabel } from "@/lib/subscriptions/plans";
@@ -22,15 +23,34 @@ export async function checkStudentLimit(
   const [{ data: profile }, count] = await Promise.all([
     supabase
       .from("profiles")
-      .select("subscription_active, student_limit, plan_tier")
+      .select("subscription_active, student_limit, plan_tier, account_type")
       .eq("id", coachId)
       .single(),
     getActiveStudentCount(coachId),
   ]);
 
   const limit = profile?.student_limit ?? null;
+  const accountType = profile?.account_type ?? "padrao";
 
-  if (!profile?.subscription_active) {
+  if (accountType === "teste" || accountType === "parceiro") {
+    if (limit == null) {
+      return { allowed: true, count, limit: null };
+    }
+
+    if (count >= limit) {
+      const label = accountType === "teste" ? "conta de teste" : "conta parceiro";
+      return {
+        allowed: false,
+        count,
+        limit,
+        message: `Limite de ${limit} alunos atingido para esta ${label}.`,
+      };
+    }
+
+    return { allowed: true, count, limit };
+  }
+
+  if (!hasActiveAccess(profile ?? {})) {
     return {
       allowed: false,
       count,
@@ -49,7 +69,7 @@ export async function checkStudentLimit(
   }
 
   if (count >= limit) {
-    const tierLabel = getPlanLabel(profile.plan_tier);
+    const tierLabel = getPlanLabel(profile?.plan_tier);
     return {
       allowed: false,
       count,

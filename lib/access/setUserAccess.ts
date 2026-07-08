@@ -36,7 +36,15 @@ export async function setUserAccess(
 
   const supabase = getSupabaseAdmin();
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("account_type")
+    .eq("id", userId)
+    .maybeSingle();
 
+  if (profile?.account_type === "teste" || profile?.account_type === "parceiro") {
+    return;
+  }
 
   const update: Record<string, unknown> = { subscription_active: active };
 

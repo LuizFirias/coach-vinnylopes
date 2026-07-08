@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
+import { applyInviteCode } from "@/lib/invites/applyInviteCode";
 
 export async function POST(req: Request) {
   try {
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
     }
 
     const { userId, user, adminClient } = auth;
-    const { fullName, gender, instagram } = await req.json();
+    const { fullName, gender, instagram, inviteCode } = await req.json();
 
     if (!fullName) {
       return NextResponse.json({ error: "Nome é obrigatório" }, { status: 400 });
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
     console.log("[REGISTER-COACH-PROFILE] ✓ Usuário validado como Coach no Auth. Atualizando tabela profiles...");
 
     const cleanInsta = (instagram || "").replace("@", "").trim();
+    const { accountType, studentLimit } = await applyInviteCode(inviteCode);
 
     const { error: profileError } = await adminClient
       .from("profiles")
@@ -38,6 +40,8 @@ export async function POST(req: Request) {
         full_name: fullName,
         sexo: gender,
         coaching_reference: cleanInsta,
+        account_type: accountType,
+        student_limit: studentLimit,
         atualizado_em: new Date().toISOString(),
       });
 

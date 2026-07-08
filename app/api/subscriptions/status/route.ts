@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
 
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -112,7 +113,7 @@ export async function GET(req: Request) {
 
         .from("profiles")
 
-        .select("subscription_active, plan_tier, billing_period, student_limit")
+        .select("subscription_active, plan_tier, billing_period, student_limit, account_type")
 
         .eq("id", auth.userId)
 
@@ -130,11 +131,17 @@ export async function GET(req: Request) {
 
 
 
-    const isActive = subscription
+    const mpActive = subscription
 
       ? isAccessGranted(subscription.status, subscription.current_period_end)
 
       : Boolean(profile?.subscription_active);
+
+
+
+    const isActive = hasActiveAccess(profile ?? {}) || mpActive;
+
+    const accountType = profile?.account_type ?? "padrao";
 
 
 
@@ -199,6 +206,8 @@ export async function GET(req: Request) {
       subscription: subscription || null,
 
       isActive,
+
+      accountType,
 
       isSuperAdmin: false,
 
