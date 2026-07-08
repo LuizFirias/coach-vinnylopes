@@ -89,6 +89,7 @@ export async function POST(req: Request) {
         role: role || "coach",
         status_pagamento: "pago",
         arquivado: false,
+        must_change_password: isNewUser,
       });
       if (insertError) throw insertError;
     } else {

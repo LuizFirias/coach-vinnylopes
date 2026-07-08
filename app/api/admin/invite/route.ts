@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { getStudentWelcomeEmailHtml } from "@/lib/emailTemplates";
+import { checkStudentLimit } from "@/lib/subscriptions/checkStudentLimit";
+import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
+import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
 
 function generateRandomPassword(length = 12) {
   const lowercase = "abcdefghijklmnopqrstuvwxyz";
@@ -73,58 +74,26 @@ export async function POST(req: Request) {
     }
 
     // ===== 3. AUTENTICAÇÃO DO COACH =====
-    let token = "";
-    try {
-      const cookieStore = await cookies();
-      token = cookieStore.get("sb-access-token")?.value || "";
-    } catch (e) {
-      console.warn("[INVITE] ⚠️ Erro ao acessar cookies:", e);
-    }
-    
-    if (!token) {
-      const bearer = req.headers.get("authorization") || "";
-      token = bearer.replace("Bearer ", "");
+    const auth = await getAuthenticatedCoach(req);
+    if ("error" in auth) {
+      console.error("[INVITE] ❌ Acesso negado:", auth.error);
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    if (!token) {
-      console.error("[INVITE] ❌ Token de autenticação não encontrado");
-      return NextResponse.json({ error: "Não autorizado - Sessão não encontrada" }, { status: 401 });
-    }
+    const { userId, role, fullName: coachFullName, coachingReference, adminClient } = auth;
+    const coachName = coachFullName || coachingReference || "Seu Coach";
 
-    // ===== 4. INSTANCIAR CLIENTE ADMIN =====
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Verificar autenticação do coach
-    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
-    
-    if (authError || !authData?.user) {
-      console.error("[INVITE] ❌ Erro de autenticação Supabase:", authError?.message);
-      return NextResponse.json({ error: "Sessão inválida ou expirada" }, { status: 401 });
-    }
-
-    const userId = authData.user.id;
     console.log("[INVITE] ✓ Coach autenticado:", userId);
+    console.log("[INVITE] ✓ Permissão verificada:", role);
 
-    // Verificar role do coach e obter seu nome/referência
-    const { data: profile, error: roleError } = await adminClient
-      .from("profiles")
-      .select("role, full_name, coaching_reference")
-      .eq("id", userId)
-      .single();
-
-    if (roleError || profile?.role !== "coach") {
-      console.error("[INVITE] ❌ Acesso negado - role:", profile?.role || "null");
-      return NextResponse.json({ error: "Acesso negado - Apenas coaches podem convidar alunos" }, { status: 403 });
+    const limitCheck = await checkStudentLimit(userId, role);
+    if (!limitCheck.allowed) {
+      console.warn("[INVITE] ⚠️ Limite de alunos atingido:", limitCheck);
+      return NextResponse.json(
+        { error: limitCheck.message || "Limite de alunos do plano atingido." },
+        { status: 403 }
+      );
     }
-
-    const coachName = profile?.full_name || profile?.coaching_reference || "Seu Coach";
-
-    console.log("[INVITE] ✓ Permissão verificada: Coach");
 
     // ===== 4. VERIFICAÇÃO DE DUPLICIDADE =====
     console.log("[INVITE] 🔍 Verificando se e-mail já existe:", email);
@@ -228,6 +197,7 @@ export async function POST(req: Request) {
         status_pagamento: "pago",
         arquivado: false,
         first_access_completed: false,
+        must_change_password: true,
         date_of_birth: dateOfBirth || null,
         objetivo: objetivo || null,
         tipo_plano: tipoPlano || null,
@@ -311,8 +281,7 @@ export async function POST(req: Request) {
     // ===== 7. ENVIAR E-MAIL DE BOAS-VINDAS (RESEND) =====
     console.log("[INVITE] 📧 Enviando convite via Resend...");
     
-    // HARDCODED URL para garantir que funcione independente da Vercel
-    const siteUrl = "https://www.auronfit.com.br";
+    const siteUrl = getSiteUrl();
     
     try {
       const { data: emailData, error: emailError } = await resend.emails.send({

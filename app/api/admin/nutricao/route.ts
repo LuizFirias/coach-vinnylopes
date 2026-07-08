@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedCoach } from '@/lib/auth/getAuthenticatedCoach';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,17 +9,12 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await getAuthenticatedCoach(request);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, role } = auth;
 
     const formData = await request.formData();
     const alunoId = formData.get('aluno_id') as string;
@@ -32,19 +28,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se o coach tem acesso ao aluno
-    const { data: relationship } = await supabaseAdmin
-      .from('coach_alunos')
-      .select('*')
-      .eq('coach_id', user.id)
-      .eq('aluno_id', alunoId)
-      .single();
+    // Verificar se o coach tem acesso ao aluno (super_admin pode acessar qualquer aluno)
+    if (role === 'coach') {
+      const { data: relationship } = await supabaseAdmin
+        .from('coach_alunos')
+        .select('*')
+        .eq('coach_id', userId)
+        .eq('aluno_id', alunoId)
+        .single();
 
-    if (!relationship) {
-      return NextResponse.json(
-        { error: 'Você não tem permissão para adicionar planos para este aluno' },
-        { status: 403 }
-      );
+      if (!relationship) {
+        return NextResponse.json(
+          { error: 'Você não tem permissão para adicionar planos para este aluno' },
+          { status: 403 }
+        );
+      }
     }
 
     // Upload do arquivo para o storage
@@ -70,7 +68,7 @@ export async function POST(request: NextRequest) {
       .from('plano_alimentar_pdf')
       .insert({
         aluno_id: alunoId,
-        coach_id: user.id,
+        coach_id: userId,
         url_pdf: fileName,
         nome_arquivo: file.name,
         descricao: descricao || null,

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import * as templates from "@/lib/emailTemplates";
 
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const template = searchParams.get("template");

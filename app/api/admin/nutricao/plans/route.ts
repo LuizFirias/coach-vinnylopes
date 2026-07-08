@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedCoach } from '@/lib/auth/getAuthenticatedCoach';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,17 +9,12 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await getAuthenticatedCoach(request);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, role } = auth;
 
     const body = await request.json();
     const { plan, meals, id: existingPlanId } = body;
@@ -29,12 +25,12 @@ export async function POST(request: NextRequest) {
 
     const isTemplate = plan.status === 'template';
 
-    if (!isTemplate && plan.student_id !== user.id) {
+    if (role === 'coach' && !isTemplate && plan.student_id !== userId) {
       // Verify coach has access to student
       const { data: relationship } = await supabaseAdmin
         .from('coach_alunos')
         .select('*')
-        .eq('coach_id', user.id)
+        .eq('coach_id', userId)
         .eq('aluno_id', plan.student_id)
         .single();
 
@@ -49,6 +45,23 @@ export async function POST(request: NextRequest) {
     let planId = existingPlanId;
 
     if (planId) {
+      const { data: existingPlan, error: planFetchError } = await supabaseAdmin
+        .from('nutrition_plans')
+        .select('coach_id')
+        .eq('id', planId)
+        .single();
+
+      if (planFetchError || !existingPlan) {
+        return NextResponse.json({ error: 'Plano não encontrado' }, { status: 404 });
+      }
+
+      if (role !== 'super_admin' && existingPlan.coach_id !== userId) {
+        return NextResponse.json(
+          { error: 'Você não tem permissão para editar este plano' },
+          { status: 403 }
+        );
+      }
+
       // Update existing plan
       const { error: updateError } = await supabaseAdmin
         .from('nutrition_plans')
@@ -74,7 +87,7 @@ export async function POST(request: NextRequest) {
       const { data: newPlan, error: insertError } = await supabaseAdmin
         .from('nutrition_plans')
         .insert({
-          coach_id: user.id,
+          coach_id: userId,
           student_id: plan.student_id,
           name: plan.name,
           goal: plan.goal,

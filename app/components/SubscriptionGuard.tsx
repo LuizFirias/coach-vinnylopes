@@ -45,7 +45,14 @@ export default function SubscriptionGuard({ children }: Props) {
           // Fetch coach whatsapp if coach_id is present
           if (profile.coach_id) {
             try {
-              const res = await fetch(`/api/aluno/coach-whatsapp?coachId=${profile.coach_id}`);
+              const { data: sessionData } = await supabaseClient.auth.getSession();
+              const accessToken = sessionData?.session?.access_token;
+              const headers: HeadersInit = accessToken
+                ? { Authorization: `Bearer ${accessToken}` }
+                : {};
+              const res = await fetch(`/api/aluno/coach-whatsapp?coachId=${profile.coach_id}`, {
+                headers,
+              });
               const data = await res.json();
               if (data?.whatsapp) {
                 setCoachWhatsapp(data.whatsapp);

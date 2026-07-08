@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFullPlanDetails } from '@/lib/nutrition/plans';
+import { getAuthenticatedCoach } from '@/lib/auth/getAuthenticatedCoach';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,16 +13,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await getAuthenticatedCoach(request);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const { id: planId } = await params;
@@ -34,8 +28,8 @@ export async function GET(
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 
-    // Verify coach has access to this plan
-    if (fullPlan.coach_id !== user.id) {
+    // Verify coach has access to this plan (super_admin pode acessar qualquer plano)
+    if (auth.role !== 'super_admin' && fullPlan.coach_id !== auth.userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
