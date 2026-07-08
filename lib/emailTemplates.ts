@@ -728,6 +728,61 @@ export const getFirstStudentRegisteredHtml = (coachName: string, studentName: st
   return wrapEmailTemplate(content);
 };
 
+// Assinatura coach — pagamento recusado
+export const getSubscriptionPaymentFailedHtml = (fullName: string, updateUrl: string) => {
+  const content = `
+  <h1 style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 700; color: ${TEXT_PRIMARY}; margin: 0 0 12px 0;">
+    Pagamento não aprovado
+  </h1>
+  <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; color: ${TEXT_SECONDARY}; margin: 0 0 32px 0; line-height: 1.5;">
+    Olá ${fullName}, não conseguimos processar a cobrança da sua assinatura AuronFit. Atualize seus dados de pagamento para manter o acesso ao painel.
+  </p>
+  <a href="${updateUrl}" target="_blank" style="background-color: ${BRAND_COLOR}; color: #FFFFFF; height: 48px; line-height: 48px; padding: 0 24px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block; font-size: 14px;">
+    Atualizar pagamento
+  </a>
+  `;
+  return wrapEmailTemplate(content);
+};
+
+// Assinatura coach — cancelamento
+export const getSubscriptionCancelledHtml = (
+  fullName: string,
+  accessUntil: string | null,
+  siteUrl: string
+) => {
+  const untilText = accessUntil
+    ? new Date(accessUntil).toLocaleDateString("pt-BR")
+    : "o fim do período já pago";
+  const content = `
+  <h1 style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 700; color: ${TEXT_PRIMARY}; margin: 0 0 12px 0;">
+    Assinatura cancelada
+  </h1>
+  <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; color: ${TEXT_SECONDARY}; margin: 0 0 32px 0; line-height: 1.5;">
+    Olá ${fullName}, sua assinatura foi cancelada. Seu acesso permanece válido até <strong>${untilText}</strong>.
+  </p>
+  <a href="${siteUrl}/admin/assinatura" target="_blank" style="background-color: ${TEXT_PRIMARY}; color: ${BG_BASE}; height: 48px; line-height: 48px; padding: 0 24px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block; font-size: 14px;">
+    Reativar assinatura
+  </a>
+  `;
+  return wrapEmailTemplate(content);
+};
+
+// Assinatura coach — pausada
+export const getSubscriptionPausedHtml = (fullName: string, updateUrl: string) => {
+  const content = `
+  <h1 style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 700; color: ${TEXT_PRIMARY}; margin: 0 0 12px 0;">
+    Assinatura pausada
+  </h1>
+  <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; color: ${TEXT_SECONDARY}; margin: 0 0 32px 0; line-height: 1.5;">
+    Olá ${fullName}, sua assinatura está pausada. Regularize o pagamento para evitar a interrupção do acesso ao painel.
+  </p>
+  <a href="${updateUrl}" target="_blank" style="background-color: ${BRAND_COLOR}; color: #FFFFFF; height: 48px; line-height: 48px; padding: 0 24px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block; font-size: 14px;">
+    Regularizar assinatura
+  </a>
+  `;
+  return wrapEmailTemplate(content);
+};
+
 // Fallback aliases para retrocompatibilidade
 export const getWelcomeEmailHtml = (fullName: string, email: string, temporaryPassword: string, siteUrl: string) => 
   getStudentWelcomeEmailHtml(fullName, email, temporaryPassword, "Seu Coach", siteUrl);
