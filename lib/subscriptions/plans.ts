@@ -1,0 +1,183 @@
+export type PlanTier = "start" | "pro" | "elite";
+export type BillingPeriod = "monthly" | "semester" | "yearly";
+
+export interface PlanBillingOption {
+  price: number;
+  priceDisplay: string;
+  periodLabel: string;
+  mpFrequencyMonths: number;
+}
+
+export interface PlanDefinition {
+  tier: PlanTier;
+  label: string;
+  studentLimit: number;
+  description: string;
+  features: string[];
+  billing: Partial<Record<BillingPeriod, PlanBillingOption>>;
+}
+
+export const PLAN_TIERS: PlanTier[] = ["start", "pro", "elite"];
+
+export const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
+  monthly: "Mensal",
+  semester: "Semestral",
+  yearly: "Anual",
+};
+
+export const PLANS: Record<PlanTier, PlanDefinition> = {
+  start: {
+    tier: "start",
+    label: "START",
+    studentLimit: 30,
+    description: "Ideal para começar sua consultoria",
+    features: [
+      "Até 30 alunos ativos",
+      "Treinos e nutrição",
+      "Relatórios básicos",
+      "Biblioteca de exercícios",
+    ],
+    billing: {
+      monthly: {
+        price: 39.9,
+        priceDisplay: "R$ 39,90/mês",
+        periodLabel: "Mensal",
+        mpFrequencyMonths: 1,
+      },
+      semester: {
+        price: 149.9,
+        priceDisplay: "R$ 149,90/semestre",
+        periodLabel: "Semestral",
+        mpFrequencyMonths: 6,
+      },
+      yearly: {
+        price: 249.9,
+        priceDisplay: "R$ 249,90/ano",
+        periodLabel: "Anual",
+        mpFrequencyMonths: 12,
+      },
+    },
+  },
+  pro: {
+    tier: "pro",
+    label: "PRO",
+    studentLimit: 150,
+    description: "Para coaches em crescimento",
+    features: [
+      "Até 150 alunos ativos",
+      "Tudo do START",
+      "Relatórios avançados",
+      "Suporte prioritário",
+    ],
+    billing: {
+      monthly: {
+        price: 64.9,
+        priceDisplay: "R$ 64,90/mês",
+        periodLabel: "Mensal",
+        mpFrequencyMonths: 1,
+      },
+      yearly: {
+        price: 549.9,
+        priceDisplay: "R$ 549,90/ano",
+        periodLabel: "Anual",
+        mpFrequencyMonths: 12,
+      },
+    },
+  },
+  elite: {
+    tier: "elite",
+    label: "ELITE",
+    studentLimit: 500,
+    description: "Escala profissional sem limites práticos",
+    features: [
+      "Até 500 alunos ativos",
+      "Tudo do PRO",
+      "Gestão em escala",
+      "Suporte dedicado",
+    ],
+    billing: {
+      monthly: {
+        price: 114.9,
+        priceDisplay: "R$ 114,90/mês",
+        periodLabel: "Mensal",
+        mpFrequencyMonths: 1,
+      },
+      semester: {
+        price: 519.9,
+        priceDisplay: "R$ 519,90/semestre",
+        periodLabel: "Semestral",
+        mpFrequencyMonths: 6,
+      },
+      yearly: {
+        price: 879.9,
+        priceDisplay: "R$ 879,90/ano",
+        periodLabel: "Anual",
+        mpFrequencyMonths: 12,
+      },
+    },
+  },
+};
+
+export function isValidPlanCombo(tier: string, period: string): tier is PlanTier {
+  if (!PLAN_TIERS.includes(tier as PlanTier)) return false;
+  return Boolean(PLANS[tier as PlanTier].billing[period as BillingPeriod]);
+}
+
+export function getPlanOption(tier: PlanTier, period: BillingPeriod): PlanBillingOption & {
+  tier: PlanTier;
+  label: string;
+  studentLimit: number;
+  period: BillingPeriod;
+  reason: string;
+} {
+  const plan = PLANS[tier];
+  const billing = plan.billing[period];
+  if (!billing) {
+    throw new Error(`Combinação inválida: ${tier} + ${period}`);
+  }
+  return {
+    ...billing,
+    tier,
+    label: plan.label,
+    studentLimit: plan.studentLimit,
+    period,
+    reason: `AuronFit ${plan.label} — ${billing.periodLabel}`,
+  };
+}
+
+export function getPlanLabel(tier: PlanTier | string | null | undefined): string {
+  if (!tier || !(tier in PLANS)) return "AuronFit";
+  return PLANS[tier as PlanTier].label;
+}
+
+export function getBillingPeriodsForTier(tier: PlanTier): BillingPeriod[] {
+  return Object.keys(PLANS[tier].billing) as BillingPeriod[];
+}
+
+/** Chave de env opcional para preapproval_plan_id pré-criado no MP */
+export function getMpPlanEnvKey(tier: PlanTier, period: BillingPeriod): string {
+  return `MP_PLAN_${tier.toUpperCase()}_${period.toUpperCase()}_ID`;
+}
+
+export function getPlansCatalog() {
+  return PLAN_TIERS.map((tier) => {
+    const plan = PLANS[tier];
+    return {
+      tier,
+      label: plan.label,
+      studentLimit: plan.studentLimit,
+      description: plan.description,
+      features: plan.features,
+      billingOptions: getBillingPeriodsForTier(tier).map((period) => ({
+        period,
+        ...plan.billing[period]!,
+        periodLabel: BILLING_PERIOD_LABELS[period],
+      })),
+    };
+  });
+}
+
+export function formatStudentUsage(count: number, limit: number | null): string {
+  if (limit == null) return `${count} alunos`;
+  return `${count}/${limit} alunos`;
+}
