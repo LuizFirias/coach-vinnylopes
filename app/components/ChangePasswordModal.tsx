@@ -12,6 +12,32 @@ interface ChangePasswordModalProps {
   onSuccess?: () => void;
 }
 
+function PasswordField({
+  label, value, onChange, show, onToggle, placeholder, onClearMessage,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  show: boolean; onToggle: () => void; placeholder: string;
+  onClearMessage?: () => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">{label}</label>
+      <div className="relative">
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => { onChange(e.target.value); onClearMessage?.(); }}
+          placeholder={placeholder}
+          className="w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 pr-12 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+        />
+        <button type="button" onClick={onToggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors">
+          {show ? <EyeSlash size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: ChangePasswordModalProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -64,29 +90,6 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
 
   if (!isOpen) return null;
 
-  const PasswordField = ({
-    label, value, onChange, show, onToggle, placeholder,
-  }: {
-    label: string; value: string; onChange: (v: string) => void;
-    show: boolean; onToggle: () => void; placeholder: string;
-  }) => (
-    <div className="space-y-1.5">
-      <label className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary ml-1">{label}</label>
-      <div className="relative">
-        <input
-          type={show ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => { onChange(e.target.value); setMessage(null); }}
-          placeholder={placeholder}
-          className="w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 pr-12 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
-        />
-        <button type="button" onClick={onToggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors">
-          {show ? <EyeSlash size={18} /> : <Eye size={18} />}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="relative bg-surface-1 border border-border-subtle rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
@@ -121,8 +124,8 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <PasswordField label="Senha Atual" value={currentPassword} onChange={setCurrentPassword} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder="Digite sua senha atual" />
-            <PasswordField label="Nova Senha" value={newPassword} onChange={setNewPassword} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder="Crie uma senha forte" />
+            <PasswordField label="Senha Atual" value={currentPassword} onChange={setCurrentPassword} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder="Digite sua senha atual" onClearMessage={() => setMessage(null)} />
+            <PasswordField label="Nova Senha" value={newPassword} onChange={setNewPassword} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder="Crie uma senha forte" onClearMessage={() => setMessage(null)} />
 
             {/* Requisitos */}
             {newPassword.length > 0 && (

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeSlash, ShieldCheck, WarningCircle, CheckCircle } from "@phosphor-icons/react";
 import DumbbellLoader from "../components/DumbbellLoader";
 import { motion, AnimatePresence } from "framer-motion";
+import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -92,10 +93,32 @@ function ResetPasswordForm() {
 
     setLoading(true);
     try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const user = authData?.user;
+
       const { error: updateError } = await supabaseClient.auth.updateUser({ password });
       if (updateError) throw updateError;
+
+      if (user) {
+        await supabaseClient
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("id", user.id);
+      }
+
+      const { data: profile } = user
+        ? await supabaseClient
+            .from("profiles")
+            .select("role, first_access_completed, must_change_password")
+            .eq("id", user.id)
+            .single()
+        : { data: null };
+
       setSuccess(true);
-      setTimeout(() => router.replace("/aluno/dashboard"), 2500);
+      const destination = profile
+        ? getPostLoginPath({ ...profile, must_change_password: false })
+        : "/aluno/dashboard";
+      setTimeout(() => router.replace(destination), 2500);
     } catch (err: any) {
       setError(err.message || "Erro ao atualizar senha. O link pode ter expirado.");
     } finally {
