@@ -43,3 +43,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# continue IDE (pode conter API keys locais)
+.continue/
+
+# relatorios de scan de segredos
+gitleaks-report.json
