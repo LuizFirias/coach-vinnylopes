@@ -11,7 +11,8 @@
     "import:wger": "node scripts/import-wger-exercises.js",
     "media:wger": "node scripts/backfill-wger-media.js",
     "rebuild:wger": "node scripts/rebuild-wger-library.js",
-    "media:supabase": "node scripts/upload-wger-media-to-supabase.js"
+    "media:supabase": "node scripts/upload-wger-media-to-supabase.js",
+    "mp:create-plans": "node scripts/create-mp-preapproval-plans.js"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -26,7 +27,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.564.0",
-    "next": "^16.2.1",
+    "next": "^16.2.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-muscle-highlighter": "^1.2.0",
