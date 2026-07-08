@@ -28,7 +28,7 @@ export default function OnboardingPage() {
 
         const { data: profileData, error: profileError } = await supabaseClient
           .from("profiles")
-          .select("role, first_access_completed, coaching_reference, full_name")
+          .select("role, first_access_completed, coaching_reference, full_name, must_change_password")
           .eq("id", user.id)
           .single();
 
@@ -39,6 +39,11 @@ export default function OnboardingPage() {
 
         if (profileData.role !== "aluno") {
           router.replace("/admin/dashboard");
+          return;
+        }
+
+        if (profileData.must_change_password) {
+          router.replace("/aluno/trocar-senha");
           return;
         }
 

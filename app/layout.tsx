@@ -7,7 +7,27 @@ import ChromeExtensionFix from './components/ChromeExtensionFix';
 import SuppressHydrationWarnings from './components/SuppressHydrationWarnings';
 import BottomNav from './components/BottomNav';
 import { AuthProvider } from './components/AuthProvider';
+import { ThemeProvider } from './components/ThemeProvider';
+import ThemeToggleBar from './components/ThemeToggleBar';
 import { Metadata, Viewport } from 'next';
+
+const themeInitScript = `
+(function() {
+  try {
+    var theme = localStorage.getItem('auron-theme') === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#FAFAFA' : '#09090B');
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
+  }
+})();
+`;
 
 const inter = Inter({
   subsets: ['latin'],
@@ -54,7 +74,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090B' },
+  ],
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -67,8 +90,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable}`}>
+    <html lang="pt-br" suppressHydrationWarning className={`dark ${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable}`} data-theme="dark">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -99,15 +123,18 @@ export default function RootLayout({
       <body className="bg-surface-0 text-text-primary overflow-x-hidden min-h-screen" suppressHydrationWarning>
         <SuppressHydrationWarnings />
         <ChromeExtensionFix />
-        <AuthProvider>
-          <SessionManager />
-          <Sidebar />
-          {/* Main content wrapper handles internal padding and sidebar offset */}
-          <MainWrapper>
-            {children}
-          </MainWrapper>
-          <BottomNav />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <SessionManager />
+            <Sidebar />
+            <ThemeToggleBar />
+            {/* Main content wrapper handles internal padding and sidebar offset */}
+            <MainWrapper>
+              {children}
+            </MainWrapper>
+            <BottomNav />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

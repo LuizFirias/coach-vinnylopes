@@ -31,6 +31,7 @@ import {
   Cell
 } from "recharts";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import DashboardTopActions from "@/app/components/DashboardTopActions";
 import { MobileListRow } from "@/app/components/MobileListRow";
 import { cn } from "@/lib/utils/cn";
 
@@ -624,6 +625,14 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans">
       <div className="max-w-7xl mx-auto">
+
+        {/* Mobile: toolbar fixa com notificações + tema */}
+        <div className="dashboard-mobile-toolbar is-surface -mx-4 px-4 pb-3 mb-2 flex items-center justify-end lg:hidden">
+          <DashboardTopActions
+            showNotificationBadge={checkinsPendentes > 0}
+            notificationButtonId="btn-notificacoes-coach-dashboard"
+          />
+        </div>
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

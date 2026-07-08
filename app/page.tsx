@@ -20,6 +20,7 @@ import PWAInstall from "./components/PWAInstall";
 import DumbbellLoader from "./components/DumbbellLoader";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
+import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
 
 function LoginForm() {
   const router = useRouter();
@@ -76,12 +77,14 @@ function LoginForm() {
       if (!session?.user) return;
       const { data: profile } = await supabaseClient
         .from("profiles")
-        .select("role")
+        .select("role, must_change_password, first_access_completed")
         .eq("id", session.user.id)
         .single();
-      const role = profile?.role || "aluno";
-      if (role === "coach" || role === "super_admin") router.replace("/admin/dashboard");
-      else router.replace("/aluno/dashboard");
+      if (profile) {
+        router.replace(getPostLoginPath(profile));
+      } else {
+        router.replace("/aluno/dashboard");
+      }
     };
     checkExistingSession();
   }, [router]);
@@ -173,7 +176,7 @@ function LoginForm() {
 
         const { data: profileData, error: profileError } = await supabaseClient
           .from("profiles")
-          .select("id, role")
+          .select("id, role, must_change_password, first_access_completed")
           .eq("id", data.user.id)
           .single();
 
@@ -201,21 +204,18 @@ function LoginForm() {
         const from = searchParams?.get("from");
         const role = profileData?.role || "aluno";
 
-        let defaultRoute = "/aluno/dashboard";
-        if (role === "coach" || role === "super_admin") defaultRoute = "/admin/dashboard";
-
-        const allowAdmin = role === "coach" || role === "super_admin";
-
-        if (from) {
+        if (from && !profileData?.must_change_password) {
           const isAlunoRoute = from.startsWith("/aluno");
           const isAdminRoute = from.startsWith("/admin");
           const isSuperAdminRoute = from.startsWith("/super-admin");
+          const allowAdmin = role === "coach" || role === "super_admin";
           if ((isAlunoRoute && role === "aluno") || ((isAdminRoute || isSuperAdminRoute) && allowAdmin)) {
             router.push(from);
             return;
           }
         }
-        router.push(defaultRoute);
+
+        router.push(getPostLoginPath(profileData));
       }
     } catch {
       setError("Erro ao processar login. Tente novamente.");

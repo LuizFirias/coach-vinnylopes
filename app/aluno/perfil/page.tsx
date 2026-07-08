@@ -87,7 +87,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
   return (
     <div
       className="border shadow-elev-1 rounded-2xl overflow-hidden"
-      style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+      style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
     >
       <div
         className="px-4 py-2.5 border-b"
@@ -377,8 +377,7 @@ export default function AlunoPerfil() {
   if (loading) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen flex items-center justify-center mobile-page-bg"
       >
         <DumbbellLoader text="Carregando perfil..." />
       </div>
@@ -390,8 +389,7 @@ export default function AlunoPerfil() {
   if (showSettings) {
     return (
       <div
-        className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-28"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-28 mobile-page-bg"
       >
         <div className="max-w-lg mx-auto flex flex-col gap-6">
           {/* Header de Voltar */}
@@ -420,7 +418,7 @@ export default function AlunoPerfil() {
           {/* ── Foto no settings ── */}
           <div
             className="flex items-center gap-4 px-4 py-6 border rounded-2xl shadow-sm"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
           >
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-xl font-bold border border-brand">
@@ -547,7 +545,7 @@ export default function AlunoPerfil() {
         {/* Modal de Sexo */}
         {editingSexo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl mobile-card-surface">
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione seu sexo</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -585,7 +583,7 @@ export default function AlunoPerfil() {
         {/* Modal de Objetivo */}
         {editingObjetivo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl mobile-card-surface">
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione seu objetivo</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -624,7 +622,7 @@ export default function AlunoPerfil() {
         {/* Modal de Unidade de Peso */}
         {editingUnidadePeso && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl mobile-card-surface">
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione a unidade de peso</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -660,7 +658,7 @@ export default function AlunoPerfil() {
         {/* Modal de Unidade de Medida */}
         {editingUnidadeMedida && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl mobile-card-surface">
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione a unidade de medida</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
@@ -696,7 +694,7 @@ export default function AlunoPerfil() {
         {/* Modal de Incremento de Peso */}
         {editingIncrementoPeso && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0B1320' }}>
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl mobile-card-surface">
               <h3 className="text-base font-bold text-text-primary mb-4">Incremento padrão de carga</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[1, 1.25, 2.5, 5].map((opt) => (
@@ -771,8 +769,7 @@ export default function AlunoPerfil() {
   // RENDER THE NEW HEVY-STYLE PROFILE DASHBOARD
   return (
     <div
-      className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-36"
-      style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-36 mobile-page-bg"
     >
       <div className="max-w-lg mx-auto flex flex-col gap-0">
 
@@ -818,7 +815,7 @@ export default function AlunoPerfil() {
           <button
             onClick={() => setShowSettings(true)}
             className="w-10 h-10 rounded-full border hover:border-brand/30 flex items-center justify-center text-text-tertiary hover:text-brand transition-all active:scale-95 cursor-pointer mt-1"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             title="Ajustes"
           >
             <Gear size={20} />
@@ -832,7 +829,7 @@ export default function AlunoPerfil() {
             <Link
               href="/aluno/estatisticas"
               className="border rounded-2xl p-4 flex items-center justify-center gap-3 transition-all active:scale-[0.98] group col-span-2"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <ChartBar size={22} className="text-brand flex-shrink-0" />
               <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Estatísticas</span>
@@ -841,7 +838,7 @@ export default function AlunoPerfil() {
             <Link
               href="/aluno/medidas"
               className="border rounded-2xl p-4 flex items-center gap-3 transition-all active:scale-[0.98] group"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <TrendUp size={22} className="text-brand flex-shrink-0" />
               <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Medidas</span>
@@ -850,7 +847,7 @@ export default function AlunoPerfil() {
             <Link
               href="/aluno/calendario"
               className="border rounded-2xl p-4 flex items-center gap-3 transition-all active:scale-[0.98] group"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <Calendar size={22} className="text-brand flex-shrink-0" />
               <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Calendário</span>
@@ -868,7 +865,7 @@ export default function AlunoPerfil() {
                 <div
                   key={i}
                   className="border rounded-2xl p-5 animate-pulse"
-                  style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                  style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full bg-surface-3" />
@@ -962,7 +959,7 @@ export default function AlunoPerfil() {
           ) : (
             <div
               className="border border-dashed rounded-2xl p-10 text-center flex flex-col items-center justify-center gap-3"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <Barbell size={32} className="text-text-disabled" />
               <div>

@@ -40,29 +40,29 @@ function getTodayISO() {
 }
 
 const pageBackgroundStyle = {
-  background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)'
+  background: 'var(--mobile-page-bg)',
 };
 const nutritionCardStyle = {
-  background: '#0B1320',
-  borderColor: 'rgba(41,48,61,0.8)',
-  boxShadow: '0 0 20px rgba(95,191,143,0.07)'
+  background: 'var(--mobile-card-bg)',
+  borderColor: 'var(--mobile-card-border)',
+  boxShadow: '0 0 20px rgba(95,191,143,0.07)',
 };
 const hydrationCardStyle = {
-  background: '#0B1320',
-  borderColor: 'rgba(41,48,61,0.8)',
-  boxShadow: '0 0 20px rgba(72,128,216,0.07)'
+  background: 'var(--mobile-card-bg)',
+  borderColor: 'var(--mobile-card-border)',
+  boxShadow: '0 0 20px rgba(72,128,216,0.07)',
 };
 const secondarySurfaceStyle = {
-  background: '#0D1829'
+  background: 'var(--mobile-secondary-bg)',
 };
 const cardBorderStyle = {
-  borderColor: 'rgba(41,48,61,0.8)'
+  borderColor: 'var(--mobile-card-border)',
 };
 const separatorBorderStyle = {
-  borderColor: 'rgba(41,48,61,0.4)'
+  borderColor: 'var(--mobile-card-border-faint)',
 };
 const faintSeparatorBorderStyle = {
-  borderColor: 'rgba(41,48,61,0.24)'
+  borderColor: 'var(--mobile-card-border-subtle)',
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -426,7 +426,7 @@ export default function PlanoAlimentarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen pb-24 scroll-content" style={pageBackgroundStyle}>
+      <div className="min-h-screen pb-24 scroll-content mobile-page-bg">
         <div className="max-w-2xl mx-auto flex flex-col pt-safe animate-pulse">
           {/* Header */}
           <div className="px-4 pt-4 pb-3">
@@ -530,7 +530,7 @@ export default function PlanoAlimentarPage() {
   const mlMeta = metaCopos * agua.ml_por_copo;
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen pb-24 scroll-content" style={pageBackgroundStyle}>
+      <div className="min-h-screen pb-24 scroll-content mobile-page-bg">
         <div className="max-w-2xl mx-auto flex flex-col pt-safe">
 
           {/* ── Header — padrão igual ao dashboard, sem "← DASHBOARD" azul ── */}

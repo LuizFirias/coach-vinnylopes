@@ -86,6 +86,9 @@ export default function Sidebar() {
     pathname === '/login' || 
     pathname === '/' || 
     pathname?.startsWith('/signup') || 
+    pathname === '/aluno/trocar-senha' ||
+    pathname === '/admin/trocar-senha' ||
+    pathname === '/aluno/onboarding' ||
     loading
   ) {
     return null;

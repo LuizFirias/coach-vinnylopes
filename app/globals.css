@@ -10,18 +10,24 @@ html {
   touch-action: manipulation;
 }
 
-/* Force dark color-scheme on all native select elements so the OS-rendered
-   dropdown popup uses dark system colors (black bg / white text) instead of
-   the default light popup that makes options unreadable on dark backgrounds. */
-select {
+html[data-theme="dark"] select,
+html.dark select {
   color-scheme: dark;
 }
 
-/* Explicitly override option colors — color-scheme alone uses OS gray tones
-   on Windows Chrome which can still be unreadable on dark UIs. */
-select option {
+html[data-theme="light"] select {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] select option,
+html.dark select option {
   background-color: #111111;
   color: #f2f2f2;
+}
+
+html[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #09090b;
 }
 
 select option:hover,
@@ -499,3 +505,55 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Scroll padding para não esconder conteúdo atrás da bottom nav */
 .scroll-content { padding-bottom: 0; }
+
+/* Mobile aluno shell — backgrounds theme-aware */
+.mobile-page-bg {
+  background: var(--mobile-page-bg);
+}
+
+.mobile-card-surface {
+  background: var(--mobile-card-bg);
+  border-color: var(--mobile-card-border);
+}
+
+.mobile-icon-btn {
+  background: var(--mobile-card-bg);
+  border-color: var(--mobile-card-border);
+}
+
+.mobile-secondary-surface {
+  background: var(--mobile-secondary-bg);
+}
+
+.mobile-badge-ring {
+  border-color: var(--mobile-page-bg-solid);
+}
+
+.border-mobile-soft { border-color: var(--mobile-card-border-soft); }
+.border-mobile-faint { border-color: var(--mobile-card-border-faint); }
+.border-mobile-subtle { border-color: var(--mobile-card-border-subtle); }
+
+/* Dashboard mobile toolbar — fixo no topo, não acompanha scroll */
+.dashboard-mobile-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--mobile-page-bg);
+}
+
+.dashboard-mobile-toolbar.is-surface {
+  background: var(--surface-0);
+}
+
+html[data-theme="light"] .dashboard-mobile-toolbar.is-surface {
+  background: var(--surface-0);
+}
+
+@media (min-width: 1024px) {
+  .dashboard-mobile-toolbar {
+    position: static;
+    padding-top: 0;
+    background: transparent;
+  }
+}

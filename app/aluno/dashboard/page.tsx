@@ -9,12 +9,13 @@ import Link from "next/link";
 import {
   Barbell, Ruler, ArrowRight,
   WarningCircle, Fire, Flame,
-  Bell, CaretLeft, CaretRight, Clock, TrendUp,
+  CaretLeft, CaretRight, Clock, TrendUp,
   Lightning, Drop, Plus, Minus, X,
 } from '@phosphor-icons/react';
 import Body from 'react-muscle-highlighter';
 import { cn } from '@/lib/utils/cn';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import DashboardTopActions from "@/app/components/DashboardTopActions";
 import { getTodayBrazil } from '@/lib/dateUtils';
 import { CoachCard } from '@/app/components/dashboard/CoachCard';
 
@@ -347,7 +348,7 @@ export default function AlunoDashboardPage() {
       // Perfil
       const { data: profile } = await supabaseClient
         .from("profiles")
-        .select("full_name, role, first_access_completed, date_of_birth, coach_id")
+        .select("full_name, role, first_access_completed, date_of_birth, coach_id, must_change_password")
         .eq("id", uid)
         .single();
 
@@ -355,6 +356,10 @@ export default function AlunoDashboardPage() {
 
       if (profile?.role === "coach" || profile?.role === "super_admin") {
         router.push("/admin/dashboard");
+        return;
+      }
+      if (profile?.must_change_password) {
+        router.push("/aluno/trocar-senha");
         return;
       }
       if (profile?.role === "aluno" && !profile?.first_access_completed) {
@@ -650,11 +655,11 @@ export default function AlunoDashboardPage() {
   const today = getTodayBrazil();
 
   return (
-    <div className="min-h-screen scroll-content" style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}>
-      <div className="max-w-md mx-auto flex flex-col pt-safe">
+    <div className="min-h-screen scroll-content mobile-page-bg">
+      <div className="max-w-md mx-auto flex flex-col">
 
-        {/* ── 1. Header ── */}
-        <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+        {/* ── 1. Header (fixo no mobile) ── */}
+        <div className="dashboard-mobile-toolbar px-4 pt-4 pb-3 flex items-center justify-between">
           <div>
             {/* Data — eyebrow */}
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted capitalize">
@@ -666,18 +671,9 @@ export default function AlunoDashboardPage() {
               <span style={{ color: '#1E5AE1' }}>{primeiroNome}</span>
             </h1>
           </div>
-          {/* Notificações */}
-          <button
-            id="btn-notificacoes-dashboard"
-            className="w-9 h-9 rounded-lg border flex items-center justify-center relative"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
-            aria-label="Notificações"
-          >
-            <Bell className="w-4 h-4 text-text-secondary" />
-            {(coachPendings.feedbacks > 0 || coachPendings.mensagens > 0) && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border-2" style={{ background: '#217CFD', borderColor: '#010713' }} />
-            )}
-          </button>
+          <DashboardTopActions
+            showNotificationBadge={coachPendings.feedbacks > 0 || coachPendings.mensagens > 0}
+          />
         </div>
 
         {/* ── 2. Alerta dados incompletos ── */}
@@ -713,12 +709,12 @@ export default function AlunoDashboardPage() {
 
         {/* ── 4. Card: Treino de Hoje (principal) ── */}
         <div
-          className="mx-4 mb-3 rounded-[20px] overflow-hidden border"
-          style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 24px rgba(30,88,228,0.10)' }}
+          className="mx-4 mb-3 rounded-[20px] overflow-hidden border mobile-card-surface"
+          style={{ boxShadow: '0 0 24px rgba(30,88,228,0.10)' }}
         >
 
           {/* Label + nome */}
-          <div className="px-4 pt-4 pb-3 border-b border-[#29303D]/50 relative">
+          <div className="px-4 pt-4 pb-3 border-b border-mobile-soft relative">
             {/* Muscle body — frente, grupos musculares do treino de hoje */}
             <div className="absolute right-2 top-1 bottom-1 flex items-center pointer-events-none select-none overflow-hidden" style={{ width: 56 }}>
               <MuscleBodyFront muscleGroups={treinoMuscleGroups} />
@@ -837,7 +833,7 @@ export default function AlunoDashboardPage() {
 
           {/* Preview do treino selecionado na semana */}
           {selectedDia && (
-            <div className="px-4 py-2 border-t border-[#29303D]/50 bg-[#0D1829]/30 flex items-center justify-between transition-colors">
+            <div className="px-4 py-2 border-t border-mobile-soft bg-surface-1/30 flex items-center justify-between transition-colors">
               <div className="min-w-0">
                 <p className="text-[11px] font-medium text-text-muted">
                   {selectedDia.isOff ? (
@@ -885,7 +881,7 @@ export default function AlunoDashboardPage() {
           )}
 
           {/* Botão iniciar treino principal (sempre hoje) */}
-          <div className="px-4 pb-4 pt-3 border-t border-[#29303D]/20">
+          <div className="px-4 pb-4 pt-3 border-t border-mobile-subtle">
             {treinoHoje?.status === 'pendente' ? (
               <Link
                 href={treinoHoje.fichaId ? `/aluno/treinos/${treinoHoje.fichaId}/executar` : '/aluno/treinos'}
@@ -934,8 +930,8 @@ export default function AlunoDashboardPage() {
 
           {/* Streak */}
           <div
-            className="rounded-[16px] px-3 py-2 flex items-center justify-between border relative overflow-hidden"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(236,126,82,0.08)' }}
+            className="rounded-[16px] px-3 py-2 flex items-center justify-between border mobile-card-surface relative overflow-hidden"
+            style={{ boxShadow: '0 0 20px rgba(236,126,82,0.08)' }}
           >
             <div className="min-w-0 relative z-10">
               <p className="text-[9px] font-semibold uppercase tracking-[0.06em] text-text-muted flex items-center gap-1">
@@ -961,8 +957,8 @@ export default function AlunoDashboardPage() {
 
           {/* Frequência semanal */}
           <div
-            className="rounded-[16px] px-3 py-2 flex items-center justify-between border relative overflow-hidden"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(65,145,243,0.08)' }}
+            className="rounded-[16px] px-3 py-2 flex items-center justify-between border mobile-card-surface relative overflow-hidden"
+            style={{ boxShadow: '0 0 20px rgba(65,145,243,0.08)' }}
           >
             <div className="min-w-0 relative z-10">
               <p className="text-[9px] font-semibold uppercase tracking-[0.06em] text-text-muted flex items-center gap-1">
@@ -991,8 +987,8 @@ export default function AlunoDashboardPage() {
         {/* ── 6. Card: Nutrição (simplificado — sem "HORA DE COMER") ── */}
         {planoNutricao && (
           <div
-            className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border relative overflow-hidden"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(95,191,143,0.07)' }}
+            className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border mobile-card-surface relative overflow-hidden"
+            style={{ boxShadow: '0 0 20px rgba(95,191,143,0.07)' }}
           >
             {/* Plate/fork illustration decorativa */}
             <div className="absolute right-0 top-0 bottom-0 flex items-center pointer-events-none select-none">
@@ -1045,8 +1041,8 @@ export default function AlunoDashboardPage() {
 
         {/* ── 7. Hidratação (Compacto) ── */}
         <div
-          className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border"
-          style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)', boxShadow: '0 0 20px rgba(72,128,216,0.07)' }}
+          className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border mobile-card-surface"
+          style={{ boxShadow: '0 0 20px rgba(72,128,216,0.07)' }}
         >
           <div className="flex items-center gap-2">
             <Drop className="w-4 h-4" weight="fill" style={{ color: '#4880D8' }} />
@@ -1089,8 +1085,7 @@ export default function AlunoDashboardPage() {
         {parceiros.length > 0 && (
           <Link
             href="/aluno/parceiros"
-            className="mx-4 mb-2 flex items-center justify-between px-4 py-3 rounded-[16px] border text-sm text-text-secondary hover:text-text-primary transition-colors"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            className="mx-4 mb-2 flex items-center justify-between px-4 py-3 rounded-[16px] border mobile-card-surface text-sm text-text-secondary hover:text-text-primary transition-colors"
           >
             <span>Benefícios exclusivos disponíveis</span>
             <ArrowRight className="w-4 h-4 flex-shrink-0 text-text-muted" />
@@ -1102,8 +1097,7 @@ export default function AlunoDashboardPage() {
           <Link
             href="/aluno/medidas"
             id="btn-registrar-evolucao"
-            className="h-11 rounded-[16px] border text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            className="h-11 rounded-[16px] border mobile-card-surface text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
           >
             <TrendUp className="w-3.5 h-3.5" />
             Registrar evolução
@@ -1111,8 +1105,7 @@ export default function AlunoDashboardPage() {
           <Link
             href="/aluno/treinos"
             id="btn-ver-historico"
-            className="h-11 rounded-[16px] border text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            className="h-11 rounded-[16px] border mobile-card-surface text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
           >
             <Clock className="w-3.5 h-3.5" />
             Ver histórico

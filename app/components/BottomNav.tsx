@@ -39,6 +39,9 @@ export default function BottomNav() {
     pathname === '/login' || 
     pathname === '/' || 
     pathname?.startsWith('/signup') || 
+    pathname === '/aluno/trocar-senha' ||
+    pathname === '/admin/trocar-senha' ||
+    pathname === '/aluno/onboarding' ||
     loading || 
     pathname.endsWith('/executar')
   ) {

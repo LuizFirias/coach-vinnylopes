@@ -385,8 +385,7 @@ export default function EstatisticasPage() {
   if (loading) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen flex items-center justify-center mobile-page-bg"
       >
         <DumbbellLoader text="Carregando estatísticas..." />
       </div>
@@ -401,8 +400,7 @@ export default function EstatisticasPage() {
     const COLORS = ['var(--color-brand)', '#a855f7', '#eab308'];
     return (
       <div
-        className="min-h-screen pb-32 text-text-primary"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen pb-32 text-text-primary mobile-page-bg"
       >
         <div className="max-w-lg mx-auto">
           {/* Header */}
@@ -410,7 +408,7 @@ export default function EstatisticasPage() {
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <ArrowLeft size={18} />
             </button>
@@ -424,7 +422,7 @@ export default function EstatisticasPage() {
               <button
                 onClick={() => setSetCountPeriod(p => p === 'last30' ? 'last90' : 'last30')}
                 className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary hover:bg-white/5 transition-all"
-                style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
               >
                 {setCountPeriod === 'last30' ? 'Últimos 30 dias' : 'Últimos 90 dias'}
                 <CaretRight size={12} className="rotate-90 opacity-60" />
@@ -432,7 +430,7 @@ export default function EstatisticasPage() {
               <button
                 onClick={() => setSetCountGranularity(g => g === 'week' ? 'month' : 'week')}
                 className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary hover:bg-white/5 transition-all"
-                style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
               >
                 {setCountGranularity === 'week' ? 'Semana' : 'Mês'}
                 <CaretRight size={12} className="rotate-90 opacity-60" />
@@ -492,15 +490,14 @@ export default function EstatisticasPage() {
   if (screen === 'muscle-chart') {
     return (
       <div
-        className="min-h-screen pb-32 text-text-primary"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen pb-32 text-text-primary mobile-page-bg"
       >
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <ArrowLeft size={18} />
             </button>
@@ -510,7 +507,7 @@ export default function EstatisticasPage() {
           <div className="p-4 flex flex-col gap-5">
             <button
               className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary self-start"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               Últimos 30 dias <CaretRight size={12} className="rotate-90 opacity-60" />
             </button>
@@ -537,7 +534,7 @@ export default function EstatisticasPage() {
                 <div
                   key={stat.label}
                   className="border rounded-2xl p-4"
-                  style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                  style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
                 >
                   <p className="text-xs text-text-tertiary mb-1">{stat.label}</p>
                   <p className="text-xl font-bold text-text-primary">{stat.value}</p>
@@ -573,15 +570,14 @@ export default function EstatisticasPage() {
 
     return (
       <div
-        className="min-h-screen pb-32 text-text-primary"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen pb-32 text-text-primary mobile-page-bg"
       >
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <ArrowLeft size={18} />
             </button>
@@ -631,7 +627,7 @@ export default function EstatisticasPage() {
             {/* Muscle table */}
             <div
               className="border rounded-2xl overflow-hidden"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <div
                 className="flex justify-between items-center px-4 py-3 border-b"
@@ -666,15 +662,14 @@ export default function EstatisticasPage() {
   if (screen === 'main-exercises') {
     return (
       <div
-        className="min-h-screen pb-32 text-text-primary"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen pb-32 text-text-primary mobile-page-bg"
       >
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <ArrowLeft size={18} />
             </button>
@@ -684,7 +679,7 @@ export default function EstatisticasPage() {
           <div className="p-4 flex flex-col gap-4">
             <button
               className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary self-start"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               Últimos 30 dias <CaretRight size={12} className="rotate-90 opacity-60" />
             </button>
@@ -729,8 +724,7 @@ export default function EstatisticasPage() {
 
     return (
       <div
-        className="min-h-screen pb-32 text-text-primary"
-        style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+        className="min-h-screen pb-32 text-text-primary mobile-page-bg"
       >
         <div className="max-w-lg mx-auto">
           {/* Header */}
@@ -738,7 +732,7 @@ export default function EstatisticasPage() {
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-              style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
             >
               <ArrowLeft size={18} />
             </button>
@@ -777,7 +771,7 @@ export default function EstatisticasPage() {
                 <button
                   key={label}
                   className={cn('px-3 py-1.5 rounded-full text-xs font-semibold transition-all', i === 0 ? 'bg-brand text-white' : 'border text-text-secondary hover:text-text-primary')}
-                  style={i === 0 ? undefined : { background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                  style={i === 0 ? undefined : { background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
                 >
                   {label}
                 </button>
@@ -797,7 +791,7 @@ export default function EstatisticasPage() {
                   <div
                     key={stat.label}
                     className="border rounded-2xl p-4"
-                    style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                    style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
                   >
                     <p className="text-xs text-text-tertiary mb-1">{stat.label}</p>
                     <p className="text-xl font-bold text-text-primary">{stat.value}</p>
@@ -818,7 +812,7 @@ export default function EstatisticasPage() {
 
               <div
                 className="border rounded-2xl p-4"
-                style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
               >
                 {/* Calendar header */}
                 <div className="flex justify-between items-center mb-3">
@@ -932,8 +926,7 @@ export default function EstatisticasPage() {
   // ── MAIN STATISTICS SCREEN (identical to Hevy image 4) ────────────────────
   return (
     <div
-      className="min-h-screen pb-32 text-text-primary"
-      style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}
+      className="min-h-screen pb-32 text-text-primary mobile-page-bg"
     >
       <div className="max-w-lg mx-auto">
 
@@ -942,7 +935,7 @@ export default function EstatisticasPage() {
           <Link
             href="/aluno/perfil"
             className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
           >
             <ArrowLeft size={18} />
           </Link>
@@ -993,7 +986,7 @@ export default function EstatisticasPage() {
           {/* Advanced Statistics menu (like Hevy) */}
           <div
             className="border rounded-2xl overflow-hidden"
-            style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
           >
             <div
               className="px-4 py-3 border-b"

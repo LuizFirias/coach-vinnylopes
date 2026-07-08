@@ -80,7 +80,7 @@ export default function AlunoTreinosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}>
+      <div className="min-h-screen flex items-center justify-center mobile-page-bg">
         <DumbbellLoader text="Carregando treinos..." />
       </div>
     );
@@ -90,7 +90,7 @@ export default function AlunoTreinosPage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen pb-24" style={{ background: 'radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%)' }}>
+      <div className="min-h-screen pb-24 mobile-page-bg">
 
         {/* Header */}
         <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
@@ -122,8 +122,7 @@ export default function AlunoTreinosPage() {
                     <Link
                       key={ficha.id}
                       href={`/aluno/treinos/${ficha.id}/executar`}
-                      className="w-full border rounded-[16px] px-3 py-2 flex items-start gap-2 transition-all active:scale-[0.99] group hover:border-brand/30"
-                      style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                      className="w-full border mobile-card-surface rounded-[16px] px-3 py-2 flex items-start gap-2 transition-all active:scale-[0.99] group hover:border-brand/30"
                     >
                       <div className="w-6 h-6 rounded-md bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Barbell size={12} className="text-brand" />
@@ -177,8 +176,7 @@ export default function AlunoTreinosPage() {
                       if (pdf.aluno_id !== userId) return;
                       setSelectedPdf(pdf);
                     }}
-                    className="w-full text-left border p-3 rounded-[16px] transition-all active:scale-[0.99] flex items-center gap-3 group hover:border-brand/20"
-                    style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}
+                    className="w-full text-left border mobile-card-surface p-3 rounded-[16px] transition-all active:scale-[0.99] flex items-center gap-3 group hover:border-brand/20"
                   >
                     <div className="w-8 h-8 rounded-lg border flex items-center justify-center text-text-secondary shrink-0 group-hover:border-brand/30 transition-colors" style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}>
                       <FileText size={16} />
@@ -202,7 +200,7 @@ export default function AlunoTreinosPage() {
 
           {/* Empty state */}
           {total === 0 && (
-            <div className="text-center py-24 border border-dashed rounded-2xl" style={{ background: '#0B1320', borderColor: 'rgba(41,48,61,0.8)' }}>
+            <div className="text-center py-24 border border-dashed mobile-card-surface rounded-2xl">
               <Barbell size={32} className="text-text-disabled mx-auto mb-3" />
               <p className="text-text-disabled text-xs uppercase tracking-caps">Nenhum treino ativo.</p>
               <p className="text-xs text-text-tertiary mt-2 max-w-xs mx-auto">

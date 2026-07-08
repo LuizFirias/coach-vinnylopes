@@ -219,6 +219,81 @@
   --header-height:     56px;
   --touch-target-min:  48px;
   --max-width-mobile:  428px;  /* iPhone Pro Max baseline */
+
+  /* Mobile aluno shell (theme-aware — evita hex inline) */
+  --mobile-page-bg-solid: #010713;
+  --mobile-page-bg: radial-gradient(120% 100% at 50% 0%, #0A0F1C 0%, #010713 60%);
+  --mobile-card-bg: #0B1320;
+  --mobile-card-border: rgba(41, 48, 61, 0.8);
+  --mobile-card-border-soft: rgba(41, 48, 61, 0.5);
+  --mobile-card-border-faint: rgba(41, 48, 61, 0.4);
+  --mobile-card-border-subtle: rgba(41, 48, 61, 0.24);
+  --mobile-secondary-bg: #0D1829;
+  --theme-color-meta: #09090B;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME — overrides via data-theme (default = dark above)
+   ═══════════════════════════════════════════════════════════ */
+html[data-theme="light"] {
+  --surface-0:        #FAFAFA;
+  --surface-1:        #F4F4F5;
+  --surface-2:        #FFFFFF;
+  --surface-3:        #E4E4E7;
+  --surface-4:        #D4D4D8;
+
+  --text-primary:     #09090B;
+  --text-secondary:   #52525B;
+  --text-tertiary:    #71717A;
+  --text-disabled:    #A1A1AA;
+
+  --border-subtle:    #E4E4E7;
+  --border-default:   #D4D4D8;
+  --border-strong:    #A1A1AA;
+
+  --brand-subtle:     rgba(37, 99, 235, 0.08);
+  --brand-border:     rgba(37, 99, 235, 0.28);
+
+  --success-subtle:   rgba(34, 197, 94, 0.10);
+  --success-border:   rgba(34, 197, 94, 0.22);
+  --warning-subtle:   rgba(245, 158, 11, 0.10);
+  --warning-border:   rgba(245, 158, 11, 0.22);
+  --danger-subtle:    rgba(239, 68, 68, 0.10);
+  --danger-border:    rgba(239, 68, 68, 0.22);
+  --info-subtle:      rgba(56, 189, 248, 0.10);
+  --info-border:      rgba(56, 189, 248, 0.22);
+
+  --elev-1:           0 1px 2px rgba(0, 0, 0, 0.06);
+  --elev-2:           0 4px 12px rgba(0, 0, 0, 0.08);
+  --elev-3:           0 12px 32px rgba(0, 0, 0, 0.12);
+
+  --glow-brand:       0 0 24px rgba(37, 99, 235, 0.16);
+  --glow-success:     0 0 24px rgba(34, 197, 94, 0.18);
+  --pr-glow:          0 0 20px rgba(34, 197, 94, 0.22);
+
+  --focus-ring:       0 0 0 2px rgba(37, 99, 235, 0.40);
+
+  --color-gold-muted: rgba(37, 99, 235, 0.08);
+  --color-border-gold: rgba(37, 99, 235, 0.28);
+
+  --mobile-page-bg-solid: var(--surface-0);
+  --mobile-page-bg: linear-gradient(180deg, var(--surface-0) 0%, var(--surface-1) 100%);
+  --mobile-card-bg: var(--surface-2);
+  --mobile-card-border: var(--border-subtle);
+  --mobile-card-border-soft: var(--border-subtle);
+  --mobile-card-border-faint: var(--border-subtle);
+  --mobile-card-border-subtle: var(--border-subtle);
+  --mobile-secondary-bg: var(--surface-1);
+  --theme-color-meta: var(--surface-0);
+}
+
+html[data-theme="dark"],
+html.dark {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -236,6 +311,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background: var(--surface-0);
 }
 
 body {

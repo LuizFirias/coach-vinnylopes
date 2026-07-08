@@ -2,16 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getPublicStorageUrl, extractStoragePath } from "@/lib/storageUrls";
-import { SignOut, Lock, Camera } from '@phosphor-icons/react';
+import { SignOut, Lock, Camera, CreditCard } from '@phosphor-icons/react';
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { SubscriptionBadge } from "@/app/components/SubscriptionBadge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { cn } from "@/lib/utils/cn";
+import { isAccessGranted } from "@/lib/subscriptions/display";
+import { formatStudentUsage, getPlanLabel } from "@/lib/subscriptions/plans";
 
 export default function CoachPerfilPage() {
   const router = useRouter();
@@ -26,6 +30,10 @@ export default function CoachPerfilPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [subscriptionActive, setSubscriptionActive] = useState(false);
+  const [planName, setPlanName] = useState("AuronFit");
+  const [studentUsage, setStudentUsage] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -51,6 +59,46 @@ export default function CoachPerfilPage() {
       setFullName(profileData?.full_name || "");
       setEmail(authData.user.email || "");
       setAvatarUrl(profileData?.avatar_url || null);
+
+      if (profileData?.role === "super_admin") {
+        setSubscriptionActive(true);
+        setSubscriptionStatus("authorized");
+        setPlanName("Super Admin");
+        setStudentUsage(null);
+      } else {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.access_token) {
+          const res = await fetch("/api/subscriptions/status", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (res.ok) {
+            const subJson = await res.json();
+            setSubscriptionActive(subJson.isActive);
+            setSubscriptionStatus(subJson.subscription?.status ?? null);
+            setPlanName(
+              subJson.currentPlan?.label ??
+                (subJson.planTier ? getPlanLabel(subJson.planTier) : "AuronFit")
+            );
+            if (subJson.studentLimit != null) {
+              setStudentUsage(formatStudentUsage(subJson.activeStudentCount, subJson.studentLimit));
+            }
+          }
+        } else {
+          const { data: subData } = await supabaseClient
+            .from("subscriptions")
+            .select("status, current_period_end")
+            .eq("user_id", authData.user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const active = subData
+            ? isAccessGranted(subData.status, subData.current_period_end)
+            : Boolean(profileData?.subscription_active);
+          setSubscriptionActive(active);
+          setSubscriptionStatus(subData?.status ?? null);
+        }
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao carregar perfil");
     } finally {
@@ -185,6 +233,15 @@ export default function CoachPerfilPage() {
           {/* Coluna 1: Avatar e resumo */}
           <div className="lg:col-span-1">
             <Card className="rounded-xl border border-border-subtle/80 p-5 flex flex-col items-center text-center shadow-sm">
+              <div className="mb-3">
+                <SubscriptionBadge
+                  planName={planName}
+                  status={subscriptionStatus}
+                  isActive={subscriptionActive}
+                  studentUsage={studentUsage}
+                  size="sm"
+                />
+              </div>
               <div className="relative mb-4">
                 <div className="w-20 h-20 rounded-xl overflow-hidden bg-surface-3 border border-border-default flex items-center justify-center relative select-none">
                   {avatarUrl ? (
@@ -218,6 +275,17 @@ export default function CoachPerfilPage() {
               <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wide mt-1.5 px-2 py-0.5 rounded bg-surface-3 border border-border-subtle">
                 Personal Trainer
               </span>
+
+              <Link href="/admin/assinatura" className="mt-4 w-full">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 text-xs rounded-lg w-full"
+                  leftIcon={<CreditCard className="w-4 h-4" />}
+                >
+                  Gerenciar assinatura
+                </Button>
+              </Link>
             </Card>
           </div>
 
