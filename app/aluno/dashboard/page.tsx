@@ -1,66 +1,22 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getPublicStorageUrl } from '@/lib/storageUrls';
 import Link from "next/link";
-import {
-  Barbell, Ruler, ArrowRight,
-  WarningCircle, Fire, Flame,
-  CaretLeft, CaretRight, Clock, TrendUp,
-  Lightning, Drop, Plus, Minus, X,
-} from '@phosphor-icons/react';
-import Body from 'react-muscle-highlighter';
-import { cn } from '@/lib/utils/cn';
+import { ArrowRight, WarningCircle, X } from '@phosphor-icons/react';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
-import DashboardTopActions from "@/app/components/DashboardTopActions";
 import { getTodayBrazil } from '@/lib/dateUtils';
 import { CoachCard } from '@/app/components/dashboard/CoachCard';
-
-// ─── Muscle mapping (espelho de estatisticas/page.tsx) ────────────────────────
-const HIGHLIGHTER_MAP: Record<string, string[]> = {
-  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
-  'upper-back': ['Dorsais'],
-  'trapezius': ['Trapézio'],
-  'lower-back': ['Lombar'],
-  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
-  'biceps': ['Bíceps'],
-  'triceps': ['Tríceps'],
-  'forearm': ['Antebraço'],
-  'quadriceps': ['Quadríceps'],
-  'hamstring': ['Posterior (Isquiotibiais)'],
-  'calves': ['Panturrilha'],
-  'gluteal': ['Glúteos'],
-  'abs': ['Abdômen'],
-  'obliques': ['Oblíquos'],
-};
-
-// Grupos musculares → intensidade 0-10 para o MuscleBodyChart
-function MuscleBodyFront({ muscleGroups }: { muscleGroups: string[] }) {
-  const data: any[] = useMemo(() => {
-    const activeSet = new Set(muscleGroups);
-    return Object.entries(HIGHLIGHTER_MAP)
-      .filter(([, groups]) => groups.some(g => activeSet.has(g)))
-      .map(([slug]) => ({
-        slug,
-        color: 'rgba(37, 99, 235, 0.72)',
-      }));
-  }, [muscleGroups]);
-
-  return (
-    <Body
-      data={data}
-      side="front"
-      gender="male"
-      scale={0.85}
-      defaultFill="#27272a"
-      defaultStroke="#3f3f46"
-      defaultStrokeWidth={1}
-    />
-  );
-}
+import { HeroHeader } from '@/app/components/dashboard/home/HeroHeader';
+import { WorkoutCard } from '@/app/components/dashboard/home/WorkoutCard';
+import { WeekCalendar, type DiaSemana } from '@/app/components/dashboard/home/WeekCalendar';
+import { StreakRow } from '@/app/components/dashboard/home/StreakRow';
+import { NutritionCard } from '@/app/components/dashboard/home/NutritionCard';
+import { HydrationCard } from '@/app/components/dashboard/home/HydrationCard';
+import { QuickActions } from '@/app/components/dashboard/home/QuickActions';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -90,19 +46,6 @@ interface Parceiro {
   imagens?: string[] | null;
 }
 
-interface DiaSemana {
-  data: string;
-  label: string;
-  numero: number;
-  isHoje: boolean;
-  treinoConcluido: boolean;
-  temTreino: boolean;
-  isOff?: boolean;
-  nomeRotina?: string;
-  fichaId?: string;
-  treinoPdfId?: string;
-}
-
 interface WorkoutOption {
   id: string;
   name: string;
@@ -110,10 +53,6 @@ interface WorkoutOption {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function toTitleCase(str: string) {
-  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
-}
 
 function getWeekDays(weekOffset: number): DiaSemana[] {
   const today = new Date();
@@ -170,6 +109,7 @@ export default function AlunoDashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [coachId, setCoachId] = useState<string | null>(null);
   const [incompleteData, setIncompleteData] = useState(false);
@@ -190,8 +130,6 @@ export default function AlunoDashboardPage() {
     fichaId?: string;
     qtdExercicios?: number;
   } | null>(null);
-  const [treinoMuscleGroups, setTreinoMuscleGroups] = useState<string[]>([]);
-
   // Nutrição
   const [planoNutricao, setPlanoNutricao] = useState<{
     nome: string;
@@ -348,7 +286,7 @@ export default function AlunoDashboardPage() {
       // Perfil
       const { data: profile } = await supabaseClient
         .from("profiles")
-        .select("full_name, role, first_access_completed, date_of_birth, coach_id, must_change_password")
+        .select("full_name, avatar_url, role, first_access_completed, date_of_birth, coach_id, must_change_password")
         .eq("id", uid)
         .single();
 
@@ -371,6 +309,7 @@ export default function AlunoDashboardPage() {
       }
 
       setUserName(profile?.full_name || user.email?.split("@")[0] || "Aluno");
+      setUserAvatar(getPublicStorageUrl('avatars', profile?.avatar_url ?? null));
 
       // KPIs via RPC — fallback gracioso
       try {
@@ -474,17 +413,6 @@ export default function AlunoDashboardPage() {
             fichaId: agendaHoje.ficha_id,
             qtdExercicios: numEx,
           });
-
-          // Buscar grupos musculares dos exercícios da ficha
-          const exIds = exercicios.map((e: any) => e.id).filter(Boolean);
-          if (exIds.length > 0) {
-            const { data: bibData } = await supabaseClient
-              .from('exercicios_biblioteca')
-              .select('grupo_muscular')
-              .in('id', exIds);
-            const groups = [...new Set((bibData || []).map(b => b.grupo_muscular).filter(Boolean))];
-            setTreinoMuscleGroups(groups);
-          }
         } else if (agendaHoje.treino_pdf_id) {
           setTreinoHoje({ status: 'pendente', nome: 'Treino PDF' });
         } else {
@@ -620,12 +548,6 @@ export default function AlunoDashboardPage() {
     }
   };
 
-  const toggleCopo = async (index: number) => {
-    const newCopos = index < agua.copos ? index : index + 1;
-    const delta = newCopos - agua.copos;
-    await updateAgua(delta);
-  };
-
   // ── Render ───────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -636,68 +558,67 @@ export default function AlunoDashboardPage() {
     );
   }
 
-  const primeiroNome = userName.split(' ')[0];
-
-  const now = new Date();
-  const diasSemanaLabels = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-  const mesesLabels = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-  const diaSemanaStr = diasSemanaLabels[now.getDay()];
-  const diaNumStr = now.getDate();
-  const mesStr = mesesLabels[now.getMonth()];
-
-  const nomeRotina = treinoHoje?.nome ?? '';
-  const totalExercicios = treinoHoje?.qtdExercicios ?? 0;
   const streakSemanas = kpis?.streak_atual ?? 0;
   const treinosSemana = diasSemana.filter(dia => dia.treinoConcluido).length;
   const metaSemana = diasSemana.filter(dia => dia.temTreino && !dia.isOff).length;
-
   const weekLabel = getWeekLabel(weekOffset);
   const today = getTodayBrazil();
 
-  return (
-    <div className="min-h-screen scroll-content mobile-page-bg">
-      <div className="max-w-md mx-auto flex flex-col">
+  const cardioMeta = treinoHoje?.status === 'pendente' ? 1 : treinoHoje?.status === 'concluido' ? 1 : 0;
+  const cardioAtual = checkinFeito ? 1 : 0;
 
-        {/* ── 1. Header (fixo no mobile) ── */}
-        <div className="dashboard-mobile-toolbar px-4 pt-4 pb-3 flex items-center justify-between">
-          <div>
-            {/* Data — eyebrow */}
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted capitalize">
-              {diaSemanaStr}, {diaNumStr} de {mesStr}
-            </p>
-            {/* Saudação */}
-            <h1 className="text-xl font-bold mt-0.5">
-              <span className="text-text-primary">Olá, </span>
-              <span style={{ color: '#1E5AE1' }}>{primeiroNome}</span>
-            </h1>
-          </div>
-          <DashboardTopActions
+  return (
+    <div className="dashboard-aluno min-h-screen scroll-content overflow-y-auto">
+      <div className="mx-auto flex max-w-md flex-col gap-3 pb-6">
+
+        <div className="relative">
+          <HeroHeader
+            userName={userName}
+            avatarUrl={userAvatar}
             showNotificationBadge={coachPendings.feedbacks > 0 || coachPendings.mensagens > 0}
+            agua={{ atual: agua.copos, meta: metaCopos }}
+            dieta={{
+              atual: planoNutricao?.refeicoesConcluidas ?? 0,
+              meta: planoNutricao?.totalRefeicoes ?? 0,
+            }}
+            treinos={{ atual: treinosSemana, meta: metaSemana }}
+            cardio={{ atual: cardioAtual, meta: cardioMeta }}
+          />
+
+          <WorkoutCard
+            status={treinoHoje?.status ?? 'sem-plano'}
+            nome={treinoHoje?.nome}
+            fichaId={treinoHoje?.fichaId}
+            qtdExercicios={treinoHoje?.qtdExercicios}
+            checkinPontos={checkinPontos}
+            onAlterar={
+              treinoHoje?.status === 'pendente'
+                ? () => setEditingDay(new Date().getDay())
+                : undefined
+            }
           />
         </div>
 
-        {/* ── 2. Alerta dados incompletos ── */}
         {incompleteData && (
-          <div className="mx-4 mb-3 flex items-start gap-3 p-4 bg-warning-subtle border border-warning-border rounded-lg">
-            <WarningCircle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text-primary mb-1">Perfil incompleto</p>
-              <p className="text-xs text-text-secondary mb-3">
+          <div className="mx-4 flex items-start gap-3 rounded-lg border border-warning-border bg-warning-subtle p-4">
+            <WarningCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-sm font-medium text-text-primary">Perfil incompleto</p>
+              <p className="mb-3 text-xs text-text-secondary">
                 Adicione sua data de nascimento para um planejamento mais preciso.
               </p>
               <Link
                 href="/aluno/perfil"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand"
               >
-                Atualizar perfil <ArrowRight className="w-3 h-3" />
+                Atualizar perfil <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
           </div>
         )}
 
-        {/* ── 3. Coach Card ── */}
         {coachInfo && (
-          <div className="mx-4 mb-3">
+          <div className="mx-4">
             <CoachCard
               coachNome={coachInfo.nome}
               coachAvatar={coachInfo.avatar}
@@ -707,411 +628,55 @@ export default function AlunoDashboardPage() {
           </div>
         )}
 
-        {/* ── 4. Card: Treino de Hoje (principal) ── */}
-        <div
-          className="mx-4 mb-3 rounded-[20px] overflow-hidden border mobile-card-surface"
-          style={{ boxShadow: '0 0 24px rgba(30,88,228,0.10)' }}
-        >
+        <WeekCalendar
+          diasSemana={diasSemana}
+          weekOffset={weekOffset}
+          weekLabel={weekLabel}
+          today={today}
+          selectedDia={selectedDia}
+          onWeekChange={(delta) => setWeekOffset((w) => w + delta)}
+          onSelectDia={setSelectedDia}
+          onEditDay={setEditingDay}
+        />
 
-          {/* Label + nome */}
-          <div className="px-4 pt-4 pb-3 border-b border-mobile-soft relative">
-            {/* Muscle body — frente, grupos musculares do treino de hoje */}
-            <div className="absolute right-2 top-1 bottom-1 flex items-center pointer-events-none select-none overflow-hidden" style={{ width: 56 }}>
-              <MuscleBodyFront muscleGroups={treinoMuscleGroups} />
-            </div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-0.5" style={{ color: '#487CD7' }}>
-              Treino de hoje
-            </p>
-            {treinoHoje?.status === 'off' ? (
-              <>
-                <p className="text-base font-bold text-text-secondary">Dia de descanso</p>
-                <p className="text-xs text-text-muted mt-0.5">Recuperação ativa</p>
-              </>
-            ) : treinoHoje?.status === 'concluido' ? (
-              <>
-                <p className="text-base font-bold text-success">Treino concluído</p>
-                <p className="text-xs text-text-muted mt-0.5">+{checkinPontos ?? 20} pts ganhos hoje</p>
-              </>
-            ) : treinoHoje?.status === 'sem-plano' ? (
-              <>
-                <p className="text-base font-bold text-text-primary">Sem treino programado</p>
-                <p className="text-xs text-text-muted mt-0.5">Peça ao seu coach para liberar sua ficha</p>
-              </>
-            ) : (
-              <>
-                <p className="text-base font-bold text-text-primary">
-                  {nomeRotina ? toTitleCase(nomeRotina) : 'Rotina prescrita'}
-                </p>
-                <p className="text-xs text-text-muted mt-0.5">
-                  {totalExercicios > 0 ? `${totalExercicios} exercícios programados` : 'Treino disponível'}
-                </p>
-              </>
-            )}
-          </div>
+        <StreakRow
+          sequenciaDias={streakSemanas}
+          treinosSemana={treinosSemana}
+          metaSemana={metaSemana}
+        />
 
-          {/* Agenda semanal com navegação */}
-          <div className="px-4 py-3 pb-2.5">
-            <div className="flex items-center justify-between mb-3">
-              <button
-                id="btn-semana-anterior"
-                onClick={() => setWeekOffset(w => w - 1)}
-                className="w-6 h-6 flex items-center justify-center cursor-pointer"
-                aria-label="Semana anterior"
-              >
-                <CaretLeft className="w-4 h-4 text-text-muted" />
-              </button>
-              <p className="text-[11px] font-medium text-text-muted">
-                {weekLabel}
-              </p>
-              <button
-                id="btn-proxima-semana"
-                onClick={() => setWeekOffset(w => w + 1)}
-                className="w-6 h-6 flex items-center justify-center cursor-pointer"
-                aria-label="Próxima semana"
-              >
-                <CaretRight className="w-4 h-4 text-text-muted" />
-              </button>
-            </div>
-
-            {/* Dias da semana */}
-            <div className="grid grid-cols-7 gap-1">
-              {diasSemana.map((dia) => (
-                <div
-                  key={dia.data}
-                  onClick={() => setSelectedDia(dia)}
-                  className="flex flex-col items-center gap-1 cursor-pointer"
-                >
-                  <p className="text-[9px] uppercase text-text-muted font-medium">
-                    {dia.label}
-                  </p>
-                  <div className={cn(
-                    'w-8 h-8 rounded-lg flex flex-col items-center justify-center transition-colors',
-                    dia.isHoje
-                      ? 'bg-brand text-text-on-brand'
-                      : selectedDia?.data === dia.data
-                      ? 'bg-surface-2 border border-border-default'
-                      : 'transparent'
-                  )}>
-                    <p className={cn(
-                      'text-[11px] font-semibold',
-                      dia.isHoje ? 'text-text-on-brand' : 'text-text-primary'
-                    )}>
-                      {dia.numero}
-                    </p>
-                  </div>
-                  
-                  {/* Status dot or line indicator below the number */}
-                  <div className="h-2.5 flex items-center justify-center">
-                    {dia.isHoje ? (
-                      dia.isOff ? (
-                        <span className="text-[10px] leading-none text-white font-bold">—</span>
-                      ) : dia.treinoConcluido ? (
-                        <span className="w-1 h-1 rounded-full bg-success" />
-                      ) : dia.temTreino ? (
-                        <span className="w-1 h-1 rounded-full bg-danger" />
-                      ) : null
-                    ) : dia.data > today ? (
-                      dia.isOff ? (
-                        <span className="text-[10px] leading-none text-white font-bold">—</span>
-                      ) : dia.temTreino ? (
-                        <span className="w-1 h-1 rounded-full bg-[#FF6B35]" />
-                      ) : null
-                    ) : (
-                      dia.treinoConcluido ? (
-                        <span className="w-1 h-1 rounded-full bg-success" />
-                      ) : dia.isOff ? (
-                        <span className="text-[10px] leading-none text-white font-bold">—</span>
-                      ) : dia.temTreino ? (
-                        <span className="w-1 h-1 rounded-full bg-danger" />
-                      ) : null
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Preview do treino selecionado na semana */}
-          {selectedDia && (
-            <div className="px-4 py-2 border-t border-mobile-soft bg-surface-1/30 flex items-center justify-between transition-colors">
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium text-text-muted">
-                  {selectedDia.isOff ? (
-                    "Descanso"
-                  ) : selectedDia.nomeRotina ? (
-                    <>
-                      {toTitleCase(selectedDia.nomeRotina)}
-                      {selectedDia.treinoConcluido ? (
-                        <span className="text-success font-semibold"> · Concluído</span>
-                      ) : selectedDia.isHoje ? (
-                        <span className="text-brand font-semibold"> · Hoje</span>
-                      ) : selectedDia.data > today ? (
-                        <span className="text-text-muted"> · Programado</span>
-                      ) : (
-                        <span className="text-danger font-semibold"> · Não realizado</span>
-                      )}
-                    </>
-                  ) : (
-                    "Sem treino programado"
-                  )}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Alterar / Configurar button */}
-                <button
-                  onClick={() => {
-                    const dateObj = new Date(selectedDia.data + 'T12:00:00');
-                    const jsDay = dateObj.getDay();
-                    setEditingDay(jsDay);
-                  }}
-                  className="text-[10px] font-bold text-text-secondary hover:text-text-primary uppercase tracking-wider cursor-pointer"
-                >
-                  Alterar
-                </button>
-                {selectedDia.isHoje && selectedDia.temTreino && !selectedDia.treinoConcluido && (
-                  <Link
-                    href={selectedDia.fichaId ? `/aluno/treinos/${selectedDia.fichaId}/executar` : '/aluno/treinos'}
-                    className="text-[11px] font-bold text-brand uppercase tracking-wider hover:opacity-80"
-                  >
-                    Iniciar
-                  </Link>
-                )}
-              </div>
-            </div>
+        <div className="mx-4 flex flex-col gap-3">
+          {planoNutricao && (
+            <NutritionCard
+              nome={planoNutricao.nome}
+              refeicoesFeitasHoje={planoNutricao.refeicoesConcluidas}
+              totalRefeicoes={planoNutricao.totalRefeicoes}
+              proximaRefeicao={planoNutricao.proximaRefeicao}
+              onVerPlano={() => router.push('/aluno/plano-alimentar')}
+            />
           )}
 
-          {/* Botão iniciar treino principal (sempre hoje) */}
-          <div className="px-4 pb-4 pt-3 border-t border-mobile-subtle">
-            {treinoHoje?.status === 'pendente' ? (
-              <Link
-                href={treinoHoje.fichaId ? `/aluno/treinos/${treinoHoje.fichaId}/executar` : '/aluno/treinos'}
-                id="btn-iniciar-treino-dashboard"
-                className="w-full h-11 text-sm font-semibold text-white flex items-center justify-center gap-2 active:opacity-90"
-                style={{
-                    background: 'linear-gradient(180deg, #3A75F5 0%, #1E5AE1 60%, #1846B8 100%)',
-                    boxShadow: '0 4px 16px rgba(47,111,255,0.55), 0 12px 40px rgba(47,111,255,0.22), inset 0 1px 0 rgba(255,255,255,0.15)',
-                  borderRadius: '16px',
-                }}
-              >
-                <Barbell className="w-4 h-4" />
-                Iniciar treino
-              </Link>
-            ) : treinoHoje?.status === 'concluido' ? (
-              <Link
-                href="/aluno/treinos"
-                className="w-full h-11 border rounded-[16px] text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
-                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
-              >
-                Ver treinos
-              </Link>
-            ) : treinoHoje?.status === 'off' ? (
-              <Link
-                href="/aluno/medidas"
-                className="w-full h-11 border rounded-[16px] text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
-                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
-              >
-                <Ruler className="w-4 h-4" />
-                Registrar evolução
-              </Link>
-            ) : (
-              <Link
-                href="/aluno/treinos"
-                className="w-full h-11 border rounded-[16px] text-sm font-medium text-text-secondary flex items-center justify-center gap-2"
-                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
-              >
-                Ver treinos disponíveis
-              </Link>
-            )}
-          </div>
-        </div>
+          <HydrationCard
+            copos={agua.copos}
+            mlPorCopo={agua.ml_por_copo}
+            metaCopos={metaCopos}
+            saving={savingAgua}
+            onAdd={() => updateAgua(1)}
+            onRemove={() => updateAgua(-1)}
+          />
 
-        {/* ── 5. Cards: Streak + Frequência (lado a lado) ── */}
-        <div className="mx-4 mb-2 grid grid-cols-2 gap-2">
-
-          {/* Streak */}
-          <div
-            className="rounded-[16px] px-3 py-2 flex items-center justify-between border mobile-card-surface relative overflow-hidden"
-            style={{ boxShadow: '0 0 20px rgba(236,126,82,0.08)' }}
-          >
-            <div className="min-w-0 relative z-10">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.06em] text-text-muted flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 shrink-0" weight="fill" style={{ color: '#F0692D' }} />
-                <span>Sequência</span>
-              </p>
-              <p className="text-lg font-bold font-mono tabular-nums text-text-primary mt-0.5">
-                {streakSemanas} <span className="text-[10px] font-normal text-text-muted font-sans">{streakSemanas === 1 ? 'semana' : 'semanas'}</span>
-              </p>
-            </div>
-            {/* Sparkline laranja decorativa */}
-            <svg className="absolute bottom-0 left-0 right-0 w-full" height="28" viewBox="0 0 100 28" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="spark-orange" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#EA8A5D" stopOpacity="0.22"/>
-                  <stop offset="100%" stopColor="#EA8A5D" stopOpacity="0"/>
-                </linearGradient>
-              </defs>
-              <path d="M0,22 C15,18 25,14 35,16 C45,18 55,10 65,8 C75,6 85,4 100,2" stroke="#EA8A5D" strokeWidth="1.5" fill="none"/>
-              <path d="M0,22 C15,18 25,14 35,16 C45,18 55,10 65,8 C75,6 85,4 100,2 L100,28 L0,28 Z" fill="url(#spark-orange)"/>
-            </svg>
-          </div>
-
-          {/* Frequência semanal */}
-          <div
-            className="rounded-[16px] px-3 py-2 flex items-center justify-between border mobile-card-surface relative overflow-hidden"
-            style={{ boxShadow: '0 0 20px rgba(65,145,243,0.08)' }}
-          >
-            <div className="min-w-0 relative z-10">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.06em] text-text-muted flex items-center gap-1">
-                <Lightning className="w-3.5 h-3.5 shrink-0" weight="fill" style={{ color: '#4191F3' }} />
-                <span>Esta semana</span>
-              </p>
-              <p className="text-lg font-bold font-mono tabular-nums text-text-primary mt-0.5">
-                {treinosSemana}<span className="text-xs font-normal text-text-muted">/{metaSemana}</span>
-                <span className="text-[10px] font-normal text-text-muted font-sans ml-1">treinos</span>
-              </p>
-            </div>
-            {/* Sparkline azul decorativa */}
-            <svg className="absolute bottom-0 left-0 right-0 w-full" height="28" viewBox="0 0 100 28" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="spark-blue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4191F3" stopOpacity="0.22"/>
-                  <stop offset="100%" stopColor="#4191F3" stopOpacity="0"/>
-                </linearGradient>
-              </defs>
-              <path d="M0,24 C12,20 22,17 34,14 C46,11 56,8 68,6 C80,4 90,3 100,1" stroke="#4191F3" strokeWidth="1.5" fill="none"/>
-              <path d="M0,24 C12,20 22,17 34,14 C46,11 56,8 68,6 C80,4 90,3 100,1 L100,28 L0,28 Z" fill="url(#spark-blue)"/>
-            </svg>
-          </div>
-        </div>
-
-        {/* ── 6. Card: Nutrição (simplificado — sem "HORA DE COMER") ── */}
-        {planoNutricao && (
-          <div
-            className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border mobile-card-surface relative overflow-hidden"
-            style={{ boxShadow: '0 0 20px rgba(95,191,143,0.07)' }}
-          >
-            {/* Plate/fork illustration decorativa */}
-            <div className="absolute right-0 top-0 bottom-0 flex items-center pointer-events-none select-none">
-              <svg
-                viewBox="0 0 180 120"
-                width="180"
-                height="120"
-                fill="none"
-                aria-hidden="true"
-                style={{ color: '#1E3C2D', opacity: 0.55 }}
-              >
-                {/* Prato: círculo externo + interno */}
-                <circle cx="70" cy="60" r="55" stroke="currentColor" strokeWidth="3"/>
-                <circle cx="70" cy="60" r="40" stroke="currentColor" strokeWidth="2"/>
-                {/* Garfo */}
-                <path d="M140,15 L140,45 M148,15 L148,45 M156,15 L156,45 M144,45 L152,45 L152,105 L144,105 Z" stroke="currentColor" strokeWidth="2.5" fill="currentColor"/>
-              </svg>
-            </div>
-            <div className="relative z-10">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] mb-0.5 flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full border flex-shrink-0 inline-block" style={{ borderColor: '#5FBF8F', background: 'rgba(95,191,143,0.15)' }} />
-                <span style={{ color: '#5FBF8F' }}>Nutrição</span>
-              </p>
-              <p className="text-sm font-semibold text-text-primary">
-                {planoNutricao.nome}
-              </p>
-              <p className="text-xs text-text-muted mt-0.5">
-                {planoNutricao.refeicoesConcluidas}/{planoNutricao.totalRefeicoes} refeições hoje
-              </p>
-              {planoNutricao.refeicoesConcluidas === planoNutricao.totalRefeicoes ? (
-                <p className="text-[11px] text-text-muted mt-0.5">
-                  Todas as refeições registradas hoje
-                </p>
-              ) : planoNutricao.proximaRefeicao ? (
-                <p className="text-[11px] text-text-muted mt-0.5">
-                  Próxima: {planoNutricao.proximaRefeicao.nome} {planoNutricao.proximaRefeicao.horario && `· ${planoNutricao.proximaRefeicao.horario}`}
-                </p>
-              ) : null}
-            </div>
-            <button
-              onClick={() => router.push('/aluno/plano-alimentar')}
-              id="btn-ver-plano-nutricao"
-              className="flex items-center gap-1 text-xs font-medium text-brand cursor-pointer relative z-10 flex-shrink-0 ml-2"
+          {parceiros.length > 0 && (
+            <Link
+              href="/aluno/parceiros"
+              className="mobile-card-surface flex items-center justify-between rounded-2xl border px-4 py-3 text-sm text-text-secondary transition-colors hover:text-text-primary"
             >
-              Ver plano
-              <CaretRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+              <span>Benefícios exclusivos disponíveis</span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-text-muted" />
+            </Link>
+          )}
 
-        {/* ── 7. Hidratação (Compacto) ── */}
-        <div
-          className="mx-4 mb-2 rounded-[16px] px-4 py-3 flex items-center justify-between border mobile-card-surface"
-          style={{ boxShadow: '0 0 20px rgba(72,128,216,0.07)' }}
-        >
-          <div className="flex items-center gap-2">
-            <Drop className="w-4 h-4" weight="fill" style={{ color: '#4880D8' }} />
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.06em]" style={{ color: '#4880D8' }}>
-                Hidratação
-              </p>
-              <p className="text-xs font-bold text-text-primary mt-0.5">
-                {agua.copos * agua.ml_por_copo}ml / {metaCopos * agua.ml_por_copo}ml
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => updateAgua(-1)}
-              disabled={savingAgua || agua.copos === 0}
-              id="btn-dashboard-remover-copo"
-              className="w-8 h-8 rounded-lg border flex items-center justify-center disabled:opacity-30 cursor-pointer"
-              style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.6)' }}
-            >
-              <Minus className="w-3.5 h-3.5 text-text-secondary" />
-            </button>
-            <span className="text-sm font-bold font-mono min-w-[20px] text-center">
-              {agua.copos}
-            </span>
-            <button
-              onClick={() => updateAgua(1)}
-              disabled={savingAgua || agua.copos >= metaCopos}
-              id="btn-dashboard-adicionar-copo"
-              className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30 cursor-pointer text-white"
-              style={{ background: 'linear-gradient(135deg, #2F6FFF 0%, #1B56E2 60%, #1846B8 100%)' }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <QuickActions />
         </div>
-
-        {/* ── 8. Parceiros ── */}
-        {parceiros.length > 0 && (
-          <Link
-            href="/aluno/parceiros"
-            className="mx-4 mb-2 flex items-center justify-between px-4 py-3 rounded-[16px] border mobile-card-surface text-sm text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <span>Benefícios exclusivos disponíveis</span>
-            <ArrowRight className="w-4 h-4 flex-shrink-0 text-text-muted" />
-          </Link>
-        )}
-
-        {/* ── 9. Ações rápidas (rodapé do scroll) ── */}
-        <div className="mx-4 mb-6 grid grid-cols-2 gap-2">
-          <Link
-            href="/aluno/medidas"
-            id="btn-registrar-evolucao"
-            className="h-11 rounded-[16px] border mobile-card-surface text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
-          >
-            <TrendUp className="w-3.5 h-3.5" />
-            Registrar evolução
-          </Link>
-          <Link
-            href="/aluno/treinos"
-            id="btn-ver-historico"
-            className="h-11 rounded-[16px] border mobile-card-surface text-xs font-medium text-text-secondary flex items-center justify-center gap-1.5"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            Ver histórico
-          </Link>
-        </div>
-
       </div>
 
       {/* ── DayConfigModal: Editar Treino/Descanso do Dia da Semana ── */}

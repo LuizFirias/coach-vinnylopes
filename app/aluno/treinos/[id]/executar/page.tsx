@@ -3,11 +3,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Trophy, Play, X, Clock, CaretLeft, CaretRight, Video, Download, ShareNetwork } from '@phosphor-icons/react';
-import { toPng } from 'html-to-image';
-import Body from 'react-muscle-highlighter';
+import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video } from '@phosphor-icons/react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { CompletionShareScreen } from '@/app/components/workout/share/CompletionShareScreen';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
+import { VideoPlayerCard } from '@/app/components/treino/execucao/VideoPlayerCard';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { haptic } from '@/lib/utils/haptics';
@@ -71,6 +71,11 @@ interface ExercicioState {
 interface VolumePoint {
   data: string;
   volume: number;
+}
+
+function estimateDurationMin(exercicios: ExercicioState[]): number {
+  const totalSets = exercicios.reduce((acc, ex) => acc + ex.series.length, 0);
+  return Math.max(15, Math.round(exercicios.length * 3 + totalSets * 2));
 }
 
 const GRID_COLS_SERIES = '28px 1fr 52px 44px 34px 34px 36px';
@@ -369,7 +374,12 @@ export default function ExecucaoTreinoPage() {
   const [modalSerieIdx, setModalSerieIdx] = useState(0);
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
-  const [showSeriesHistory, setShowSeriesHistory] = useState(false);
+  const [showSeriesHistory, setShowSeriesHistory] = useState(true);
+
+  useEffect(() => {
+    if (modalExIdx !== null) setShowSeriesHistory(true);
+  }, [modalExIdx]);
+
   const [modalTecnicaAberto, setModalTecnicaAberto] = useState(false);
   const [tecnicaAtual, setTecnicaAtual] = useState<string | null>(null);
 
@@ -432,10 +442,11 @@ export default function ExecucaoTreinoPage() {
       const exercicioIds = exerciciosConfig.map(ex => ex.id).filter(Boolean);
       let gruposMusculares: Record<string, string> = {};
       let gifsExercicios: Record<string, string> = {};
+      let videosBiblioteca: Record<string, string> = {};
       if (exercicioIds.length > 0) {
         const { data: bibData } = await supabaseClient
           .from('exercicios_biblioteca')
-          .select('id, grupo_muscular, gif_url')
+          .select('id, grupo_muscular, gif_url, video_url')
           .in('id', exercicioIds);
 
         gruposMusculares = Object.fromEntries(
@@ -443,6 +454,9 @@ export default function ExecucaoTreinoPage() {
         );
         gifsExercicios = Object.fromEntries(
           (bibData || []).map(ex => [ex.id, ex.gif_url || ''])
+        );
+        videosBiblioteca = Object.fromEntries(
+          (bibData || []).map(ex => [ex.id, ex.video_url || ''])
         );
       }
 
@@ -491,7 +505,7 @@ export default function ExecucaoTreinoPage() {
           id: ex.id,
           nome: ex.nome,
           descanso: parseDescanso(ex.descanso),
-          video_url: ex.video_url,
+          video_url: videosBiblioteca[ex.id] || undefined,
           gif_url: gifsExercicios[ex.id] || '',
           observacoes: ex.observacoes,
           grupo_muscular: gruposMusculares[ex.id] || '',
@@ -1005,13 +1019,12 @@ export default function ExecucaoTreinoPage() {
     const sets = calcSetsCompletos(exercicios);
 
     return (
-      <CompletionScreenWithExport
+      <CompletionShareScreen
         nomeRotina={nomeRotina}
         duracao={elapsed}
         volume={volume}
         sets={sets}
         exercicios={exercicios}
-        prsCount={prsCount}
         coachUsername={coachUsername}
       />
     );
@@ -1040,8 +1053,12 @@ export default function ExecucaoTreinoPage() {
 
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-text-primary truncate">{nomeRotina}</h1>
-            {treinoIniciado && (
+            {treinoIniciado ? (
               <p className="text-xs text-text-tertiary">{setsCompletos}/{totalSets} sets</p>
+            ) : (
+              <p className="text-xs font-medium text-text-tertiary">
+                {exercicios.length} exercícios · Est. {estimateDurationMin(exercicios)} min
+              </p>
             )}
           </div>
 
@@ -1079,8 +1096,9 @@ export default function ExecucaoTreinoPage() {
             {/* Botão iniciar */}
             <button
               onClick={iniciarTreino}
-              className="w-full h-10 rounded-lg font-semibold text-xs bg-brand text-text-on-brand shadow-lg shadow-brand/30 transition-all active:scale-95"
+              className="w-full h-10 rounded-lg font-semibold text-xs bg-brand text-text-on-brand shadow-lg shadow-brand/30 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
+              <Play className="w-4 h-4" weight="fill" />
               Iniciar treino
             </button>
 
@@ -1130,12 +1148,25 @@ export default function ExecucaoTreinoPage() {
               </div>
             )}
 
-            {volumeHistory.length > 0 && volumeHistory.length < 4 && (
-              <div className="bg-surface-1 border border-border-subtle rounded-lg p-3">
-                <p className="text-xs font-semibold text-text-primary mb-1">Progresso de volume</p>
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  Complete pelo menos 4 sessões para visualizar uma curva de evolução mais confiável.
+            {volumeHistory.length < 4 && (
+              <div className="bg-surface-1 border border-border-subtle rounded-[14px] p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-brand mb-3">
+                  📊 Progresso de volume
                 </p>
+                <div className="flex flex-col items-center gap-2.5">
+                  <div className="flex h-11 items-end gap-1.5">
+                    {[0.3, 0.5, 0.4, 0.7, 0.6].map((h, i) => (
+                      <div
+                        key={i}
+                        className="w-5 rounded-sm bg-brand opacity-15"
+                        style={{ height: `${h * 40}px` }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-text-tertiary text-center">
+                    Complete 4 sessões para ver sua curva de evolução
+                  </p>
+                </div>
               </div>
             )}
           </>
@@ -1389,15 +1420,12 @@ export default function ExecucaoTreinoPage() {
           </div>
 
           {/* Corpo do modal */}
-          <div className="flex-1 overflow-y-auto pb-24">
-            {/* Demonstração sob demanda — botão que abre em modal (não fica em loop enquanto a ficha está aberta) */}
-            {(modalEx.video_url || modalEx.gif_url) && (
+          <div className="flex-1 overflow-y-auto pb-36">
+            {/* GIF de demonstração (vídeo fica após o histórico) */}
+            {modalEx.gif_url && !modalEx.video_url && (
               <div className="px-4 mt-4 mb-4">
                 <button
-                  onClick={() => {
-                    if (modalEx.video_url) setVideoUrl(modalEx.video_url);
-                    else if (modalEx.gif_url) setDemoImg(modalEx.gif_url);
-                  }}
+                  onClick={() => setDemoImg(modalEx.gif_url!)}
                   className="w-full h-11 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center gap-2 text-sm font-medium text-text-secondary hover:text-brand hover:border-brand transition-colors"
                 >
                   <Play className="w-4 h-4" fill="currentColor" />
@@ -1407,7 +1435,7 @@ export default function ExecucaoTreinoPage() {
             )}
 
             {/* 3 cards de contexto: REPETIÇÕES / ÚLTIMA VEZ / TÉCNICA */}
-            <div className="grid grid-cols-3 gap-2 px-4 mb-4">
+            <div className="mt-4 grid grid-cols-3 gap-2 px-4 mb-4">
               <div className="bg-surface-1 border border-border-subtle rounded-lg p-3 flex flex-col items-center">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted mb-1">
                   Repetições
@@ -1530,8 +1558,12 @@ export default function ExecucaoTreinoPage() {
             {/* Histórico de séries */}
             <div className="mx-4 mt-4 bg-surface-1 border border-border-subtle rounded-xl overflow-hidden">
               <button
+                type="button"
                 onClick={() => setShowSeriesHistory(v => !v)}
-                className="w-full flex items-center justify-between px-3 py-2 border-b border-border-subtle/50"
+                className={cn(
+                  'w-full flex items-center justify-between px-3 py-2',
+                  showSeriesHistory && 'border-b border-border-subtle/50',
+                )}
               >
                 <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Histórico de Séries</p>
                 <span className="text-2xs font-bold text-brand">{showSeriesHistory ? 'Ocultar' : 'Mostrar'}</span>
@@ -1594,6 +1626,21 @@ export default function ExecucaoTreinoPage() {
                 </>
               )}
             </div>
+
+            {modalEx.video_url ? (
+              <VideoPlayerCard
+                videoUrl={modalEx.video_url}
+                exercicioNome={modalEx.nome}
+              />
+            ) : !modalEx.gif_url ? (
+              <div className="mx-4 mt-4 rounded-[14px] border border-border-subtle bg-surface-1 px-4 py-6 text-center">
+                <Video className="mx-auto mb-2 h-8 w-8 text-text-disabled opacity-40" />
+                <p className="text-xs font-medium text-text-tertiary">Sem demonstração disponível</p>
+                <p className="mt-0.5 text-[11px] text-text-disabled">
+                  Este exercício não possui vídeo nem GIF na biblioteca
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {/* Botão fixo no rodapé */}
@@ -1718,705 +1765,6 @@ export default function ExecucaoTreinoPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── CompletionScreenWithExport ────────────────────────────────────────────
-
-interface CompletionScreenProps {
-  nomeRotina: string;
-  duracao: number;
-  volume: number;
-  sets: number;
-  exercicios: ExercicioState[];
-  prsCount: number;
-  coachUsername: string;
-}
-
-type ShareTheme = 'escuro' | 'claro' | 'transparente';
-
-interface ShareCardProps {
-  nomeRotina: string;
-  duracao: number;
-  volume: number;
-  sets: number;
-  exercicios: ExercicioState[];
-  coachUsername: string;
-  theme: ShareTheme;
-  monthDays: number[];
-  comparativo: Array<{ nome: string; cargaAnterior: number; cargaAtual: number; delta: number }>;
-}
-
-const shareThemeTokens = {
-  escuro: {
-    bg: 'radial-gradient(120% 100% at 50% 0%, #0A1428 0%, #000A1E 70%)',
-    surface: '#011434',
-    textPrimary: '#FFFFFF',
-    textSecondary: '#9CA3AF',
-    accent: '#0087F0',
-    border: 'rgba(255,255,255,0.08)',
-    muscleFill: '#0A2038',
-    muscleStroke: 'rgba(255,255,255,0.14)',
-  },
-  claro: {
-    bg: '#FFFFFF',
-    surface: '#EEF3FA',
-    textPrimary: '#00142E',
-    textSecondary: '#5B6B7F',
-    accent: '#0087F0',
-    border: 'rgba(0,20,52,0.10)',
-    muscleFill: '#E2E9F2',
-    muscleStroke: 'rgba(0,20,52,0.16)',
-  },
-  transparente: {
-    bg: 'transparent',
-    surface: 'rgba(255,255,255,0.08)',
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.72)',
-    accent: '#38A9FF',
-    border: 'rgba(255,255,255,0.16)',
-    muscleFill: 'rgba(255,255,255,0.10)',
-    muscleStroke: 'rgba(255,255,255,0.22)',
-  },
-} as const;
-
-// Mapa grupo muscular (biblioteca) → slugs do react-muscle-highlighter
-const POSTER_MUSCLE_MAP: Record<string, string[]> = {
-  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
-  'upper-back': ['Dorsais'],
-  'trapezius': ['Trapézio'],
-  'lower-back': ['Lombar'],
-  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
-  'biceps': ['Bíceps'],
-  'triceps': ['Tríceps'],
-  'forearm': ['Antebraço'],
-  'quadriceps': ['Quadríceps'],
-  'hamstring': ['Posterior (Isquiotibiais)'],
-  'calves': ['Panturrilha'],
-  'gluteal': ['Glúteos'],
-  'abs': ['Abdômen'],
-  'obliques': ['Oblíquos'],
-};
-
-// Soma volume por grupo muscular treinado e devolve dados para o <Body> destacando
-// cada músculo em azul-marinho, com opacidade proporcional à intensidade.
-function buildMuscleHighlightData(exercicios: ExercicioState[]): any[] {
-  const muscleCount: Record<string, number> = {};
-  for (const ex of exercicios) {
-    if (!ex.grupo_muscular) continue;
-    const feitas = ex.series.filter((s) => s.completado).length || ex.series.length;
-    if (feitas === 0) continue;
-    const grupo = ex.grupo_muscular.trim();
-    muscleCount[grupo] = (muscleCount[grupo] || 0) + feitas;
-  }
-  const max = Math.max(...Object.values(muscleCount), 1);
-  const list: any[] = [];
-  Object.entries(POSTER_MUSCLE_MAP).forEach(([slug, groups]) => {
-    const intensidade = Math.max(0, ...groups.map((g) => muscleCount[g] || 0));
-    if (intensidade > 0) {
-      const opacity = 0.4 + (intensidade / max) * 0.55;
-      list.push({ slug, color: `rgba(0, 135, 240, ${opacity.toFixed(2)})` });
-    }
-  });
-  return list;
-}
-
-function parseCargaAnterior(serieAnterior?: string): number {
-  if (!serieAnterior) return 0;
-  const match = serieAnterior.match(/(\d+(?:[\.,]\d+)?)/);
-  if (!match) return 0;
-  return Number(match[1].replace(',', '.')) || 0;
-}
-
-function InstagramCardShell({
-  theme,
-  children,
-}: {
-  theme: ShareTheme;
-  children: React.ReactNode;
-}) {
-  const t = shareThemeTokens[theme];
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        background: t.bg,
-        border: `1px solid ${t.border}`,
-        borderRadius: '20px',
-        overflow: 'hidden',
-        display: 'flex',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CardRodape({ theme, coachUsername }: { theme: ShareTheme; coachUsername: string }) {
-  const t = shareThemeTokens[theme];
-  const handle = coachUsername.replace('@', '').trim() || 'auronfit';
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', borderTop: `1px solid ${t.border}`, paddingTop: '18px' }}>
-      <p style={{ fontSize: '14px', letterSpacing: '0.08em', fontWeight: 700, color: t.textSecondary }}>AURONFIT</p>
-      <p style={{ fontSize: '14px', color: t.textSecondary }}>@{handle}</p>
-    </div>
-  );
-}
-
-function CardMetricas({ nomeRotina, duracao, volume, sets, theme, coachUsername }: ShareCardProps) {
-  const t = shareThemeTokens[theme];
-  return (
-    <InstagramCardShell theme={theme}>
-      <div style={{ width: '100%', padding: '64px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
-        <div>
-          <p style={{ fontSize: '16px', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em', color: t.textSecondary }}>{nomeRotina}</p>
-          <p style={{ marginTop: '6px', fontSize: '22px', fontWeight: 800, color: t.textPrimary }}>Treino concluído</p>
-        </div>
-        <div style={{ marginTop: '52px', display: 'grid', gap: '28px' }}>
-          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Duração</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.accent }}>{formatDuration(duracao)}</p></div>
-          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Volume Total</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.accent }}>{formatVolume(volume)}</p></div>
-          <div><p style={{ fontSize: '14px', color: t.textSecondary }}>Séries</p><p style={{ fontSize: '56px', fontWeight: 800, color: t.accent }}>{sets}</p></div>
-        </div>
-        <CardRodape theme={theme} coachUsername={coachUsername} />
-      </div>
-    </InstagramCardShell>
-  );
-}
-
-function CardFrequencia({ monthDays, theme, coachUsername }: ShareCardProps) {
-  const t = shareThemeTokens[theme];
-  const now = new Date();
-  const monthLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const totalDiasNoMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const firstWeekDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-  const diasSemana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-
-  return (
-    <InstagramCardShell theme={theme}>
-      <div style={{ width: '100%', padding: '64px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
-        <p style={{ fontSize: '56px', fontWeight: 800, color: t.textPrimary }}>{monthDays.length} treinos</p>
-        <p style={{ fontSize: '18px', color: t.textSecondary, marginTop: '6px' }}>em {monthLabel}</p>
-        <div style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
-          {diasSemana.map((d, i) => <p key={`${d}-${i}`} style={{ textAlign: 'center', fontSize: '12px', color: t.textSecondary }}>{d}</p>)}
-          {Array.from({ length: firstWeekDay }).map((_, i) => <div key={`e-${i}`} />)}
-          {Array.from({ length: totalDiasNoMes }).map((_, i) => {
-            const dia = i + 1;
-            const treinou = monthDays.includes(dia);
-            return (
-              <div key={dia} style={{ aspectRatio: '1 / 1', borderRadius: '999px', border: treinou ? 'none' : `1px solid ${t.border}`, background: treinou ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '12px', color: treinou ? '#fff' : t.textSecondary, fontWeight: treinou ? 700 : 500 }}>{dia}</span>
-              </div>
-            );
-          })}
-        </div>
-        <CardRodape theme={theme} coachUsername={coachUsername} />
-      </div>
-    </InstagramCardShell>
-  );
-}
-
-function CardExercicios({ nomeRotina, exercicios, theme, coachUsername }: ShareCardProps) {
-  const t = shareThemeTokens[theme];
-  const exerciciosOrdenados = [...exercicios].slice(0, 5).map((ex) => ({
-    nome: toTitleCase(ex.nome),
-    totalSets: ex.series.length,
-    cargaMaxima: Math.max(0, ...ex.series.map((s) => Number(s.peso_atual || 0))),
-  }));
-  return (
-    <InstagramCardShell theme={theme}>
-      <div style={{ width: '100%', padding: '64px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
-        <p style={{ fontSize: '16px', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em', color: t.textSecondary }}>{nomeRotina}</p>
-        <p style={{ fontSize: '38px', fontWeight: 800, color: t.textPrimary, marginTop: '8px' }}>Exercícios</p>
-        <div style={{ marginTop: '24px', display: 'grid', gap: '16px' }}>
-          {exerciciosOrdenados.map((ex) => (
-            <div key={ex.nome} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${t.border}`, paddingBottom: '10px' }}>
-              <div>
-                <p style={{ fontSize: '18px', fontWeight: 700, color: t.textPrimary }}>{ex.nome}</p>
-                <p style={{ fontSize: '13px', color: t.textSecondary }}>{ex.totalSets} séries</p>
-              </div>
-              <p style={{ fontSize: '28px', fontWeight: 800, color: t.accent }}>{ex.cargaMaxima}kg</p>
-            </div>
-          ))}
-        </div>
-        <CardRodape theme={theme} coachUsername={coachUsername} />
-      </div>
-    </InstagramCardShell>
-  );
-}
-
-function CardEvolucao({ comparativo, theme, coachUsername }: ShareCardProps) {
-  const t = shareThemeTokens[theme];
-  return (
-    <InstagramCardShell theme={theme}>
-      <div style={{ width: '100%', padding: '64px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
-        <p style={{ fontSize: '38px', fontWeight: 800, color: t.textPrimary }}>Evolução</p>
-        <p style={{ fontSize: '16px', color: t.textSecondary, marginTop: '8px' }}>vs sessão anterior</p>
-        <div style={{ marginTop: '26px', display: 'grid', gap: '16px' }}>
-          {comparativo.length === 0 && (
-            <div style={{ padding: '18px', borderRadius: '12px', background: t.surface }}>
-              <p style={{ fontSize: '16px', color: t.textSecondary }}>Complete mais sessões para ver evolução de carga.</p>
-            </div>
-          )}
-          {comparativo.slice(0, 4).map((item) => {
-            const deltaColor = item.delta > 0 ? '#22C55E' : item.delta < 0 ? '#EF4444' : t.textSecondary;
-            const deltaText = `${item.delta > 0 ? '+' : ''}${item.delta.toFixed(1)}kg`;
-            return (
-              <div key={item.nome} style={{ borderBottom: `1px solid ${t.border}`, paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ fontSize: '18px', fontWeight: 700, color: t.textPrimary }}>{toTitleCase(item.nome)}</p>
-                  <p style={{ fontSize: '13px', color: t.textSecondary }}>{item.cargaAnterior.toFixed(1)}kg → {item.cargaAtual.toFixed(1)}kg</p>
-                </div>
-                <p style={{ fontSize: '24px', fontWeight: 800, color: deltaColor }}>{deltaText}</p>
-              </div>
-            );
-          })}
-        </div>
-        <CardRodape theme={theme} coachUsername={coachUsername} />
-      </div>
-    </InstagramCardShell>
-  );
-}
-
-function CardCoach({ nomeRotina, duracao, volume, sets, coachUsername, exercicios, theme }: ShareCardProps) {
-  const t = shareThemeTokens[theme];
-  return (
-    <InstagramCardShell theme={theme}>
-      <div style={{ width: '100%', padding: '64px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ borderBottom: `1px solid ${t.border}`, paddingBottom: '18px' }}>
-          <p style={{ fontSize: '14px', color: t.textSecondary }}>Treinando com</p>
-          <p style={{ fontSize: '30px', fontWeight: 800, color: t.textPrimary, marginTop: '4px' }}>@{coachUsername.replace('@', '').trim()}</p>
-        </div>
-        <div style={{ marginTop: '28px' }}>
-          <p style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.08em', color: t.textSecondary, fontWeight: 700 }}>Treino concluído</p>
-          <p style={{ fontSize: '46px', fontWeight: 900, color: t.textPrimary, lineHeight: 1.05, marginTop: '10px', textTransform: 'uppercase' }}>{nomeRotina}</p>
-          <p style={{ fontSize: '18px', color: t.textSecondary, marginTop: '10px' }}>{exercicios.length} exercícios prescritos</p>
-          <div style={{ marginTop: '22px', borderTop: `1px solid ${t.border}`, paddingTop: '16px', display: 'flex', gap: '24px' }}>
-            <div><p style={{ fontSize: '12px', color: t.textSecondary }}>Duração</p><p style={{ fontSize: '24px', fontWeight: 800, color: t.textPrimary }}>{formatDuration(duracao)}</p></div>
-            <div><p style={{ fontSize: '12px', color: t.textSecondary }}>Volume</p><p style={{ fontSize: '24px', fontWeight: 800, color: t.textPrimary }}>{formatVolume(volume)}</p></div>
-            <div><p style={{ fontSize: '12px', color: t.textSecondary }}>Séries</p><p style={{ fontSize: '24px', fontWeight: 800, color: t.textPrimary }}>{sets}</p></div>
-          </div>
-        </div>
-        <CardRodape theme={theme} coachUsername={coachUsername} />
-      </div>
-    </InstagramCardShell>
-  );
-}
-
-function CardPoster({ nomeRotina, duracao, volume, sets, exercicios, coachUsername, theme }: ShareCardProps) {
-  const t = shareThemeTokens[theme];
-  const muscleData = buildMuscleHighlightData(exercicios);
-  const metricas: Array<[string, string]> = [
-    ['Duração', formatDuration(duracao)],
-    ['Volume', formatVolume(volume)],
-    ['Séries', String(sets)],
-  ];
-  return (
-    <InstagramCardShell theme={theme}>
-      <div style={{ width: '100%', padding: '56px 60px', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, color: t.textSecondary }}>Treino concluído</p>
-          <p style={{ fontSize: '48px', fontWeight: 800, color: t.textPrimary, marginTop: '6px', textTransform: 'uppercase', letterSpacing: '-0.5px', lineHeight: 1.04 }}>{nomeRotina}</p>
-        </div>
-
-        {/* <Body> renderiza SVG de 200×400 * scale; scale 1.6 → 320×640px, cabe na área. */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', height: 680, overflow: 'hidden', margin: '18px 0' }}>
-          <Body data={muscleData} side="front" gender="male" scale={1.6} defaultFill={t.muscleFill} defaultStroke={t.muscleStroke} defaultStrokeWidth={1} />
-          <Body data={muscleData} side="back" gender="male" scale={1.6} defaultFill={t.muscleFill} defaultStroke={t.muscleStroke} defaultStrokeWidth={1} />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-          {metricas.map(([label, value]) => (
-            <div key={label} style={{ flex: 1, textAlign: 'center' }}>
-              <p style={{ fontSize: '13px', color: t.textSecondary, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
-              <p style={{ fontSize: '38px', fontWeight: 800, color: t.textPrimary, marginTop: '4px' }}>{value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ marginTop: '18px' }}>
-          <CardRodape theme={theme} coachUsername={coachUsername} />
-        </div>
-      </div>
-    </InstagramCardShell>
-  );
-}
-
-function CompletionScreenWithExport({
-  nomeRotina,
-  duracao,
-  volume,
-  sets,
-  exercicios,
-  prsCount,
-  coachUsername,
-}: CompletionScreenProps) {
-  const [exporting, setExporting] = useState(false);
-  const [shareMode, setShareMode] = useState(false);
-  const [feedbackNota, setFeedbackNota] = useState('');
-  const [temaAtivo, setTemaAtivo] = useState<ShareTheme>('escuro');
-  const [cardAtivo, setCardAtivo] = useState(0);
-  const [cardScale, setCardScale] = useState(1);
-  const router = useRouter();
-  const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
-
-  useEffect(() => {
-    const calcScale = () => {
-      const previewWidth = window.innerWidth * 0.85;
-      setCardScale(previewWidth / 1080);
-    };
-    calcScale();
-    window.addEventListener('resize', calcScale);
-    return () => window.removeEventListener('resize', calcScale);
-  }, []);
-
-  const monthDays = [new Date().getDate()];
-  const comparativo = exercicios
-    .map((ex) => {
-      const cargaAtual = Math.max(0, ...ex.series.map((s) => Number(s.peso_atual || 0)));
-      const cargaAnterior = Math.max(0, ...ex.series.map((s) => parseCargaAnterior(s.anterior)));
-      return {
-        nome: ex.nome,
-        cargaAnterior,
-        cargaAtual,
-        delta: cargaAtual - cargaAnterior,
-      };
-    })
-    .filter((c) => c.cargaAnterior > 0)
-    .slice(0, 4);
-
-  const cards = [
-    {
-      id: 'poster',
-      label: 'Anatomia',
-      render: (theme: ShareTheme) => (
-        <CardPoster
-          nomeRotina={nomeRotina}
-          duracao={duracao}
-          volume={volume}
-          sets={sets}
-          exercicios={exercicios}
-          coachUsername={coachUsername}
-          theme={theme}
-          monthDays={monthDays}
-          comparativo={comparativo}
-        />
-      ),
-    },
-    {
-      id: 'metricas',
-      label: 'Métricas',
-      render: (theme: ShareTheme) => (
-        <CardMetricas
-          nomeRotina={nomeRotina}
-          duracao={duracao}
-          volume={volume}
-          sets={sets}
-          exercicios={exercicios}
-          coachUsername={coachUsername}
-          theme={theme}
-          monthDays={monthDays}
-          comparativo={comparativo}
-        />
-      ),
-    },
-    {
-      id: 'frequencia',
-      label: 'Frequência',
-      render: (theme: ShareTheme) => (
-        <CardFrequencia
-          nomeRotina={nomeRotina}
-          duracao={duracao}
-          volume={volume}
-          sets={sets}
-          exercicios={exercicios}
-          coachUsername={coachUsername}
-          theme={theme}
-          monthDays={monthDays}
-          comparativo={comparativo}
-        />
-      ),
-    },
-    {
-      id: 'exercicios',
-      label: 'Exercícios',
-      render: (theme: ShareTheme) => (
-        <CardExercicios
-          nomeRotina={nomeRotina}
-          duracao={duracao}
-          volume={volume}
-          sets={sets}
-          exercicios={exercicios}
-          coachUsername={coachUsername}
-          theme={theme}
-          monthDays={monthDays}
-          comparativo={comparativo}
-        />
-      ),
-    },
-    {
-      id: 'evolucao',
-      label: 'Evolução',
-      render: (theme: ShareTheme) => (
-        <CardEvolucao
-          nomeRotina={nomeRotina}
-          duracao={duracao}
-          volume={volume}
-          sets={sets}
-          exercicios={exercicios}
-          coachUsername={coachUsername}
-          theme={theme}
-          monthDays={monthDays}
-          comparativo={comparativo}
-        />
-      ),
-    },
-    {
-      id: 'coach',
-      label: 'Coach Card',
-      render: (theme: ShareTheme) => (
-        <CardCoach
-          nomeRotina={nomeRotina}
-          duracao={duracao}
-          volume={volume}
-          sets={sets}
-          exercicios={exercicios}
-          coachUsername={coachUsername}
-          theme={theme}
-          monthDays={monthDays}
-          comparativo={comparativo}
-        />
-      ),
-    },
-  ];
-
-  const exportCardAt = async (index: number) => {
-    const cardEl = cardRefs.current[index];
-    if (!cardEl) return;
-    try {
-      setExporting(true);
-      const dataUrl = await toPng(cardEl, { pixelRatio: 1, cacheBust: true, width: 1080, height: 1080 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const fileName = `auron-${cards[index].id}-${temaAtivo}-${Date.now()}.png`;
-      const file = new File([blob], fileName, { type: 'image/png' });
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: `Treino ${nomeRotina}` });
-      } else {
-        const link = document.createElement('a');
-        link.download = fileName;
-        link.href = dataUrl;
-        link.click();
-      }
-    } catch (error) {
-      console.error('Erro ao exportar card:', error);
-      alert('Não foi possível gerar o card agora. Tente novamente.');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const downloadCard = async (index: number) => {
-    const cardEl = cardRefs.current[index];
-    if (!cardEl) return;
-    try {
-      setExporting(true);
-      const dataUrl = await toPng(cardEl, { pixelRatio: 1, cacheBust: true, width: 1080, height: 1080 });
-      const fileName = `auron-treino-${cards[index].id}-${temaAtivo}-${Date.now()}.png`;
-      const link = document.createElement('a');
-      link.download = fileName;
-      link.href = dataUrl;
-      link.click();
-    } catch (error) {
-      console.error('Erro ao baixar card:', error);
-      alert('Não foi possível salvar o card agora. Tente novamente.');
-    } finally {
-      setExporting(false);
-    }
-  };
-  if (!shareMode) {
-    return (
-      <div className="flex flex-col min-h-screen bg-surface-0 px-4 pb-8">
-        <div className="flex flex-col items-center pt-12 pb-6">
-          <Trophy className="w-10 h-10 text-success mb-3" weight="duotone" />
-          <h1 className="text-xl font-bold text-text-primary">Treino concluído!</h1>
-          <p className="text-xs text-text-muted mt-1 font-mono tabular-nums">
-            {formatVolume(volume)} · {formatDuration(duracao)} · {sets} séries
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 mb-5">
-          <div className="bg-surface-1 border border-border-subtle rounded-lg p-3 flex flex-col items-center gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Duração</span>
-            <span className="text-lg font-bold font-mono tabular-nums text-text-primary">{formatDuration(duracao)}</span>
-          </div>
-          <div className="bg-surface-1 border border-border-subtle rounded-lg p-3 flex flex-col items-center gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Volume</span>
-            <span className="text-lg font-bold font-mono tabular-nums text-text-primary">{volume}<span className="text-xs font-normal text-text-muted ml-0.5">kg</span></span>
-          </div>
-          <div className="bg-surface-1 border border-border-subtle rounded-lg p-3 flex flex-col items-center gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Séries</span>
-            <span className="text-lg font-bold font-mono tabular-nums text-text-primary">{sets}</span>
-          </div>
-        </div>
-
-        <div className="mb-5">
-          <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted block mb-1.5">
-            Como foi o treino? (opcional)
-          </label>
-          <textarea
-            value={feedbackNota}
-            onChange={(e) => setFeedbackNota(e.target.value.slice(0, 300))}
-            placeholder="Deixe uma nota sobre essa sessão..."
-            className="w-full min-h-[80px] max-h-[140px] resize-none bg-surface-1 border border-border-subtle rounded-lg p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-            maxLength={300}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2 mt-auto">
-          <button
-            onClick={() => setShareMode(true)}
-            className="w-full h-[52px] bg-brand hover:bg-brand-hover rounded-lg text-[15px] font-semibold text-white flex items-center justify-center gap-2 transition-colors duration-120"
-          >
-            <ShareNetwork className="w-4 h-4" />
-            Compartilhar treino
-          </button>
-          <button
-            onClick={() => router.push('/aluno/treinos')}
-            className="w-full h-11 rounded-lg text-sm font-medium text-text-muted hover:text-text-primary transition-colors duration-120"
-          >
-            Ir para treinos
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col min-h-screen bg-surface-0">
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <button
-          onClick={() => setShareMode(false)}
-          className="w-8 h-8 rounded-md bg-surface-1 flex items-center justify-center"
-        >
-          <X className="w-4 h-4 text-text-secondary" />
-        </button>
-        <h2 className="text-sm font-semibold text-text-primary">Compartilhar treino</h2>
-        <div className="w-8" />
-      </div>
-
-      <div className="relative">
-        <div
-          className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-4 pb-3 scroll-smooth scrollbar-hide"
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            const cardWidth = el.clientWidth * 0.85 + 12;
-            const nextIndex = Math.max(0, Math.min(cards.length - 1, Math.round(el.scrollLeft / cardWidth)));
-            setCardAtivo(nextIndex);
-          }}
-        >
-          {cards.map((card, i) => (
-            <div key={card.id} className="flex-shrink-0 w-[85vw] snap-center rounded-xl overflow-hidden aspect-square">
-              {/* Container que faz o scale do card 1080x1080 fixo */}
-              <div style={{
-                width: '85vw',
-                aspectRatio: '1/1',
-                overflow: 'hidden',
-                borderRadius: 12,
-                position: 'relative',
-              }}>
-                <div style={{
-                  width: 1080,
-                  height: 1080,
-                  transform: `scale(${cardScale})`,
-                  transformOrigin: 'top left',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                }}>
-                  {card.render(temaAtivo)}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-center gap-1.5 mt-1">
-          {cards.map((card, i) => (
-            <div
-              key={card.id}
-              className={cn(
-                'rounded-full transition-all duration-200',
-                i === cardAtivo ? 'w-4 h-1.5 bg-brand' : 'w-1.5 h-1.5 bg-border-default',
-              )}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 mt-5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-2">Tema</p>
-        <div className="flex gap-2">
-          {(['escuro', 'claro', 'transparente'] as ShareTheme[]).map((tema) => (
-            <button
-              key={tema}
-              onClick={() => setTemaAtivo(tema)}
-              className={cn(
-                'flex-1 h-9 rounded-md text-xs font-medium border transition-all duration-120',
-                temaAtivo === tema
-                  ? 'bg-surface-0 border-brand text-brand shadow-sm'
-                  : 'bg-surface-1 border-border-subtle text-text-muted',
-              )}
-            >
-              {tema.charAt(0).toUpperCase() + tema.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 mt-4 flex flex-col gap-2 pb-8">
-        {/* Compartilhar — primário */}
-        <button
-          onClick={() => exportCardAt(cardAtivo)}
-          disabled={exporting}
-          className="w-full h-[52px] bg-brand hover:bg-brand-hover rounded-lg flex items-center justify-center gap-2 text-[15px] font-semibold text-white disabled:opacity-50 transition-colors"
-        >
-          <ShareNetwork className="w-4 h-4" />
-          Compartilhar este card
-        </button>
-
-        {/* Download — secundário */}
-        <button
-          onClick={() => downloadCard(cardAtivo)}
-          disabled={exporting}
-          className="w-full h-11 bg-surface-1 border border-border-subtle rounded-lg flex items-center justify-center gap-2 text-sm font-medium text-text-primary disabled:opacity-50 hover:bg-surface-2 transition-colors"
-        >
-          <Download className="w-4 h-4 text-text-secondary" />
-          Salvar imagem
-        </button>
-
-        {/* Pular */}
-        <button
-          onClick={() => router.push('/aluno/treinos')}
-          className="w-full h-10 text-sm text-text-muted hover:text-text-secondary transition-colors"
-        >
-          Pular
-        </button>
-      </div>
-
-      <div className="absolute -top-[9999px] -left-[9999px] pointer-events-none">
-        {cards.map((card, i) => (
-          <div
-            key={`export-${card.id}`}
-            ref={(el) => {
-              cardRefs.current[i] = el;
-            }}
-            style={{ width: 1080, height: 1080 }}
-          >
-            {card.render(temaAtivo)}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

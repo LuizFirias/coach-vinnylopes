@@ -45,7 +45,9 @@ import {
 } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import Body from 'react-muscle-highlighter';
+import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
+import { profileSexoToBodyGender, type BodyGender } from '@/lib/utils/bodyGender';
+import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
 import {
   ChartLine, ChartPieSlice, PersonSimpleRun, CalendarBlank, Fire, CaretRight, Question
 } from "@phosphor-icons/react";
@@ -70,6 +72,7 @@ interface Profile {
   coach_id?: string | null;
   avatar_url?: string | null;
   arquivado?: boolean | null;
+  sexo?: 'masculino' | 'feminino' | 'outro' | null;
 }
 
 interface Foto {
@@ -209,53 +212,31 @@ const RADAR_GROUPS: Record<string, string[]> = {
   'Pernas': ['Quadríceps', 'Posterior (Isquiotibiais)', 'Panturrilha', 'Glúteos'],
 };
 
-const HIGHLIGHTER_MAP: Record<string, string[]> = {
-  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
-  'upper-back': ['Dorsais'],
-  'trapezius': ['Trapézio'],
-  'lower-back': ['Lombar'],
-  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
-  'biceps': ['Bíceps'],
-  'triceps': ['Tríceps'],
-  'forearm': ['Antebraço'],
-  'quadriceps': ['Quadríceps'],
-  'hamstring': ['Posterior (Isquiotibiais)'],
-  'calves': ['Panturrilha'],
-  'gluteal': ['Glúteos'],
-  'abs': ['Abdômen'],
-  'obliques': ['Oblíquos'],
-};
-
-function MuscleBodyChart({ muscleIntensity, side }: { muscleIntensity: Record<string, number>; side: 'front' | 'back' }) {
-  const data = useMemo(() => {
-    const list: any[] = [];
-    Object.entries(HIGHLIGHTER_MAP).forEach(([slug, muscleGroups]) => {
-      const intensities = muscleGroups.map(g => muscleIntensity[g] || 0);
-      const maxIntensity = Math.max(...intensities, 0);
-
-      if (maxIntensity > 0) {
-        const opacity = 0.2 + (maxIntensity / 10) * 0.75;
-        list.push({
-          slug: slug,
-          color: `rgba(37, 99, 235, ${opacity.toFixed(2)})`
-        });
-      }
-    });
-    return list;
-  }, [muscleIntensity]);
+function MuscleBodyChart({
+  muscleIntensity,
+  side,
+  gender,
+}: {
+  muscleIntensity: Record<string, number>;
+  side: 'front' | 'back';
+  gender: BodyGender;
+}) {
+  const data = useMemo(
+    () => buildIntensityHighlightData(muscleIntensity),
+    [muscleIntensity],
+  );
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '260px', maxHeight: '300px' }}>
-      <Body
-        data={data}
-        side={side}
-        gender="male"
-        scale={0.85}
-        defaultFill="#27272a"
-        defaultStroke="#3f3f46"
-        defaultStrokeWidth={1}
-      />
-    </div>
+    <MuscleBodyFigure
+      data={data}
+      side={side}
+      gender={gender}
+      scale={0.85}
+      defaultFill="#27272a"
+      defaultStroke="#3f3f46"
+      defaultStrokeWidth={1}
+      style={{ minHeight: 260, maxHeight: 300 }}
+    />
   );
 }
 
@@ -819,6 +800,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     Object.entries(countSets).forEach(([g, c]) => { intensity[g] = Math.round((c / maxSets) * 10); });
     return intensity;
   }, [historicoTreinos, exerciciosBiblioteca]);
+
+  const alunoBodyGender = useMemo(
+    () => profileSexoToBodyGender(profile?.sexo),
+    [profile?.sexo],
+  );
 
   const radarData30 = useMemo(() => {
     const now = Date.now();
@@ -1393,10 +1379,10 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Mapa de Calor Muscular (Semana)</p>
                       <div className="flex justify-around items-center bg-surface-2 border border-border-subtle/50 py-3 px-2 rounded-xl h-full min-h-[320px]">
                         <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" />
+                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" gender={alunoBodyGender} />
                         </div>
                         <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" />
+                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" gender={alunoBodyGender} />
                         </div>
                       </div>
                     </div>

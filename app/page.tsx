@@ -13,8 +13,8 @@ import {
   ChatCircle, 
   Barbell, 
   ChartLine,
-  X,
-  ArrowRight
+  ArrowRight,
+  Check
 } from "@phosphor-icons/react";
 import PWAInstall from "./components/PWAInstall";
 import DumbbellLoader from "./components/DumbbellLoader";
@@ -44,6 +44,33 @@ function LoginForm() {
   // Novas features da especificação de melhorias de login
   const [rememberMe, setRememberMe] = useState(false);
   const [capsLockActive, setCapsLockActive] = useState(false);
+  const [coachCount, setCoachCount] = useState<number | null>(null);
+
+  const resolveLoginErrorMessage = async (emailAddress: string): Promise<string> => {
+    try {
+      const res = await fetch("/api/auth/check-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailAddress }),
+      });
+      if (res.ok) {
+        const { exists } = await res.json();
+        if (!exists) return "Nenhuma conta encontrada com este e-mail.";
+        return "Senha incorreta. Esqueceu? Use 'Recuperar senha'.";
+      }
+    } catch {
+      // fallback abaixo
+    }
+    return "Não foi possível entrar. Tente novamente.";
+  };
+
+  const handleRoleTabChange = (tab: "coach" | "aluno") => {
+    setRoleTab(tab);
+    setError(null);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("auronfit-login-role-tab", tab);
+    }
+  };
 
   useEffect(() => {
     // Carregar e-mail salvo se a opção "Lembrar-me" estiver ativada
@@ -52,6 +79,14 @@ function LoginForm() {
       if (savedEmail) {
         setEmail(savedEmail);
         setRememberMe(true);
+      }
+
+      const savedRoleTab = localStorage.getItem("auronfit-login-role-tab");
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      if (tabParam === "aluno" || tabParam === "coach") {
+        setRoleTab(tabParam);
+      } else if (savedRoleTab === "aluno" || savedRoleTab === "coach") {
+        setRoleTab(savedRoleTab);
       }
     }
 
@@ -87,6 +122,13 @@ function LoginForm() {
       }
     };
     checkExistingSession();
+
+    fetch("/api/public/coach-count")
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data?.count === "number") setCoachCount(data.count);
+      })
+      .catch(() => {});
   }, [router]);
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => { setEmail(e.target.value); setError(null); };
@@ -149,7 +191,10 @@ function LoginForm() {
       const { data, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (authError) {
-        setError("Não conseguimos acessar com esses dados. Confira seu e-mail e senha.");
+        const message = authError.message?.toLowerCase().includes("email not confirmed")
+          ? "Confirme seu e-mail antes de entrar."
+          : await resolveLoginErrorMessage(email);
+        setError(message);
         setLoading(false);
         return;
       }
@@ -187,6 +232,23 @@ function LoginForm() {
           return;
         }
 
+        const role = profileData.role || "aluno";
+        const isCoachAccount = role === "coach" || role === "super_admin";
+
+        if (roleTab === "aluno" && isCoachAccount) {
+          setError("Esta conta é de coach. Selecione a aba Coach para entrar.");
+          await supabaseClient.auth.signOut();
+          setLoading(false);
+          return;
+        }
+
+        if (roleTab === "coach" && !isCoachAccount) {
+          setError("Esta conta é de aluno. Selecione a aba Aluno para entrar.");
+          await supabaseClient.auth.signOut();
+          setLoading(false);
+          return;
+        }
+
         try {
           await fetch("/api/session", {
             method: "POST",
@@ -202,13 +264,12 @@ function LoginForm() {
         }
 
         const from = searchParams?.get("from");
-        const role = profileData?.role || "aluno";
 
         if (from && !profileData?.must_change_password) {
           const isAlunoRoute = from.startsWith("/aluno");
           const isAdminRoute = from.startsWith("/admin");
           const isSuperAdminRoute = from.startsWith("/super-admin");
-          const allowAdmin = role === "coach" || role === "super_admin";
+          const allowAdmin = isCoachAccount;
           if ((isAlunoRoute && role === "aluno") || ((isAdminRoute || isSuperAdminRoute) && allowAdmin)) {
             router.push(from);
             return;
@@ -218,13 +279,13 @@ function LoginForm() {
         router.push(getPostLoginPath(profileData));
       }
     } catch {
-      setError("Erro ao processar login. Tente novamente.");
+      setError("Não foi possível entrar. Tente novamente.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 flex flex-col lg:flex-row antialiased overflow-hidden selection:bg-brand/35 selection:text-white">
+    <div className="min-h-[100dvh] bg-surface-0 flex flex-col lg:flex-row antialiased selection:bg-brand/35 selection:text-white">
       <PWAInstall />
 
       {/* Glow decorativo - Hidden on mobile to prevent performance lag */}
@@ -279,8 +340,8 @@ function LoginForm() {
                 <Barbell className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-text-primary font-display">Treinos digitais e PDFs</p>
-                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Fichas completas, execuções guiadas e PDFs de nutrição em um só lugar.</p>
+                <p className="text-sm font-bold text-text-primary font-display">Seus alunos recebem tudo em um lugar</p>
+                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Treinos, PDFs de nutrição e execuções guiadas, sem precisar de WhatsApp ou planilha.</p>
               </div>
             </div>
 
@@ -289,8 +350,8 @@ function LoginForm() {
                 <ChartLine className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-text-primary font-display">Dados reais de progresso</p>
-                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Histórico de cargas, medidas antropométricas e fotos de evolução estruturadas.</p>
+                <p className="text-sm font-bold text-text-primary font-display">Evolução que você mostra, não só sente</p>
+                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Histórico de cargas, medidas e fotos organizados automaticamente.</p>
               </div>
             </div>
 
@@ -299,9 +360,20 @@ function LoginForm() {
                 <ChatCircle className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-text-primary font-display">Gestão e Feedbacks</p>
-                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Caixa de entrada integrada para responder dúvidas e alertas de dor.</p>
+                <p className="text-sm font-bold text-text-primary font-display">Nunca perca um feedback de aluno</p>
+                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Caixa integrada com alertas de dor e dúvidas, tudo em um painel.</p>
               </div>
+            </div>
+
+            <div className="mt-8 flex items-center gap-3 text-sm text-white/60">
+              <div className="flex -space-x-2">
+                <div className="w-7 h-7 rounded-full bg-blue-500/40 border border-white/10" />
+                <div className="w-7 h-7 rounded-full bg-blue-400/40 border border-white/10" />
+                <div className="w-7 h-7 rounded-full bg-blue-600/40 border border-white/10" />
+              </div>
+              <span>
+                +{coachCount ?? 230} coaches já gerenciam seus alunos no AURON
+              </span>
             </div>
           </div>
         </div>
@@ -315,10 +387,10 @@ function LoginForm() {
       </div>
 
       {/* Lado Direito - Form Panel */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 lg:p-16 relative z-10 w-full max-w-lg lg:max-w-none mx-auto overflow-y-auto">
+      <div className="flex flex-1 flex-col items-center w-full max-w-lg lg:max-w-none mx-auto relative z-10 px-6 py-6 sm:py-8 md:px-12 lg:px-16 lg:justify-center lg:min-h-screen">
         
         {/* Logo */}
-        <div className="flex flex-col items-center text-center mb-6 lg:mb-8">
+        <div className="flex flex-col items-center text-center mb-4 sm:mb-6 lg:mb-8">
           {!logoFailed ? (
             <Image
               src="/logo.webp"
@@ -339,27 +411,27 @@ function LoginForm() {
 
         {/* Seletor Coach/Aluno - Aba com estilo underline de alta fidelidade */}
         {mode === "login" && (
-          <div className="w-full max-w-[380px] flex border-b border-border-subtle mb-6 relative z-10">
+          <div className="relative z-30 mb-4 flex w-full max-w-[380px] gap-1 rounded-full bg-white/5 p-1 sm:mb-6 isolate touch-manipulation">
             <button
               type="button"
-              onClick={() => { setRoleTab("coach"); setError(null); }}
+              onClick={() => handleRoleTabChange("coach")}
               className={cn(
-                "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2",
+                "min-h-[44px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out",
                 roleTab === "coach"
-                  ? "border-brand text-brand"
-                  : "border-transparent text-text-secondary hover:text-text-primary"
+                  ? "bg-blue-600 text-white"
+                  : "bg-transparent text-gray-400 active:text-white"
               )}
             >
               Coach
             </button>
             <button
               type="button"
-              onClick={() => { setRoleTab("aluno"); setError(null); }}
+              onClick={() => handleRoleTabChange("aluno")}
               className={cn(
-                "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2",
+                "min-h-[44px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out",
                 roleTab === "aluno"
-                  ? "border-brand text-brand"
-                  : "border-transparent text-text-secondary hover:text-text-primary"
+                  ? "bg-blue-600 text-white"
+                  : "bg-transparent text-gray-400 active:text-white"
               )}
             >
               Aluno
@@ -368,16 +440,14 @@ function LoginForm() {
         )}
 
         {/* Form Card */}
-        <div className="w-full max-w-[380px] bg-surface-1 lg:bg-transparent border border-border-subtle lg:border-none shadow-sm lg:shadow-none p-6 md:p-7 lg:p-0 rounded-xl relative overflow-hidden">
+        <div className="w-full max-w-[380px] bg-surface-1 lg:bg-transparent border border-border-subtle lg:border-none shadow-sm lg:shadow-none p-6 md:p-7 lg:p-0 rounded-xl relative">
           
           <AnimatePresence mode="wait">
             {/* ── Recuperar senha ── */}
             {mode === "recovery" && (
               <motion.div
                 key="recovery"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                initial={false}
                 className="space-y-4 relative z-10"
               >
                 <div className="text-center mb-1">
@@ -453,12 +523,24 @@ function LoginForm() {
             {mode === "login" && (
               <motion.form
                 key="login"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                initial={false}
                 onSubmit={handleLogin}
                 className="space-y-4 relative z-10"
               >
+                <AnimatePresence mode="wait">
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-start gap-2 bg-red-500/10 border-l-4 border-red-500 rounded-md p-3 text-sm text-red-400"
+                    >
+                      <WarningCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>{error}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Email Input com validação inline */}
                 <div className="space-y-2">
                   <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block ml-0.5">
@@ -542,46 +624,33 @@ function LoginForm() {
                 </div>
 
                 {/* Lembrar-me Checkbox */}
-                <div className="flex items-center gap-2 py-1 select-none">
+                <label
+                  htmlFor="rememberMe"
+                  className="relative z-20 flex min-h-[44px] cursor-pointer touch-manipulation select-none items-center gap-2.5 py-1"
+                >
                   <input
                     id="rememberMe"
                     type="checkbox"
                     checked={rememberMe}
                     disabled={loading}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-border-default bg-surface-2 text-brand focus:ring-2 focus:ring-brand/40 cursor-pointer disabled:opacity-50"
+                    className="sr-only"
                   />
-                  <label htmlFor="rememberMe" className="text-xs font-semibold text-text-secondary cursor-pointer hover:text-text-primary transition-colors">
-                    Lembrar-me neste dispositivo
-                  </label>
-                </div>
-
-                {/* Erros com slide-down e botão de fechar */}
-                <div className="pt-1">
-                  <AnimatePresence mode="wait">
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="bg-danger/10 border border-danger/20 text-danger px-3 py-2.5 rounded-lg text-xs flex items-start gap-2.5 relative mb-4 overflow-hidden"
-                      >
-                        <WarningCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1 pr-4">
-                          <p className="font-bold text-danger">Falha no Acesso</p>
-                          <p className="text-danger/80 mt-0.5">{error}</p>
-                        </div>
-                        <button 
-                          type="button" 
-                          onClick={() => setError(null)}
-                          className="text-danger hover:text-danger/60 transition-colors p-0.5 absolute right-2 top-2"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </motion.div>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded transition-colors duration-200",
+                      rememberMe
+                        ? "bg-blue-600"
+                        : "border-[1.5px] border-gray-600 bg-transparent"
                     )}
-                  </AnimatePresence>
+                  >
+                    {rememberMe && <Check className="h-3 w-3 text-white" weight="bold" />}
+                  </span>
+                  <span className="text-sm text-gray-400">Lembrar-me neste dispositivo</span>
+                </label>
 
+                <div className="pt-1">
                   <button
                     type="submit"
                     disabled={loading}
@@ -600,10 +669,12 @@ function LoginForm() {
                     )}
                   </button>
 
-                  <div className="pt-4 border-t border-border-subtle/30 text-center">
-                    <Link href="/signup" 
-                          className="block w-full py-2.5 border border-brand/35 hover:border-brand text-brand rounded-lg text-xs font-semibold hover:bg-brand/5 active:scale-[0.98] transition-all">
-                      Não tenho uma conta
+                  <div className="mt-3 text-center">
+                    <Link
+                      href={roleTab === "coach" ? "/signup/coach" : "/signup/aluno"}
+                      className="block w-full rounded-lg border-[1.5px] border-blue-600 py-3 text-xs font-semibold text-blue-500 transition-colors hover:bg-blue-600/10 touch-manipulation"
+                    >
+                      Criar minha conta gratuita →
                     </Link>
                   </div>
                 </div>
@@ -613,12 +684,7 @@ function LoginForm() {
         </div>
 
         {/* Footer com suporte polido e ícone */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-8 text-center"
-        >
+        <div className="mt-6 text-center pb-6 lg:pb-0">
           <button
             onClick={handleSupportClick}
             className="inline-flex items-center gap-2 px-4 py-2 border border-border-subtle rounded-full bg-surface-1 text-text-secondary text-xs hover:text-brand hover:border-brand/40 transition-all shadow-sm active:scale-95"
@@ -626,7 +692,7 @@ function LoginForm() {
             <ChatCircle className="w-4 h-4 text-[#10B981]" weight="fill" />
             <span>Precisa de ajuda? Fale com o suporte</span>
           </button>
-        </motion.div>
+        </div>
 
       </div>
     </div>

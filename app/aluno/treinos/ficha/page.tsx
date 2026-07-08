@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils/cn";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { YouTubePlayer } from "@/app/components/YouTubePlayer";
 import TecnicaInfoModal from "@/app/components/TecnicaInfoModal";
+import { TecnicasTooltipModal, TecnicasTooltipTrigger } from "@/app/components/treino/TecnicasTooltipModal";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -38,6 +39,11 @@ interface FichaTreino {
   id: string;
   nome_rotina: string;
   exercicios: Exercicio[];
+}
+
+function estimateDurationMin(exercicios: Exercicio[]): number {
+  const totalSets = exercicios.reduce((acc, ex) => acc + ex.series.length, 0);
+  return Math.max(15, Math.round(exercicios.length * 3 + totalSets * 2));
 }
 
 function toTitleCase(str: string): string {
@@ -82,6 +88,7 @@ function FichaContent() {
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [tecnicaInfoModal, setTecnicaInfoModal] = useState<string | null>(null);
+  const [showTecnicasTooltip, setShowTecnicasTooltip] = useState(false);
   const [restTimer, setRestTimer] = useState<number | null>(null);
 
   // Chave de progresso no localStorage
@@ -187,25 +194,36 @@ function FichaContent() {
       const exercicioIds = (configuracao.exercicios || []).map((ex: any) => ex.id).filter(Boolean);
 
       let historicoMap: Record<string, any> = {};
+      let videosBiblioteca: Record<string, string> = {};
       if (exercicioIds.length > 0) {
-        const { data: historicoRows } = await supabaseClient
-          .from("historico_treinos")
-          .select("exercicio_id, dados_sessao")
-          .eq("ficha_id", fichaId)
-          .eq("aluno_id", userId)
-          .in("exercicio_id", exercicioIds)
-          .order("data_conclusao", { ascending: false });
+        const [{ data: historicoRows }, { data: bibData }] = await Promise.all([
+          supabaseClient
+            .from("historico_treinos")
+            .select("exercicio_id, dados_sessao")
+            .eq("ficha_id", fichaId)
+            .eq("aluno_id", userId)
+            .in("exercicio_id", exercicioIds)
+            .order("data_conclusao", { ascending: false }),
+          supabaseClient
+            .from("exercicios_biblioteca")
+            .select("id, video_url")
+            .in("id", exercicioIds),
+        ]);
         (historicoRows || []).forEach((row: any) => {
           if (!historicoMap[row.exercicio_id]) {
             historicoMap[row.exercicio_id] = row.dados_sessao;
           }
         });
+        videosBiblioteca = Object.fromEntries(
+          (bibData || []).map((ex) => [ex.id, ex.video_url || ""])
+        );
       }
 
       const exerciciosComHistorico = (configuracao.exercicios || []).map((ex: any) => {
         const historicoEx = historicoMap[ex.id];
         return {
           ...ex,
+          video_url: videosBiblioteca[ex.id] || undefined,
           series: (ex.series || []).map((serie: any, idx: number) => {
             const seriePrev = historicoEx?.series?.[idx];
             const anterior = seriePrev ? `${seriePrev.peso_atual || 0}kg x ${seriePrev.reps || 0}` : "—";
@@ -673,9 +691,14 @@ function FichaContent() {
           </div>
 
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight leading-tight">
-              {ficha.nome_rotina}
-            </h1>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-text-primary tracking-tight leading-tight">
+                {ficha.nome_rotina}
+              </h1>
+              <p className="mt-0.5 text-xs font-medium text-text-tertiary">
+                {ficha.exercicios.length} exercícios · Est. {estimateDurationMin(ficha.exercicios)} min
+              </p>
+            </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={handleBaixarPDF}
@@ -818,8 +841,18 @@ function FichaContent() {
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left">Set</span>
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left pl-2">Ant.</span>
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Peso</span>
-                        {hasTec && <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">T1</span>}
-                        {hasExtra && <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">T2</span>}
+                        {hasTec && (
+                          <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center flex items-center justify-center gap-1">
+                            T1
+                            <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} />
+                          </span>
+                        )}
+                        {hasExtra && (
+                          <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center flex items-center justify-center gap-1">
+                            T2
+                            {!hasTec && <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} />}
+                          </span>
+                        )}
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Reps</span>
                         <span className="opacity-0">X</span>
                       </div>
@@ -831,7 +864,10 @@ function FichaContent() {
                         <span className="w-12 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Peso</span>
                         <span className="w-7 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Reps</span>
                         <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">T1</span>
-                        <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">T2</span>
+                        <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center flex items-center justify-center gap-0.5">
+                          T2
+                          <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} className="text-[8px]" />
+                        </span>
                         <span className="w-7 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">✓</span>
                       </div>
 
@@ -1045,6 +1081,7 @@ function FichaContent() {
 
       {/* ── Técnica Info Modal ── */}
       <TecnicaInfoModal tecnica={tecnicaInfoModal} onClose={() => setTecnicaInfoModal(null)} />
+      <TecnicasTooltipModal open={showTecnicasTooltip} onClose={() => setShowTecnicasTooltip(false)} />
 
       {/* ── Modal de Confirmação de Finalização ── */}
       {showConfirmModal && (

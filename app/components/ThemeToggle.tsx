@@ -4,9 +4,36 @@ import { Moon, Sun } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 import { useTheme } from './ThemeProvider';
 
-export default function ThemeToggle() {
+type ThemeToggleProps = {
+  variant?: 'default' | 'hero';
+  className?: string;
+};
+
+export default function ThemeToggle({ variant = 'default', className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
+
+  if (variant === 'hero') {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isDark}
+        aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+        onClick={toggleTheme}
+        className={cn(
+          'dashboard-hero-chip flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-opacity active:opacity-80',
+          className,
+        )}
+      >
+        {isDark ? (
+          <Moon size={18} weight="regular" className="currentColor" />
+        ) : (
+          <Sun size={18} weight="fill" className="text-amber-500" />
+        )}
+      </button>
+    );
+  }
 
   return (
     <button
@@ -19,6 +46,7 @@ export default function ThemeToggle() {
         'relative flex h-8 w-14 items-center rounded-full border p-0.5 transition-colors',
         'border-border-subtle bg-surface-2 hover:bg-surface-3',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
+        className,
       )}
     >
       <span

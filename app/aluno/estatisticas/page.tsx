@@ -27,8 +27,11 @@ import {
   ArrowUp,
   ArrowDown,
 } from '@phosphor-icons/react';
-import Body from 'react-muscle-highlighter';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
+import { useAlunoBodyGender } from '@/app/contexts/AlunoBodyGenderContext';
+import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
+import type { BodyGender } from '@/lib/utils/bodyGender';
 import { cn } from '@/lib/utils/cn';
 
 // ─── Muscle mapping ──────────────────────────────────────────────────────────
@@ -91,58 +94,37 @@ const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'
 const MONTHS_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 // ─── BodyChart component ──────────────────────────────────────────────────────
-const HIGHLIGHTER_MAP: Record<string, string[]> = {
-  'chest': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
-  'upper-back': ['Dorsais'],
-  'trapezius': ['Trapézio'],
-  'lower-back': ['Lombar'],
-  'deltoids': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
-  'biceps': ['Bíceps'],
-  'triceps': ['Tríceps'],
-  'forearm': ['Antebraço'],
-  'quadriceps': ['Quadríceps'],
-  'hamstring': ['Posterior (Isquiotibiais)'],
-  'calves': ['Panturrilha'],
-  'gluteal': ['Glúteos'],
-  'abs': ['Abdômen'],
-  'obliques': ['Oblíquos'],
-};
-
-function MuscleBodyChart({ muscleIntensity, side }: { muscleIntensity: Record<string, number>; side: 'front' | 'back' }) {
-  const data = useMemo(() => {
-    const list: any[] = [];
-    Object.entries(HIGHLIGHTER_MAP).forEach(([slug, muscleGroups]) => {
-      const intensities = muscleGroups.map(g => muscleIntensity[g] || 0);
-      const maxIntensity = Math.max(...intensities, 0);
-
-      if (maxIntensity > 0) {
-        const opacity = 0.2 + (maxIntensity / 10) * 0.75;
-        list.push({
-          slug: slug,
-          color: `rgba(37, 99, 235, ${opacity.toFixed(2)})`
-        });
-      }
-    });
-    return list;
-  }, [muscleIntensity]);
+function MuscleBodyChart({
+  muscleIntensity,
+  side,
+  gender,
+}: {
+  muscleIntensity: Record<string, number>;
+  side: 'front' | 'back';
+  gender: BodyGender;
+}) {
+  const data = useMemo(
+    () => buildIntensityHighlightData(muscleIntensity),
+    [muscleIntensity],
+  );
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-transparent relative overflow-hidden" style={{ minHeight: '260px', maxHeight: '300px' }}>
-      <Body
-        data={data}
-        side={side}
-        gender="male"
-        scale={0.85}
-        defaultFill="#27272a"
-        defaultStroke="#3f3f46"
-        defaultStrokeWidth={1}
-      />
-    </div>
+    <MuscleBodyFigure
+      data={data}
+      side={side}
+      gender={gender}
+      scale={0.85}
+      defaultFill="#27272a"
+      defaultStroke="#3f3f46"
+      defaultStrokeWidth={1}
+      style={{ minHeight: 260, maxHeight: 300 }}
+    />
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function EstatisticasPage() {
+  const bodyGender = useAlunoBodyGender();
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState<Screen>('main');
   const [weekOffset, setWeekOffset] = useState(0); // 0 = current week
@@ -618,10 +600,10 @@ export default function EstatisticasPage() {
               style={{ background: 'rgba(11,19,32,0.5)', borderColor: 'rgba(41,48,61,0.3)' }}
             >
               <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-                <MuscleBodyChart muscleIntensity={intensity} side="front" />
+                <MuscleBodyChart muscleIntensity={intensity} side="front" gender={bodyGender} />
               </div>
               <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-                <MuscleBodyChart muscleIntensity={intensity} side="back" />
+                <MuscleBodyChart muscleIntensity={intensity} side="back" gender={bodyGender} />
               </div>
             </div>
             {/* Muscle table */}
@@ -976,10 +958,10 @@ export default function EstatisticasPage() {
             style={{ background: 'rgba(11,19,32,0.5)', borderColor: 'rgba(41,48,61,0.3)' }}
           >
             <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" />
+              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" gender={bodyGender} />
             </div>
             <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" />
+              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" gender={bodyGender} />
             </div>
           </div>
 

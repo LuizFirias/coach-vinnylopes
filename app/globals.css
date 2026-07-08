@@ -557,3 +557,64 @@ html[data-theme="light"] .dashboard-mobile-toolbar.is-surface {
     background: transparent;
   }
 }
+
+/* ── Dashboard aluno — tokens theme-aware ── */
+.dashboard-aluno {
+  --dash-bg: #080c14;
+  --dash-hero-from: #0a1628;
+  --dash-hero-to: #0f1f3d;
+  --dash-card: #111827;
+  --dash-card-border: #1f2937;
+  --dash-curve: #080c14;
+  --dash-hero-chip: rgba(255, 255, 255, 0.08);
+  --dash-habit-bg: rgba(255, 255, 255, 0.05);
+  --dash-text: #f9fafb;
+  --dash-text-muted: #9ca3af;
+  --dash-text-subtle: #6b7280;
+  --dash-progress-track: #1f2937;
+  --dash-today-bg: #1d3461;
+  --dash-selected-day-bg: #1a2336;
+  background-color: var(--dash-bg);
+  color: var(--dash-text);
+}
+
+html[data-theme="light"] .dashboard-aluno {
+  --dash-bg: #f1f5f9;
+  --dash-hero-from: #dbeafe;
+  --dash-hero-to: #bfdbfe;
+  --dash-card: #ffffff;
+  --dash-card-border: #e2e8f0;
+  --dash-curve: #f1f5f9;
+  --dash-hero-chip: rgba(37, 99, 235, 0.08);
+  --dash-habit-bg: rgba(37, 99, 235, 0.06);
+  --dash-text: #0f172a;
+  --dash-text-muted: #64748b;
+  --dash-text-subtle: #94a3b8;
+  --dash-progress-track: #e2e8f0;
+  --dash-today-bg: #dbeafe;
+  --dash-selected-day-bg: #eff6ff;
+}
+
+.dashboard-card {
+  background-color: var(--dash-card);
+  border-color: var(--dash-card-border);
+}
+
+.dashboard-hero-chip {
+  background-color: var(--dash-hero-chip);
+  border: 1px solid transparent;
+  color: #93c5fd;
+}
+
+html[data-theme="light"] .dashboard-hero-chip {
+  color: #2563eb;
+}
+
+.dashboard-habit-bar {
+  background-color: var(--dash-habit-bg);
+}
+
+.dashboard-text { color: var(--dash-text); }
+.dashboard-text-muted { color: var(--dash-text-muted); }
+.dashboard-text-subtle { color: var(--dash-text-subtle); }
+.dashboard-progress-track { background-color: var(--dash-progress-track); }

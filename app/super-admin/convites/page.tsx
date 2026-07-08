@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { readApiJson } from "@/lib/utils/parseApiResponse";
 
 type AccountType = "teste" | "parceiro";
 
@@ -71,7 +72,7 @@ export default function SuperAdminConvitesPage() {
     try {
       const headers = await getAuthHeaders();
       const res = await fetch("/api/super-admin/invites", { headers });
-      const json = await res.json();
+      const json = await readApiJson<{ invites?: InviteRow[]; error?: string }>(res);
 
       if (!res.ok) {
         throw new Error(json.error || "Erro ao carregar convites");
@@ -122,7 +123,7 @@ export default function SuperAdminConvitesPage() {
         }),
       });
 
-      const json = await res.json();
+      const json = await readApiJson<{ invite: CreatedInvite; error?: string }>(res);
       if (!res.ok) {
         throw new Error(json.error || "Erro ao criar convite");
       }

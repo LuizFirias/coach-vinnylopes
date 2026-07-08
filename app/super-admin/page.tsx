@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { readApiJson } from "@/lib/utils/parseApiResponse";
 
 export default function SuperAdminPage() {
   const [email, setEmail] = useState("");
@@ -42,13 +43,13 @@ export default function SuperAdminPage() {
         body: JSON.stringify({ email, role, full_name: fullName }),
       });
 
-      const data = await res.json();
+      const data = await readApiJson<{ error?: string; message?: string }>(res);
 
       if (!res.ok) {
         throw new Error(data.error || "Falha ao atualizar papel");
       }
 
-      setMessage({ type: "success", text: data.message });
+      setMessage({ type: "success", text: data.message || "Papel atualizado com sucesso." });
       setEmail("");
       setFullName("");
     } catch (err: unknown) {
