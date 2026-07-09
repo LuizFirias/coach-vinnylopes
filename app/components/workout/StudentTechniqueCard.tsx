@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils/cn";
 interface StudentTechniqueCardProps {
   techniqueValue?: string | null;
   extraValue?: string | null;
-  /** Controlado externamente (ex.: botão "Técnica" no modal) */
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   defaultExpanded?: boolean;
@@ -40,34 +39,37 @@ export function StudentTechniqueCard({
     if (controlledExpanded === undefined) setInternalExpanded(next);
   };
 
-  const summaryLabel = [technique?.shortLabel, extra?.label].filter((v) => v && v !== "—").join(" + ");
+  const summaryLabel = [technique?.shortLabel, extra?.label]
+    .filter((v) => v && v !== "—")
+    .join(" + ");
 
   return (
     <div
       className={cn(
-        "rounded-xl border border-brand-border bg-brand-subtle overflow-hidden",
+        "rounded-[10px] border-l-2 border-brand overflow-hidden",
+        "bg-[#0f1a2e]",
         className
       )}
     >
       <button
         type="button"
         onClick={toggle}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-brand/5 transition-colors"
+        className="w-full flex items-start gap-2.5 px-3.5 py-3 text-left transition-colors"
         aria-expanded={expanded}
       >
-        <Info size={15} className="text-brand shrink-0" aria-hidden />
+        <Info size={14} className="text-brand shrink-0 mt-0.5" aria-hidden />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-brand leading-tight">
             Como executar esta série
           </p>
-          {!expanded && summaryLabel && (
-            <p className="text-[11px] text-text-secondary truncate mt-0.5">{summaryLabel}</p>
+          {summaryLabel && (
+            <p className="text-[11px] text-text-secondary mt-0.5">{summaryLabel}</p>
           )}
         </div>
         <CaretDown
           size={14}
           className={cn(
-            "text-brand shrink-0 transition-transform duration-200",
+            "text-text-muted shrink-0 mt-0.5 transition-transform duration-200",
             expanded && "rotate-180"
           )}
           aria-hidden
@@ -75,15 +77,15 @@ export function StudentTechniqueCard({
       </button>
 
       {expanded && (
-        <div className="px-3 pb-3 space-y-3 border-t border-brand-border/60">
+        <div className="px-3.5 pb-3.5 space-y-3 border-t border-brand/20">
           {hasTechnique && (
             <div>
               <p className="text-xs font-semibold text-text-primary mb-1">{technique.name}</p>
-              <p className="text-[13px] text-text-secondary leading-relaxed">
+              <p className="text-xs text-text-secondary leading-relaxed">
                 {technique.studentInstruction}
               </p>
               {technique.example && (
-                <p className="text-[11px] text-text-tertiary italic mt-1.5 leading-snug">
+                <p className="text-[11px] text-text-muted italic mt-1.5 leading-snug">
                   <span className="font-semibold not-italic text-text-secondary">Exemplo: </span>
                   {technique.example}
                 </p>
@@ -91,16 +93,16 @@ export function StudentTechniqueCard({
             </div>
           )}
 
-          {hasTechnique && hasExtra && <div className="h-px bg-brand-border/60" />}
+          {hasTechnique && hasExtra && <div className="h-px bg-brand/20" />}
 
           {hasExtra && (
             <div>
               <p className="text-xs font-semibold text-text-primary mb-1">{extra.name}</p>
-              <p className="text-[13px] text-text-secondary leading-relaxed">
+              <p className="text-xs text-text-secondary leading-relaxed">
                 {extra.studentInstruction}
               </p>
               {extra.example && (
-                <p className="text-[11px] text-text-tertiary italic mt-1.5 leading-snug">
+                <p className="text-[11px] text-text-muted italic mt-1.5 leading-snug">
                   <span className="font-semibold not-italic text-text-secondary">Exemplo: </span>
                   {extra.example}
                 </p>

@@ -3,7 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video } from '@phosphor-icons/react';
+import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightning, Minus, Plus, Info, CaretDown, LinkSimple } from '@phosphor-icons/react';
+import { RestTimerOverlay } from '@/app/components/treino/execucao/RestTimerOverlay';
+import { VolumeProgressDots } from '@/app/components/treinos/VolumeProgressDots';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { CompletionShareScreen } from '@/app/components/workout/share/CompletionShareScreen';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
@@ -13,9 +15,6 @@ import { cn } from '@/lib/utils/cn';
 import { haptic } from '@/lib/utils/haptics';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { StudentTechniqueCard } from '@/app/components/workout/StudentTechniqueCard';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer
-} from 'recharts';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -79,8 +78,18 @@ function estimateDurationMin(exercicios: ExercicioState[]): number {
   return Math.max(15, Math.round(exercicios.length * 3 + totalSets * 2));
 }
 
-const GRID_COLS_SERIES = '28px 1fr 52px 44px 34px 34px 36px';
+const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px 1fr 52px 44px 34px 34px 36px';
+const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 52px 44px 34px 34px 36px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px 1fr 64px 52px 44px 44px 36px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 64px 52px 44px 44px 36px';
 const GRID_COLS_HISTORICO = '28px 72px 1fr 40px 32px 32px';
+
+function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean): string {
+  if (showAnterior) {
+    return isDesktop ? GRID_COLS_SERIES_WITH_ANT_DESKTOP : GRID_COLS_SERIES_WITH_ANT_MOBILE;
+  }
+  return isDesktop ? GRID_COLS_SERIES_NO_ANT_DESKTOP : GRID_COLS_SERIES_NO_ANT_MOBILE;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -153,14 +162,22 @@ interface SetRowProps {
   serie: SerieState;
   idx: number;
   treinoIniciado: boolean;
+  showAnteriorCol: boolean;
+  gridCols: string;
+  isDesktop?: boolean;
   onPesoChange: (peso: number) => void;
   onCheck: () => void;
 }
 
-function SetRow({ serie, idx, treinoIniciado, onPesoChange, onCheck }: SetRowProps) {
+function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDesktop = false, onPesoChange, onCheck }: SetRowProps) {
   return (
-    <div className="grid items-center py-2.5 border-t border-border-subtle/30" style={{ gridTemplateColumns: GRID_COLS_SERIES }}>
-      {/* Número da série */}
+    <div
+      className={cn(
+        'grid items-center border-t border-border-subtle/30',
+        isDesktop ? 'py-2.5 min-h-10 [@media(hover:hover)]:hover:bg-[#1a1a1a]' : 'py-2.5'
+      )}
+      style={{ gridTemplateColumns: gridCols }}
+    >
       <div className="flex justify-center">
         <span className={cn(
           'w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-semibold font-mono',
@@ -170,17 +187,17 @@ function SetRow({ serie, idx, treinoIniciado, onPesoChange, onCheck }: SetRowPro
         </span>
       </div>
 
-      {/* Anterior */}
-      <div className="min-w-0 pl-2">
-        <p className={cn(
-          'text-[11px] font-mono tabular-nums truncate',
-          serie.completado ? 'text-text-disabled line-through' : 'text-text-muted'
-        )}>
-          {serie.anterior || '—'}
-        </p>
-      </div>
+      {showAnteriorCol && (
+        <div className="min-w-0 pl-2">
+          <p className={cn(
+            'text-[11px] font-mono tabular-nums truncate',
+            serie.completado ? 'text-text-disabled line-through' : 'text-text-muted'
+          )}>
+            {serie.anterior || '—'}
+          </p>
+        </div>
+      )}
 
-      {/* Peso */}
       <div className="flex justify-end pr-2">
         <input
           type="number"
@@ -190,47 +207,43 @@ function SetRow({ serie, idx, treinoIniciado, onPesoChange, onCheck }: SetRowPro
           disabled={!treinoIniciado || serie.completado}
           placeholder="0"
           className={cn(
-            'w-full h-6 rounded-md text-right text-[15px] font-bold font-mono tabular-nums',
-            'bg-transparent border-b border-border-subtle',
+            'w-full h-7 rounded-md text-right text-[13px] font-semibold font-mono tabular-nums',
+            'bg-transparent border-b border-brand/60',
             'text-text-primary focus:border-brand focus:outline-none',
             'disabled:opacity-50 px-1'
           )}
         />
       </div>
 
-      {/* Reps */}
       <div className="flex justify-center">
         <span className={cn(
           'text-[13px] font-semibold font-mono tabular-nums',
-          serie.completado ? 'text-success' : 'text-accent'
+          serie.completado ? 'text-success' : 'text-text-primary'
         )}>{serie.reps}</span>
       </div>
 
-      {/* Técnica 1 (principal) */}
       <div className="flex justify-center">
         <span className="text-[11px] font-medium text-text-secondary leading-tight text-center">
           {duasLetrasTenica(serie.tecnica) || '—'}
         </span>
       </div>
 
-      {/* Técnica 2 (extra) */}
       <div className="flex justify-center">
-        <span className="text-[11px] font-medium text-accent leading-tight text-center">
+        <span className="text-[11px] font-medium text-brand leading-tight text-center">
           {abreviarTecnica(serie.tecnica_extra) || '—'}
         </span>
       </div>
 
-      {/* Check */}
       <div className="flex justify-center">
         <button
           onClick={onCheck}
           disabled={!treinoIniciado}
           className={cn(
-            'w-7 h-7 rounded-md border border-border-subtle flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 active:bg-success/10 active:border-success/30 transition-colors duration-100',
-            serie.completado ? 'bg-success/10 border-success/30 text-success' : 'bg-surface-0 text-text-muted'
+            'w-5 h-5 rounded border-[1.5px] border-border-input flex items-center justify-center transition-all active:scale-90 disabled:opacity-30',
+            serie.completado ? 'bg-success border-success text-white' : 'bg-transparent text-text-muted'
           )}
         >
-          {serie.completado ? <Check className="w-3.5 h-3.5 text-success" /> : <span className="w-3.5 h-3.5" />}
+          {serie.completado && <Check className="w-3 h-3" weight="bold" />}
         </button>
       </div>
     </div>
@@ -242,79 +255,86 @@ function SetRow({ serie, idx, treinoIniciado, onPesoChange, onCheck }: SetRowPro
 interface ExercicioCardProps {
   exercicio: ExercicioState;
   treinoIniciado: boolean;
+  showAnteriorCol: boolean;
+  isDesktop?: boolean;
   onPesoChange: (ordem: number, peso: number) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen: (url: string) => void;
 }
 
-function ExercicioCard({ exercicio, treinoIniciado, onPesoChange, onCheck, onVideoOpen }: ExercicioCardProps) {
+function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onCheck, onVideoOpen }: ExercicioCardProps) {
   const completadas = exercicio.series.filter(s => s.completado).length;
   const total = exercicio.series.length;
   const all = completadas === total;
+  const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop);
 
   return (
     <div className={cn(
-      'rounded-lg border transition-colors overflow-hidden',
-      all ? 'bg-success-subtle/20 border-success-border' : 'bg-surface-1 border-border-subtle'
+      'rounded-xl transition-colors overflow-hidden bg-surface-1 px-4 py-3.5',
+      all && treinoIniciado && 'ring-1 ring-success-border/40'
     )}>
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 pt-4 pb-3 border-b border-border-subtle/50">
+      <div className="flex items-start gap-3 pb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-text-primary leading-tight">{toTitleCase(exercicio.nome)}</h3>
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <Clock className="w-3 h-3 text-brand" />
-            <p className="text-[10px] text-brand">
+          <h3 className="text-[15px] font-semibold text-text-primary leading-snug">
+            {toTitleCase(exercicio.nome)}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-1.5 min-h-[44px]">
+            <Clock size={12} className="text-brand shrink-0" />
+            <p className="text-xs text-brand font-medium">
               Descanso: {formatDuration(exercicio.descanso)}
             </p>
           </div>
         </div>
         {exercicio.video_url && (
           <button
+            type="button"
             onClick={() => onVideoOpen(exercicio.video_url!)}
-            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-brand hover:border-brand transition-colors shrink-0"
+            className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0 min-h-[44px] min-w-[44px]"
+            aria-label="Ver vídeo do exercício"
           >
-            <Play className="w-3 h-3" fill="currentColor" />
+            <Play size={18} weight="fill" />
           </button>
         )}
-        {all && (
-          <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
+        {all && treinoIniciado && (
+          <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center shrink-0">
             <Check className="w-3.5 h-3.5 text-white" weight="bold" />
           </div>
         )}
       </div>
 
       {exercicio.observacoes && (
-        <div className="mx-4 mt-3 mb-1 px-2.5 py-2 bg-surface-2 border border-border-subtle rounded-md">
-          <p className="text-[10px] font-semibold uppercase tracking-caps text-text-tertiary mb-1">Observações</p>
+        <div className="mb-3 px-2.5 py-2 bg-surface-2 border border-border-subtle rounded-lg">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-1">Observações</p>
           <p className="text-[11px] text-text-secondary leading-relaxed">{exercicio.observacoes}</p>
         </div>
       )}
 
-      {/* Tabela de séries */}
-      <div className="px-4 pt-2 pb-3">
-        {/* Cabeçalho de colunas */}
-        <div className="grid items-center py-2 mb-1" style={{ gridTemplateColumns: GRID_COLS_SERIES }}>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">Set</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted pl-2">Ant.</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-right">Peso</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">Reps</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">T1</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">T2</span>
+      <div className="border-t border-border-subtle/50 pt-2">
+        <div className="grid items-center py-2 mb-0.5" style={{ gridTemplateColumns: gridCols }}>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">Set</span>
+          {showAnteriorCol && (
+            <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted pl-2">Ant.</span>
+          )}
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-right pr-2">Peso</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">Reps</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">T1</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">T2</span>
           <span className="text-[10px] text-text-muted text-center">✓</span>
         </div>
 
-        {/* Séries */}
-        <div className="divide-y divide-border-subtle/30">
+        <div>
           {exercicio.series.map((serie, idx) => (
-            <div key={serie.ordem}>
-              <SetRow
-                serie={serie}
-                idx={idx}
-                treinoIniciado={treinoIniciado}
-                onPesoChange={(peso) => onPesoChange(serie.ordem, peso)}
-                onCheck={() => onCheck(serie.ordem)}
-              />
-            </div>
+            <SetRow
+              key={serie.ordem}
+              serie={serie}
+              idx={idx}
+              treinoIniciado={treinoIniciado}
+              showAnteriorCol={showAnteriorCol}
+              gridCols={gridCols}
+              isDesktop={isDesktop}
+              onPesoChange={(peso) => onPesoChange(serie.ordem, peso)}
+              onCheck={() => onCheck(serie.ordem)}
+            />
           ))}
         </div>
       </div>
@@ -358,14 +378,14 @@ export default function ExecucaoTreinoPage() {
   const [modalSerieIdx, setModalSerieIdx] = useState(0);
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
-  const [showSeriesHistory, setShowSeriesHistory] = useState(true);
+  const [showSeriesHistory, setShowSeriesHistory] = useState(false);
 
   const [techniqueCardExpanded, setTechniqueCardExpanded] = useState(false);
 
   useEffect(() => {
     if (modalExIdx !== null) {
-      setShowSeriesHistory(true);
-      setTechniqueCardExpanded(false);
+      setShowSeriesHistory(false);
+      setTechniqueCardExpanded(modalSerieIdx === 0);
     }
   }, [modalExIdx, modalSerieIdx]);
 
@@ -380,8 +400,16 @@ export default function ExecucaoTreinoPage() {
 
   // Vídeo
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  // Imagem de demonstração — aberta sob demanda, para não ficar em loop enquanto a ficha está aberta
   const [demoImg, setDemoImg] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
 
   // Ref sempre atualizado — usado nos listeners de pagehide/visibilitychange
   const persistRef = useRef<{
@@ -1024,25 +1052,36 @@ export default function ExecucaoTreinoPage() {
   const modalEx = modalExIdx !== null ? exercicios[modalExIdx] : null;
   const modalSerie = modalEx?.series[modalSerieIdx];
 
+  const hasHistorico = exercicios.some((ex) =>
+    ex.series.some((s) => s.anterior && s.anterior !== '—')
+  );
+  const sessionsCompleted = volumeHistory.length;
+
   return (
     <div className={cn('min-h-screen bg-surface-0', treinoIniciado ? 'pb-4' : 'pb-28')}>
 
-      {/* ── Header sticky ── */}
-      <header className="sticky top-0 z-40 bg-surface-0/95 backdrop-blur-xl border-b border-border-subtle">
-        <div className="flex items-center gap-3 px-4 py-3 max-w-lg mx-auto">
+      {/* ── Header sticky (mobile + treino em andamento) ── */}
+      <header
+        className={cn(
+          'sticky top-0 z-40 bg-surface-0 border-b border-surface-2',
+          !treinoIniciado && 'lg:hidden'
+        )}
+      >
+        <div className="flex items-center gap-3 px-4 py-3 max-w-[1100px] mx-auto">
           <Link
             href="/aluno/treinos"
-            className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0"
+            className="w-11 h-11 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0"
+            aria-label="Voltar para Minhas Rotinas"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft size={20} />
           </Link>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-text-primary truncate">{nomeRotina}</h1>
+            <h1 className="text-base font-bold text-text-primary truncate">{nomeRotina}</h1>
             {treinoIniciado ? (
-              <p className="text-xs text-text-tertiary">{setsCompletos}/{totalSets} sets</p>
+              <p className="text-[11px] text-text-muted mt-0.5">{setsCompletos}/{totalSets} sets</p>
             ) : (
-              <p className="text-xs font-medium text-text-tertiary">
+              <p className="text-[11px] text-text-muted mt-0.5">
                 {exercicios.length} exercícios · Est. {estimateDurationMin(exercicios)} min
               </p>
             )}
@@ -1059,12 +1098,12 @@ export default function ExecucaoTreinoPage() {
               </button>
               <div className="text-right">
                 <p className="font-mono tabular-nums text-sm font-bold text-brand leading-none">{formatDuration(elapsed)}</p>
-                <p className="text-2xs text-text-tertiary">{formatVolume(volume)}</p>
+                <p className="text-2xs text-text-muted">{formatVolume(volume)}</p>
               </div>
               <button
                 onClick={handleFinalizar}
                 disabled={saving}
-                className="h-8 px-3 bg-brand text-text-on-brand rounded-lg text-[11px] font-semibold shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity disabled:opacity-60"
+                className="h-8 px-3 bg-brand text-text-on-brand rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
               >
                 {saving ? '...' : 'Finish'}
               </button>
@@ -1073,118 +1112,101 @@ export default function ExecucaoTreinoPage() {
         </div>
       </header>
 
-      {/* ── Conteúdo ── */}
-      <main className="px-4 py-4 max-w-lg mx-auto flex flex-col gap-3">
+      <div className="max-w-[1100px] mx-auto px-4 py-4 lg:px-6 lg:py-8">
+        <div className={cn(!treinoIniciado && 'lg:grid lg:grid-cols-[2fr_3fr] lg:gap-6 lg:items-start')}>
 
-        {/* Preview: gráfico + botão iniciar */}
-        {!treinoIniciado && (
-          <>
-            {/* Botão iniciar */}
-            <button
-              onClick={iniciarTreino}
-              className="w-full h-10 rounded-lg font-semibold text-xs bg-brand text-text-on-brand shadow-lg shadow-brand/30 transition-all active:scale-95 flex items-center justify-center gap-2"
-            >
-              <Play className="w-4 h-4" weight="fill" />
-              Iniciar treino
-            </button>
-
-            {/* Gráfico de volume */}
-            {volumeHistory.length >= 4 && (
-              <div className="bg-surface-1 border border-border-subtle rounded-lg p-3">
-                <div className="flex items-end justify-between mb-3">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-caps text-text-tertiary">Progresso de Volume</p>
-                    {volumeHistory.length > 0 && (
-                      <p className="text-base font-bold text-text-primary mt-0.5">
-                        {formatVolume(volumeHistory[volumeHistory.length - 1].volume)}
-                        <span className="text-[10px] text-brand ml-1.5">{volumeHistory[volumeHistory.length - 1].data}</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="h-[120px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={volumeHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                      <XAxis
-                        dataKey="data"
-                        stroke="#6b7280"
-                        fontSize={9}
-                        tickLine={false}
-                        axisLine={false}
-                        dy={6}
-                      />
-                      <YAxis stroke="#6b7280" fontSize={9} tickLine={false} axisLine={false} tickFormatter={v => `${Math.round(v / 1000)}k`} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1c1c1e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', fontSize: 11 }}
-                        labelStyle={{ color: '#ffffff' }}
-                        itemStyle={{ color: '#a0a0a0' }}
-                        formatter={(v: number) => [formatVolume(v), 'Volume']}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="volume"
-                        stroke="#6366f1"
-                        strokeWidth={2}
-                        dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }}
-                        activeDot={{ r: 5, fill: '#6366f1' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {volumeHistory.length < 4 && (
-              <div className="bg-surface-1 border border-border-subtle rounded-[14px] p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-brand mb-3">
-                  📊 Progresso de volume
+          {/* Coluna esquerda — contexto + iniciar (desktop, pré-execução) */}
+          {!treinoIniciado && (
+            <aside className="hidden lg:block lg:sticky lg:top-6">
+              <div className="bg-surface-1 border border-border-subtle rounded-[14px] p-6">
+                <Link
+                  href="/aluno/treinos"
+                  className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors mb-4"
+                >
+                  <ArrowLeft size={16} />
+                  Minhas Rotinas
+                </Link>
+                <h1 className="text-xl font-bold text-text-primary">{nomeRotina}</h1>
+                <p className="text-[13px] text-text-muted mt-1">
+                  {exercicios.length} exercícios · Est. {estimateDurationMin(exercicios)} min
                 </p>
-                <div className="flex flex-col items-center gap-2.5">
-                  <div className="flex h-11 items-end gap-1.5">
-                    {[0.3, 0.5, 0.4, 0.7, 0.6].map((h, i) => (
-                      <div
-                        key={i}
-                        className="w-5 rounded-sm bg-brand opacity-15"
-                        style={{ height: `${h * 40}px` }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-text-tertiary text-center">
-                    Complete 4 sessões para ver sua curva de evolução
-                  </p>
-                </div>
+                <VolumeProgressDots sessionsCompleted={sessionsCompleted} className="mt-5" />
+                <button
+                  type="button"
+                  onClick={iniciarTreino}
+                  className="w-full min-h-14 mt-5 rounded-xl font-bold text-[15px] bg-brand text-text-on-brand transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
+                >
+                  <Lightning size={18} weight="fill" />
+                  <span className="flex-1 text-center">Iniciar treino</span>
+                  <CaretRight size={16} className="text-white/50" />
+                </button>
+              </div>
+            </aside>
+          )}
+
+          <main className="flex flex-col gap-3 min-w-0">
+            {/* Pré-execução — mobile */}
+            {!treinoIniciado && (
+              <div className="lg:hidden flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={iniciarTreino}
+                  className="w-full min-h-12 rounded-xl font-bold text-[15px] bg-brand text-text-on-brand transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
+                >
+                  <Lightning size={18} weight="fill" />
+                  <span className="flex-1 text-center">Iniciar treino</span>
+                  <CaretRight size={16} className="text-white/50" />
+                </button>
+                <VolumeProgressDots sessionsCompleted={sessionsCompleted} />
               </div>
             )}
-          </>
-        )}
 
-        {/* Banner treino em andamento */}
-        {treinoIniciado && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-success-subtle border border-success-border rounded-lg">
-            <div className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
-            <p className="text-xs text-success font-medium flex-1">Treino em andamento</p>
-            <button
-              onClick={() => abrirModalExercicio(exercicios.findIndex(ex => ex.series.some(s => !s.completado)))}
-              className="text-[10px] font-semibold text-brand hover:underline"
-            >
-              Retomar →
-            </button>
-          </div>
-        )}
+            {/* Header da coluna de exercícios — desktop */}
+            {!treinoIniciado && (
+              <div className="hidden lg:flex sticky top-0 z-10 bg-surface-0 border-b border-surface-2 py-3 items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ArrowLeft size={18} className="text-text-secondary" />
+                  <span className="text-sm font-semibold text-text-primary">Exercícios</span>
+                </div>
+                <span className="text-xs text-text-muted">{exercicios.length} itens</span>
+              </div>
+            )}
 
-        {/* Exercícios */}
-        {exercicios.map((ex) => (
-          <ExercicioCard
-            key={ex.id}
-            exercicio={ex}
-            treinoIniciado={treinoIniciado}
-            onPesoChange={(ordem, peso) => handlePesoChange(ex.id, ordem, peso)}
-            onCheck={(ordem) => handleCheck(ex.id, ordem)}
-            onVideoOpen={setVideoUrl}
-          />
-        ))}
+            {treinoIniciado && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-success-subtle border border-success-border rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
+                <p className="text-xs text-success font-medium flex-1">Treino em andamento</p>
+                <button
+                  type="button"
+                  onClick={() => abrirModalExercicio(exercicios.findIndex(ex => ex.series.some(s => !s.completado)))}
+                  className="text-[10px] font-semibold text-brand hover:underline"
+                >
+                  Retomar →
+                </button>
+              </div>
+            )}
 
-      </main>
+            <div className="flex flex-col gap-2.5">
+              {exercicios.map((ex, index) => (
+                <div
+                  key={ex.id}
+                  className={index > 0 ? 'border-t border-dashed border-surface-2 pt-2.5' : undefined}
+                >
+                  <ExercicioCard
+                    exercicio={ex}
+                    treinoIniciado={treinoIniciado}
+                    showAnteriorCol={hasHistorico}
+                    isDesktop={isDesktop}
+                    onPesoChange={(ordem, peso) => handlePesoChange(ex.id, ordem, peso)}
+                    onCheck={(ordem) => handleCheck(ex.id, ordem)}
+                    onVideoOpen={setVideoUrl}
+                  />
+                </div>
+              ))}
+            </div>
+          </main>
+        </div>
+      </div>
 
       {/* ── Rest Timer: bottom bar (só quando o modal de exercício está fechado) ── */}
       {restActive && modalExIdx === null && (
@@ -1369,8 +1391,19 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── Modal de execução por exercício ── */}
       {modalEx && modalSerie && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-surface-0">
-          {/* Barra de progresso no topo */}
+        <div className="fixed inset-0 z-50 flex flex-col bg-surface-0 lg:max-w-[640px] lg:mx-auto lg:left-1/2 lg:-translate-x-1/2">
+          {restActive && (
+            <RestTimerOverlay
+              remaining={restRemaining}
+              total={restDuration}
+              expired={restExpired}
+              isDesktop={isDesktop}
+              onAddSeconds={restAddSecs}
+              onSkip={restSkip}
+              onAdvance={restAdvance}
+            />
+          )}
+
           <div className="w-full h-0.5 bg-surface-2 flex-shrink-0">
             <div
               className="h-full bg-brand transition-all duration-300"
@@ -1378,34 +1411,31 @@ export default function ExecucaoTreinoPage() {
             />
           </div>
 
-          {/* Header do modal */}
-          <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 bg-surface-1 border-b border-border-subtle flex-shrink-0">
+          <header className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 bg-surface-0 border-b border-surface-2 flex-shrink-0 pt-safe-top">
             <button
+              type="button"
               onClick={() => setModalExIdx(null)}
-              className="w-8 h-8 rounded-md bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary flex-shrink-0"
+              className="w-9 h-9 rounded-lg bg-surface-1 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0"
+              aria-label="Fechar execução"
             >
-              <X className="w-4 h-4" />
+              <X size={20} />
             </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-brand flex items-center gap-1.5">
-                Exercício {(modalExIdx ?? 0) + 1}/{exercicios.length}
-                {modalEx.biset_parceiro_id && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-brand/10 border border-brand/20 rounded-full text-[9px] font-bold text-brand">
-                    🔗 Bi-Set {bisetReturnState !== null ? '← B' : '→ B'}
-                  </span>
-                )}
+            <h2 className="flex-1 min-w-0 text-base font-bold text-text-primary leading-tight truncate">
+              {toTitleCase(modalEx.nome)}
+            </h2>
+            <div className="text-right shrink-0">
+              <p className="text-xs text-text-muted tabular-nums">
+                {(modalExIdx ?? 0) + 1}/{exercicios.length} · Série {modalSerieIdx + 1}/{modalEx.series.length}
               </p>
-              <h2 className="text-sm font-semibold text-text-primary leading-tight truncate">{toTitleCase(modalEx.nome)}</h2>
+              {modalEx.biset_parceiro_id && (
+                <p className="text-[10px] text-brand flex items-center justify-end gap-1 mt-0.5">
+                  <LinkSimple size={11} />
+                  Bi-Set {bisetReturnState !== null ? "← B" : "→ B"}
+                </p>
+              )}
             </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-[10px] text-text-muted">Série</p>
-              <p className="text-base font-bold font-mono text-text-primary">
-                {modalSerieIdx + 1}<span className="text-text-muted font-normal">/{modalEx.series.length}</span>
-              </p>
-            </div>
-          </div>
+          </header>
 
-          {/* Corpo do modal */}
           <div className="flex-1 overflow-y-auto pb-36">
             {/* GIF de demonstração (vídeo fica após o histórico) */}
             {modalEx.gif_url && !modalEx.video_url && (
@@ -1422,52 +1452,65 @@ export default function ExecucaoTreinoPage() {
 
             {/* 3 cards de contexto: REPETIÇÕES / ÚLTIMA VEZ / TÉCNICA */}
             <div className="mt-4 grid grid-cols-3 gap-2 px-4 mb-4">
-              <div className="bg-surface-1 border border-border-subtle rounded-lg p-3 flex flex-col items-center">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted mb-1">
+              <div className="bg-[#141414] rounded-[10px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors">
+                <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-1">
                   Repetições
                 </span>
-                <span className="text-2xl font-bold font-mono tabular-nums text-text-primary">
+                <span className="text-[28px] lg:text-4xl font-extrabold tabular-nums text-text-primary leading-none">
                   {modalSerie.reps}
                 </span>
               </div>
 
-              <div className="bg-surface-1 border border-border-subtle rounded-lg p-3 flex flex-col items-center justify-center">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted mb-1">
+              <div className="bg-[#141414] rounded-[10px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center justify-center [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors">
+                <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-1">
                   Última vez
                 </span>
-                <span className="text-xs font-semibold font-mono text-text-secondary text-center leading-tight">
+                <span
+                  className={cn(
+                    "text-center leading-tight tabular-nums",
+                    modalSerie.anterior
+                      ? "text-sm lg:text-base font-bold text-text-primary"
+                      : "text-[28px] lg:text-4xl font-extrabold text-text-muted"
+                  )}
+                >
                   {modalSerie.anterior || "—"}
                 </span>
               </div>
 
-              {/* TÉCNICA — clicável */}
               {(() => {
                 const hasTecnica = !!(modalSerie.tecnica?.trim() || modalSerie.tecnica_extra?.trim());
-                const tecnicaLabel = modalSerie.tecnica_extra || modalSerie.tecnica;
+                const tecnicaLabel = modalSerie.tecnica_extra || modalSerie.tecnica || "";
+                const isLongLabel = tecnicaLabel.length > 8 || tecnicaLabel.includes(" ");
                 return (
                   <button
+                    type="button"
                     onClick={() => {
                       if (hasTecnica) setTechniqueCardExpanded(true);
                     }}
                     disabled={!hasTecnica}
                     className={cn(
-                      "border rounded-lg p-3 flex flex-col items-center relative transition-colors duration-100",
+                      "rounded-[10px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center relative transition-colors",
                       hasTecnica
-                        ? "bg-brand/5 border-brand/20 active:bg-brand/10 text-brand font-semibold cursor-pointer"
-                        : "bg-surface-1 border-border-subtle text-text-muted cursor-default"
+                        ? "bg-[#141414] cursor-pointer [@media(hover:hover)]:hover:bg-[#1a1a1a]"
+                        : "bg-[#141414] cursor-default"
                     )}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted mb-1">
+                    <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-1 flex items-center gap-1">
                       Técnica
+                      {hasTecnica && <Info size={12} className="text-text-muted" aria-hidden />}
                     </span>
-                    <span className={cn("text-xs text-center leading-tight truncate w-full", hasTecnica ? "text-brand font-semibold" : "text-text-muted")}>
+                    <span
+                      className={cn(
+                        "text-center leading-tight truncate w-full",
+                        !hasTecnica
+                          ? "text-[28px] lg:text-4xl font-extrabold text-text-muted"
+                          : isLongLabel
+                            ? "text-base font-bold text-brand"
+                            : "text-[28px] lg:text-4xl font-extrabold text-text-primary"
+                      )}
+                    >
                       {tecnicaLabel || "—"}
                     </span>
-                    {hasTecnica && (
-                      <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-brand/20 text-brand text-[8px] font-bold flex items-center justify-center">
-                        i
-                      </span>
-                    )}
                   </button>
                 );
               })()}
@@ -1481,24 +1524,26 @@ export default function ExecucaoTreinoPage() {
               onExpandedChange={setTechniqueCardExpanded}
             />
 
-            {/* Campo de CARGA — aumentado */}
-            <div className="mx-4 mt-4 bg-surface-1 border border-border-subtle rounded-lg p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3">
+            {/* Campo de CARGA */}
+            <div className="mx-4 mt-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted mb-3">
                 Carga (kg)
               </p>
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     const newVal = Math.max(0, modalCarga - 2.5);
                     setModalCarga(newVal);
                     setModalCargaStr(String(newVal));
                   }}
-                  className="w-14 h-14 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-2xl font-medium text-text-primary active:bg-surface-3 transition-colors"
+                  className="w-10 h-10 rounded-lg bg-surface-2 flex items-center justify-center text-text-primary active:opacity-80 transition-colors shrink-0"
+                  aria-label="Diminuir carga"
                 >
-                  −
+                  <Minus size={18} weight="bold" />
                 </button>
 
-                <div className="flex-1 h-14 bg-surface-0 border border-border-default rounded-lg flex items-center justify-center">
+                <div className="flex-1 h-14 bg-surface-2 border border-[#282828] rounded-[10px] flex items-center justify-center">
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1512,34 +1557,36 @@ export default function ExecucaoTreinoPage() {
                       }
                     }}
                     placeholder="0"
-                    className="w-full bg-transparent border-0 text-center text-3xl font-bold font-mono text-text-primary focus:outline-none"
+                    className="w-full bg-transparent border-0 text-center text-[28px] font-bold tabular-nums text-text-primary focus:outline-none"
                   />
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     const newVal = modalCarga + 2.5;
                     setModalCarga(newVal);
                     setModalCargaStr(String(newVal));
                   }}
-                  className="w-14 h-14 rounded-lg bg-brand flex items-center justify-center text-2xl font-medium text-white active:bg-brand/90 transition-colors"
+                  className="w-10 h-10 rounded-lg bg-brand flex items-center justify-center text-white active:bg-brand/90 transition-colors shrink-0 [@media(hover:hover)]:hover:bg-[#5a9fff]"
+                  aria-label="Aumentar carga"
                 >
-                  +
+                  <Plus size={18} weight="bold" />
                 </button>
               </div>
 
-              {/* Incrementos rápidos */}
               <div className="grid grid-cols-4 gap-2 mt-2.5">
                 {['-5', '-2.5', '+2.5', '+5'].map((inc) => (
                   <button
                     key={inc}
+                    type="button"
                     onClick={() => {
                       const val = parseFloat(inc);
                       const newVal = Math.max(0, modalCarga + val);
                       setModalCarga(newVal);
                       setModalCargaStr(String(newVal));
                     }}
-                    className="h-9 rounded-md bg-surface-2 border border-border-subtle text-sm font-medium font-mono text-text-secondary active:bg-surface-3 transition-colors"
+                    className="min-h-11 rounded-lg bg-[#141414] border border-[#222222] text-[13px] font-medium tabular-nums text-text-primary active:opacity-80 transition-colors [@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-[#333333]"
                   >
                     {inc}
                   </button>
@@ -1548,21 +1595,27 @@ export default function ExecucaoTreinoPage() {
             </div>
 
             {/* Histórico de séries */}
-            <div className="mx-4 mt-4 bg-surface-1 border border-border-subtle rounded-xl overflow-hidden">
+            <div className="mx-4 mt-4">
               <button
                 type="button"
                 onClick={() => setShowSeriesHistory(v => !v)}
-                className={cn(
-                  'w-full flex items-center justify-between px-3 py-2',
-                  showSeriesHistory && 'border-b border-border-subtle/50',
-                )}
+                className="w-full flex items-center justify-between py-2 min-h-11"
               >
-                <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Histórico de Séries</p>
-                <span className="text-2xs font-bold text-brand">{showSeriesHistory ? 'Ocultar' : 'Mostrar'}</span>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">
+                  Histórico de Séries
+                </p>
+                <span className="text-xs font-medium text-brand flex items-center gap-1">
+                  {showSeriesHistory ? "Ocultar" : "Mostrar"}
+                  <CaretDown
+                    size={14}
+                    className={cn("transition-transform duration-200", showSeriesHistory && "rotate-180")}
+                    aria-hidden
+                  />
+                </span>
               </button>
               {showSeriesHistory && (
-                <>
-                  <div className="grid items-center px-3 py-2 border-b border-border-subtle/50" style={{ gridTemplateColumns: GRID_COLS_HISTORICO }}>
+                <div className="bg-[#141414] rounded-[10px] overflow-hidden border border-[#1e1e1e]">
+                  <div className="grid items-center px-3 py-2 border-b border-[#1e1e1e]" style={{ gridTemplateColumns: GRID_COLS_HISTORICO }}>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">Set</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted pl-2">Ant.</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-right">Peso</span>
@@ -1615,7 +1668,7 @@ export default function ExecucaoTreinoPage() {
                       </div>
                     );
                   })}
-                </>
+                </div>
               )}
             </div>
 
@@ -1636,57 +1689,14 @@ export default function ExecucaoTreinoPage() {
           </div>
 
           {/* Botão fixo no rodapé */}
-          <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3 bg-gradient-to-t from-surface-0 via-surface-0/95 to-transparent flex flex-col gap-1.5">
-            {/* Rest timer — aparece aqui quando descanso está ativo */}
-            {restActive && (
-              <div className="mb-2 bg-surface-2 border border-border-subtle rounded-xl px-2.5 py-2">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-                  <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Descanso</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => restAddSecs(-15)}
-                    className="w-10 h-9 bg-surface-3 border border-border-subtle rounded-xl text-xs font-bold text-text-secondary flex-shrink-0"
-                  >
-                    −15
-                  </button>
-                  <div className="flex-1 text-center">
-                    {restExpired ? (
-                      <button
-                        onClick={restAdvance}
-                        className="w-full py-2 bg-success text-white rounded-xl text-sm font-bold uppercase tracking-caps"
-                      >
-                        Pronto! →
-                      </button>
-                    ) : (
-                      <p className="font-mono text-2xl font-bold text-brand tabular-nums">
-                        {Math.floor(restRemaining / 60).toString().padStart(2, '0')}:{(restRemaining % 60).toString().padStart(2, '0')}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => restAddSecs(15)}
-                    className="w-10 h-9 bg-surface-3 border border-border-subtle rounded-xl text-xs font-bold text-text-secondary flex-shrink-0"
-                  >
-                    +15
-                  </button>
-                  <button
-                    onClick={restSkip}
-                    className="h-9 px-3 bg-brand text-text-on-brand rounded-xl text-xs font-bold shadow-sm shadow-brand/30 flex-shrink-0"
-                  >
-                    Skip
-                  </button>
-                </div>
-              </div>
-            )}
-
+          <div className="absolute bottom-0 left-0 right-0 px-4 pt-3 bg-gradient-to-t from-surface-0 via-surface-0/95 to-transparent flex flex-col gap-1.5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <button
+              type="button"
               onClick={concluirSerieModal}
               disabled={restActive}
-              className="w-full h-[52px] bg-brand text-text-on-brand rounded-lg flex items-center justify-center gap-2 text-[15px] font-semibold shadow-lg shadow-brand/30 hover:opacity-90 active:bg-brand/90 transition-all disabled:opacity-40"
+              className="w-full min-h-[52px] bg-brand text-text-on-brand rounded-[10px] flex items-center justify-center gap-2 text-[15px] font-bold shadow-lg shadow-brand/30 hover:opacity-90 active:bg-brand/90 transition-all disabled:opacity-40"
             >
-              <Check className="w-4 h-4" />
+              <Check size={18} weight="bold" />
               {modalSerieIdx >= modalEx.series.length - 1
                 ? modalExIdx !== null && modalExIdx >= exercicios.length - 1
                   ? 'Concluir treino'
