@@ -34,25 +34,24 @@ import {
   Handshake,
   ArrowRight,
   FilePdf,
-  ChartBar
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import {
-  ResponsiveContainer, ComposedChart, Line, Area, Scatter, XAxis, YAxis, Tooltip as ChartTooltip, CartesianGrid,
+  ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
+import { MeasurementsView } from '@/app/components/measurements/MeasurementsView';
+import type { MedicaoRecord } from '@/lib/measurements/types';
 import { profileSexoToBodyGender, type BodyGender } from '@/lib/utils/bodyGender';
 import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
 import {
   ChartLine, ChartPieSlice, PersonSimpleRun, CalendarBlank, Fire, CaretRight, Question
 } from "@phosphor-icons/react";
-
-type Janela = '7d' | '30d' | '90d' | '1a';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -109,76 +108,6 @@ const fieldCls = cn(
   "focus:outline-none focus:border-brand transition-colors",
   "appearance-none"
 );
-
-const METRICAS_COACH = [
-  { id: 'peso' as const, label: 'Peso', unit: 'kg', key: 'peso' },
-  { id: 'gordura_corporal' as const, label: '% Gordura', unit: '%', key: 'gordura_corporal' },
-  { id: 'cintura' as const, label: 'Cintura', unit: 'cm', key: 'cintura' },
-  { id: 'peitoral' as const, label: 'Tórax', unit: 'cm', key: 'peitoral' },
-  { id: 'braco_esquerdo' as const, label: 'Braço E', unit: 'cm', key: 'braco_esquerdo' },
-  { id: 'braco_direito' as const, label: 'Braço D', unit: 'cm', key: 'braco_direito' },
-  { id: 'coxa_esquerda' as const, label: 'Coxa E', unit: 'cm', key: 'coxa_esquerda' },
-  { id: 'coxa_direita' as const, label: 'Coxa D', unit: 'cm', key: 'coxa_direita' },
-  { id: 'panturrilha_direita' as const, label: 'Panturrilha', unit: 'cm', key: 'panturrilha_direita' },
-] as const;
-
-function fmtDataCoach(d: string, janela: string): string {
-  const date = new Date(d);
-  if (janela === '7d' || janela === '30d') {
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-  }
-  return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-}
-
-function filterByJanelaCoach(medicoes: any[], janela: string): any[] {
-  const now = Date.now();
-  const days = { '7d': 7, '30d': 30, '90d': 90, '1a': 365 }[janela as Janela] || 30;
-  const ms = days * 86400000;
-  return medicoes.filter(m => now - new Date(m.data_medicao).getTime() <= ms);
-}
-
-function calcularMediaMovelCoach(data: { label: string; valor: number }[], k = 7): number[] {
-  const valores = data.map(d => d.valor);
-  const result: number[] = [];
-  for (let i = 0; i < valores.length; i++) {
-    const start = Math.max(0, i - k + 1);
-    const subset = valores.slice(start, i + 1);
-    const sum = subset.reduce((a, b) => a + b, 0);
-    result.push(sum / subset.length);
-  }
-  return result;
-}
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: any[];
-  label?: string;
-  unit: string;
-}
-
-const CustomTooltip = ({ active, payload, label, unit }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
-    const rawVal = payload.find(p => p.name === 'valorRaw')?.value;
-    const trendVal = payload.find(p => p.name === 'valorTrend')?.value;
-    
-    return (
-      <div className="bg-surface-2 border border-border-subtle rounded-md p-2 shadow-elev-2 text-2xs font-sans">
-        <p className="text-text-tertiary font-mono mb-1">{label}</p>
-        {rawVal !== undefined && (
-          <p className="text-text-primary">
-            Medido: <span className="font-semibold font-mono text-text-primary">{Number(rawVal).toFixed(1)} {unit}</span>
-          </p>
-        )}
-        {trendVal !== undefined && (
-          <p className="text-brand">
-            Tendência: <span className="font-semibold font-mono text-brand">{Number(trendVal).toFixed(1)} {unit}</span>
-          </p>
-        )}
-      </div>
-    );
-  }
-  return null;
-};
 
 // ─── Muscle mapping for statistics ──────────────────────────────────────────
 const MUSCLE_MAP: Record<string, string[]> = {
@@ -286,10 +215,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   // Tab State
   const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
   const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
-
-  // Coach Chart States
-  const [metricaCoach, setMetricaCoach] = useState<'peso' | 'gordura_corporal' | 'cintura' | 'peitoral' | 'braco_esquerdo' | 'braco_direito' | 'coxa_esquerda' | 'coxa_direita' | 'panturrilha_direita'>('peso');
-  const [janelaCoach, setJanelaCoach] = useState<Janela>('30d');
 
   useEffect(() => { load(); }, [id]);
 
@@ -848,60 +773,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       minutes
     };
   }, [historicoTreinos]);
-
-  // ── Derivações do Gráfico do Coach ──────────────────────────────────────────
-  const metricaCoachObj = METRICAS_COACH.find(m => m.id === metricaCoach) || METRICAS_COACH[0];
-  const metricaCoachKey = metricaCoachObj.key;
-
-  // Ordenar cronologicamente para o gráfico
-  const medidasCronologicoCoach = [...medidas].reverse();
-  const medidasJanelaCoach = filterByJanelaCoach(medidasCronologicoCoach, janelaCoach);
-
-  const rawChartDataCoach = medidasJanelaCoach
-    .map(m => {
-      const val = m[metricaCoachKey];
-      return {
-        label: fmtDataCoach(m.data_medicao, janelaCoach),
-        dataRaw: m.data_medicao,
-        valor: val !== null && val !== undefined ? Number(val) : null
-      };
-    })
-    .filter((d): d is { label: string; dataRaw: string; valor: number } => d.valor !== null);
-
-  const svalsCoach = calcularMediaMovelCoach(rawChartDataCoach, 7);
-  const chartDataCoach = rawChartDataCoach.map((d, index) => ({
-    label: d.label,
-    dataRaw: d.dataRaw,
-    valorRaw: d.valor,
-    valorTrend: svalsCoach[index],
-  }));
-
-  // Estatísticas do topo para o Coach
-  const todosValoresCoach = medidas
-    .map(m => ({ data: m.data_medicao, valor: m[metricaCoachKey] }))
-    .filter((v): v is { data: string; valor: number } => v.valor !== null && v.valor !== undefined);
-
-  const valorAtualCoach = todosValoresCoach[0]?.valor ?? null;
-  const valorAnteriorCoach = todosValoresCoach[1]?.valor ?? null;
-  const deltaAnteriorCoach = valorAtualCoach !== null && valorAnteriorCoach !== null ? valorAtualCoach - valorAnteriorCoach : null;
-
-  let delta30DiasCoach = null;
-  if (todosValoresCoach[0]) {
-    const dataAtualMs = new Date(todosValoresCoach[0].data).getTime();
-    const data30DiasMs = dataAtualMs - 30 * 86400000;
-    let closestObj = null;
-    let minDiff = Infinity;
-    for (let i = 1; i < todosValoresCoach.length; i++) {
-      const diff = Math.abs(new Date(todosValoresCoach[i].data).getTime() - data30DiasMs);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestObj = todosValoresCoach[i];
-      }
-    }
-    if (closestObj) {
-      delta30DiasCoach = todosValoresCoach[0].valor - closestObj.valor;
-    }
-  }
 
   const handleExportPDF = () => {
     if (medidas.length === 0) return;
@@ -1870,163 +1741,31 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <div className="lg:col-span-8 flex flex-col gap-6">
               
               {/* Gráfico de Evolução de Medidas */}
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div
+                className="rounded-2xl border border-border-subtle p-4 md:p-6 shadow-sm"
+                style={{ backgroundColor: '#0d0d0d' }}
+              >
+                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-text-primary">Gráfico de Evolução</h3>
-                    <p className="text-2xs text-text-tertiary">Acompanhamento visual de métricas corporais</p>
+                    <h3 className="text-sm font-bold text-white">Gráfico de Evolução</h3>
+                    <p className="text-2xs text-[#555]">Acompanhamento visual de métricas corporais</p>
                   </div>
                   {medidas.length > 0 && (
                     <button
                       onClick={handleExportPDF}
-                      className="px-4 py-2 text-xs font-semibold text-text-primary bg-brand hover:bg-brand-hover rounded-lg flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer border border-transparent shadow-sm"
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-transparent bg-brand px-4 py-2 text-xs font-semibold text-text-primary shadow-sm transition-all duration-200 hover:bg-brand-hover"
                     >
-                      <FilePdf className="w-4 h-4" /> Exportar Relatório PDF
+                      <FilePdf className="h-4 w-4" /> Exportar Relatório PDF
                     </button>
                   )}
                 </div>
 
-                {/* Seletor de Métricas */}
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-border-subtle">
-                  {METRICAS_COACH.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setMetricaCoach(m.id)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap border transition-all duration-150 cursor-pointer font-sans',
-                        metricaCoach === m.id
-                          ? 'bg-brand text-text-primary border-brand shadow-sm'
-                          : 'bg-surface-2 text-text-secondary border-border-subtle hover:border-border-default'
-                      )}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Estatísticas e Seletores da Janela */}
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <div>
-                    <p className="text-2xs font-semibold text-text-tertiary mb-1">
-                      {metricaCoachObj.label} Atual
-                    </p>
-                    {valorAtualCoach !== null ? (
-                      <div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-bold text-text-primary font-mono tracking-tight">
-                            {valorAtualCoach.toFixed(1)}
-                          </span>
-                          <span className="text-xs text-text-tertiary font-mono">{metricaCoachObj.unit}</span>
-                        </div>
-                        <p className="text-[11px] text-text-tertiary mt-1 font-mono">
-                          Atualizado em {new Date(todosValoresCoach[0].data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-text-tertiary font-mono">Sem registros</p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex gap-1.5">
-                      {deltaAnteriorCoach !== null && (
-                        <div className="bg-surface-2 border border-border-subtle rounded-lg px-2.5 py-1 flex flex-col justify-center min-w-[80px] transition-all duration-200">
-                          <span className="text-[9px] text-text-tertiary font-semibold">vs. Anterior</span>
-                          <span className="text-2xs font-semibold text-text-secondary font-mono flex items-center mt-0.5">
-                            {deltaAnteriorCoach > 0 ? '+' : ''}{deltaAnteriorCoach.toFixed(1)} {metricaCoachObj.unit}
-                          </span>
-                        </div>
-                      )}
-
-                      {delta30DiasCoach !== null && (
-                        <div className="bg-surface-2 border border-border-subtle rounded-lg px-2.5 py-1 flex flex-col justify-center min-w-[80px] transition-all duration-200">
-                          <span className="text-[9px] text-text-tertiary font-semibold">vs. 30d atrás</span>
-                          <span className="text-2xs font-semibold text-text-secondary font-mono flex items-center mt-0.5">
-                            {delta30DiasCoach > 0 ? '+' : ''}{delta30DiasCoach.toFixed(1)} {metricaCoachObj.unit}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-1">
-                      {(['7d', '30d', '90d', '1a'] as Janela[]).map(j => (
-                        <button
-                          key={j}
-                          onClick={() => setJanelaCoach(j)}
-                          className={cn(
-                            'px-2 py-0.5 text-2xs rounded-md font-semibold transition-all duration-150 cursor-pointer border font-mono',
-                            janelaCoach === j
-                              ? 'bg-brand border-brand text-text-primary shadow-sm'
-                              : 'bg-surface-2 border-border-subtle text-text-tertiary hover:text-text-secondary hover:border-border-default'
-                          )}
-                        >
-                          {j}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Área do Gráfico */}
-                {chartDataCoach.length >= 2 ? (
-                  <ResponsiveContainer width="100%" height={180}>
-                    <ComposedChart data={chartDataCoach} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="trendGradCoach" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--color-brand)" stopOpacity={0.08} />
-                          <stop offset="95%" stopColor="var(--color-brand)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid stroke="var(--color-border-subtle)" strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 10, fill: 'var(--color-text-tertiary)' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        domain={[
-                          (dataMin: number) => Math.floor(dataMin - 1),
-                          (dataMax: number) => Math.ceil(dataMax + 1),
-                        ]}
-                        tickCount={4}
-                        tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <ChartTooltip content={<CustomTooltip unit={metricaCoachObj.unit} />} />
-                      <Area
-                        name="valorTrendArea"
-                        type="monotone"
-                        dataKey="valorTrend"
-                        stroke="none"
-                        fill="url(#trendGradCoach)"
-                      />
-                      <Line
-                        name="valorTrend"
-                        type="monotone"
-                        dataKey="valorTrend"
-                        stroke="var(--color-brand)"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Scatter
-                        name="valorRaw"
-                        dataKey="valorRaw"
-                        fill="var(--color-text-tertiary)"
-                        opacity={0.5}
-                        r={3}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center bg-surface-2 border border-border-subtle rounded-lg">
-                    <ChartBar className="w-8 h-8 text-text-tertiary" />
-                    <p className="text-xs text-text-secondary max-w-sm px-4">
-                      Selecione {metricaCoachObj.label.toLowerCase()} e registre pelo menos 2 avaliações físicas para visualizar o gráfico.
-                    </p>
-                  </div>
-                )}
+                <MeasurementsView
+                  variant="embedded"
+                  readOnly
+                  medicoes={medidas as MedicaoRecord[]}
+                  subtitle="Evolução do aluno"
+                />
               </div>
 
               {/* Tabela de Medidas Corporais */}

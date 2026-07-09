@@ -8,6 +8,7 @@ import {
   Camera,
   ShieldCheck,
   Lock,
+  SignOut,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import Image from "next/image";
@@ -81,6 +82,17 @@ export default function SuperAdminPerfilPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabaseClient.auth.signOut({ scope: "local" });
+    } catch (err) {
+      console.warn("signOut error (ignorado):", err);
+    } finally {
+      localStorage.clear();
+      window.location.href = "/login";
+    }
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -132,7 +144,7 @@ export default function SuperAdminPerfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
+    <div className="min-h-screen bg-surface-0 pb-36 lg:pl-28">
 
       {/* Header */}
       <header className="px-4 pt-6 pb-4">
@@ -259,6 +271,20 @@ export default function SuperAdminPerfilPage() {
               </Button>
             </div>
           </form>
+        </Card>
+
+        <Card className="rounded-2xl shadow-elev-1">
+          <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2 mb-4">
+            Sessão
+          </h3>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full h-12 border border-danger/30 rounded-xl text-danger text-sm font-medium flex items-center justify-center gap-2 hover:bg-danger/5 active:scale-[0.99] transition-all cursor-pointer"
+          >
+            <SignOut className="w-4 h-4" />
+            Sair da conta
+          </button>
         </Card>
       </div>
 

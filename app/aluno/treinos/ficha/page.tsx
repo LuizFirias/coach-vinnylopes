@@ -231,7 +231,7 @@ function FichaContent() {
               ordem: serie.ordem || idx + 1,
               anterior,
               peso_atual: 0,
-              reps: serie.reps ?? 0,
+              reps: serie.reps ?? serie.reps_sugerido ?? 0,
               tecnica: serie.tecnica || "",
               tecnica_extra: serie.tecnica_extra
                 || (serie.cluster ? "Cluster Set" : null)

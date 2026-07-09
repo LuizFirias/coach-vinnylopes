@@ -197,20 +197,10 @@ export default function CoachPerfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
+    <div className="min-h-screen bg-surface-0 pb-36 lg:pl-28">
       <ScreenHeader
         title="Configurações da Conta"
         subtitle="Gerencie seus dados profissionais e de acesso"
-        action={
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="h-8 px-3 rounded-md text-xs font-bold transition-all border border-danger/30 text-danger bg-transparent hover:bg-danger/10 flex items-center gap-1.5 cursor-pointer"
-          >
-            <SignOut className="w-3.5 h-3.5" />
-            Sair da conta
-          </button>
-        }
       />
 
       <div className="px-4 max-w-4xl mx-auto flex flex-col gap-4">
@@ -343,6 +333,20 @@ export default function CoachPerfilPage() {
                   </Button>
                 </div>
               </form>
+            </Card>
+
+            <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm">
+              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2 mb-4">
+                Sessão
+              </h3>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full h-12 border border-danger/30 rounded-xl text-danger text-sm font-medium flex items-center justify-center gap-2 hover:bg-danger/5 active:scale-[0.99] transition-all cursor-pointer"
+              >
+                <SignOut className="w-4 h-4" />
+                Sair da conta
+              </button>
             </Card>
           </div>
 

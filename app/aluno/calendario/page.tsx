@@ -9,6 +9,18 @@ import { cn } from "@/lib/utils/cn";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import SubscriptionGuard from "@/app/components/SubscriptionGuard";
 
+function toWorkoutDateKey(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 10);
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export default function AlunoCalendario() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
@@ -26,9 +38,10 @@ export default function AlunoCalendario() {
   };
 
   function formatWorkoutDate(isoString: string) {
-    if (!isoString) return "";
-    const parts = isoString.split("-").map(Number);
-    if (parts.length < 3) return isoString;
+    const dateKey = toWorkoutDateKey(isoString);
+    if (!dateKey) return "";
+    const parts = dateKey.split("-").map(Number);
+    if (parts.length < 3) return dateKey;
     const date = new Date(parts[0], parts[1] - 1, parts[2]);
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
@@ -52,7 +65,8 @@ export default function AlunoCalendario() {
         // Group by data_conclusao
         const sessoesPorData = new Map<string, any[]>();
         historicoData.forEach(h => {
-          const key = h.data_conclusao;
+          const key = toWorkoutDateKey(h.data_conclusao);
+          if (!key) return;
           if (!sessoesPorData.has(key)) sessoesPorData.set(key, []);
           sessoesPorData.get(key)!.push(h);
         });
@@ -152,7 +166,8 @@ export default function AlunoCalendario() {
   // Group workouts by ISO date
   const workoutsByDate = new Map<string, any[]>();
   workouts.forEach(w => {
-    const key = w.data_conclusao;
+    const key = toWorkoutDateKey(w.data_conclusao);
+    if (!key) return;
     if (!workoutsByDate.has(key)) {
       workoutsByDate.set(key, []);
     }

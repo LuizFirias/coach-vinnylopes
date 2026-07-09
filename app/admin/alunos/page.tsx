@@ -7,7 +7,6 @@ import { useAuth } from "@/app/components/AuthProvider";
 import {
   MagnifyingGlass,
   Plus,
-  Users,
   TrendUp,
   WarningCircle,
   CaretRight,
@@ -15,12 +14,13 @@ import {
   SlidersHorizontal,
   ArrowCounterClockwise,
   Clock,
-  Eye,
-  ArrowRight,
   Warning
 } from "@phosphor-icons/react";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { StudentsEmptyState } from "@/app/components/admin/students/StudentsEmptyState";
+import { MobileListRow } from "@/app/components/MobileListRow";
+import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 
 interface ProfileRow {
@@ -78,6 +78,7 @@ function avatarGrad(name: string): string {
 export default function AdminAlunosPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const isMobile = useBreakpoint("mobile");
   const [rows, setRows] = useState<ProfileRow[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -231,21 +232,11 @@ export default function AdminAlunosPage() {
             <DumbbellLoader text="Sincronizando base de alunos..." />
           </div>
         ) : rows.length === 0 ? (
-          /* Empty State - No students registered at all */
-          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
-            <Users size={44} className="text-brand/40 mx-auto mb-4" />
-            <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
-            <p className="text-text-secondary text-xs mb-6">
-              Adicione seu primeiro aluno para começar a prescrever treinos, acompanhar evolução e gerenciar a sua consultoria.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => router.push("/admin/alunos/novo")}
-                className="btn-primary inline-flex items-center gap-2 justify-center text-xs py-2 rounded-lg"
-              >
-                <Plus size={14} weight="bold" /> Cadastrar primeiro aluno
-              </button>
-            </div>
+          <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+            <StudentsEmptyState
+              variant="no-students"
+              onAddStudent={() => router.push("/admin/alunos/novo")}
+            />
           </div>
         ) : (
           /* Main Layout with Data */
@@ -358,8 +349,67 @@ export default function AdminAlunosPage() {
                   </button>
                 </div>
               </div>
+            ) : isMobile ? (
+              <div className="bg-surface-1 border border-border-subtle rounded-xl p-3 shadow-sm">
+                {processedRows.map((row) => {
+                  const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
+                  const isAtivo = row.status_pagamento === "pago";
+                  const isArquivado = !!row.arquivado;
+                  const expiration = row.data_expiracao ? new Date(row.data_expiracao) : null;
+                  const isExpired = expiration && expiration < new Date();
+                  const isActive = isAtivo && (!expiration || expiration >= new Date());
+
+                  return (
+                    <MobileListRow
+                      key={row.id}
+                      name={name}
+                      badge={
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border",
+                          isArquivado
+                            ? "bg-surface-3 text-text-disabled border-border-subtle"
+                            : isActive
+                              ? "bg-success-subtle text-success border-success/15"
+                              : "bg-danger-subtle text-danger border-danger/15"
+                        )}>
+                          {isArquivado ? "Inativo" : isActive ? "Ativo" : isExpired ? "Expirado" : "Pendente"}
+                        </span>
+                      }
+                      topRight={
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/admin/aluno/${row.id}`)}
+                          className="text-brand text-xs font-medium hover:underline"
+                        >
+                          Ver perfil →
+                        </button>
+                      }
+                      meta={
+                        <>
+                          <span className="capitalize">{row.tipo_plano || "Mensal"}</span>
+                          <span className="text-text-tertiary">•</span>
+                          <span>
+                            {row.ultimo_checkin ? timeAgo(row.ultimo_checkin) : "Sem registros"}
+                          </span>
+                          {expiration && (
+                            <>
+                              <span className="text-text-tertiary">•</span>
+                              <span>vence {expiration.toLocaleDateString("pt-BR")}</span>
+                            </>
+                          )}
+                        </>
+                      }
+                    />
+                  );
+                })}
+                {rows.length < 5 && (
+                  <StudentsEmptyState
+                    variant="grow"
+                    onAddStudent={() => router.push("/admin/alunos/novo")}
+                  />
+                )}
+              </div>
             ) : (
-              /* Modern Responsive Table List */
               <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto scrollbar-hide">
                   <table className="w-full border-collapse text-left">
@@ -494,9 +544,9 @@ export default function AdminAlunosPage() {
                                   e.stopPropagation();
                                   router.push(`/admin/aluno/${row.id}`);
                                 }}
-                                className="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-2 hover:bg-surface-3 border border-border-subtle hover:border-border-strong rounded-md text-text-secondary hover:text-brand text-[10px] font-semibold transition-all"
+                                className="text-[13px] font-medium text-brand hover:underline"
                               >
-                                Ver perfil <ArrowRight size={10} />
+                                Ver perfil →
                               </button>
                             </td>
 
@@ -506,6 +556,14 @@ export default function AdminAlunosPage() {
                     </tbody>
                   </table>
                 </div>
+                {rows.length < 5 && (
+                  <div className="px-3 pb-3">
+                    <StudentsEmptyState
+                      variant="grow"
+                      onAddStudent={() => router.push("/admin/alunos/novo")}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

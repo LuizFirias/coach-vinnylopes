@@ -12,6 +12,7 @@ import { formatDuration, formatVolume } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { haptic } from '@/lib/utils/haptics';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { StudentTechniqueCard } from '@/app/components/workout/StudentTechniqueCard';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -118,23 +119,6 @@ function toTitleCase(str: string): string {
         : word,
     )
     .join(' ');
-}
-
-function getTecnicaInstrucao(tecnica?: string): string {
-  if (!tecnica) return 'Execute com controle e mantenha a técnica prescrita pelo seu coach.';
-  const t = tecnica.toLowerCase();
-  if (t.includes('cluster')) return 'Divida a série em mini-blocos com pausas curtas, mantendo a carga e a qualidade da execução.';
-  if (t.includes('drop')) return 'Após atingir a falha técnica, reduza a carga e continue sem descanso prolongado.';
-  if (t.includes('bi-set') || t.includes('biset')) return 'Alterne dois exercícios em sequência com descanso mínimo entre eles.';
-  if (t.includes('super')) return 'Execute os exercícios em sequência para aumentar densidade e fadiga muscular.';
-  if (t.includes('isometria')) return 'Mantenha a contração na posição indicada pelo tempo recomendado, sem compensar a postura.';
-  if (t.includes('tempo')) return 'Controle o ritmo da repetição, respeitando principalmente a fase excêntrica.';
-  return 'Siga a técnica prescrita pelo seu coach com amplitude controlada e postura estável.';
-}
-
-function primeiraLetraTecnica(tecnica?: string): string {
-  if (!tecnica) return '—';
-  return tecnica.charAt(0).toUpperCase();
 }
 
 function duasLetrasTenica(tecnica?: string): string {
@@ -376,12 +360,14 @@ export default function ExecucaoTreinoPage() {
   const [modalCargaStr, setModalCargaStr] = useState('');
   const [showSeriesHistory, setShowSeriesHistory] = useState(true);
 
-  useEffect(() => {
-    if (modalExIdx !== null) setShowSeriesHistory(true);
-  }, [modalExIdx]);
+  const [techniqueCardExpanded, setTechniqueCardExpanded] = useState(false);
 
-  const [modalTecnicaAberto, setModalTecnicaAberto] = useState(false);
-  const [tecnicaAtual, setTecnicaAtual] = useState<string | null>(null);
+  useEffect(() => {
+    if (modalExIdx !== null) {
+      setShowSeriesHistory(true);
+      setTechniqueCardExpanded(false);
+    }
+  }, [modalExIdx, modalSerieIdx]);
 
   // Bi-Set: estado de retorno após completar o exercício parceiro
   const [bisetReturnState, setBisetReturnState] = useState<{ originExIdx: number; nextSerieIdx: number } | null>(null);
@@ -1456,19 +1442,17 @@ export default function ExecucaoTreinoPage() {
 
               {/* TÉCNICA — clicável */}
               {(() => {
-                const tecnica = modalSerie.tecnica_extra || modalSerie.tecnica;
+                const hasTecnica = !!(modalSerie.tecnica?.trim() || modalSerie.tecnica_extra?.trim());
+                const tecnicaLabel = modalSerie.tecnica_extra || modalSerie.tecnica;
                 return (
                   <button
                     onClick={() => {
-                      if (tecnica) {
-                        setTecnicaAtual(tecnica);
-                        setModalTecnicaAberto(true);
-                      }
+                      if (hasTecnica) setTechniqueCardExpanded(true);
                     }}
-                    disabled={!tecnica}
+                    disabled={!hasTecnica}
                     className={cn(
                       "border rounded-lg p-3 flex flex-col items-center relative transition-colors duration-100",
-                      tecnica
+                      hasTecnica
                         ? "bg-brand/5 border-brand/20 active:bg-brand/10 text-brand font-semibold cursor-pointer"
                         : "bg-surface-1 border-border-subtle text-text-muted cursor-default"
                     )}
@@ -1476,10 +1460,10 @@ export default function ExecucaoTreinoPage() {
                     <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted mb-1">
                       Técnica
                     </span>
-                    <span className={cn("text-xs text-center leading-tight truncate w-full", tecnica ? "text-brand font-semibold" : "text-text-muted")}>
-                      {tecnica || "—"}
+                    <span className={cn("text-xs text-center leading-tight truncate w-full", hasTecnica ? "text-brand font-semibold" : "text-text-muted")}>
+                      {tecnicaLabel || "—"}
                     </span>
-                    {tecnica && (
+                    {hasTecnica && (
                       <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-brand/20 text-brand text-[8px] font-bold flex items-center justify-center">
                         i
                       </span>
@@ -1488,6 +1472,14 @@ export default function ExecucaoTreinoPage() {
                 );
               })()}
             </div>
+
+            <StudentTechniqueCard
+              className="mx-4 mb-4"
+              techniqueValue={modalSerie.tecnica}
+              extraValue={modalSerie.tecnica_extra}
+              expanded={techniqueCardExpanded}
+              onExpandedChange={setTechniqueCardExpanded}
+            />
 
             {/* Campo de CARGA — aumentado */}
             <div className="mx-4 mt-4 bg-surface-1 border border-border-subtle rounded-lg p-4">
@@ -1733,38 +1725,6 @@ export default function ExecucaoTreinoPage() {
         </div>
       )}
 
-      {/* ── Modal de instrução da técnica ── */}
-      {modalTecnicaAberto && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/60 backdrop-blur-sm">
-          <div className="w-full bg-surface-1 border-t border-border-subtle rounded-t-xl p-6 animate-slide-up">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-0.5">
-                  Técnica de execução
-                </p>
-                <h3 className="text-base font-bold text-text-primary">
-                  {tecnicaAtual || 'Técnica'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setModalTecnicaAberto(false)}
-                className="w-8 h-8 rounded-md bg-surface-2 flex items-center justify-center"
-              >
-                <X className="w-4 h-4 text-text-secondary" />
-              </button>
-            </div>
-            <p className="text-sm text-text-secondary leading-relaxed">
-              {getTecnicaInstrucao(tecnicaAtual || undefined)}
-            </p>
-            <button
-              onClick={() => setModalTecnicaAberto(false)}
-              className="w-full mt-6 h-11 bg-surface-2 border border-border-subtle rounded-lg text-sm font-medium text-text-primary"
-            >
-              Entendido
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -723,7 +723,7 @@ export default function RootPage() {
           </div>
 
           {/* Resources cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-border-subtle pb-16 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-border-subtle pb-16 text-left max-w-3xl mx-auto">
             {/* Card 1 */}
             <div className="group cursor-pointer space-y-3">
               <div className="w-10 h-10 rounded-lg bg-[#2563EB]/10 border border-[#2563EB]/20 flex items-center justify-center text-[#2563EB] group-hover:bg-[#2563EB] group-hover:text-white transition-all duration-300">
@@ -750,18 +750,6 @@ export default function RootPage() {
               </p>
             </div>
 
-            {/* Card 3 */}
-            <div className="group cursor-pointer space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-[#2563EB]/10 border border-[#2563EB]/20 flex items-center justify-center text-[#2563EB] group-hover:bg-[#2563EB] group-hover:text-white transition-all duration-300">
-                <ChatCircle className="w-5 h-5" />
-              </div>
-              <h4 className="font-sans font-bold text-sm text-white group-hover:text-[#10B981] transition-colors">
-                Central de Ajuda & FAQ
-              </h4>
-              <p className="text-xs text-text-secondary leading-relaxed">
-                Tutoriais completos em vídeo mostrando como configurar sua conta, importar alunos e extrair relatórios da plataforma.
-              </p>
-            </div>
           </div>
 
           {/* Social and download buttons */}

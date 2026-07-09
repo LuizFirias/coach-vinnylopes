@@ -364,17 +364,6 @@ function LoginForm() {
                 <p className="text-xs text-text-secondary mt-1 leading-relaxed">Caixa integrada com alertas de dor e dúvidas, tudo em um painel.</p>
               </div>
             </div>
-
-            <div className="mt-8 flex items-center gap-3 text-sm text-white/60">
-              <div className="flex -space-x-2">
-                <div className="w-7 h-7 rounded-full bg-blue-500/40 border border-white/10" />
-                <div className="w-7 h-7 rounded-full bg-blue-400/40 border border-white/10" />
-                <div className="w-7 h-7 rounded-full bg-blue-600/40 border border-white/10" />
-              </div>
-              <span>
-                +{coachCount ?? 230} coaches já gerenciam seus alunos no AURON
-              </span>
-            </div>
           </div>
         </div>
 

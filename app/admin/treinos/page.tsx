@@ -6,31 +6,27 @@ import Link from 'next/link';
 import { supabaseClient } from '@/lib/supabaseClient';
 import {
   FileArrowUp,
-  CircleNotch,
   Trash,
   PlusCircle,
   Barbell,
-  CaretRight,
   BookOpen,
-  Calendar,
-  Users,
-  Clock,
   WarningCircle,
   MagnifyingGlass,
-  ArrowRight,
-  ShieldCheck,
   CheckCircle,
-  Receipt,
   ArrowCounterClockwise,
-  Eye,
-  PencilSimple,
   X
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 import { cn } from '@/lib/utils/cn';
+import type { WorkoutPlan, AlunoSemFicha } from '@/app/components/admin/workouts/types';
+import { WorkoutsTable, WorkoutsEmptyState } from '@/app/components/admin/workouts/WorkoutsTable';
+import { WorkoutsMobileList } from '@/app/components/admin/workouts/WorkoutsMobileList';
+import { StudentsWithoutWorkoutAlert } from '@/app/components/admin/workouts/StudentsWithoutWorkoutAlert';
+import { DeleteWorkoutModal } from '@/app/components/admin/workouts/DeleteWorkoutModal';
 
 interface Aluno {
   id: string;
@@ -39,20 +35,9 @@ interface Aluno {
   email: string | null;
 }
 
-interface RoutineItem {
-  id: string;
-  aluno_id: string;
-  aluno_nome: string;
-  nome_rotina: string;
-  ativo: boolean;
-  criado_em: string;
-  tipo: 'digital' | 'pdf';
-  exercicios_count: number;
-  pdf_url?: string;
-}
-
 export default function TreinosPage() {
   const router = useRouter();
+  const isMobile = useBreakpoint('mobile');
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [selectedAlunoId, setSelectedAlunoId] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -61,13 +46,13 @@ export default function TreinosPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPdfUpload, setShowPdfUpload] = useState(false);
-  const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
+  const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<WorkoutPlan | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WorkoutPlan | null>(null);
 
-  // Fichas & Listagem States
-  const [fichas, setFichas] = useState<RoutineItem[]>([]);
+  const [fichas, setFichas] = useState<WorkoutPlan[]>([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
-  const [alunosSemFicha, setAlunosSemFicha] = useState<Aluno[]>([]);
+  const [alunosSemFicha, setAlunosSemFicha] = useState<AlunoSemFicha[]>([]);
 
   // Stats
   const [fichasAtivas, setFichasAtivas] = useState(0);
@@ -125,6 +110,23 @@ export default function TreinosPage() {
 
       if (digitalError) throw digitalError;
 
+      // Última execução por ficha digital (historico_treinos)
+      const digitalIds = (digitalData || []).map((f) => f.id);
+      const lastExecByFicha = new Map<string, string>();
+      if (digitalIds.length > 0) {
+        const { data: execData } = await supabaseClient
+          .from('historico_treinos')
+          .select('ficha_id, data_conclusao')
+          .in('ficha_id', digitalIds)
+          .order('data_conclusao', { ascending: false });
+
+        (execData || []).forEach((row) => {
+          if (row.ficha_id && !lastExecByFicha.has(row.ficha_id)) {
+            lastExecByFicha.set(row.ficha_id, row.data_conclusao);
+          }
+        });
+      }
+
       // 4. Fetch PDF sheets (treinos_alunos) by coach_id
       const { data: pdfData, error: pdfError } = await supabaseClient
         .from('treinos_alunos')
@@ -135,7 +137,7 @@ export default function TreinosPage() {
       if (pdfError) throw pdfError;
 
       // Map combined routines list
-      const combinedRoutines: RoutineItem[] = [];
+      const combinedRoutines: WorkoutPlan[] = [];
       let activeCount = 0;
       let monthCreatedCount = 0;
       const uniqueStudentsActive = new Set<string>();
@@ -158,11 +160,14 @@ export default function TreinosPage() {
           id: f.id,
           aluno_id: f.aluno_id,
           aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
+          aluno_email: student?.email ?? null,
           nome_rotina: f.nome_rotina,
           ativo: f.ativo,
           criado_em: f.criado_em,
           tipo: 'digital',
-          exercicios_count: exCount
+          exercicios_count: exCount,
+          ultima_execucao: lastExecByFicha.get(f.id) ?? null,
+          configuracao: f.configuracao ?? null,
         });
       });
 
@@ -180,12 +185,14 @@ export default function TreinosPage() {
           id: p.id,
           aluno_id: p.aluno_id,
           aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
+          aluno_email: student?.email ?? null,
           nome_rotina: p.nome_arquivo || 'Plano de Treino PDF',
-          ativo: true, // PDFs default to active
+          ativo: true,
           criado_em: p.data_upload,
           tipo: 'pdf',
           exercicios_count: 0,
-          pdf_url: p.url_pdf
+          pdf_url: p.url_pdf,
+          ultima_execucao: null,
         });
       });
 
@@ -277,25 +284,39 @@ export default function TreinosPage() {
     }
   };
 
-  const handleDeleteRoutine = async (id: string, tipo: string, urlPdf?: string | null) => {
-    if (!window.confirm("Deseja remover este planejamento permanentemente?")) return;
+  const handleDeleteRoutine = async (item: WorkoutPlan) => {
     setLoading(true);
     try {
-      if (tipo === 'pdf' && urlPdf) {
-        await supabaseClient.storage.from('treinos-pdf').remove([urlPdf]);
-        const { error } = await supabaseClient.from('treinos_alunos').delete().eq('id', id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabaseClient.from('fichas_treino').delete().eq('id', id);
-        if (error) throw error;
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Sessão inválida');
+
+      const res = await fetch('/api/admin/treinos/plan', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: item.id,
+          tipo: item.tipo,
+          pdf_url: item.pdf_url ?? null,
+        }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.error || 'Erro ao remover planejamento');
       }
+
       await loadData();
-      setSuccess("Planejamento removido com sucesso.");
+      setSuccess('Planejamento removido com sucesso.');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError("Erro ao remover: " + err.message);
+      setError('Erro ao remover: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setLoading(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -303,6 +324,10 @@ export default function TreinosPage() {
     setQuery('');
     setStatusFilter('todas');
   };
+
+  const handleViewWorkout = (plan: WorkoutPlan) => setSelectedRoutineForPreview(plan);
+  const handleEditWorkout = (plan: WorkoutPlan) =>
+    router.push(`/admin/aluno/${plan.aluno_id}/ficha/${plan.id}`);
 
   // Filter in-memory routines
   const processedRoutines = fichas.filter(f => {
@@ -413,14 +438,73 @@ export default function TreinosPage() {
               ))}
             </div>
 
-            {/* ── Main Workspace split layout ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* ── Main Workspace — full width ── */}
+            <div className="flex flex-col gap-6">
 
-              {/* Coluna Esquerda: Listagem de Fichas Recentes */}
-              <div className="lg:col-span-8 flex flex-col gap-4">
-                
-                {/* Search & Filters */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              {/* Inline PDF Upload Form */}
+              {showPdfUpload && (
+                <Card className="rounded-xl border border-border-subtle p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
+                    <div className="flex items-center gap-2">
+                      <FileArrowUp size={16} className="text-brand" />
+                      <h4 className="font-bold text-text-primary text-xs uppercase tracking-wider">Protocolar PDF</h4>
+                    </div>
+                    <button onClick={() => { setShowPdfUpload(false); setSelectedFile(null); }} className="text-[10px] text-text-tertiary hover:text-text-primary font-bold uppercase">
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleUpload} className="flex flex-col sm:flex-row sm:items-end gap-4">
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        label="Selecione o Atleta"
+                        value={selectedAlunoId}
+                        onChange={setSelectedAlunoId}
+                        placeholder="Escolher atleta..."
+                        disabled={loading}
+                        options={alunos.map((a) => ({
+                          value: a.id,
+                          label: a.coaching_reference || a.full_name || a.email || a.id,
+                        }))}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary ml-0.5">Arquivo PDF</label>
+                      {!selectedFile ? (
+                        <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-border-default rounded-lg bg-surface-2 hover:bg-brand/5 hover:border-brand/35 transition-all cursor-pointer group">
+                          <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
+                          <FileArrowUp size={18} className="text-text-disabled group-hover:text-brand transition-colors mb-1" />
+                          <p className="text-xs text-text-tertiary">Clique para escolher PDF</p>
+                        </label>
+                      ) : (
+                        <div className="flex items-center justify-between p-2 bg-brand-subtle border border-brand-border rounded-lg">
+                          <div className="min-w-0">
+                            <p className="text-xs text-text-primary font-bold truncate max-w-[200px]">{selectedFile.name}</p>
+                            <p className="text-[9px] text-brand">PDF pronto para envio</p>
+                          </div>
+                          <button type="button" onClick={() => setSelectedFile(null)} className="text-text-disabled hover:text-danger p-1">
+                            <Trash size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      loading={loading}
+                      disabled={loading || !selectedAlunoId || !selectedFile}
+                      size="sm"
+                      className="h-10 rounded-lg text-xs shrink-0 w-full sm:w-auto"
+                    >
+                      Enviar PDF
+                    </Button>
+                  </form>
+                </Card>
+              )}
+
+              {/* Search & Filters */}
+              <div className="bg-surface-1 border border-border-subtle rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                   <div className="relative w-full sm:max-w-xs">
                     <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                     <input
@@ -460,248 +544,36 @@ export default function TreinosPage() {
                   </div>
                 </div>
 
-                {/* Table list */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
-                  <div className="p-4 border-b border-border-subtle bg-surface-2/40">
-                    <h3 className="text-xs font-bold text-text-primary">Fichas e Protocolos</h3>
-                    <p className="text-[10px] text-text-tertiary">Grade completa de planejamentos cadastrados</p>
-                  </div>
-
-                  {processedRoutines.length === 0 ? (
-                    <div className="p-10 text-center">
-                      <WarningCircle size={28} className="text-text-disabled mx-auto mb-2" />
-                      <p className="text-xs text-text-secondary font-medium">Nenhum treino localizado</p>
-                      <p className="text-[10px] text-text-tertiary mt-0.5">Limpe os filtros ou crie um novo treino.</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto scrollbar-hide">
-                      <table className="w-full border-collapse text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-border-subtle bg-surface-2/10">
-                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
-                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Rotina</th>
-                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Estrutura</th>
-                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Status</th>
-                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Criado em</th>
-                            <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase text-right">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border-subtle/50">
-                          {processedRoutines.map((item) => (
-                            <tr key={item.id} className="hover:bg-surface-2/40 transition-colors">
-                              <td className="p-3 font-bold text-text-primary">
-                                {item.aluno_nome}
-                              </td>
-                              <td className="p-3">
-                                <span className="font-semibold text-text-secondary">{item.nome_rotina}</span>
-                              </td>
-                              <td className="p-3 text-text-tertiary font-medium">
-                                {item.tipo === 'digital' ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-surface-2 text-text-secondary rounded border border-border-subtle font-semibold">
-                                    {item.exercicios_count} exercícios
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded border border-emerald-500/10">
-                                    PDF
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-3">
-                                <span className={cn(
-                                  "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase",
-                                  item.ativo ? "bg-success-subtle text-success border border-success/15" : "bg-surface-3 text-text-disabled border border-border-subtle"
-                                )}>
-                                  {item.ativo ? "Ativo" : "Inativo"}
-                                </span>
-                              </td>
-                              <td className="p-3 text-text-secondary">
-                                {new Date(item.criado_em).toLocaleDateString('pt-BR')}
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  {item.tipo === 'digital' ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => setSelectedRoutineForPreview(item)}
-                                        className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-                                        title="Visualizar Ficha"
-                                      >
-                                        <Eye size={13} />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => router.push(`/admin/aluno/${item.aluno_id}/ficha/${item.id}`)}
-                                        className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-                                        title="Editar Ficha"
-                                      >
-                                        <PencilSimple size={13} />
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <a
-                                      href={item.pdf_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-                                      title="Visualizar PDF"
-                                    >
-                                      <Eye size={13} />
-                                    </a>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteRoutine(item.id, item.tipo, item.pdf_url)}
-                                    className="w-7 h-7 rounded-md bg-surface-2 border border-border-subtle text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
-                                    title="Excluir Planejamento"
-                                  >
-                                    <Trash size={13} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+              {/* Table / Mobile cards */}
+              <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-border-subtle bg-surface-2/40">
+                  <h3 className="text-xs font-bold text-text-primary">Fichas e Protocolos</h3>
+                  <p className="text-[10px] text-text-tertiary">Grade completa de planejamentos cadastrados</p>
                 </div>
 
-              </div>
-
-              {/* Coluna Direita: Ações, Formulário PDF inline & Alunos sem Ficha */}
-              <div className="lg:col-span-4 flex flex-col gap-6">
-
-                {/* Inline PDF Upload Form */}
-                {showPdfUpload && (
-                  <Card className="rounded-xl border border-border-subtle p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
-                    <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-                      <div className="flex items-center gap-2">
-                        <FileArrowUp size={16} className="text-brand" />
-                        <h4 className="font-bold text-text-primary text-xs uppercase tracking-wider">Protocolar PDF</h4>
-                      </div>
-                      <button onClick={() => { setShowPdfUpload(false); setSelectedFile(null); }} className="text-[10px] text-text-tertiary hover:text-text-primary font-bold uppercase">
-                        Cancelar
-                      </button>
-                    </div>
-
-                    <form onSubmit={handleUpload} className="flex flex-col gap-4">
-                      <Select
-                        label="Selecione o Atleta"
-                        value={selectedAlunoId}
-                        onChange={setSelectedAlunoId}
-                        placeholder="Escolher atleta..."
-                        disabled={loading}
-                        options={alunos.map((a) => ({
-                          value: a.id,
-                          label: a.coaching_reference || a.full_name || a.email || a.id,
-                        }))}
-                      />
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary ml-0.5">Arquivo PDF</label>
-                        {!selectedFile ? (
-                          <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-border-default rounded-lg bg-surface-2 hover:bg-brand/5 hover:border-brand/35 transition-all cursor-pointer group">
-                            <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
-                            <FileArrowUp size={18} className="text-text-disabled group-hover:text-brand transition-colors mb-1" />
-                            <p className="text-xs text-text-tertiary">Clique para escolher PDF</p>
-                          </label>
-                        ) : (
-                          <div className="flex items-center justify-between p-2 bg-brand-subtle border border-brand-border rounded-lg">
-                            <div className="min-w-0">
-                              <p className="text-xs text-text-primary font-bold truncate max-w-[160px]">{selectedFile.name}</p>
-                              <p className="text-[9px] text-brand">PDF pronto para envio</p>
-                            </div>
-                            <button type="button" onClick={() => setSelectedFile(null)} className="text-text-disabled hover:text-danger p-1">
-                              <Trash size={14} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <Button
-                        type="submit"
-                        loading={loading}
-                        disabled={loading || !selectedAlunoId || !selectedFile}
-                        fullWidth
-                        size="sm"
-                        className="h-10 rounded-lg text-xs"
-                      >
-                        Enviar PDF
-                      </Button>
-                    </form>
-                  </Card>
+                {processedRoutines.length === 0 ? (
+                  <WorkoutsEmptyState />
+                ) : isMobile ? (
+                  <WorkoutsMobileList
+                    plans={processedRoutines}
+                    onView={handleViewWorkout}
+                    onEdit={handleEditWorkout}
+                    onDelete={setDeleteTarget}
+                  />
+                ) : (
+                  <WorkoutsTable
+                    plans={processedRoutines}
+                    onView={handleViewWorkout}
+                    onEdit={handleEditWorkout}
+                    onDelete={setDeleteTarget}
+                  />
                 )}
-
-                {/* Quick actions panel */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 md:p-5 shadow-sm flex flex-col gap-4">
-                  <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2">Rotas Rápidas</h3>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => router.push('/admin/treinos/nova-ficha')}
-                      className="w-full py-2.5 px-3.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-left flex items-center justify-between group transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Barbell size={16} className="text-brand shrink-0" />
-                        <span className="text-xs font-bold text-text-primary group-hover:text-brand transition-colors">Nova Ficha Digital</span>
-                      </div>
-                      <ArrowRight size={12} className="text-text-disabled group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                    <button
-                      onClick={() => setShowPdfUpload(!showPdfUpload)}
-                      className="w-full py-2.5 px-3.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-left flex items-center justify-between group transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <FileArrowUp size={16} className="text-brand shrink-0" />
-                        <span className="text-xs font-bold text-text-primary group-hover:text-brand transition-colors">Cadastrar PDF</span>
-                      </div>
-                      <ArrowRight size={12} className="text-text-disabled group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                    <button
-                      onClick={() => router.push('/admin/biblioteca-exercicios')}
-                      className="w-full py-2.5 px-3.5 bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-lg text-left flex items-center justify-between group transition-all"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <BookOpen size={16} className="text-brand shrink-0" />
-                        <span className="text-xs font-bold text-text-primary group-hover:text-brand transition-colors">Biblioteca</span>
-                      </div>
-                      <ArrowRight size={12} className="text-text-disabled group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Alunos sem Ficha Ativa list card */}
-                <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 md:p-5 shadow-sm flex flex-col gap-4">
-                  <div>
-                    <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Alunos sem Ficha Ativa</h3>
-                    <p className="text-[10px] text-text-tertiary mt-0.5">Alunos que estão sem planejamento ativo</p>
-                  </div>
-
-                  <div className="flex flex-col gap-2.5 max-h-60 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {alunosSemFicha.length === 0 ? (
-                      <div className="py-4 text-center text-xs text-text-tertiary">
-                        Todos os alunos possuem fichas/PDFs ativos.
-                      </div>
-                    ) : (
-                      alunosSemFicha.map((aluno) => (
-                        <div key={aluno.id} className="flex items-center justify-between gap-3 p-2.5 bg-surface-2 border border-border-subtle rounded-lg">
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-text-primary truncate">{aluno.coaching_reference || aluno.full_name || 'Atleta'}</p>
-                            <p className="text-[9px] text-text-tertiary truncate leading-none mt-0.5">{aluno.email}</p>
-                          </div>
-                          <button
-                            onClick={() => router.push(`/admin/treinos/nova-ficha?alunoId=${aluno.id}`)}
-                            className="px-2.5 py-1 bg-brand hover:bg-brand/90 text-text-on-brand text-[9px] font-bold uppercase rounded-lg transition-all shrink-0 active:scale-95"
-                          >
-                            + Prescrever
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
               </div>
+
+              <StudentsWithoutWorkoutAlert
+                students={alunosSemFicha}
+                onAssignWorkout={(id) => router.push(`/admin/treinos/nova-ficha?alunoId=${id}`)}
+              />
 
             </div>
 
@@ -709,6 +581,15 @@ export default function TreinosPage() {
         )}
 
       </div>
+
+      {deleteTarget && (
+        <DeleteWorkoutModal
+          plan={deleteTarget}
+          loading={loading}
+          onConfirm={() => handleDeleteRoutine(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
 
       {/* Simplified Routine Preview Modal */}
       {selectedRoutineForPreview && (
@@ -718,7 +599,7 @@ export default function TreinosPage() {
             <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-surface-2/40">
               <div>
                 <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/10 px-2 py-0.5 rounded border border-brand/20">Ficha Digital</span>
-                <h3 className="text-sm font-bold text-text-primary mt-2 uppercase">{selectedRoutineForPreview.nome_rotina || selectedRoutineForPreview.nome}</h3>
+                <h3 className="text-sm font-bold text-text-primary mt-2 uppercase">{selectedRoutineForPreview.nome_rotina}</h3>
               </div>
               <button
                 onClick={() => setSelectedRoutineForPreview(null)}
@@ -731,7 +612,7 @@ export default function TreinosPage() {
             {/* Modal Body */}
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
               {(() => {
-                const exercises = (selectedRoutineForPreview.configuracao as any)?.exercicios || [];
+                const exercises = selectedRoutineForPreview.configuracao?.exercicios || [];
                 if (exercises.length === 0) {
                   return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;
                 }
