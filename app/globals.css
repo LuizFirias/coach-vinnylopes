@@ -516,6 +516,11 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--mobile-card-border);
 }
 
+.mobile-stat-nav-card {
+  background: radial-gradient(120% 100% at 50% 0%, var(--mobile-secondary-bg) 0%, var(--mobile-card-bg) 68%);
+  border-color: var(--mobile-card-border-soft);
+}
+
 .mobile-icon-btn {
   background: var(--mobile-card-bg);
   border-color: var(--mobile-card-border);

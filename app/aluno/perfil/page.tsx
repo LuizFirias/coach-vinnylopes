@@ -1,24 +1,26 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getPublicStorageUrl, extractStoragePath } from '@/lib/storageUrls';
 import { getSafeSession } from '@/lib/authErrorHandler';
-import { useRouter } from 'next/navigation';
+import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import {
   Camera, SignOut, CaretRight, Lock, User, Envelope, Ruler, Scales,
   Bell, Trash, DownloadSimple, Warning, Check, X,
-  TrendUp, Trophy, Target, EyeSlash, Barbell, UserCircle, Calendar,
-  Gear, ChartBar, Clock, CaretLeft
+  Trophy, Target, EyeSlash, Barbell, UserCircle, Calendar,
+  CaretLeft
 } from '@phosphor-icons/react';
+import { cn } from '@/lib/utils/cn';
 import ChangePasswordModal from '@/app/components/ChangePasswordModal';
 import DateOfBirthModal from '@/app/components/DateOfBirthModal';
 import ChangeNameModal from '@/app/components/ChangeNameModal';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
-import { cn } from '@/lib/utils/cn';
-
-// ─── Tipos ───────────────────────────────────────────────────────────────────
+import { ProfileHeader } from '@/app/components/profile/ProfileHeader';
+import { ProfileNavButtons } from '@/app/components/profile/ProfileNavButtons';
+import { ProfileWorkoutHistory } from '@/app/components/profile/ProfileWorkoutHistory';
+import { getAvatarGradient } from '@/lib/utils/avatarColor';
 
 interface Profile {
   full_name: string;
@@ -145,6 +147,15 @@ export default function AlunoPerfil() {
   const [loadingWorkouts, setLoadingWorkouts] = useState(true);
   const [recentWorkouts, setRecentWorkouts] = useState<any[]>([]);
   const [lastWorkout, setLastWorkout] = useState<any | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
 
   // ── Carregar ─────────────────────────────────────────────────────────────
 
@@ -257,18 +268,6 @@ export default function AlunoPerfil() {
     fetchHistory();
   }, [userId]);
 
-  function formatWorkoutDate(isoString: string) {
-    const date = new Date(isoString);
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    };
-    const formatted = date.toLocaleDateString('pt-BR', options);
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-  }
-
   // ── Avatar ───────────────────────────────────────────────────────────────
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,9 +375,7 @@ export default function AlunoPerfil() {
 
   if (loading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center mobile-page-bg"
-      >
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <DumbbellLoader text="Carregando perfil..." />
       </div>
     );
@@ -421,9 +418,15 @@ export default function AlunoPerfil() {
             style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
           >
             <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-xl font-bold border border-brand">
+              <div
+                className={cn(
+                  'w-16 h-16 rounded-full overflow-hidden flex items-center justify-center text-xl font-bold text-white bg-gradient-to-br',
+                  !avatarSrc && userId && getAvatarGradient(userId),
+                  !avatarSrc && !userId && 'bg-surface-2'
+                )}
+              >
                 {uploadingAvatar ? (
-                  <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : avatarSrc ? (
                   <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -432,9 +435,9 @@ export default function AlunoPerfil() {
               </div>
               <label
                 htmlFor="avatar-upload"
-                className="absolute bottom-0 right-0 w-6 h-6 bg-brand rounded-full flex items-center justify-center text-text-on-brand cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-surface-1 border border-surface-0 rounded-full flex items-center justify-center text-text-secondary cursor-pointer hover:text-text-primary transition-colors"
               >
-                <Camera className="w-3 h-3" />
+                <Camera size={10} weight="bold" />
               </label>
               <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
@@ -768,10 +771,8 @@ export default function AlunoPerfil() {
 
   // RENDER THE NEW HEVY-STYLE PROFILE DASHBOARD
   return (
-    <div
-      className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-36 mobile-page-bg"
-    >
-      <div className="max-w-lg mx-auto flex flex-col gap-0">
+    <div className="min-h-screen bg-surface-0 px-4 lg:px-8 lg:pl-28 pb-36 lg:pb-12">
+      <div className="max-w-[640px] mx-auto flex flex-col gap-5 lg:gap-6 lg:pt-10">
 
         {/* ── Toast ── */}
         {toast && (
@@ -784,192 +785,27 @@ export default function AlunoPerfil() {
           </div>
         )}
 
-        {/* ── Header: Avatar + Nome + Gear Icon (igual ao Hevy) ── */}
-        <div className="flex items-start justify-between px-1 pt-2 pb-6">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-shrink-0">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-2xl font-bold border-2 border-brand">
-                {uploadingAvatar ? (
-                  <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-                ) : avatarSrc ? (
-                  <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  getInitials(profile.full_name)
-                )}
-              </div>
-              <label
-                htmlFor="avatar-upload"
-                className="absolute bottom-0 right-0 w-7 h-7 bg-brand rounded-full flex items-center justify-center text-white cursor-pointer hover:opacity-90 transition-opacity shadow-md"
-              >
-                <Camera size={14} />
-              </label>
-              <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-text-primary leading-tight">{profile.full_name || 'Atleta'}</p>
-              {profile.created_at && (
-                <p className="text-xs text-text-tertiary mt-0.5">Cliente desde {fmtMembro(profile.created_at)}</p>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="w-10 h-10 rounded-full border hover:border-brand/30 flex items-center justify-center text-text-tertiary hover:text-brand transition-all active:scale-95 cursor-pointer mt-1"
-            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            title="Ajustes"
-          >
-            <Gear size={20} />
-          </button>
-        </div>
+        <ProfileHeader
+          userId={userId}
+          fullName={profile.full_name}
+          memberSince={profile.created_at ? fmtMembro(profile.created_at) : ''}
+          avatarSrc={avatarSrc}
+          initials={getInitials(profile.full_name)}
+          uploadingAvatar={uploadingAvatar}
+          isDesktop={isDesktop}
+          onSettingsClick={() => setShowSettings(true)}
+          onAvatarUpload={handleAvatarUpload}
+        />
 
-        {/* ── Quadros: Dashboard ── */}
-        <div className="mb-6">
-          <p className="text-xs font-semibold text-text-tertiary mb-3 px-1">Dashboard</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              href="/aluno/estatisticas"
-              className="border rounded-2xl p-4 flex items-center justify-center gap-3 transition-all active:scale-[0.98] group col-span-2"
-              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            >
-              <ChartBar size={22} className="text-brand flex-shrink-0" />
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Estatísticas</span>
-            </Link>
+        <ProfileNavButtons />
 
-            <Link
-              href="/aluno/medidas"
-              className="border rounded-2xl p-4 flex items-center gap-3 transition-all active:scale-[0.98] group"
-              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            >
-              <TrendUp size={22} className="text-brand flex-shrink-0" />
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Medidas</span>
-            </Link>
+        <div className="border-t border-surface-2" aria-hidden />
 
-            <Link
-              href="/aluno/calendario"
-              className="border rounded-2xl p-4 flex items-center gap-3 transition-all active:scale-[0.98] group"
-              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            >
-              <Calendar size={22} className="text-brand flex-shrink-0" />
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand transition-colors">Calendário</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* ── Últimos 10 Treinos (Workouts section — idêntico ao Hevy) ── */}
-        <div>
-          <p className="text-xs font-semibold text-text-tertiary mb-3 px-1">Treinos</p>
-
-          {loadingWorkouts ? (
-            <div className="flex flex-col gap-4">
-              {[1, 2, 3].map(i => (
-                <div
-                  key={i}
-                  className="border rounded-2xl p-5 animate-pulse"
-                  style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-surface-3" />
-                    <div className="flex-1"><div className="h-3 bg-surface-3 rounded w-1/3 mb-1" /><div className="h-2.5 bg-surface-3 rounded w-1/2" /></div>
-                  </div>
-                  <div className="h-6 bg-surface-3 rounded w-2/3 mb-4" />
-                  <div className="flex gap-6 mb-4"><div className="h-3 bg-surface-3 rounded w-16" /><div className="h-3 bg-surface-3 rounded w-16" /></div>
-                  <div className="space-y-2"><div className="h-3 bg-surface-3 rounded w-3/4" /><div className="h-3 bg-surface-3 rounded w-2/3" /></div>
-                </div>
-              ))}
-            </div>
-          ) : recentWorkouts.length > 0 ? (
-            <div className="flex flex-col gap-0">
-              {recentWorkouts.map((workout, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    'py-5 px-1',
-                    idx < recentWorkouts.length - 1 && 'border-b border-border-subtle'
-                  )}
-                  style={idx < recentWorkouts.length - 1 ? { borderColor: 'rgba(41,48,61,0.5)' } : undefined}
-                >
-                  {/* Linha: avatar + username + data */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-brand/20 flex items-center justify-center text-brand text-sm font-bold border border-brand/30 flex-shrink-0">
-                      {avatarSrc ? (
-                        <img src={avatarSrc} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        getInitials(profile.full_name)
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-text-primary leading-none truncate">{profile.full_name || 'Atleta'}</p>
-                      <p className="text-xs text-text-tertiary mt-0.5">{formatWorkoutDate(workout.data_conclusao)}</p>
-                    </div>
-                  </div>
-
-                  {/* Nome do treino — grande e bold como no Hevy */}
-                  <h3 className="text-xl font-black text-text-primary mb-3 uppercase tracking-tight">{workout.nome_rotina}</h3>
-
-                  {/* Métricas: Tempo | Volume | Séries */}
-                  <div className="flex items-start gap-6 mb-4">
-                    <div>
-                      <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-semibold mb-0.5">Tempo</p>
-                      <p className="text-sm font-bold text-text-primary">
-                        {(() => {
-                          const totalMin = Math.max(30, workout.totalSets * 4 + 10);
-                          const h = Math.floor(totalMin / 60);
-                          const m = totalMin % 60;
-                          return h > 0 ? `${h}h ${m}min` : `${m}min`;
-                        })()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-semibold mb-0.5">Volume</p>
-                      <p className="text-sm font-bold text-text-primary">
-                        {workout.volumeTotal > 0 ? `${workout.volumeTotal.toLocaleString('pt-BR')} kg` : '—'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-text-tertiary uppercase tracking-wider font-semibold mb-0.5">Séries</p>
-                      <p className="text-sm font-bold text-text-primary">{workout.totalSets}</p>
-                    </div>
-                  </div>
-
-                  {/* Lista de exercícios: "X séries NomeExercício" (estilo Hevy) */}
-                  <div className="flex flex-col gap-2.5">
-                    {workout.exercises.slice(0, 4).map((ex: any, exIdx: number) => (
-                      <div key={exIdx} className="flex items-center gap-3">
-                        <div
-                          className="w-8 h-8 rounded-lg border flex items-center justify-center flex-shrink-0"
-                          style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
-                        >
-                          <Barbell size={15} className="text-text-tertiary" />
-                        </div>
-                        <span className="text-sm text-text-primary">
-                          <span className="font-semibold">{ex.completedSets} {ex.completedSets === 1 ? 'série' : 'séries'}</span>
-                          {' '}{ex.nome}
-                        </span>
-                      </div>
-                    ))}
-                    {workout.exercises.length > 4 && (
-                      <p className="text-xs text-text-tertiary pl-11">
-                        Ver mais {workout.exercises.length - 4} exercícios
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className="border border-dashed rounded-2xl p-10 text-center flex flex-col items-center justify-center gap-3"
-              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            >
-              <Barbell size={32} className="text-text-disabled" />
-              <div>
-                <p className="text-sm font-semibold text-text-secondary">Nenhum treino concluído ainda</p>
-                <p className="text-xs text-text-tertiary mt-1">Complete seu primeiro treino para ver o histórico aqui</p>
-              </div>
-            </div>
-          )}
-        </div>
-
+        <ProfileWorkoutHistory
+          workouts={recentWorkouts}
+          loading={loadingWorkouts}
+          isDesktop={isDesktop}
+        />
       </div>
     </div>
   );

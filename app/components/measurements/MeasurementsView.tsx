@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft } from '@phosphor-icons/react';
+import { useEffect, useMemo, useState } from 'react';
+import { StatsPageHeader } from '@/app/components/statistics/StatsPageHeader';
 import { MeasurementCurrentCard } from '@/app/components/measurements/MeasurementCurrentCard';
+import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
 import { MeasurementHistoryList } from '@/app/components/measurements/MeasurementHistoryList';
 import { MeasurementInputCard } from '@/app/components/measurements/MeasurementInputCard';
 import { MeasurementTabs } from '@/app/components/measurements/MeasurementTabs';
@@ -16,6 +16,7 @@ import {
 } from '@/lib/measurements/helpers';
 import type { MeasurementMetricId, MeasurementPeriod, MedicaoRecord } from '@/lib/measurements/types';
 import { MEASUREMENT_COLORS, MEASUREMENT_METRICS } from '@/lib/measurements/types';
+import { cn } from '@/lib/utils/cn';
 
 interface MeasurementsViewProps {
   medicoes: MedicaoRecord[];
@@ -41,9 +42,7 @@ export function MeasurementsView({
   readOnly = false,
   variant = 'page',
   backHref,
-  backLabel = 'Dashboard',
   title = 'Medidas',
-  subtitle = 'Sua evolução em números',
   headerAction,
   submitting = false,
   inputError,
@@ -57,6 +56,15 @@ export function MeasurementsView({
   const [metricId, setMetricId] = useState<MeasurementMetricId>('peso');
   const [period, setPeriod] = useState<MeasurementPeriod>('30d');
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const metric = MEASUREMENT_METRICS.find((m) => m.id === metricId) ?? MEASUREMENT_METRICS[0];
 
@@ -71,6 +79,9 @@ export function MeasurementsView({
   const lastUpdated = allValues[0]
     ? formatMeasurementDate(allValues[0].data, true)
     : null;
+  const lastDateShort = allValues[0]
+    ? new Date(allValues[0].data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    : null;
 
   const periodDelta = useMemo(
     () => computePeriodDelta(allValues, period),
@@ -78,7 +89,20 @@ export function MeasurementsView({
   );
 
   const historyEntries = useMemo(
-    () => buildHistoryEntries(medicoes, metricId, metric.unit),
+    () =>
+      buildHistoryEntries(medicoes, metricId, metric.unit).map((entry) => {
+        const raw = medicoes.find((m) => m.id === entry.id)?.data_medicao;
+        return {
+          ...entry,
+          dateShort: raw
+            ? new Date(raw).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })
+            : entry.date,
+        };
+      }),
     [medicoes, metricId, metric.unit],
   );
 
@@ -86,29 +110,6 @@ export function MeasurementsView({
 
   const content = (
     <>
-      {variant === 'page' && backHref && (
-        <Link
-          href={backHref}
-          className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold hover:opacity-80"
-          style={{ color: MEASUREMENT_COLORS.primary }}
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          {backLabel}
-        </Link>
-      )}
-
-      {variant === 'page' && (
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
-            <p className="mt-0.5 text-[11px]" style={{ color: '#555' }}>
-              {subtitle}
-            </p>
-          </div>
-          {headerAction}
-        </div>
-      )}
-
       {variant === 'embedded' && headerAction && (
         <div className="mb-2 flex justify-end">{headerAction}</div>
       )}
@@ -128,36 +129,57 @@ export function MeasurementsView({
 
       <MeasurementTabs selected={metricId} onChange={setMetricId} />
 
-      <MeasurementCurrentCard
-        label={`${metric.label} atual`}
-        value={currentValue}
-        unit={metric.unit}
-        lastUpdated={lastUpdated}
-        delta={periodDelta}
-        deltaLabel="no período"
-        period={period}
-        onPeriodChange={setPeriod}
-        chartData={chartPoints}
-      />
+      <div
+        className={cn(
+          'flex flex-col gap-5',
+          isDesktop && 'grid grid-cols-[1fr_1.3fr] gap-8 items-start',
+        )}
+      >
+        <div className={cn(isDesktop && 'sticky top-24')}>
+          <MeasurementCurrentCard
+            label={`${metric.label} atual`}
+            value={currentValue}
+            unit={metric.unit}
+            lastUpdated={lastUpdated}
+            delta={periodDelta}
+            deltaLabel="no período"
+            period={period}
+            onPeriodChange={setPeriod}
+            chartData={chartPoints}
+            isDesktop={isDesktop}
+            showChart={!isDesktop}
+          />
 
-      {!readOnly && onSubmitValue && dataRegistro && onDataRegistroChange && (
-        <MeasurementInputCard
-          unit={metric.unit}
-          date={dataRegistro}
-          placeholder={getPlaceholder?.(metricId) || '0'}
-          submitting={submitting}
-          error={inputError}
-          onDateChange={onDataRegistroChange}
-          onSubmit={(value) => onSubmitValue(metricId, value)}
-        />
-      )}
+          {!readOnly && onSubmitValue && dataRegistro && onDataRegistroChange && (
+            <div className="mt-6">
+              <MeasurementInputCard
+                unit={metric.unit}
+                date={dataRegistro}
+                placeholder={getPlaceholder?.(metricId) || '0'}
+                submitting={submitting}
+                error={inputError}
+                lastValue={currentValue}
+                lastDateShort={lastDateShort}
+                onDateChange={onDataRegistroChange}
+                onSubmit={(value) => onSubmitValue(metricId, value)}
+              />
+            </div>
+          )}
+        </div>
 
-      <MeasurementHistoryList
-        entries={historyEntries}
-        showAll={showAllHistory}
-        onSeeAll={() => setShowAllHistory(true)}
-        onDelete={onDeleteEntry}
-      />
+        <div className="flex flex-col gap-5 min-w-0">
+          {isDesktop && (
+            <MeasurementLineChart data={chartPoints} isDesktop />
+          )}
+
+          <MeasurementHistoryList
+            entries={historyEntries}
+            showAll={showAllHistory}
+            onSeeAll={() => setShowAllHistory(true)}
+            onDelete={onDeleteEntry}
+          />
+        </div>
+      </div>
     </>
   );
 
@@ -166,12 +188,15 @@ export function MeasurementsView({
   }
 
   return (
-    <div
-      className="min-h-screen p-4 pb-24 md:p-6 lg:p-10 lg:pl-28"
-      style={{ backgroundColor: MEASUREMENT_COLORS.page, color: MEASUREMENT_COLORS.text }}
-    >
-      <div className="mx-auto flex max-w-2xl flex-col gap-4">
-        {content}
+    <div className="min-h-screen mobile-page-bg text-text-primary pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <div className={cn('mx-auto w-full', isDesktop ? 'max-w-[960px] px-6 py-8' : 'max-w-2xl')}>
+        {backHref && (
+          <StatsPageHeader title={title} backHref={backHref} />
+        )}
+
+        <div className={cn('flex flex-col gap-4', isDesktop ? 'px-0 pt-6' : 'px-4 pt-4')}>
+          {content}
+        </div>
       </div>
     </div>
   );

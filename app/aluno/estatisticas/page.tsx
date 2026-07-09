@@ -1,34 +1,35 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useMemo } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import {
   ResponsiveContainer,
-  LineChart, Line,
   BarChart, Bar,
   XAxis, YAxis,
   Tooltip as ChartTooltip,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  CartesianGrid,
 } from 'recharts';
 import {
   ArrowLeft,
-  ChartLine,
-  ChartPieSlice,
+  ChartBar,
+  ChartPolar,
   PersonSimpleRun,
   CalendarBlank,
   CaretRight,
-  Question,
-  Export,
   Fire,
   Trophy,
-  ArrowUp,
-  ArrowDown,
 } from '@phosphor-icons/react';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
+import { StatsPageHeader } from '@/app/components/statistics/StatsPageHeader';
+import { StatsPeriodSelector } from '@/app/components/statistics/StatsPeriodSelector';
+import { StatsWeekCalendar } from '@/app/components/statistics/StatsWeekCalendar';
+import { StatsMuscleBodyCard } from '@/app/components/statistics/StatsMuscleBodyCard';
+import { StatsNavCards } from '@/app/components/statistics/StatsNavCards';
+import { MuscleDistributionRadar } from '@/app/components/statistics/MuscleDistributionRadar';
+import { StatsInlineKpis } from '@/app/components/statistics/StatsInlineKpis';
+import { MuscleGroupSetsTable } from '@/app/components/statistics/MuscleGroupSetsTable';
 import { useAlunoBodyGender } from '@/app/contexts/AlunoBodyGenderContext';
 import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
 import type { BodyGender } from '@/lib/utils/bodyGender';
@@ -67,7 +68,6 @@ const RADAR_GROUPS: Record<string, string[]> = {
 };
 
 type Screen = 'main' | 'set-count' | 'muscle-chart' | 'body-distribution' | 'main-exercises' | 'monthly-report';
-type WeekGranularity = 'week' | 'month';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function toISODate(date: Date) {
@@ -92,6 +92,64 @@ function getWeekDays(referenceDate: Date) {
 const DAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const MONTHS_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+const MAIN_PERIOD_OPTIONS = [
+  { value: 'today', label: 'Hoje' },
+  { value: 'week', label: 'Esta semana' },
+  { value: '30d', label: 'Últ. 30 dias' },
+  { value: 'all', label: 'Sempre' },
+];
+
+const RADAR_PERIOD_OPTIONS = [
+  { value: '7d', label: 'Últimos 7 dias' },
+  { value: '30d', label: 'Últimos 30 dias' },
+  { value: '90d', label: 'Últimos 90 dias' },
+  { value: 'all', label: 'Sempre' },
+];
+
+const SET_COUNT_PERIOD_OPTIONS = [
+  { value: '7d', label: 'Últ. 7 dias' },
+  { value: '30d', label: 'Últ. 30 dias' },
+  { value: '90d', label: 'Últ. 90 dias' },
+  { value: 'all', label: 'Sempre' },
+];
+
+function filterHistoricoByPeriod(historico: any[], period: string) {
+  const now = Date.now();
+  const today = toISODate(new Date());
+  return historico.filter((h) => {
+    if (!h.data_conclusao) return false;
+    const date = new Date(h.data_conclusao);
+    switch (period) {
+      case 'today':
+        return toISODate(date) === today;
+      case 'week':
+      case '7d':
+        return now - date.getTime() <= 7 * 86400000;
+      case '30d':
+        return now - date.getTime() <= 30 * 86400000;
+      case '90d':
+        return now - date.getTime() <= 90 * 86400000;
+      case 'all':
+        return true;
+      default:
+        return true;
+    }
+  });
+}
+
+function countSetsByMuscle(
+  rows: any[],
+  exerciciosBiblioteca: Record<string, string>,
+): Record<string, number> {
+  const countSets: Record<string, number> = {};
+  rows.forEach((row) => {
+    const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+    const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
+    if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
+  });
+  return countSets;
+}
 
 // ─── BodyChart component ──────────────────────────────────────────────────────
 function MuscleBodyChart({
@@ -130,14 +188,24 @@ export default function EstatisticasPage() {
   const [weekOffset, setWeekOffset] = useState(0); // 0 = current week
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [setCountGranularity, setSetCountGranularity] = useState<WeekGranularity>('week');
-  const [setCountPeriod, setSetCountPeriod] = useState('last30');
+  const [setCountScreenPeriod, setSetCountScreenPeriod] = useState('7d');
+  const [mainStatsPeriod, setMainStatsPeriod] = useState('week');
+  const [radarPeriod, setRadarPeriod] = useState('30d');
+  const [isDesktop, setIsDesktop] = useState(false);
 
   // Data
   const [historico, setHistorico] = useState<any[]>([]);
   const [exerciciosBiblioteca, setExerciciosBiblioteca] = useState<Record<string, string>>({});
 
   // ── Load data ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -181,89 +249,71 @@ export default function EstatisticasPage() {
     return set;
   }, [historico]);
 
-  // Sets + muscles for current week
-  const weekMuscleIntensity = useMemo(() => {
-    const countSets: Record<string, number> = {};
-    const now = Date.now();
-    const weekDateStrings = weekDays.map(d => toISODate(d));
-
-    historico.filter(h => {
-      if (!h.data_conclusao) return false;
-      if (weekOffset === 0) {
-        return now - new Date(h.data_conclusao).getTime() <= 7 * 86400000;
-      } else {
-        return weekDateStrings.includes(toISODate(new Date(h.data_conclusao)));
-      }
-    }).forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
-      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
-      if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
-    });
-
-    const maxSets = Math.max(...Object.values(countSets), 1);
-    const intensity: Record<string, number> = {};
-    Object.entries(countSets).forEach(([g, c]) => { intensity[g] = Math.round((c / maxSets) * 10); });
-    return intensity;
-  }, [historico, weekDays, weekOffset, exerciciosBiblioteca]);
-
-  // Muscle sets data for "Set count per muscle" screen
-  const muscleSetsData = useMemo(() => {
-    const now = Date.now();
-    const msLimit = setCountPeriod === 'last30' ? 30 * 86400000 : 90 * 86400000;
-    const filtered = historico.filter(h => now - new Date(h.data_conclusao).getTime() <= msLimit);
-    const countSets: Record<string, number> = {};
-    filtered.forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
-      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
-      if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
-    });
-    return Object.entries(countSets).map(([name, value]) => ({ name, sets: value })).sort((a, b) => b.sets - a.sets);
-  }, [historico, exerciciosBiblioteca, setCountPeriod]);
-
-  // Line chart data for set count per muscle (weekly aggregation)
-  const setCountLineData = useMemo(() => {
-    const now = new Date();
-    const weeks: { label: string; start: Date; end: Date }[] = [];
-    for (let i = 7; i >= 0; i--) {
-      const start = new Date(now);
-      start.setDate(now.getDate() - i * 7 - now.getDay() + 1);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      weeks.push({ label: `${MONTHS_PT[start.getMonth()]} ${start.getDate()}`, start, end });
-    }
-    // Top 3 muscles for lines
-    const top3 = muscleSetsData.slice(0, 3).map(m => m.name);
-    return weeks.map(week => {
-      const point: Record<string, any> = { label: week.label };
-      top3.forEach(muscle => {
-        const count = historico.filter(h => {
-          const d = new Date(h.data_conclusao);
-          return d >= week.start && d <= week.end && (exerciciosBiblioteca[h.exercicio_id] === muscle || h.dados_sessao?.grupo_muscular === muscle);
-        }).reduce((sum, row) => sum + (row.dados_sessao?.series || []).filter((s: any) => s.completado).length, 0);
-        point[muscle] = count;
-      });
-      return point;
-    });
-  }, [historico, exerciciosBiblioteca, muscleSetsData]);
-
   // Radar data (muscle distribution)
   const radarData = useMemo(() => {
-    const now = Date.now();
-    const msLimit = 30 * 86400000;
-    const filtered = historico.filter(h => now - new Date(h.data_conclusao).getTime() <= msLimit);
-    const countSets: Record<string, number> = {};
-    filtered.forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
-      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
-      if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
-    });
+    const filtered = filterHistoricoByPeriod(historico, radarPeriod);
+    const countSets = countSetsByMuscle(filtered, exerciciosBiblioteca);
     return Object.entries(RADAR_GROUPS).map(([group, muscles]) => ({
       subject: group,
       value: muscles.reduce((sum, m) => sum + (countSets[m] || 0), 0),
       fullMark: 100,
     }));
-  }, [historico, exerciciosBiblioteca]);
+  }, [historico, exerciciosBiblioteca, radarPeriod]);
+
+  const radarHasData = radarData.some((item) => item.value > 0);
+
+  const radarPeriodStats = useMemo(() => {
+    const filtered = filterHistoricoByPeriod(historico, radarPeriod);
+    const workoutCount = new Set(
+      filtered.map((h) => (h.data_conclusao ? toISODate(new Date(h.data_conclusao)) : '')),
+    ).size;
+    const totalSets = filtered.reduce(
+      (acc, row) => acc + (row.dados_sessao?.series || []).filter((s: any) => s.completado).length,
+      0,
+    );
+    const totalMinutes = totalSets * 4 + workoutCount * 10;
+    const durationLabel =
+      workoutCount === 0 ? '—' : `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}min`;
+    return { workoutCount, durationLabel };
+  }, [historico, radarPeriod]);
+
+  const mainMuscleCountSets = useMemo(() => {
+    const filtered = filterHistoricoByPeriod(historico, mainStatsPeriod);
+    return countSetsByMuscle(filtered, exerciciosBiblioteca);
+  }, [historico, exerciciosBiblioteca, mainStatsPeriod]);
+
+  const setCountScopedHistorico = useMemo(() => {
+    const filtered = filterHistoricoByPeriod(historico, setCountScreenPeriod);
+    if (weekOffset === 0) return filtered;
+    const weekDateStrings = weekDays.map((d) => toISODate(d));
+    return filtered.filter(
+      (h) => h.data_conclusao && weekDateStrings.includes(toISODate(new Date(h.data_conclusao))),
+    );
+  }, [historico, setCountScreenPeriod, weekDays, weekOffset]);
+
+  const setCountMuscleCountSets = useMemo(
+    () => countSetsByMuscle(setCountScopedHistorico, exerciciosBiblioteca),
+    [setCountScopedHistorico, exerciciosBiblioteca],
+  );
+
+  const setCountGroupedRows = useMemo(() => {
+    const countSets = countSetsByMuscle(
+      filterHistoricoByPeriod(historico, setCountScreenPeriod),
+      exerciciosBiblioteca,
+    );
+    return Object.entries(RADAR_GROUPS)
+      .map(([name, muscles]) => ({
+        name,
+        sets: muscles.reduce((sum, m) => sum + (countSets[m] || 0), 0),
+      }))
+      .filter((row) => row.sets > 0)
+      .sort((a, b) => b.sets - a.sets);
+  }, [historico, setCountScreenPeriod, exerciciosBiblioteca]);
+
+  const setCountTotal = useMemo(
+    () => setCountGroupedRows.reduce((acc, row) => acc + row.sets, 0),
+    [setCountGroupedRows],
+  );
 
   // Main exercises
   const mainExercises = useMemo(() => {
@@ -378,89 +428,50 @@ export default function EstatisticasPage() {
 
   // Set Count Per Muscle screen
   if (screen === 'set-count') {
-    const top3 = muscleSetsData.slice(0, 3).map(m => m.name);
-    const COLORS = ['var(--color-brand)', '#a855f7', '#eab308'];
     return (
-      <div
-        className="min-h-screen pb-32 text-text-primary mobile-page-bg"
-      >
-        <div className="max-w-lg mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
-            <button
-              onClick={() => setScreen('main')}
-              className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <h1 className="text-sm font-semibold text-text-primary">Séries por músculo</h1>
-            <div className="w-9" />
-          </div>
+      <div className="min-h-screen mobile-page-bg text-text-primary pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        <div className={cn("mx-auto w-full", isDesktop ? "max-w-[960px] px-6 py-8" : "max-w-lg")}>
+          <StatsPageHeader
+            title="Séries por grupo"
+            onBack={() => setScreen('main')}
+            periodSelector={
+              <StatsPeriodSelector
+                value={setCountScreenPeriod}
+                options={SET_COUNT_PERIOD_OPTIONS}
+                onChange={setSetCountScreenPeriod}
+              />
+            }
+          />
 
-          <div className="p-4 flex flex-col gap-5">
-            {/* Period + Granularity filters */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSetCountPeriod(p => p === 'last30' ? 'last90' : 'last30')}
-                className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary hover:bg-white/5 transition-all"
-                style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-              >
-                {setCountPeriod === 'last30' ? 'Últimos 30 dias' : 'Últimos 90 dias'}
-                <CaretRight size={12} className="rotate-90 opacity-60" />
-              </button>
-              <button
-                onClick={() => setSetCountGranularity(g => g === 'week' ? 'month' : 'week')}
-                className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary hover:bg-white/5 transition-all"
-                style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-              >
-                {setCountGranularity === 'week' ? 'Semana' : 'Mês'}
-                <CaretRight size={12} className="rotate-90 opacity-60" />
-              </button>
-            </div>
-
-            {/* Line chart */}
-            {setCountLineData.length > 0 && top3.length > 0 ? (
-              <div className="w-full h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={setCountLineData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                    <CartesianGrid stroke="var(--color-border-subtle)" strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" stroke="var(--color-text-tertiary)" fontSize={9} tickLine={false} axisLine={false} />
-                    <YAxis stroke="var(--color-text-tertiary)" fontSize={9} tickLine={false} axisLine={false} />
-                    <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface-2)', borderColor: 'var(--color-border-subtle)', borderRadius: '8px', fontSize: '11px' }} />
-                    {top3.map((muscle, i) => (
-                      <Line key={muscle} type="monotone" dataKey={muscle} stroke={COLORS[i]} strokeWidth={2} dot={false} />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="py-8 text-center text-sm text-text-tertiary">Nenhum dado no período.</div>
+          <div
+            className={cn(
+              "px-4 pt-4 flex flex-col gap-5",
+              isDesktop && "px-0 grid grid-cols-2 gap-6 items-start"
             )}
+          >
+            <StatsMuscleBodyCard
+              countSets={setCountMuscleCountSets}
+              gender={bodyGender}
+              isDesktop={isDesktop}
+              className={isDesktop ? "sticky top-24 min-w-0" : undefined}
+            />
 
-            {/* Table: Muscle | Sets */}
-            <div>
-              <div className="flex justify-between items-center py-2 border-b mb-1" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
-                <span className="text-xs text-text-tertiary font-semibold">Músculo</span>
-                <span className="text-xs text-text-tertiary font-semibold">Séries: {MONTHS_PT[new Date().getMonth()]}</span>
-              </div>
-              <div className="flex flex-col">
-                {muscleSetsData.map((item, i) => (
-                  <div key={item.name} className="flex items-center justify-between py-3 border-b border-border-subtle/50 last:border-b-0">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-4 h-4 rounded"
-                        style={{ backgroundColor: i < 3 ? COLORS[i] : 'var(--color-surface-3)', border: '1px solid var(--color-border-subtle)' }}
-                      />
-                      <span className="text-sm text-text-primary">{item.name}</span>
-                    </div>
-                    <span className="text-sm font-bold text-text-primary">{item.sets}</span>
-                  </div>
-                ))}
-                {muscleSetsData.length === 0 && (
-                  <div className="py-8 text-center text-sm text-text-tertiary">Nenhum dado no período.</div>
-                )}
-              </div>
+            <div className="flex flex-col gap-5 min-w-0">
+              <StatsWeekCalendar
+                variant="card"
+                weekDays={weekDays}
+                workoutDates={workoutDates}
+                weekOffset={weekOffset}
+                onPrevWeek={() => setWeekOffset((o) => o - 1)}
+                onNextWeek={() => setWeekOffset((o) => Math.min(0, o + 1))}
+                toISODate={toISODate}
+              />
+
+              <MuscleGroupSetsTable
+                rows={setCountGroupedRows}
+                total={setCountTotal}
+                isDesktop={isDesktop}
+              />
             </div>
           </div>
         </div>
@@ -471,58 +482,31 @@ export default function EstatisticasPage() {
   // Muscle Distribution Chart screen (Radar)
   if (screen === 'muscle-chart') {
     return (
-      <div
-        className="min-h-screen pb-32 text-text-primary mobile-page-bg"
-      >
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
-            <button
-              onClick={() => setScreen('main')}
-              className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <h1 className="text-sm font-semibold text-text-primary">Distribuição muscular</h1>
-            <div className="w-9" />
-          </div>
-          <div className="p-4 flex flex-col gap-5">
-            <button
-              className="flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold text-text-primary self-start"
-              style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-            >
-              Últimos 30 dias <CaretRight size={12} className="rotate-90 opacity-60" />
-            </button>
-            {/* Radar */}
-            <div className="w-full h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                  <PolarGrid stroke="var(--color-border-subtle)" />
-                  <PolarAngleAxis dataKey="subject" stroke="var(--color-text-secondary)" fontSize={11} />
-                  <PolarRadiusAxis stroke="transparent" tick={false} />
-                  <Radar name="Atual" dataKey="value" stroke="var(--color-brand)" fill="var(--color-brand)" fillOpacity={0.3} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex items-center justify-center gap-4 text-xs text-text-tertiary">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-brand inline-block" /> Atual</span>
-            </div>
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Treinos', value: new Set(historico.filter(h => { const d = new Date(h.data_conclusao); return Date.now() - d.getTime() <= 30 * 86400000; }).map(h => h.data_conclusao ? toISODate(new Date(h.data_conclusao)) : '')).size.toString() },
-                { label: 'Duração estimada', value: (() => { const s = historico.filter(h => Date.now() - new Date(h.data_conclusao).getTime() <= 30 * 86400000); const sets = s.reduce((acc, r) => acc + (r.dados_sessao?.series || []).filter((x: any) => x.completado).length, 0); const m = sets * 4 + 10; return `${Math.floor(m / 60)}h ${m % 60}min`; })() },
-              ].map(stat => (
-                <div
-                  key={stat.label}
-                  className="border rounded-2xl p-4"
-                  style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-                >
-                  <p className="text-xs text-text-tertiary mb-1">{stat.label}</p>
-                  <p className="text-xl font-bold text-text-primary">{stat.value}</p>
-                </div>
-              ))}
-            </div>
+      <div className="min-h-screen mobile-page-bg text-text-primary pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        <div className={cn("mx-auto w-full", isDesktop ? "max-w-[600px] px-6 py-8" : "max-w-lg")}>
+          <StatsPageHeader
+            title="Distribuição muscular"
+            onBack={() => setScreen('main')}
+            periodSelector={
+              <StatsPeriodSelector
+                value={radarPeriod}
+                options={RADAR_PERIOD_OPTIONS}
+                onChange={setRadarPeriod}
+              />
+            }
+          />
+
+          <div className={cn("px-4 flex flex-col gap-4", isDesktop && "px-0 gap-6")}>
+            <MuscleDistributionRadar
+              data={radarData}
+              hasData={radarHasData}
+              isDesktop={isDesktop}
+            />
+            <StatsInlineKpis
+              workouts={radarPeriodStats.workoutCount}
+              durationLabel={radarPeriodStats.durationLabel}
+              isDesktop={isDesktop}
+            />
           </div>
         </div>
       </div>
@@ -905,129 +889,80 @@ export default function EstatisticasPage() {
     );
   }
 
-  // ── MAIN STATISTICS SCREEN (identical to Hevy image 4) ────────────────────
+  // ── MAIN STATISTICS SCREEN ────────────────────────────────────────────────
+  const navItems = [
+    {
+      icon: ChartBar,
+      title: 'Séries por grupo muscular',
+      subtitle: 'Número de séries por grupo',
+      onClick: () => setScreen('set-count'),
+    },
+    {
+      icon: ChartPolar,
+      title: 'Distribuição muscular',
+      subtitle: 'Compare períodos anteriores',
+      onClick: () => setScreen('muscle-chart'),
+    },
+    {
+      icon: PersonSimpleRun,
+      title: 'Distribuição muscular (Corpo)',
+      subtitle: 'Mapa de calor semanal dos músculos trabalhados',
+      onClick: () => setScreen('body-distribution'),
+    },
+    {
+      icon: Trophy,
+      title: 'Exercícios principais',
+      subtitle: 'Seus melhores desempenhos',
+      onClick: () => setScreen('main-exercises'),
+    },
+    {
+      icon: CalendarBlank,
+      title: 'Relatório mensal',
+      subtitle: 'Resumo completo do seu mês de treino',
+      onClick: () => setScreen('monthly-report'),
+    },
+  ];
+
   return (
-    <div
-      className="min-h-screen pb-32 text-text-primary mobile-page-bg"
-    >
-      <div className="max-w-lg mx-auto">
+    <div className="min-h-screen mobile-page-bg text-text-primary pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <div className={cn("mx-auto w-full", isDesktop ? "max-w-[960px] px-6 py-8" : "max-w-lg")}>
+        <StatsPageHeader
+          title="Estatísticas"
+          backHref="/aluno/perfil"
+          periodSelector={
+            <StatsPeriodSelector
+              value={mainStatsPeriod}
+              options={MAIN_PERIOD_OPTIONS}
+              onChange={setMainStatsPeriod}
+            />
+          }
+        />
 
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
-          <Link
-            href="/aluno/perfil"
-            className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <h1 className="text-sm font-semibold text-text-primary">Estatísticas</h1>
-          <div className="w-9" />
-        </div>
+        <div
+          className={cn(
+            "px-4 pt-4 flex flex-col gap-5",
+            isDesktop && "px-0 grid grid-cols-[1fr_1.2fr] gap-6 items-start"
+          )}
+        >
+          <StatsMuscleBodyCard
+            countSets={mainMuscleCountSets}
+            gender={bodyGender}
+            isDesktop={isDesktop}
+            className={isDesktop ? "min-w-0" : undefined}
+          />
 
-        <div className="p-4 flex flex-col gap-5">
+          <div className="flex flex-col gap-5 min-w-0">
+            <StatsWeekCalendar
+              weekDays={weekDays}
+              workoutDates={workoutDates}
+              weekOffset={weekOffset}
+              onPrevWeek={() => setWeekOffset((o) => o - 1)}
+              onNextWeek={() => setWeekOffset((o) => Math.min(0, o + 1))}
+              toISODate={toISODate}
+            />
 
-          {/* Section title */}
-          <div>
-            <h2 className="text-base font-bold text-text-primary mb-1">Gráfico corporal — últimos 7 dias</h2>
+            <StatsNavCards items={navItems} />
           </div>
-
-          {/* Week selector */}
-          <div className="grid grid-cols-7 gap-1">
-            {weekDays.map((day, i) => {
-              const ds = toISODate(day);
-              const hasWorkout = workoutDates.has(ds);
-              const isToday = ds === toISODate(new Date());
-              return (
-                <div key={i} className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-text-tertiary">{DAY_LABELS[i]}</span>
-                  <div className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all',
-                    hasWorkout ? 'bg-brand text-white' : isToday ? 'border-2 border-brand text-brand' : 'text-text-secondary'
-                  )}>
-                    {day.getDate()}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Body charts FRONT + BACK */}
-          <div
-            className="flex justify-around items-center border py-4 px-2 rounded-2xl"
-            style={{ background: 'rgba(11,19,32,0.5)', borderColor: 'rgba(41,48,61,0.3)' }}
-          >
-            <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" gender={bodyGender} />
-            </div>
-            <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-              <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" gender={bodyGender} />
-            </div>
-          </div>
-
-          {/* Advanced Statistics menu (like Hevy) */}
-          <div
-            className="border rounded-2xl overflow-hidden"
-            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-          >
-            <div
-              className="px-4 py-3 border-b"
-              style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
-            >
-              <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Estatísticas avançadas</span>
-            </div>
-
-            {[
-              {
-                icon: ChartLine,
-                title: 'Séries por grupo muscular',
-                subtitle: 'Número de séries registradas por grupo.',
-                screen: 'set-count' as Screen,
-              },
-              {
-                icon: ChartPieSlice,
-                title: 'Distribuição muscular (Gráfico)',
-                subtitle: 'Compare suas distribuições musculares atuais e anteriores.',
-                screen: 'muscle-chart' as Screen,
-              },
-              {
-                icon: PersonSimpleRun,
-                title: 'Distribuição muscular (Corpo)',
-                subtitle: 'Mapa de calor semanal dos músculos trabalhados.',
-                screen: 'body-distribution' as Screen,
-              },
-              {
-                icon: CalendarBlank,
-                title: 'Exercícios principais',
-                subtitle: 'Lista dos exercícios mais realizados.',
-                screen: 'main-exercises' as Screen,
-              },
-              {
-                icon: Trophy,
-                title: 'Relatório mensal',
-                subtitle: 'Resumo completo do seu mês de treino.',
-                screen: 'monthly-report' as Screen,
-              },
-            ].map((item, idx, arr) => (
-              <button
-                key={item.screen}
-                onClick={() => setScreen(item.screen)}
-                className={cn(
-                  'w-full flex items-center gap-4 px-4 py-4 text-left hover:bg-white/5 transition-colors active:bg-white/10',
-                  idx < arr.length - 1 && 'border-b'
-                )}
-                style={idx < arr.length - 1 ? { borderColor: 'rgba(41,48,61,0.8)' } : undefined}
-              >
-                <item.icon size={24} className="text-text-secondary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-text-primary">{item.title}</p>
-                  <p className="text-xs text-text-tertiary mt-0.5">{item.subtitle}</p>
-                </div>
-                <CaretRight size={16} className="text-text-tertiary flex-shrink-0" />
-              </button>
-            ))}
-          </div>
-
         </div>
       </div>
     </div>

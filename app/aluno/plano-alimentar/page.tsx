@@ -6,15 +6,13 @@ import { getSafeSession } from '@/lib/authErrorHandler';
 import { extractStoragePath } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import PDFViewer from '@/app/components/PDFViewer';
-import DumbbellLoader from '@/app/components/DumbbellLoader';
-import {
-  ForkKnife, FileText, Drop, Check, Plus, Minus, CaretDown, FilePdf,
-  Clock,
-} from '@phosphor-icons/react';
-import { cn } from '@/lib/utils/cn';
+import { ForkKnife, FileText, FilePdf } from '@phosphor-icons/react';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
-import { Card } from '@/components/ui/Card';
 import { getTodayBrazil } from '@/lib/dateUtils';
+import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHeader';
+import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
+import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
+import { HydrationSection } from '@/app/components/nutrition/HydrationSection';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -39,31 +37,40 @@ function getTodayISO() {
   return getTodayBrazil();
 }
 
-const pageBackgroundStyle = {
-  background: 'var(--mobile-page-bg)',
-};
-const nutritionCardStyle = {
-  background: 'var(--mobile-card-bg)',
-  borderColor: 'var(--mobile-card-border)',
-  boxShadow: '0 0 20px rgba(95,191,143,0.07)',
-};
-const hydrationCardStyle = {
-  background: 'var(--mobile-card-bg)',
-  borderColor: 'var(--mobile-card-border)',
-  boxShadow: '0 0 20px rgba(72,128,216,0.07)',
-};
-const secondarySurfaceStyle = {
-  background: 'var(--mobile-secondary-bg)',
-};
-const cardBorderStyle = {
-  borderColor: 'var(--mobile-card-border)',
-};
-const separatorBorderStyle = {
-  borderColor: 'var(--mobile-card-border-faint)',
-};
-const faintSeparatorBorderStyle = {
-  borderColor: 'var(--mobile-card-border-subtle)',
-};
+function mapDigitalMealFoods(meal: { items?: Array<{
+  id?: string;
+  quantity_grams?: number | string;
+  portion_label?: string | null;
+  food?: { name: string };
+  substitutions?: Array<{ quantity_grams?: number | string; food?: { name: string } }>;
+}> }): MealFoodItem[] {
+  const foods: MealFoodItem[] = [];
+  for (const item of meal.items ?? []) {
+    const food = item.food;
+    if (!food) continue;
+    foods.push({
+      id: item.id,
+      name: food.name,
+      quantityGrams: item.quantity_grams,
+      portionLabel: item.portion_label,
+      substitutions: (item.substitutions ?? [])
+        .map((sub) => ({
+          name: sub.food?.name ?? '',
+          quantityGrams: sub.quantity_grams,
+        }))
+        .filter((sub) => sub.name),
+    });
+  }
+  return foods;
+}
+
+function mapLegacyMealFoods(ingredientes: Array<{ nome?: string; quantidade?: string }>): MealFoodItem[] {
+  return (ingredientes ?? []).map((ing, idx) => ({
+    id: `legacy-${idx}`,
+    name: ing.nome ?? '',
+    quantityText: ing.quantidade ?? null,
+  }));
+}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -95,6 +102,34 @@ export default function PlanoAlimentarPage() {
 
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [loadedDate, setLoadedDate] = useState<string>('');
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (!digitalPlan || !isDesktop) return;
+    const meals = digitalPlan.days?.[0]?.meals ?? [];
+    const expanded: Record<string, boolean> = {};
+    meals.forEach((meal: { id: string }) => {
+      expanded[meal.id] = true;
+    });
+    setExpandedMeals(expanded);
+  }, [digitalPlan, isDesktop]);
+
+  useEffect(() => {
+    if (digitalPlan || legacyRefeicoes.length === 0 || !isDesktop) return;
+    const expanded: Record<string, boolean> = {};
+    legacyRefeicoes.forEach((meal) => {
+      expanded[meal.id] = true;
+    });
+    setExpandedMeals(expanded);
+  }, [legacyRefeicoes, digitalPlan, isDesktop]);
 
   // ── Carregar Dados ──────────────────────────────────────────────────────────
 
@@ -426,83 +461,63 @@ export default function PlanoAlimentarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen pb-24 scroll-content mobile-page-bg">
-        <div className="max-w-2xl mx-auto flex flex-col pt-safe animate-pulse">
-          {/* Header */}
-          <div className="px-4 pt-4 pb-3">
-            <div className="h-3 w-28 rounded mb-2" style={secondarySurfaceStyle} />
-            <div className="h-6 w-20 rounded" style={secondarySurfaceStyle} />
+      <div className="min-h-screen pb-24 lg:pb-12 bg-surface-0">
+        <div className="max-w-2xl lg:max-w-[1000px] mx-auto flex flex-col pt-safe lg:px-6 lg:pt-10 animate-pulse">
+          <div className="px-4 pt-4 pb-3 lg:px-0">
+            <div className="h-3 w-28 rounded bg-surface-2 mb-2" />
+            <div className="h-7 w-24 rounded bg-surface-2" />
           </div>
 
-          {/* Active Plan Card Skeleton */}
-          <div className="mx-4 mb-4 border rounded-[16px] p-4 space-y-4" style={nutritionCardStyle}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={secondarySurfaceStyle} />
-                <div className="h-3 w-16 rounded" style={secondarySurfaceStyle} />
+          <div className="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-6 lg:items-start px-4 lg:px-0">
+            <div className="space-y-4 mb-4 lg:mb-0">
+              <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="h-3 w-20 rounded bg-surface-2" />
+                  <div className="h-3 w-24 rounded bg-surface-2" />
+                </div>
+                <div className="h-4 w-48 rounded bg-surface-2" />
+                <div className="h-3 w-32 rounded bg-surface-2" />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-border-subtle">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-2 w-10 rounded bg-surface-2" />
+                      <div className="h-5 w-14 rounded bg-surface-2" />
+                      <div className="h-2 w-12 rounded bg-surface-2" />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="text-right flex flex-col items-end">
-                <div className="h-4 w-10 rounded mb-1" style={secondarySurfaceStyle} />
-                <div className="h-3 w-16 rounded" style={secondarySurfaceStyle} />
+
+              <div className="hidden lg:block bg-surface-1 border border-border-subtle rounded-xl p-4">
+                <div className="flex justify-between mb-4">
+                  <div className="h-3 w-20 rounded bg-surface-2" />
+                  <div className="h-3 w-24 rounded bg-surface-2" />
+                </div>
+                <div className="flex gap-2">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="w-7 h-7 rounded bg-surface-2" />
+                  ))}
+                </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="h-4 w-48 rounded" style={secondarySurfaceStyle} />
-              <div className="h-3 w-32 rounded" style={secondarySurfaceStyle} />
-            </div>
-
-            <div className="w-full h-1 rounded-full" style={secondarySurfaceStyle} />
-
-            <div className="grid grid-cols-4 gap-2 pt-3 border-t" style={separatorBorderStyle}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="text-center space-y-1">
-                  <div className="h-3 w-8 rounded mx-auto" style={secondarySurfaceStyle} />
-                  <div className="h-4 w-12 rounded mx-auto" style={secondarySurfaceStyle} />
-                </div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-surface-1 border border-border-subtle rounded-xl p-4 h-14"
+                />
               ))}
-            </div>
-          </div>
-
-          {/* Water Card Skeleton */}
-          <div className="mx-4 mb-4 border rounded-[16px] p-4 space-y-4" style={hydrationCardStyle}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <div className="h-3.5 w-3.5 rounded" style={secondarySurfaceStyle} />
-                <div className="h-3 w-20 rounded" style={secondarySurfaceStyle} />
-              </div>
-              <div className="h-4 w-12 rounded" style={secondarySurfaceStyle} />
-            </div>
-
-            <div className="w-full h-1.5 rounded-full" style={secondarySurfaceStyle} />
-
-            <div className="flex justify-between items-center">
-              <div className="h-8 w-24 rounded" style={secondarySurfaceStyle} />
-              <div className="flex gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="w-8 h-8 rounded-lg" style={secondarySurfaceStyle} />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Meals List Skeleton */}
-          <div className="mx-4 space-y-3">
-            <div className="h-3 w-24 rounded mb-2" style={secondarySurfaceStyle} />
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="border rounded-[16px] p-4 flex items-center justify-between h-14" style={nutritionCardStyle}>
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full" style={secondarySurfaceStyle} />
-                  <div className="space-y-1.5">
-                    <div className="h-3 w-24 rounded" style={secondarySurfaceStyle} />
-                    <div className="h-2.5 w-16 rounded" style={secondarySurfaceStyle} />
-                  </div>
+              <div className="lg:hidden bg-surface-1 border border-border-subtle rounded-xl p-4 mt-4">
+                <div className="h-3 w-24 rounded bg-surface-2 mb-4" />
+                <div className="flex gap-2">
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <div key={j} className="w-6 h-6 rounded bg-surface-2" />
+                  ))}
                 </div>
-                <div className="h-4 w-4 rounded" style={secondarySurfaceStyle} />
               </div>
-            ))}
+            </div>
           </div>
-
         </div>
       </div>
     );
@@ -528,18 +543,39 @@ export default function PlanoAlimentarPage() {
   // Water
   const mlAtual = agua.copos * agua.ml_por_copo;
   const mlMeta = metaCopos * agua.ml_por_copo;
+  const dateLabel = `${diaSemanaStr}, ${diaNumStr} de ${mesStr}`;
+
+  const macroDisplays = digitalPlan?.calories_target
+    ? [
+        { label: 'Kcal', current: digitalPlanMacros.calories, target: digitalPlan.calories_target as number, unit: '' },
+        { label: 'Proteína', current: digitalPlanMacros.protein, target: digitalPlan.protein_target as number | null, unit: 'g' },
+        { label: 'Carbo', current: digitalPlanMacros.carbs, target: digitalPlan.carbs_target as number | null, unit: 'g' },
+        { label: 'Gordura', current: digitalPlanMacros.fat, target: digitalPlan.fat_target as number | null, unit: 'g' },
+      ]
+    : [];
+
+  const hydrationBlock = (digitalPlan || planoPDF) ? (
+    <HydrationSection
+      mlCurrent={mlAtual}
+      mlTarget={mlMeta}
+      cupsCurrent={agua.copos}
+      cupsTarget={metaCopos}
+      saving={savingAgua}
+      isDesktop={isDesktop}
+      onToggleCup={toggleCopo}
+    />
+  ) : null;
+
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen pb-24 scroll-content mobile-page-bg">
-        <div className="max-w-2xl mx-auto flex flex-col pt-safe">
+      <div className="min-h-screen pb-24 lg:pb-12 bg-surface-0">
+        <div className="max-w-2xl lg:max-w-[1000px] mx-auto flex flex-col pt-safe lg:px-6 lg:pt-10">
 
-          {/* ── Header — padrão igual ao dashboard, sem "← DASHBOARD" azul ── */}
-          <div className="px-4 pt-4 pb-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted capitalize">
-              {diaSemanaStr}, {diaNumStr} de {mesStr}
-            </p>
-            <h1 className="text-xl font-bold mt-0.5" style={{ color: '#5FBF8F' }}>Nutrição</h1>
-          </div>
+          <NutritionPageHeader
+            dateLabel={dateLabel}
+            isDesktop={isDesktop}
+            className="px-4 pt-4 pb-3 lg:hidden"
+          />
 
           {/* Feedback error toast */}
           {feedbackError && (
@@ -552,7 +588,7 @@ export default function PlanoAlimentarPage() {
           {/* ── SEM PLANO (Nem digital nem PDF) ── */}
           {!digitalPlan && !planoPDF && (
             <div className="flex flex-col items-center text-center gap-4 px-4 py-8">
-              <div className="w-16 h-16 border rounded-2xl flex items-center justify-center" style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}>
+              <div className="w-16 h-16 border border-border-subtle rounded-2xl bg-surface-1 flex items-center justify-center">
                 <ForkKnife className="w-8 h-8 text-brand" />
               </div>
               <div>
@@ -570,7 +606,7 @@ export default function PlanoAlimentarPage() {
                   { icon: '🥩', text: 'Consuma fontes limpas de proteínas em todas as refeições' },
                   { icon: '⏰', text: 'Tente comer a cada 3 ou 4 horas para manter o metabolismo ativo' },
                 ].map((tip, i) => (
-                  <div key={i} className="flex items-start gap-3 border rounded-[16px] px-4 py-3" style={nutritionCardStyle}>
+                  <div key={i} className="flex items-start gap-3 bg-surface-1 border border-border-subtle rounded-xl px-4 py-3">
                     <span className="text-lg leading-none flex-shrink-0">{tip.icon}</span>
                     <span className="text-xs text-text-secondary leading-relaxed font-medium">{tip.text}</span>
                   </div>
@@ -581,213 +617,67 @@ export default function PlanoAlimentarPage() {
 
           {/* ── CASO 1: PLANO DIGITAL ATIVO ── */}
           {digitalPlan && (
-            <>
-              {/* Card de Plano Ativo — refatorado */}
-              <div className="mx-4 mb-4 border rounded-[16px] p-4" style={nutritionCardStyle}>
+            <div className="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-6 lg:items-start px-4 lg:px-0">
+              <aside className="lg:sticky lg:top-6 space-y-4 mb-4 lg:mb-0">
+                <NutritionPageHeader
+                  dateLabel={dateLabel}
+                  isDesktop={isDesktop}
+                  className="hidden lg:block"
+                />
+                <ActivePlanCard
+                  planName={digitalPlan.name}
+                  goal={digitalPlan.goal || 'Hipertrofia'}
+                  completedMeals={completedMealsCount}
+                  totalMeals={totalMealsCount}
+                  macros={macroDisplays}
+                  isDesktop={isDesktop}
+                />
+                {hydrationBlock && <div className="hidden lg:block">{hydrationBlock}</div>}
+              </aside>
 
-                {/* Status + adesão lado a lado */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-1.5">
-                    {/* Dot em vez de badge pill verde */}
-                    <span className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
-                    <span className="text-[11px] font-medium text-success">Plano ativo</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold font-mono tabular-nums text-text-primary">
-                      {completedMealsCount} de {totalMealsCount}
-                    </p>
-                    <p className="text-[10px] text-text-muted">refeições hoje</p>
-                  </div>
-                </div>
-
-                {/* Nome e foco */}
-                <p className="text-base font-bold text-text-primary">{digitalPlan.name}</p>
-                <p className="text-xs text-text-muted mt-0.5">Foco: {digitalPlan.goal || 'Hipertrofia'}</p>
-
-                {/* Barra de progresso */}
-                <div className="mt-3 w-full h-1 rounded-full overflow-hidden" style={secondarySurfaceStyle}>
-                  <div
-                    className="h-full bg-brand rounded-full transition-all duration-300"
-                    style={{ width: `${totalMealsCount > 0 ? (completedMealsCount / totalMealsCount) * 100 : 0}%` }}
-                  />
-                </div>
-
-                {/* Macros — grid 4 colunas */}
-                {digitalPlan.calories_target && (
-                  <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t" style={separatorBorderStyle}>
-                    {[
-                      { label: 'Kcal',     atual: digitalPlanMacros.calories,  meta: digitalPlan.calories_target,   unit: '' },
-                      { label: 'Proteína', atual: digitalPlanMacros.protein,   meta: digitalPlan.protein_target,    unit: 'g' },
-                      { label: 'Carbo',    atual: digitalPlanMacros.carbs,     meta: digitalPlan.carbs_target,      unit: 'g' },
-                      { label: 'Gordura',  atual: digitalPlanMacros.fat,       meta: digitalPlan.fat_target,        unit: 'g' },
-                    ].map(({ label, atual, meta, unit }) => (
-                      <div key={label}>
-                        <p className="text-[9px] font-semibold uppercase tracking-wider text-text-muted mb-0.5">
-                          {label}
-                        </p>
-                        <p className="text-[12px] font-bold font-mono tabular-nums text-text-primary leading-tight">
-                          {atual}
-                        </p>
-                        <p className="text-[10px] font-mono text-text-muted">
-                          /{meta ?? '—'}{unit}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Lista de Refeições Digitais */}
-              <div className="mx-4 mb-4 flex flex-col gap-2">
-                {digitalPlan.days?.[0]?.meals?.map((meal: any) => {
+              <main className="space-y-2 mb-4 lg:mb-0">
+                {digitalPlan.days?.[0]?.meals?.map((meal: {
+                  id: string;
+                  title: string;
+                  time_suggestion?: string | null;
+                  notes?: string | null;
+                  items?: Parameters<typeof mapDigitalMealFoods>[0]['items'];
+                }) => {
                   const isMealDone = digitalCheckins[meal.id] === 'done';
-                  const isExpanded = expandedMeals[meal.id];
+                  const isExpanded = !!expandedMeals[meal.id];
                   const mMacros = getDigitalMealMacros(meal);
 
                   return (
-                    <div
+                    <MealCard
                       key={meal.id}
-                      className="border rounded-[16px] overflow-hidden transition-colors duration-100"
-                      style={isMealDone ? { ...nutritionCardStyle, borderColor: 'rgba(34,197,94,0.2)' } : nutritionCardStyle}
-                    >
-                      {/* Header da refeição — sempre visível */}
-                      <button
-                        onClick={() => setExpandedMeals(prev => ({ ...prev, [meal.id]: !prev[meal.id] }))}
-                        className="w-full flex items-center gap-3 px-4 py-3"
-                        id={`btn-refeicao-${meal.id}`}
-                      >
-                        {/* Check — compacto, caixa 20px rounded-md */}
-                        <div
-                          onClick={(e) => { e.stopPropagation(); toggleDigitalMeal(meal.id); }}
-                          className={cn(
-                            'w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 cursor-pointer',
-                            isMealDone
-                              ? 'bg-success border-success'
-                              : 'border-border-default'
-                          )}
-                          style={!isMealDone ? secondarySurfaceStyle : undefined}
-                        >
-                          {isMealDone && (
-                            <Check className="w-3 h-3 text-white" weight="bold" />
-                          )}
-                        </div>
-
-                        <div className="flex-1 text-left">
-                          {/* Nome — tachado quando concluída */}
-                          <p className={cn(
-                            'text-sm font-semibold',
-                            isMealDone
-                              ? 'line-through text-text-muted'
-                              : 'text-text-primary'
-                          )}>
-                            {meal.title}
-                          </p>
-                          {meal.time_suggestion && (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Clock className="w-3 h-3 text-text-muted" />
-                              <p className="text-[11px] text-text-muted">{meal.time_suggestion.slice(0, 5)}</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-mono tabular-nums text-text-secondary">
-                            {mMacros.calories} kcal
-                          </p>
-                          <CaretDown className={cn(
-                            'w-4 h-4 text-text-muted transition-transform duration-200',
-                            isExpanded ? 'rotate-180' : ''
-                          )} />
-                        </div>
-                      </button>
-
-                      {/* Detalhes expandíveis */}
-                      {isExpanded && (
-                        <div className="px-4 pb-3 border-t" style={separatorBorderStyle}>
-                          {/* Foods list */}
-                          {meal.items && meal.items.length > 0 && (
-                            <div className="mt-3 flex flex-col gap-1.5">
-                              {meal.items.map((item: any, itIdx: number) => {
-                                const food = item.food;
-                                if (!food) return null;
-                                return (
-                                  <div key={itIdx} className="flex justify-between py-1.5 border-b last:border-0" style={faintSeparatorBorderStyle}>
-                                    <div>
-                                      <p className="text-xs text-text-secondary">{food.name}</p>
-                                      {/* Substituições */}
-                                      {item.substitutions && item.substitutions.length > 0 && (
-                                        <details className="group mt-1">
-                                          <summary className="text-[9px] font-bold text-brand cursor-pointer select-none">
-                                            Opções de substituição
-                                          </summary>
-                                          <div className="flex flex-col gap-1 mt-1 pl-2 border-l border-border-default">
-                                            {item.substitutions.map((sub: any, subIdx: number) => {
-                                              const subFood = sub.food;
-                                              if (!subFood) return null;
-                                              return (
-                                                <div key={subIdx} className="text-[10px] text-text-secondary flex justify-between">
-                                                  <span>• {subFood.name}</span>
-                                                  <span className="font-mono font-semibold">{sub.quantity_grams}g</span>
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                        </details>
-                                      )}
-                                    </div>
-                                    <p className="text-xs font-mono text-text-muted flex-shrink-0 ml-4">
-                                      {item.quantity_grams}g {item.portion_label ? `(${item.portion_label})` : ''}
-                                    </p>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* Notas da refeição */}
-                          {meal.notes && (
-                            <div className="mt-3 p-2 bg-brand/5 border border-brand/20 rounded-lg text-[10px] text-text-secondary italic">
-                              Recomendação: {meal.notes}
-                            </div>
-                          )}
-
-                          {/* Botão marcar como feita — apenas quando não concluída */}
-                          {!isMealDone && (
-                            <button
-                              onClick={() => toggleDigitalMeal(meal.id)}
-                              disabled={togglingMealId === meal.id}
-                              className="mt-3 w-full h-9 rounded-md bg-success/10 border border-success/20 text-xs font-semibold text-success flex items-center justify-center gap-1.5 cursor-pointer"
-                            >
-                              <Check className="w-3.5 h-3.5" weight="bold" />
-                              Marcar como feita
-                            </button>
-                          )}
-                          {isMealDone && (
-                            <button
-                              onClick={() => toggleDigitalMeal(meal.id)}
-                              disabled={togglingMealId === meal.id}
-                              className="mt-3 w-full h-9 rounded-md border text-xs font-semibold text-text-secondary flex items-center justify-center gap-1.5 cursor-pointer"
-                              style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
-                            >
-                              Desmarcar refeição
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                      mealId={meal.id}
+                      title={meal.title}
+                      time={meal.time_suggestion}
+                      calories={mMacros.calories}
+                      isDone={isMealDone}
+                      isExpanded={isExpanded}
+                      isToggling={togglingMealId === meal.id}
+                      isDesktop={isDesktop}
+                      foods={mapDigitalMealFoods(meal)}
+                      notes={meal.notes}
+                      onToggleExpand={() =>
+                        setExpandedMeals((prev) => ({ ...prev, [meal.id]: !prev[meal.id] }))
+                      }
+                      onToggleDone={() => toggleDigitalMeal(meal.id)}
+                    />
                   );
                 })}
-              </div>
-            </>
+                {hydrationBlock && <div className="lg:hidden pt-2">{hydrationBlock}</div>}
+              </main>
+            </div>
           )}
 
           {/* ── CASO 2: APENAS PLANO PDF ATIVO (Fallback) ── */}
           {!digitalPlan && planoPDF && (
-            <>
-              {/* PDF Highlight Card */}
-              <div className="mx-4 mb-4 border rounded-[16px] p-4 flex items-center justify-between gap-3" style={nutritionCardStyle}>
+            <div className="px-4 lg:px-0 space-y-4 mb-4">
+              <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg border flex items-center justify-center text-brand flex-shrink-0" style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}>
+                  <div className="w-10 h-10 rounded-lg border border-border-subtle bg-surface-2 flex items-center justify-center text-brand shrink-0">
                     <ForkKnife className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
@@ -802,214 +692,63 @@ export default function PlanoAlimentarPage() {
                 <button
                   onClick={openPdf}
                   id="btn-ver-pdf-nutricao"
-                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg border text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 cursor-pointer"
-                  style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
+                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border-subtle bg-surface-2 text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Ver PDF
                 </button>
               </div>
 
-              {/* Legacy meals */}
               {legacyRefeicoes.length > 0 && (
-                <div className="mx-4 mb-4">
+                <div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">Refeições de hoje</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+                      Refeições de hoje
+                    </p>
                     <span className="text-xs text-text-muted">
                       {completedLegacyMeals} de {totalLegacyMeals} feitas
                     </span>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="h-1 rounded-full mb-4 overflow-hidden" style={secondarySurfaceStyle}>
-                    <div
-                      className="h-full bg-brand rounded-full transition-all duration-300"
-                      style={{ width: totalLegacyMeals > 0 ? `${(completedLegacyMeals / totalLegacyMeals) * 100}%` : '0%' }}
-                    />
-                  </div>
-
                   <div className="flex flex-col gap-2">
-                    {legacyRefeicoes.map(r => {
+                    {legacyRefeicoes.map((r) => {
                       const feita = legacyConsumidos.has(r.id);
-                      const expanded = expandedMeals[r.id];
+                      const expanded = !!expandedMeals[r.id];
                       const ingreds = r.ingredientes || [];
 
                       return (
-                        <div
+                        <MealCard
                           key={r.id}
-                          className="border rounded-[16px] overflow-hidden transition-colors duration-100"
-                          style={feita ? { ...nutritionCardStyle, borderColor: 'rgba(34,197,94,0.2)' } : nutritionCardStyle}
-                        >
-                          <button
-                            onClick={() => ingreds.length > 0 && setExpandedMeals(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
-                            className="w-full flex items-center gap-3 px-4 py-3"
-                          >
-                            {/* Check — caixa 20px */}
-                            <div
-                              onClick={(e) => { e.stopPropagation(); toggleLegacyMeal(r.id); }}
-                              className={cn(
-                                'w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 cursor-pointer',
-                                feita
-                                  ? 'bg-success border-success'
-                                  : 'border-border-default'
-                              )}
-                              style={!feita ? secondarySurfaceStyle : undefined}
-                            >
-                              {feita && (
-                                <Check className="w-3 h-3 text-white" weight="bold" />
-                              )}
-                            </div>
-
-                            <div className="flex-1 text-left">
-                              <p className={cn(
-                                'text-sm font-semibold',
-                                feita ? 'line-through text-text-muted' : 'text-text-primary'
-                              )}>
-                                {r.nome}
-                              </p>
-                              {r.horario_sugerido && (
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <Clock className="w-3 h-3 text-text-muted" />
-                                  <p className="text-[11px] text-text-muted">{r.horario_sugerido.slice(0, 5)}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {ingreds.length > 0 && (
-                              <CaretDown className={cn(
-                                'w-4 h-4 text-text-muted transition-transform duration-200',
-                                expanded ? 'rotate-180' : ''
-                              )} />
-                            )}
-                          </button>
-
-                          {expanded && ingreds.length > 0 && (
-                            <div className="px-4 pb-3 border-t" style={separatorBorderStyle}>
-                              {ingreds.map((ing: any, i: number) => (
-                                <div key={i} className="flex justify-between py-1.5 border-b last:border-0" style={faintSeparatorBorderStyle}>
-                                  <p className="text-xs text-text-secondary">{ing.nome}</p>
-                                  {ing.quantidade && (
-                                    <p className="text-xs font-mono text-text-muted">{ing.quantidade}</p>
-                                  )}
-                                </div>
-                              ))}
-                              {r.observacoes && (
-                                <p className="mt-2 text-xs text-text-muted italic border-t pt-2" style={separatorBorderStyle}>
-                                  {r.observacoes}
-                                </p>
-                              )}
-                              {/* Botão marcar como feita dentro do expandido */}
-                              {!feita && (
-                                <button
-                                  onClick={() => toggleLegacyMeal(r.id)}
-                                  disabled={togglingMealId === r.id}
-                                  className="mt-3 w-full h-9 rounded-md bg-success/10 border border-success/20 text-xs font-semibold text-success flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                  <Check className="w-3.5 h-3.5" weight="bold" />
-                                  Marcar como feita
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                          mealId={r.id}
+                          title={r.nome}
+                          time={r.horario_sugerido}
+                          isDone={feita}
+                          isExpanded={expanded}
+                          isToggling={togglingMealId === r.id}
+                          isDesktop={isDesktop}
+                          foods={mapLegacyMealFoods(ingreds)}
+                          notes={r.observacoes}
+                          showExpandControl={ingreds.length > 0 || !!r.observacoes}
+                          onToggleExpand={() =>
+                            setExpandedMeals((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                          }
+                          onToggleDone={() => toggleLegacyMeal(r.id)}
+                        />
                       );
                     })}
                   </div>
                 </div>
               )}
-            </>
-          )}
 
-          {/* ── ÁGUA (Card de Hidratação refatorado — sempre visível se houver plano) ── */}
-          {(digitalPlan || planoPDF) && (
-            <div className="mx-4 mb-6 border rounded-[16px] p-4" style={hydrationCardStyle}>
-
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Drop className="w-4 h-4" weight="fill" style={{ color: '#4880D8' }} />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: '#4880D8' }}>
-                    Hidratação
-                  </p>
-                </div>
-                <p className="text-xs font-mono tabular-nums text-text-secondary">
-                  {mlAtual}ml / {mlMeta}ml
-                </p>
-              </div>
-
-              {/* Barra de progresso de água */}
-              <div className="w-full h-1.5 rounded-full overflow-hidden mb-3" style={secondarySurfaceStyle}>
-                <div
-                  className="h-full bg-brand rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min((mlAtual / mlMeta) * 100, 100)}%` }}
-                />
-              </div>
-
-              {/* Copos — grid de ícones */}
-              <div className="grid grid-cols-8 gap-1.5 mb-3">
-                {Array.from({ length: metaCopos }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => toggleCopo(i)}
-                    disabled={savingAgua}
-                    aria-label={`${i + 1} copo${i > 0 ? 's' : ''}`}
-                    id={`btn-copo-${i}`}
-                    className={cn(
-                      'aspect-square rounded-md flex items-center justify-center transition-colors duration-100 cursor-pointer',
-                      i < agua.copos
-                        ? 'bg-brand/20 border border-brand/40'
-                        : 'border'
-                    )}
-                    style={i < agua.copos ? undefined : { ...secondarySurfaceStyle, ...cardBorderStyle }}
-                  >
-                    <Drop className={cn(
-                      'w-3.5 h-3.5',
-                      i < agua.copos ? 'text-brand' : 'text-border-default'
-                    )} weight="fill" style={i < agua.copos ? { color: '#4880D8' } : { color: '#4880D8' }} />
-                  </button>
-                ))}
-              </div>
-
-              {/* Controles +/- */}
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => updateAgua(-1)}
-                  disabled={savingAgua || agua.copos === 0}
-                  id="btn-remover-copo"
-                  className="w-10 h-10 rounded-lg border flex items-center justify-center disabled:opacity-30 active:opacity-80 cursor-pointer"
-                  style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
-                >
-                  <Minus className="w-4 h-4 text-text-secondary" />
-                </button>
-
-                <div className="text-center">
-                  <p className="text-xl font-bold font-mono tabular-nums text-text-primary">
-                    {agua.copos}
-                  </p>
-                  <p className="text-[10px] text-text-muted">de {metaCopos} copos</p>
-                </div>
-
-                <button
-                  onClick={() => updateAgua(1)}
-                  disabled={savingAgua || agua.copos >= metaCopos}
-                  id="btn-adicionar-copo"
-                  className="w-10 h-10 rounded-lg bg-brand flex items-center justify-center disabled:opacity-30 active:opacity-80 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 text-white" />
-                </button>
-              </div>
-
-              {agua.copos >= metaCopos && (
-                <p className="mt-3 text-xs font-semibold text-brand text-center">
-                  Meta atingida! Excelente hidratação hoje.
-                </p>
-              )}
+              {hydrationBlock && <div className="pt-2">{hydrationBlock}</div>}
             </div>
           )}
 
+          {/* Hidratação para plano digital já está no grid acima */}
+
           {/* ── HISTÓRICO DE DOCUMENTOS PDF ADICIONAIS ── */}
           {historicoPDFs.length > 0 && (
-            <div className="mx-4 mb-6 border rounded-[16px] p-4" style={nutritionCardStyle}>
+            <div className="mx-4 lg:mx-0 mb-6 bg-surface-1 border border-border-subtle rounded-xl p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3 flex items-center gap-1.5">
                 <FilePdf className="w-3.5 h-3.5" />
                 Documentos em PDF
@@ -1018,8 +757,7 @@ export default function PlanoAlimentarPage() {
                 {historicoPDFs.map(histPlano => (
                   <div
                     key={histPlano.id}
-                    className="border rounded-lg p-3 flex items-center justify-between gap-3"
-                    style={{ ...secondarySurfaceStyle, ...separatorBorderStyle }}
+                    className="border border-border-subtle rounded-lg p-3 bg-surface-2 flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <FilePdf className="w-4 h-4 text-text-secondary shrink-0" />
@@ -1034,8 +772,7 @@ export default function PlanoAlimentarPage() {
                     </div>
                     <button
                       onClick={() => openPdfForPlan(histPlano)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 cursor-pointer"
-                      style={{ ...secondarySurfaceStyle, ...cardBorderStyle }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-subtle bg-surface-1 text-[10px] font-bold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
                     >
                       Abrir PDF
                     </button>

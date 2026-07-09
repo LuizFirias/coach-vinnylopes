@@ -1,8 +1,8 @@
 'use client';
 
-import { CircleNotch } from '@phosphor-icons/react';
-import { useState } from 'react';
-import { MEASUREMENT_COLORS } from '@/lib/measurements/types';
+import { CircleNotch, Plus, Warning } from '@phosphor-icons/react';
+import { useMemo, useState } from 'react';
+import { cn } from '@/lib/utils/cn';
 
 interface MeasurementInputCardProps {
   unit: string;
@@ -10,6 +10,8 @@ interface MeasurementInputCardProps {
   placeholder?: string;
   submitting?: boolean;
   error?: string | null;
+  lastValue?: number | null;
+  lastDateShort?: string | null;
   onDateChange: (isoDate: string) => void;
   onSubmit: (value: number) => void;
 }
@@ -20,10 +22,18 @@ export function MeasurementInputCard({
   placeholder = '0',
   submitting = false,
   error,
+  lastValue = null,
+  lastDateShort = null,
   onDateChange,
   onSubmit,
 }: MeasurementInputCardProps) {
   const [raw, setRaw] = useState('');
+
+  const isSameAsLast = useMemo(() => {
+    if (lastValue === null || !raw) return false;
+    const num = parseFloat(raw);
+    return !Number.isNaN(num) && num === lastValue;
+  }, [raw, lastValue]);
 
   const handleSubmit = () => {
     const num = parseFloat(raw);
@@ -33,25 +43,13 @@ export function MeasurementInputCard({
   };
 
   return (
-    <div
-      className="mb-2.5 rounded-[14px] p-3.5"
-      style={{ backgroundColor: MEASUREMENT_COLORS.card }}
-    >
-      <p
-        className="mb-2.5 text-[9px] font-semibold tracking-wider"
-        style={{ color: MEASUREMENT_COLORS.textSecondary }}
-      >
-        NOVO REGISTRO
+    <div>
+      <p className="mb-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-text-muted">
+        Novo registro
       </p>
 
-      <div className="mb-2.5 flex items-center gap-2">
-        <div
-          className="flex h-11 flex-1 items-center justify-between rounded-[10px] border px-3.5"
-          style={{
-            backgroundColor: MEASUREMENT_COLORS.input,
-            borderColor: MEASUREMENT_COLORS.inputBorder,
-          }}
-        >
+      <div className="mb-2 flex items-center gap-2">
+        <div className="flex h-11 flex-1 items-center justify-between rounded-[10px] border border-[#282828] bg-[var(--mobile-secondary-bg)] px-4">
           <input
             type="number"
             step="0.1"
@@ -60,40 +58,43 @@ export function MeasurementInputCard({
             onChange={(e) => setRaw(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             placeholder={placeholder}
-            className="flex-1 bg-transparent text-lg font-bold outline-none"
-            style={{ color: MEASUREMENT_COLORS.text }}
+            className="flex-1 bg-transparent text-[22px] font-bold text-text-primary outline-none"
             disabled={submitting}
           />
-          <span className="text-[13px] font-semibold" style={{ color: MEASUREMENT_COLORS.primary }}>
-            {unit}
-          </span>
+          <span className="text-sm text-text-secondary">{unit}</span>
         </div>
 
         <button
           type="button"
           onClick={handleSubmit}
           disabled={submitting || !raw}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] text-2xl font-light leading-none disabled:opacity-40"
-          style={{ backgroundColor: MEASUREMENT_COLORS.primary, color: '#fff' }}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand text-white disabled:opacity-40"
+          aria-label="Adicionar registro"
         >
-          {submitting ? <CircleNotch className="h-5 w-5 animate-spin" /> : '+'}
+          {submitting ? (
+            <CircleNotch className="h-5 w-5 animate-spin" />
+          ) : (
+            <Plus size={20} weight="bold" />
+          )}
         </button>
       </div>
 
-      {error && (
-        <p className="mb-2 text-[11px] text-red-400">{error}</p>
+      {isSameAsLast && lastDateShort && (
+        <p className="mb-2 flex items-center gap-1.5 text-[11px] text-[#f59e0b]">
+          <Warning size={11} weight="fill" aria-hidden />
+          Mesmo valor do último registro ({lastDateShort})
+        </p>
       )}
 
+      {error && <p className="mb-2 text-[11px] text-red-400">{error}</p>}
+
       <div className="flex items-center gap-2">
-        <span className="text-[11px]" style={{ color: MEASUREMENT_COLORS.textSecondary }}>
-          Data
-        </span>
+        <span className="text-[11px] text-text-muted">Data</span>
         <input
           type="date"
           value={date}
           onChange={(e) => onDateChange(e.target.value)}
-          className="bg-transparent text-[11px] outline-none"
-          style={{ color: MEASUREMENT_COLORS.textDate }}
+          className="bg-transparent text-[11px] text-text-secondary outline-none"
         />
       </div>
     </div>

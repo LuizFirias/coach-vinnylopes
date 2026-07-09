@@ -1,11 +1,11 @@
-import { DeltaValue } from '@/app/components/measurements/DeltaLine';
-import { MEASUREMENT_COLORS } from '@/lib/measurements/types';
+import { cn } from '@/lib/utils/cn';
 
 export interface HistoryEntry {
   id: string;
   value: number;
   unit: string;
   date: string;
+  dateShort?: string;
   delta: number | null;
 }
 
@@ -29,15 +29,14 @@ export function MeasurementHistoryList({
   return (
     <div>
       <div className="mb-2.5 flex items-center justify-between">
-        <h2 className="text-sm font-bold" style={{ color: MEASUREMENT_COLORS.text }}>
+        <h2 className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-muted">
           Histórico
         </h2>
         {onSeeAll && entries.length > 5 && !showAll && (
           <button
             type="button"
             onClick={onSeeAll}
-            className="text-[11px] font-medium"
-            style={{ color: MEASUREMENT_COLORS.primary }}
+            className="text-[11px] font-medium text-brand"
           >
             Ver tudo
           </button>
@@ -47,28 +46,22 @@ export function MeasurementHistoryList({
       {visible.map((entry, index) => (
         <div
           key={entry.id}
-          className="flex items-center justify-between py-2.5"
-          style={{
-            borderBottom:
-              index === visible.length - 1 ? 'none' : `1px solid ${MEASUREMENT_COLORS.divider}`,
-          }}
+          className={cn(
+            'flex items-start justify-between gap-3 py-3',
+            index < visible.length - 1 && 'border-b border-[#1e1e1e]',
+          )}
         >
-          <div>
-            <p className="text-sm font-bold" style={{ color: MEASUREMENT_COLORS.text }}>
-              {entry.value.toFixed(1)} {entry.unit}
-            </p>
-            <p className="mt-0.5 text-[10px]" style={{ color: MEASUREMENT_COLORS.textMuted }}>
-              {entry.date}
-            </p>
-          </div>
+          <p className="text-[15px] font-semibold text-text-primary">
+            {entry.value.toFixed(1)} {entry.unit}
+          </p>
 
-          <div className="flex items-center gap-3">
-            <DeltaValue delta={entry.delta} />
+          <div className="text-right shrink-0">
+            <p className="text-xs text-text-muted">{entry.dateShort ?? entry.date}</p>
             {onDelete && (
               <button
                 type="button"
                 onClick={() => onDelete(entry.id)}
-                className="text-[10px] text-red-400/70 hover:text-red-400"
+                className="mt-1 text-xs font-medium text-[#e05555] hover:opacity-80"
               >
                 Excluir
               </button>

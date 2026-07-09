@@ -5,10 +5,10 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getSignedStorageUrl } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
-import { Barbell, FileText, MagnifyingGlass, ArrowRight } from '@phosphor-icons/react';
+import { Barbell, FileText, MagnifyingGlass } from '@phosphor-icons/react';
 import PDFViewer from '@/app/components/PDFViewer';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
-import Link from 'next/link';
+import { RoutineCard } from '@/app/components/treinos/RoutineCard';
 
 interface TreinoPDF {
   id: string;
@@ -25,6 +25,7 @@ interface FichaTreino {
   configuracao?: {
     exercicios?: Array<{
       nome: string;
+      grupo_muscular?: string;
     }>;
   };
 }
@@ -36,6 +37,15 @@ export default function AlunoTreinosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<TreinoPDF | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const fetchTreinos = async () => {
@@ -62,7 +72,7 @@ export default function AlunoTreinosPage() {
         setUserId(uid);
         setFichas(fichasData || []);
 
-        const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: any) => {
+        const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: TreinoPDF) => {
           const signed = await getSignedStorageUrl('treinos-pdf', pdf.url_pdf, 3600);
           return { ...pdf, url_pdf: signed || pdf.url_pdf };
         }));
@@ -80,7 +90,7 @@ export default function AlunoTreinosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center mobile-page-bg">
+      <div className="min-h-screen flex items-center justify-center bg-surface-0">
         <DumbbellLoader text="Carregando treinos..." />
       </div>
     );
@@ -90,85 +100,67 @@ export default function AlunoTreinosPage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen pb-24 mobile-page-bg">
-
-        {/* Header */}
-        <div className="px-4 pt-6 pb-4 max-w-md mx-auto">
-          <h1 className="text-xl font-bold text-text-primary tracking-tight">Minhas Rotinas</h1>
-          <p className="text-xs text-text-tertiary mt-0.5">Seu cronograma técnico de treinamento</p>
+      <div className="min-h-screen pb-24 bg-surface-0">
+        <div className="px-4 pt-6 pb-4 max-w-[680px] mx-auto lg:pt-10 lg:pb-6">
+          <h1 className="text-[22px] lg:text-[26px] font-extrabold text-text-primary tracking-tight">
+            Minhas Rotinas
+          </h1>
         </div>
 
-        <div className="px-4 max-w-md mx-auto flex flex-col gap-4">
-
+        <div className="px-4 max-w-[680px] mx-auto flex flex-col gap-4 lg:gap-6">
           {error && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
               {error}
             </div>
           )}
 
-          {/* Fichas interativas */}
           {fichas.length > 0 && (
             <section>
-              <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-secondary mb-2">
-                Rotinas Interativas
-              </p>
-              <div className="flex flex-col gap-2">
-                {fichas.map(ficha => {
-                  const exercicios = (ficha.configuracao?.exercicios ?? [])
-                    .map(ex => ex.nome)
-                    .filter(Boolean) as string[];
+              <div
+                className={`
+                  flex flex-col gap-2.5 lg:gap-3
+                  md:grid md:grid-cols-2 md:gap-3
+                  lg:flex lg:flex-col
+                `}
+              >
+                {fichas.map((ficha, index) => {
+                  const exercicios = ficha.configuracao?.exercicios ?? [];
+                  const isLastOddOnTablet =
+                    fichas.length % 2 === 1 && index === fichas.length - 1;
 
                   return (
-                    <Link
+                    <div
                       key={ficha.id}
-                      href={`/aluno/treinos/${ficha.id}/executar`}
-                      className="w-full border mobile-card-surface rounded-[16px] px-3 py-2 flex items-start gap-2 transition-all active:scale-[0.99] group hover:border-brand/30"
+                      className={isLastOddOnTablet ? 'md:col-span-2 lg:col-span-1' : undefined}
                     >
-                      <div className="w-6 h-6 rounded-md bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <Barbell size={12} className="text-brand" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <p className="text-xs font-bold text-text-primary uppercase tracking-tight truncate pr-2">
-                            {ficha.nome_rotina}
-                          </p>
-                          <ArrowRight size={13} className="text-text-tertiary shrink-0 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
-                        </div>
-                        <p className="text-[10px] text-text-tertiary mb-1">
-                          {exercicios.length > 0
-                            ? `${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''}`
-                            : 'Sem exercícios'}
-                          {' · '}
-                          {new Date(ficha.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                        </p>
-                        {exercicios.length > 0 && (
-                          <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-1">
-                            {exercicios.slice(0, 3).map((nome, i) => (
-                              <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-medium text-text-tertiary leading-none" style={{ background: '#0D1829' }}>
-                                {nome.length > 11 ? nome.slice(0, 11) + '…' : nome}
-                              </span>
-                            ))}
-                            {exercicios.length > 3 && (
-                              <span className="inline-flex items-center px-1 py-0.5 text-[9px] font-bold text-text-disabled leading-none">+{exercicios.length - 3}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </Link>
+                      <RoutineCard
+                        isDesktop={isDesktop}
+                        routine={{
+                          id: ficha.id,
+                          nome_rotina: ficha.nome_rotina,
+                          criado_em: ficha.criado_em,
+                          exercicios,
+                        }}
+                      />
+                    </div>
                   );
                 })}
               </div>
+
+              {fichas.length < 3 && (
+                <p className="text-xs text-text-muted text-center mt-4 lg:mt-6">
+                  Seu coach pode adicionar mais rotinas ao seu plano
+                </p>
+              )}
             </section>
           )}
 
-          {/* PDFs */}
           {treinosPdf.length > 0 && (
             <section>
-              <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3 flex items-center gap-2">
-                <span className="w-1 h-4 rounded-full inline-block" style={{ background: 'rgba(41,48,61,0.8)' }} />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3 flex items-center gap-2">
                 Fichas PDF
               </p>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2.5">
                 {treinosPdf.map(pdf => (
                   <button
                     key={pdf.id}
@@ -176,21 +168,21 @@ export default function AlunoTreinosPage() {
                       if (pdf.aluno_id !== userId) return;
                       setSelectedPdf(pdf);
                     }}
-                    className="w-full text-left border mobile-card-surface p-3 rounded-[16px] transition-all active:scale-[0.99] flex items-center gap-3 group hover:border-brand/20"
+                    className="w-full text-left bg-surface-1 border border-border-subtle p-3.5 rounded-xl transition-colors active:bg-surface-2 flex items-center gap-3 group [@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-[#333333] min-h-16"
                   >
-                    <div className="w-8 h-8 rounded-lg border flex items-center justify-center text-text-secondary shrink-0 group-hover:border-brand/30 transition-colors" style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}>
-                      <FileText size={16} />
+                    <div className="w-10 h-10 rounded-[10px] bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary shrink-0">
+                      <FileText size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-text-primary truncate group-hover:text-brand transition-colors">
+                      <p className="text-sm font-semibold text-text-primary truncate">
                         {pdf.nome_arquivo.replace('.pdf', '')}
                       </p>
-                      <p className="text-[10px] text-text-tertiary mt-0.5">
+                      <p className="text-[11px] text-text-muted mt-0.5">
                         Enviado em {new Date(pdf.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center text-text-tertiary shrink-0 transition-colors" style={{ background: '#0D1829' }}>
-                      <MagnifyingGlass size={12} />
+                    <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center text-text-muted shrink-0">
+                      <MagnifyingGlass size={14} />
                     </div>
                   </button>
                 ))}
@@ -198,17 +190,11 @@ export default function AlunoTreinosPage() {
             </section>
           )}
 
-          {/* Empty state */}
           {total === 0 && (
-            <div className="text-center py-24 border border-dashed mobile-card-surface rounded-2xl">
-              <Barbell size={32} className="text-text-disabled mx-auto mb-3" />
-              <p className="text-text-disabled text-xs uppercase tracking-caps">Nenhum treino ativo.</p>
-              <p className="text-xs text-text-tertiary mt-2 max-w-xs mx-auto">
-                Seu coach ainda não atribuiu uma rotina de treinos para o seu perfil.
-              </p>
-            </div>
+            <p className="text-xs text-text-muted text-center py-16">
+              Nenhum treino ativo. Seu coach ainda não atribuiu uma rotina para o seu perfil.
+            </p>
           )}
-
         </div>
       </div>
 

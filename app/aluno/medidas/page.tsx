@@ -207,7 +207,7 @@ export default function MedidasPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#0d0d0d' }}>
+      <div className="flex min-h-screen items-center justify-center mobile-page-bg">
         <DumbbellLoader text="Carregando medidas..." />
       </div>
     );
@@ -218,7 +218,6 @@ export default function MedidasPage() {
       <MeasurementsView
         medicoes={medicoes}
         backHref="/aluno/dashboard"
-        backLabel="Dashboard"
         submitting={submitting}
         inputError={inputError}
         successMessage={successMsg}
