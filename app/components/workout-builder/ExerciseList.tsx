@@ -6,7 +6,6 @@ import type { ExercicioFicha } from "./types";
 
 interface ExerciseListProps {
   exercises: ExercicioFicha[];
-  isMobile: boolean;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onUpdate: (index: number, patch: Partial<ExercicioFicha>) => void;
   onDelete: (index: number) => void;
@@ -17,7 +16,6 @@ interface ExerciseListProps {
 
 export function ExerciseList({
   exercises,
-  isMobile,
   onReorder,
   onUpdate,
   onDelete,
@@ -58,7 +56,6 @@ export function ExerciseList({
           <ExerciseCard
             exercicio={exercicio}
             exIndex={exIndex}
-            isMobile={isMobile}
             allExercises={exercises}
             isDragging={dragIndex === exIndex}
             dragHandleProps={{

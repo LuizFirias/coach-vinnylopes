@@ -3,6 +3,7 @@ export interface SerieDefinicao {
   reps_sugerido?: string | number;
   tempo_sugerido?: string;
   distancia_sugerida?: number;
+  peso_sugerido?: number | null;
   tecnica?: string;
   tecnica_extra?: string;
 }

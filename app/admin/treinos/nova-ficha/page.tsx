@@ -16,6 +16,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { useAuth } from "@/app/components/AuthProvider";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 import { WorkoutBuilderHeader } from "@/app/components/workout-builder/WorkoutBuilderHeader";
@@ -46,7 +47,7 @@ const inputCls = "w-full bg-surface-2 border border-border-subtle text-text-prim
 const selectCls = "w-full bg-surface-2 border border-border-subtle text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 transition-colors appearance-none h-10";
 
 function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
-  const base = { ordem: 1, tecnica: "", tecnica_extra: "" };
+  const base = { ordem: 1, tecnica: "", tecnica_extra: "", peso_sugerido: null as number | null };
   switch (tipo) {
     case "Duração":
     case "Duração e Peso":
@@ -75,6 +76,7 @@ function exercicioFromCatalog(ex: Exercicio): ExercicioFicha {
 
 export default function NovaFichaCoachPage() {
   const router = useRouter();
+  const { user, userRole, loading: authLoading } = useAuth();
   const isMobile = useBreakpoint("mobile");
 
   const [alunos, setAlunos] = useState<Aluno[]>([]);
@@ -100,42 +102,20 @@ export default function NovaFichaCoachPage() {
   const markDirty = useCallback(() => setIsDirty(true), []);
 
   useEffect(() => {
-    loadData();
-    if (typeof window !== "undefined") {
-      const param = new URLSearchParams(window.location.search).get("alunoId");
-      if (param) setAlunoSelecionado(param);
-      if (!localStorage.getItem("workout_builder_drag_hint") && exerciciosFicha.length > 1) {
-        setDragHint("Segure o ícone ⠿ e arraste para reordenar os exercícios");
-        localStorage.setItem("workout_builder_drag_hint", "1");
-        setTimeout(() => setDragHint(null), 5000);
-      }
-    }
+    const param = new URLSearchParams(window.location.search).get("alunoId");
+    if (param) setAlunoSelecionado(param);
   }, []);
 
-  useEffect(() => {
-    if (exerciciosFicha.length > 1 && typeof window !== "undefined" && !localStorage.getItem("workout_builder_drag_hint")) {
-      setDragHint("Segure o ícone ⠿ e arraste para reordenar os exercícios");
-      localStorage.setItem("workout_builder_drag_hint", "1");
-      const t = setTimeout(() => setDragHint(null), 5000);
-      return () => clearTimeout(t);
-    }
-  }, [exerciciosFicha.length]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async (coachId: string) => {
+    setLoading(true);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const userId = authData?.user?.id;
-      if (!userId) { router.push("/login"); return; }
-
-      const { data: profile } = await supabaseClient
-        .from("profiles").select("role").eq("id", userId).single();
-
-      if (profile?.role !== "coach" && profile?.role !== "super_admin") {
-        router.push("/aluno/dashboard"); return;
+      if (userRole !== "coach" && userRole !== "super_admin") {
+        router.push("/aluno/dashboard");
+        return;
       }
 
       const { data: alunoLinks } = await supabaseClient
-        .from("coach_alunos").select("aluno_id").eq("coach_id", userId);
+        .from("coach_alunos").select("aluno_id").eq("coach_id", coachId);
 
       const alunoIds = alunoLinks?.map((link) => link.aluno_id) || [];
       let alunosData: Aluno[] = [];
@@ -157,7 +137,26 @@ export default function NovaFichaCoachPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, userRole]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    void loadData(user.id);
+  }, [authLoading, user, loadData, router]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!localStorage.getItem("workout_builder_drag_hint") && exerciciosFicha.length > 1) {
+      setDragHint("Segure o ícone ⠿ e arraste para reordenar os exercícios");
+      localStorage.setItem("workout_builder_drag_hint", "1");
+      const t = setTimeout(() => setDragHint(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [exerciciosFicha.length]);
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
     const next = [...exerciciosFicha];
@@ -228,7 +227,13 @@ export default function NovaFichaCoachPage() {
       const novos = [...prev];
       const series = novos[exIndex].series;
       const proximaOrdem = series.length > 0 ? Math.max(...series.map((s) => s.ordem)) + 1 : 1;
-      const modelo = series[series.length - 1] || { reps_sugerido: "12", tempo_sugerido: "01:00", tecnica: "", tecnica_extra: "" };
+      const modelo = series[series.length - 1] || {
+        reps_sugerido: "12",
+        tempo_sugerido: "01:00",
+        tecnica: "",
+        tecnica_extra: "",
+        peso_sugerido: null,
+      };
       novos[exIndex] = { ...novos[exIndex], series: [...series, { ...modelo, ordem: proximaOrdem }] };
       return novos;
     });
@@ -292,8 +297,7 @@ export default function NovaFichaCoachPage() {
 
     setSaving(true);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = user?.id;
       if (!coachId) throw new Error("Sessão expirada");
 
       const configuracao = {
@@ -307,6 +311,8 @@ export default function NovaFichaCoachPage() {
           biset_parceiro_id: ex.biset_parceiro_id,
           series: ex.series.map((s) => ({
             ordem: s.ordem,
+            peso: s.peso_sugerido ?? null,
+            peso_sugerido: s.peso_sugerido ?? null,
             reps: s.reps_sugerido ?? null,
             reps_sugerido: s.reps_sugerido ?? null,
             tempo: s.tempo_sugerido ?? null,
@@ -345,8 +351,7 @@ export default function NovaFichaCoachPage() {
 
     setExporting(true);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = user?.id;
       if (!coachId) throw new Error("Sessão inválida");
 
       const alunoData = alunos.find((a) => a.id === alunoSelecionado);
@@ -370,17 +375,20 @@ export default function NovaFichaCoachPage() {
         doc.text(`${index + 1}. ${ex.nome}`, 20, currentY);
         currentY += 6;
 
+        const hasPeso = ex.series.some((s) => s.peso_sugerido != null && s.peso_sugerido > 0);
         const hasTecnica = ex.series.some((s) => !!s.tecnica?.trim());
         const hasTecnicaExtra = ex.series.some((s) => !!s.tecnica_extra?.trim());
 
         const tableData = ex.series.map((serie) => {
           const row: (string | number)[] = [serie.ordem, serie.reps_sugerido || "-"];
+          if (hasPeso) row.push(serie.peso_sugerido != null ? `${serie.peso_sugerido}kg` : "-");
           if (hasTecnica) row.push(serie.tecnica || "-");
           if (hasTecnicaExtra) row.push(serie.tecnica_extra || "-");
           return row;
         });
 
         const headers = ["Série", "Reps"];
+        if (hasPeso) headers.push("kg");
         if (hasTecnica) headers.push("TÉC");
         if (hasTecnicaExtra) headers.push("Técnica Extra");
 
@@ -424,7 +432,7 @@ export default function NovaFichaCoachPage() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <DumbbellLoader text="Preparando ambiente..." />
@@ -435,7 +443,14 @@ export default function NovaFichaCoachPage() {
   const canSave = !!alunoSelecionado && !!nomeRotina.trim() && exerciciosFicha.length > 0;
 
   return (
-    <div className={cn("min-h-screen bg-surface-0 lg:pl-28", isMobile ? "pb-28" : "pb-12 p-4 md:p-6")}>
+    <div
+      className={cn(
+        "min-h-screen bg-surface-0 lg:pl-28",
+        isMobile
+          ? "pb-[calc(5rem+env(safe-area-inset-bottom))]"
+          : "pb-12 p-4 md:p-6"
+      )}
+    >
       <div className="max-w-4xl mx-auto px-4 md:px-0">
         <WorkoutBuilderHeader
           isMobile={isMobile}
@@ -495,26 +510,36 @@ export default function NovaFichaCoachPage() {
             </button>
           </div>
         ) : (
+          <>
           <ExerciseList
             exercises={exerciciosFicha}
-            isMobile={isMobile}
             onReorder={handleReorder}
-            onUpdate={atualizarExercicio}
-            onDelete={removerExercicio}
-            onAddSet={adicionarSerie}
-            onUpdateSerie={atualizarSerie}
-            onDeleteSerie={removerSerie}
-          />
+              onUpdate={atualizarExercicio}
+              onDelete={removerExercicio}
+              onAddSet={adicionarSerie}
+              onUpdateSerie={atualizarSerie}
+              onDeleteSerie={removerSerie}
+            />
+            <button
+              type="button"
+              onClick={() => setModalExercicio(true)}
+              className="mt-3 mb-1 w-full h-11 inline-flex items-center justify-center gap-1.5 border border-dashed border-brand/40 rounded-xl text-brand text-xs font-semibold"
+            >
+              <Plus size={14} weight="bold" />
+              Adicionar exercício
+            </button>
+          </>
         )}
       </div>
 
       {isMobile && (
         <WorkoutBuilderBottomBar
           saving={saving}
+          exporting={exporting}
           canSave={canSave}
           isDirty={isDirty}
           onSave={handleSalvarFicha}
-          onAddExercise={() => setModalExercicio(true)}
+          onExportPdf={handleExportarPDF}
         />
       )}
 

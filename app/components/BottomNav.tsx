@@ -35,6 +35,10 @@ export default function BottomNav() {
   const { userRole, loading } = useAuth();
   const [fabOpen, setFabOpen] = useState(false);
 
+  const isWorkoutBuilder =
+    pathname?.startsWith('/admin/treinos/nova-ficha') ||
+    !!pathname?.match(/\/admin\/aluno\/[^/]+\/ficha\//);
+
   if (
     pathname === '/login' || 
     pathname === '/' || 
@@ -43,7 +47,8 @@ export default function BottomNav() {
     pathname === '/admin/trocar-senha' ||
     pathname === '/aluno/onboarding' ||
     loading || 
-    pathname.endsWith('/executar')
+    pathname.endsWith('/executar') ||
+    isWorkoutBuilder
   ) {
     return null;
   }

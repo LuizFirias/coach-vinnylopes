@@ -13,9 +13,10 @@ import { cn } from "@/lib/utils/cn";
 interface RestBadgeProps {
   descanso: string;
   onChange: (descanso: string) => void;
+  compact?: boolean;
 }
 
-export function RestBadge({ descanso, onChange }: RestBadgeProps) {
+export function RestBadge({ descanso, onChange, compact = false }: RestBadgeProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const seconds = descansoToSeconds(descanso);
@@ -34,11 +35,16 @@ export function RestBadge({ descanso, onChange }: RestBadgeProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 bg-brand-subtle border border-brand-border rounded-md px-2 py-1 min-h-[28px]"
+        className={cn(
+          "inline-flex items-center gap-1 bg-brand-subtle border border-brand-border rounded-md min-h-[32px]",
+          compact ? "px-1.5 py-1" : "px-2 py-1"
+        )}
         title="Descanso entre séries"
       >
         <Clock size={11} className="text-brand shrink-0" />
-        <span className="text-[11px] font-medium text-brand">{formatRestTime(seconds)}</span>
+        <span className={cn("font-medium text-brand", compact ? "text-[10px]" : "text-[11px]")}>
+          {formatRestTime(seconds)}
+        </span>
       </button>
 
       {open && (
