@@ -1,3 +1,5 @@
+import { normalizeText } from "@/lib/utils/textNormalize";
+
 const MUSCLE_SHORT: Record<string, string> = {
   peito: "Peito",
   costas: "Costas",
@@ -15,18 +17,13 @@ const MUSCLE_SHORT: Record<string, string> = {
 function shortenMuscleGroup(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
-  const key = trimmed
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+  const key = normalizeText(trimmed);
   for (const [match, label] of Object.entries(MUSCLE_SHORT)) {
-    const normalized = match.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (key.includes(normalized)) return label;
+    if (key.includes(normalizeText(match))) return label;
   }
   const first = trimmed.split(/[\s,/]+/)[0];
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
-
 export function getRoutineMuscleSummary(
   exercicios: Array<{ nome?: string; grupo_muscular?: string }>
 ): string {

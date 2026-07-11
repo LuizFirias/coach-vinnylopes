@@ -22,6 +22,7 @@ import { StudentsEmptyState } from "@/app/components/admin/students/StudentsEmpt
 import { MobileListRow } from "@/app/components/MobileListRow";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
+import { textIncludes } from "@/lib/utils/textNormalize";
 
 interface ProfileRow {
   id: string;
@@ -160,8 +161,9 @@ export default function AdminAlunosPage() {
     // 1. Query search (name or email)
     const name = r.coaching_reference || r.full_name || r.email || "";
     const email = r.email || "";
-    const matchesSearch = name.toLowerCase().includes(query.toLowerCase()) || 
-                          email.toLowerCase().includes(query.toLowerCase());
+    const matchesSearch =
+      textIncludes(name, query) ||
+      textIncludes(email, query);
     if (!matchesSearch) return false;
 
     // 2. Status Filter

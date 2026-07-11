@@ -22,6 +22,7 @@ import { Select } from '@/components/ui/Select';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 import { cn } from '@/lib/utils/cn';
+import { textIncludes } from '@/lib/utils/textNormalize';
 import type { WorkoutPlan, AlunoSemFicha } from '@/app/components/admin/workouts/types';
 import { WorkoutsTable, WorkoutsEmptyState } from '@/app/components/admin/workouts/WorkoutsTable';
 import { WorkoutsMobileList } from '@/app/components/admin/workouts/WorkoutsMobileList';
@@ -331,11 +332,9 @@ export default function TreinosPage() {
 
   // Filter in-memory routines
   const processedRoutines = fichas.filter(f => {
-    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const normalizedQuery = normalize(query);
-    const matchesSearch = 
-      normalize(f.aluno_nome).includes(normalizedQuery) || 
-      normalize(f.nome_rotina).includes(normalizedQuery);
+    const matchesSearch =
+      textIncludes(f.aluno_nome, query) ||
+      textIncludes(f.nome_rotina, query);
     if (!matchesSearch) return false;
 
     if (statusFilter === 'ativas') return f.ativo;

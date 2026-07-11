@@ -23,13 +23,13 @@ export default function ThemeToggleBar() {
 
   return (
     <div
-      className="hidden lg:block fixed top-0 right-0 z-70 pointer-events-none lg:right-4"
+      className="hidden lg:block fixed z-70 pointer-events-none"
       style={{
-        paddingTop: 'max(12px, env(safe-area-inset-top, 0px))',
-        paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
+        bottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+        right: 'max(20px, env(safe-area-inset-right, 0px))',
       }}
     >
-      <div className="pointer-events-auto">
+      <div className="pointer-events-auto rounded-full shadow-elev-2 ring-1 ring-border-subtle/80">
         <ThemeToggle />
       </div>
     </div>

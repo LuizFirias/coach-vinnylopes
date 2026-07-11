@@ -49,6 +49,7 @@ import { MeasurementsView } from '@/app/components/measurements/MeasurementsView
 import type { MedicaoRecord } from '@/lib/measurements/types';
 import { profileSexoToBodyGender, type BodyGender } from '@/lib/utils/bodyGender';
 import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
+import { resolveMuscleGroup } from '@/lib/constants/muscle-groups';
 import {
   ChartLine, ChartPieSlice, PersonSimpleRun, CalendarBlank, Fire, CaretRight, Question
 } from "@phosphor-icons/react";
@@ -378,7 +379,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         .from('exercicios_biblioteca')
         .select('id, grupo_muscular');
       const bibMap: Record<string, string> = {};
-      bibData?.forEach(item => { if (item.grupo_muscular) bibMap[item.id] = item.grupo_muscular; });
+      bibData?.forEach((item) => {
+        if (item.grupo_muscular) {
+          bibMap[item.id] = resolveMuscleGroup(item.grupo_muscular);
+        }
+      });
       setExerciciosBiblioteca(bibMap);
 
       const { data: historicoData } = await supabaseClient
@@ -716,7 +721,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     const now = Date.now();
     const countSets: Record<string, number> = {};
     historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= 7 * 86400000).forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+      const grupo = resolveMuscleGroup(
+        exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
+      );
       const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
       if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
     });
@@ -735,7 +742,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     const now = Date.now();
     const countSets: Record<string, number> = {};
     historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= 30 * 86400000).forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+      const grupo = resolveMuscleGroup(
+        exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
+      );
       const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
       if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
     });

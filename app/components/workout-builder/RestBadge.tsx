@@ -14,9 +14,10 @@ interface RestBadgeProps {
   descanso: string;
   onChange: (descanso: string) => void;
   compact?: boolean;
+  label?: string;
 }
 
-export function RestBadge({ descanso, onChange, compact = false }: RestBadgeProps) {
+export function RestBadge({ descanso, onChange, compact = false, label = "Descanso" }: RestBadgeProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const seconds = descansoToSeconds(descanso);
@@ -39,18 +40,18 @@ export function RestBadge({ descanso, onChange, compact = false }: RestBadgeProp
           "inline-flex items-center gap-1 bg-brand-subtle border border-brand-border rounded-md min-h-[32px]",
           compact ? "px-1.5 py-1" : "px-2 py-1"
         )}
-        title="Descanso entre séries"
+        title={label}
       >
         <Clock size={11} className="text-brand shrink-0" />
         <span className={cn("font-medium text-brand", compact ? "text-[10px]" : "text-[11px]")}>
-          {formatRestTime(seconds)}
+          {compact ? formatRestTime(seconds) : `${label}: ${formatRestTime(seconds)}`}
         </span>
       </button>
 
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 bg-surface-1 border border-border-subtle rounded-lg shadow-elev-2 p-2 min-w-[140px]">
           <p className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary px-1 mb-1.5">
-            Descanso
+            {label}
           </p>
           <div className="flex flex-wrap gap-1">
             {REST_PRESETS_SECONDS.map((preset) => (

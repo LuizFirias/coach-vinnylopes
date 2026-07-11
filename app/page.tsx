@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, FormEvent, ChangeEvent, Suspense } from "react";
+import React, { useState, useEffect, useRef, FormEvent, ChangeEvent, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -22,6 +22,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
 
+function readInitialRoleTab(): "coach" | "aluno" {
+  if (typeof window === "undefined") return "coach";
+  const tabParam = new URLSearchParams(window.location.search).get("tab");
+  if (tabParam === "aluno" || tabParam === "coach") return tabParam;
+  const savedRoleTab = localStorage.getItem("auronfit-login-role-tab");
+  if (savedRoleTab === "aluno" || savedRoleTab === "coach") return savedRoleTab;
+  return "coach";
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,7 +48,10 @@ function LoginForm() {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
-  const [roleTab, setRoleTab] = useState<"coach" | "aluno">("coach");
+  const [roleTab, setRoleTab] = useState<"coach" | "aluno">(readInitialRoleTab);
+  const roleTabRef = useRef<"coach" | "aluno">(readInitialRoleTab());
+  const sessionCheckedRef = useRef(false);
+  const allowAutoRedirectRef = useRef(true);
 
   // Novas features da especificação de melhorias de login
   const [rememberMe, setRememberMe] = useState(false);
@@ -65,14 +77,46 @@ function LoginForm() {
   };
 
   const handleRoleTabChange = (tab: "coach" | "aluno") => {
+    if (roleTabRef.current === tab) return;
+    allowAutoRedirectRef.current = false;
+    roleTabRef.current = tab;
     setRoleTab(tab);
     setError(null);
     if (typeof window !== "undefined") {
       localStorage.setItem("auronfit-login-role-tab", tab);
     }
+
+    void (async () => {
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.user) return;
+
+        const { data: profile } = await supabaseClient
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        const role = profile?.role || "aluno";
+        const isCoachAccount = role === "coach" || role === "super_admin";
+        const mismatch =
+          (tab === "aluno" && isCoachAccount) ||
+          (tab === "coach" && !isCoachAccount);
+
+        if (!mismatch) return;
+
+        await supabaseClient.auth.signOut();
+        await fetch("/api/session", { method: "DELETE" });
+      } catch {
+        // sessão já encerrada ou indisponível
+      }
+    })();
   };
 
   useEffect(() => {
+    if (sessionCheckedRef.current) return;
+    sessionCheckedRef.current = true;
+
     // Carregar e-mail salvo se a opção "Lembrar-me" estiver ativada
     if (typeof window !== "undefined") {
       const savedEmail = localStorage.getItem("auronfit-remember-email");
@@ -81,13 +125,9 @@ function LoginForm() {
         setRememberMe(true);
       }
 
-      const savedRoleTab = localStorage.getItem("auronfit-login-role-tab");
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
-      if (tabParam === "aluno" || tabParam === "coach") {
-        setRoleTab(tabParam);
-      } else if (savedRoleTab === "aluno" || savedRoleTab === "coach") {
-        setRoleTab(savedRoleTab);
-      }
+      const initialTab = readInitialRoleTab();
+      roleTabRef.current = initialTab;
+      setRoleTab(initialTab);
     }
 
     // Se Supabase redirecionar para /login com tokens de recovery, reencaminhar para /reset-password
@@ -110,16 +150,49 @@ function LoginForm() {
     const checkExistingSession = async () => {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session?.user) return;
+
+      const desiredTab = roleTabRef.current;
+
       const { data: profile } = await supabaseClient
         .from("profiles")
         .select("role, must_change_password, first_access_completed")
         .eq("id", session.user.id)
         .single();
-      if (profile) {
-        router.replace(getPostLoginPath(profile));
-      } else {
+
+      if (!profile) {
         router.replace("/aluno/dashboard");
+        return;
       }
+
+      const role = profile.role || "aluno";
+      const isCoachAccount = role === "coach" || role === "super_admin";
+
+      if (desiredTab === "aluno" && isCoachAccount) {
+        await supabaseClient.auth.signOut();
+        try {
+          await fetch("/api/session", { method: "DELETE" });
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
+      if (desiredTab === "coach" && !isCoachAccount) {
+        await supabaseClient.auth.signOut();
+        try {
+          await fetch("/api/session", { method: "DELETE" });
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
+      if (!allowAutoRedirectRef.current) return;
+
+      const { data: { session: freshSession } } = await supabaseClient.auth.getSession();
+      if (!freshSession?.user) return;
+
+      router.replace(getPostLoginPath(profile));
     };
     checkExistingSession();
 
@@ -129,7 +202,8 @@ function LoginForm() {
         if (typeof data?.count === "number") setCoachCount(data.count);
       })
       .catch(() => {});
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- executar apenas na montagem
+  }, []);
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => { setEmail(e.target.value); setError(null); };
   const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(null); };
@@ -235,14 +309,16 @@ function LoginForm() {
         const role = profileData.role || "aluno";
         const isCoachAccount = role === "coach" || role === "super_admin";
 
-        if (roleTab === "aluno" && isCoachAccount) {
+        const activeRoleTab = roleTabRef.current;
+
+        if (activeRoleTab === "aluno" && isCoachAccount) {
           setError("Esta conta é de coach. Selecione a aba Coach para entrar.");
           await supabaseClient.auth.signOut();
           setLoading(false);
           return;
         }
 
-        if (roleTab === "coach" && !isCoachAccount) {
+        if (activeRoleTab === "coach" && !isCoachAccount) {
           setError("Esta conta é de aluno. Selecione a aba Aluno para entrar.");
           await supabaseClient.auth.signOut();
           setLoading(false);
@@ -398,39 +474,53 @@ function LoginForm() {
           )}
         </div>
 
-        {/* Seletor Coach/Aluno - Aba com estilo underline de alta fidelidade */}
-        {mode === "login" && (
-          <div className="relative z-30 mb-4 flex w-full max-w-[380px] gap-1 rounded-full bg-white/5 p-1 sm:mb-6 isolate touch-manipulation">
-            <button
-              type="button"
-              onClick={() => handleRoleTabChange("coach")}
-              className={cn(
-                "min-h-[44px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out",
-                roleTab === "coach"
-                  ? "bg-blue-600 text-white"
-                  : "bg-transparent text-gray-400 active:text-white"
-              )}
-            >
-              Coach
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRoleTabChange("aluno")}
-              className={cn(
-                "min-h-[44px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out",
-                roleTab === "aluno"
-                  ? "bg-blue-600 text-white"
-                  : "bg-transparent text-gray-400 active:text-white"
-              )}
-            >
-              Aluno
-            </button>
-          </div>
-        )}
-
         {/* Form Card */}
-        <div className="w-full max-w-[380px] bg-surface-1 lg:bg-transparent border border-border-subtle lg:border-none shadow-sm lg:shadow-none p-6 md:p-7 lg:p-0 rounded-xl relative">
-          
+        <div className="relative z-20 w-full max-w-[380px] bg-surface-1 lg:bg-transparent border border-border-subtle lg:border-none shadow-sm lg:shadow-none p-6 md:p-7 lg:p-0 rounded-xl">
+          {mode === "login" && (
+            <div
+              role="tablist"
+              aria-label="Tipo de acesso"
+              className="relative z-50 mb-5 flex w-full gap-1 rounded-full bg-white/5 p-1"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={roleTab === "coach"}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleRoleTabChange("coach");
+                }}
+                onClick={() => handleRoleTabChange("coach")}
+                className={cn(
+                  "relative z-10 min-h-[48px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out touch-manipulation cursor-pointer select-none",
+                  roleTab === "coach"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-transparent text-gray-400 active:text-white"
+                )}
+              >
+                Coach
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={roleTab === "aluno"}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleRoleTabChange("aluno");
+                }}
+                onClick={() => handleRoleTabChange("aluno")}
+                className={cn(
+                  "relative z-10 min-h-[48px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out touch-manipulation cursor-pointer select-none",
+                  roleTab === "aluno"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-transparent text-gray-400 active:text-white"
+                )}
+              >
+                Aluno
+              </button>
+            </div>
+          )}
+
           <AnimatePresence mode="wait">
             {/* ── Recuperar senha ── */}
             {mode === "recovery" && (

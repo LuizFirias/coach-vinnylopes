@@ -1,68 +1,113 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { ArrowLeft, FloppyDisk, Plus, Trash, X, FileArrowDown, CircleNotch, CaretUp, CaretDown } from "@phosphor-icons/react";
+import { ArrowLeft, FloppyDisk, Plus, X, FileArrowDown } from "@phosphor-icons/react";
 import Link from "next/link";
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
-import TimeInput from "@/app/components/TimeInput";
-
-interface Serie {
-  ordem: number;
-  reps_sugerido: number | string;
-  tecnica?: string;
-  tecnica_extra?: string;
-}
-
-interface Exercicio {
-  id: string;
-  nome: string;
-  grupo_muscular?: string;
-  descanso: string;
-  video_url?: string;
-  observacoes?: string;
-  series: Serie[];
-  biset_parceiro_id?: string;
-}
+import { textIncludes } from "@/lib/utils/textNormalize";
+import { ExerciseList } from "@/app/components/workout-builder/ExerciseList";
+import { WorkoutPrescriptionSummary } from "@/app/components/workout-builder/WorkoutPrescriptionSummary";
+import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
+import type { ExercicioFichaItem } from "@/lib/utils/biset";
+import {
+  parseFichaItems,
+  serializeFichaItems,
+  simpleToBiSetGroup,
+  bisetGroupToSimples,
+  halfFromCatalog,
+  validateBiSetGroup,
+  isBiSetFichaItem,
+} from "@/lib/utils/biset";
 
 interface Ficha {
   id: string;
   nome_rotina: string;
-  configuracao: {
-    exercicios: Exercicio[];
-  };
+  configuracao: { exercicios: unknown[] };
   coach_id: string;
   aluno_id: string;
 }
 
-const fieldCls = "w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all h-10";
+interface CatalogExercise {
+  id: string;
+  nome: string;
+  grupo_muscular: string;
+  tipo_exercicio?: string;
+  video_url?: string;
+}
 
-const TECNICAS_BASE_EDIT = ["", "WS", "FS", "TS"];
-const TECNICAS_EXTRA_OPCOES_EDIT = ["", "Cluster Set", "Drop Set", "Bi-Set", "Super Set", "Repetições Parciais", "Isometria"];
+const fieldCls =
+  "w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all h-10";
+
+function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
+  const base = { ordem: 1, tecnica: "", tecnica_extra: "", peso_sugerido: null as number | null };
+  switch (tipo) {
+    case "Duração":
+    case "Duração e Peso":
+    case "Distância e Duração":
+      return [1, 2, 3].map((o) => ({ ...base, ordem: o, tempo_sugerido: "01:00" }));
+    case "Peso e Distância":
+      return [1, 2, 3].map((o) => ({ ...base, ordem: o, distancia_sugerida: 0 }));
+    default:
+      return [1, 2, 3].map((o) => ({ ...base, ordem: o, reps_sugerido: "12" }));
+  }
+}
+
+function exercicioFromCatalog(ex: CatalogExercise): ExercicioFicha {
+  const tipoEx = ex.tipo_exercicio || "Peso & Repetições";
+  return {
+    instanceId: crypto.randomUUID(),
+    id: ex.id,
+    nome: ex.nome,
+    tipo_exercicio: tipoEx,
+    descanso: "01:00",
+    video_url: ex.video_url || "",
+    observacoes: "",
+    series: criarSeriesPadrao(tipoEx),
+  };
+}
+
+function catalogIdsInFicha(items: ExercicioFichaItem[]): Set<string> {
+  const ids = new Set<string>();
+  for (const item of items) {
+    if (isBiSetFichaItem(item)) {
+      ids.add(item.exercicioA.exercicio_id);
+      if (item.exercicioB) ids.add(item.exercicioB.exercicio_id);
+    } else {
+      ids.add(item.id);
+    }
+  }
+  return ids;
+}
 
 export default function EditarFichaPage({ params }: { params: Promise<{ id: string; fichaId: string }> }) {
   const router = useRouter();
   const { id, fichaId } = use(params);
 
-  const [ficha, setFicha] = useState<Ficha | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nomeFicha, setNomeFicha] = useState("");
-  const [exercicios, setExercicios] = useState<Exercicio[]>([]);
-  const [catalogoExercicios, setCatalogoExercicios] = useState<any[]>([]);
-  const [showAddExercicioModal, setShowAddExercicioModal] = useState(false);
+  const [items, setItems] = useState<ExercicioFichaItem[]>([]);
+  const [catalogo, setCatalogo] = useState<CatalogExercise[]>([]);
+  const [bisetToast, setBisetToast] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(new Set());
   const [searchExercicio, setSearchExercicio] = useState("");
 
+  const showBisetToast = useCallback((msg: string) => {
+    setBisetToast(msg);
+    setTimeout(() => setBisetToast(null), 3500);
+  }, []);
+
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [fichaId]);
 
   const loadData = async () => {
@@ -79,134 +124,270 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         return;
       }
 
-      const fichaTyped = fichaData as Ficha;
-      setFicha(fichaTyped);
-      setNomeFicha(fichaTyped.nome_rotina || "");
-
-      const exerciciosNormalizados = (fichaTyped.configuracao?.exercicios || []).map(ex => ({
-        ...ex,
-        observacoes: ex.observacoes || "",
-        series: (ex.series || []).map(s => ({
-          ...s,
-          reps_sugerido: s.reps_sugerido ?? (s as any).reps ?? "",
-          tecnica: s.tecnica || "",
-          tecnica_extra: (s as any).tecnica_extra
-            || ((s as any).cluster ? "Cluster Set" : null)
-            || ((s as any).drop_set ? "Drop Set" : null)
-            || ((s as any).bi_set ? "Bi-Set" : null)
-            || ((s as any).isometria ? "Isometria" : null)
-            || "",
-        })),
-      }));
-
-      setExercicios(exerciciosNormalizados);
+      const ficha = fichaData as Ficha;
+      setNomeFicha(ficha.nome_rotina || "");
+      setItems(parseFichaItems(ficha.configuracao?.exercicios || []));
 
       const { data: catalogoData } = await supabaseClient
         .from("exercicios_biblioteca")
-        .select("id, nome, grupo_muscular, video_url")
+        .select("id, nome, grupo_muscular, video_url, tipo_exercicio")
         .order("nome", { ascending: true });
 
-      setCatalogoExercicios(catalogoData || []);
-      setLoading(false);
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar ficha");
+      setCatalogo(catalogoData || []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar ficha");
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateSerie = (exercicioIdx: number, serieIdx: number, field: string, value: any) => {
-    const updated = [...exercicios];
-    (updated[exercicioIdx].series[serieIdx] as any)[field] = value;
-    setExercicios(updated);
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    const next = [...items];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setItems(next);
   };
 
-  const handleRemoveExercicio = (idx: number) => {
-    setExercicios(exercicios.filter((_, i) => i !== idx));
+  const duplicarExercicio = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const copy: ExercicioFicha = {
+        ...item,
+        instanceId: crypto.randomUUID(),
+        series: item.series.map((s) => ({ ...s })),
+      };
+      const next = [...prev];
+      next.splice(index + 1, 0, copy);
+      return next;
+    });
   };
 
-  const handleMoveExercicio = (idx: number, direction: -1 | 1) => {
-    const next = idx + direction;
-    if (next < 0 || next >= exercicios.length) return;
-    const updated = [...exercicios];
-    [updated[idx], updated[next]] = [updated[next], updated[idx]];
-    setExercicios(updated);
+  const transformarEmBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = simpleToBiSetGroup(item);
+      return next;
+    });
   };
 
-  const handleAddSerie = (exercicioIdx: number) => {
-    const updated = [...exercicios];
-    const novaOrdem = Math.max(...(updated[exercicioIdx].series.map(s => s.ordem) || [0])) + 1;
-    updated[exercicioIdx].series.push({ ordem: novaOrdem, reps_sugerido: "12", tecnica: "", tecnica_extra: "" });
-    setExercicios(updated);
+  const selecionarParceiroBiSet = (index: number, ex: CatalogExercise) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = {
+        ...item,
+        exercicioB: halfFromCatalog(ex, item.exercicioA.series.map((s) => ({ ...s }))),
+      };
+      return next;
+    });
   };
 
-  const handleRemoveSerie = (exercicioIdx: number, serieIdx: number) => {
-    const updated = [...exercicios];
-    updated[exercicioIdx].series.splice(serieIdx, 1);
-    setExercicios(updated);
+  const trocarParceiroBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, exercicioB: null };
+      return next;
+    });
   };
 
-  const handleAddExercicio = (catalogExercicio: any) => {
-    const newExercicio: Exercicio = {
-      id: catalogExercicio.id,
-      nome: catalogExercicio.nome,
-      grupo_muscular: catalogExercicio.grupo_muscular,
-      descanso: "01:00",
-      video_url: catalogExercicio.video_url,
-      observacoes: "",
-      series: [{ ordem: 1, reps_sugerido: "12", tecnica: "", tecnica_extra: "" }],
-    };
-    setExercicios([...exercicios, newExercicio]);
-    setShowAddExercicioModal(false);
-    setSearchExercicio("");
+  const desfazerBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const simples = bisetGroupToSimples(item);
+      const next = [...prev];
+      next.splice(index, 1, ...simples);
+      return next;
+    });
   };
 
-  const toggleSelectExercise = (id: string) => {
-    setSelectedExerciseIds(prev => {
+  const removerExercicioSimple = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const atualizarExercicio = (index: number, patch: Partial<ExercicioFicha>) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, ...patch };
+      return next;
+    });
+  };
+
+  const atualizarSerie = (exIndex: number, serieIndex: number, campo: string, valor: unknown) => {
+    if (campo === "tecnica_extra" && valor === "Bi-Set") {
+      transformarEmBiSet(exIndex);
+      return;
+    }
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const series = [...item.series];
+      series[serieIndex] = { ...series[serieIndex], [campo]: valor };
+      next[exIndex] = { ...item, series };
+      return next;
+    });
+  };
+
+  const adicionarSerie = (exIndex: number) => {
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const series = item.series;
+      const proximaOrdem = series.length > 0 ? Math.max(...series.map((s) => s.ordem)) + 1 : 1;
+      const modelo = series[series.length - 1] || {
+        reps_sugerido: "12",
+        tempo_sugerido: "01:00",
+        tecnica: "",
+        tecnica_extra: "",
+        peso_sugerido: null,
+      };
+      next[exIndex] = { ...item, series: [...series, { ...modelo, ordem: proximaOrdem }] };
+      return next;
+    });
+  };
+
+  const removerSerie = (exIndex: number, serieIndex: number) => {
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const series = item.series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
+      next[exIndex] = { ...item, series };
+      return next;
+    });
+  };
+
+  const atualizarBiSetDescanso = (index: number, descanso: string) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, descanso };
+      return next;
+    });
+  };
+
+  const atualizarBiSetHalf = (index: number, half: "a" | "b", patch: { nome?: string; observacoes?: string }) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const group = { ...item };
+      if (half === "a") group.exercicioA = { ...group.exercicioA, ...patch };
+      else if (group.exercicioB) group.exercicioB = { ...group.exercicioB, ...patch };
+      next[index] = group;
+      return next;
+    });
+  };
+
+  const atualizarBiSetSerie = (index: number, half: "a" | "b", serieIndex: number, campo: string, valor: unknown) => {
+    if (campo === "tecnica_extra" && valor === "Bi-Set") return;
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const group = {
+        ...item,
+        exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] },
+        exercicioB: item.exercicioB
+          ? { ...item.exercicioB, series: [...item.exercicioB.series] }
+          : item.exercicioB,
+      };
+      const target = half === "a" ? group.exercicioA : group.exercicioB;
+      if (!target) return prev;
+      target.series[serieIndex] = { ...target.series[serieIndex], [campo]: valor };
+      next[index] = group;
+      return next;
+    });
+  };
+
+  const adicionarSerieBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item) || !item.exercicioB) return prev;
+      const next = [...prev];
+      const group = {
+        ...item,
+        exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] },
+        exercicioB: { ...item.exercicioB, series: [...item.exercicioB.series] },
+      };
+      const modeloA = group.exercicioA.series[group.exercicioA.series.length - 1];
+      const modeloB = group.exercicioB.series[group.exercicioB.series.length - 1];
+      const ordem = group.exercicioA.series.length + 1;
+      group.exercicioA.series.push({ ...modeloA, ordem });
+      group.exercicioB.series.push({ ...modeloB, ordem });
+      next[index] = group;
+      return next;
+    });
+  };
+
+  const removerSerieBiSet = (index: number, serieIndex: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item) || !item.exercicioB) return prev;
+      const next = [...prev];
+      const group = {
+        ...item,
+        exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] },
+        exercicioB: { ...item.exercicioB, series: [...item.exercicioB.series] },
+      };
+      group.exercicioA.series = group.exercicioA.series
+        .filter((_, i) => i !== serieIndex)
+        .map((s, i) => ({ ...s, ordem: i + 1 }));
+      group.exercicioB.series = group.exercicioB.series
+        .filter((_, i) => i !== serieIndex)
+        .map((s, i) => ({ ...s, ordem: i + 1 }));
+      next[index] = group;
+      return next;
+    });
+    showBisetToast("Em Bi-Sets, séries são adicionadas e removidas em par. Ambos os exercícios foram atualizados.");
+  };
+
+  const toggleSelectExercise = (exerciseId: string) => {
+    setSelectedExerciseIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(exerciseId)) next.delete(exerciseId);
+      else next.add(exerciseId);
       return next;
     });
   };
 
   const handleAddSelectedExercises = () => {
     if (selectedExerciseIds.size === 0) {
-      setShowAddExercicioModal(false);
+      setShowAddModal(false);
       return;
     }
-
-    const novos: Exercicio[] = [];
-    selectedExerciseIds.forEach(id => {
-      const ex = catalogoExercicios.find(e => e.id === id);
-      if (ex) {
-        novos.push({
-          id: ex.id,
-          nome: ex.nome,
-          grupo_muscular: ex.grupo_muscular,
-          descanso: "01:00",
-          video_url: ex.video_url,
-          observacoes: "",
-          series: [{ ordem: 1, reps_sugerido: "12", tecnica: "", tecnica_extra: "" }],
-        });
-      }
+    const novos: ExercicioFicha[] = [];
+    selectedExerciseIds.forEach((exId) => {
+      const ex = catalogo.find((e) => e.id === exId);
+      if (ex) novos.push(exercicioFromCatalog(ex));
     });
-
-    setExercicios([...exercicios, ...novos]);
+    setItems((prev) => [...prev, ...novos]);
     setSelectedExerciseIds(new Set());
-    setShowAddExercicioModal(false);
+    setShowAddModal(false);
     setSearchExercicio("");
   };
 
-  const filteredCatalogo = catalogoExercicios.filter(ex => {
-    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    return normalize(ex.nome).includes(normalize(searchExercicio));
-  });
+  const filteredCatalogo = catalogo.filter(
+    (ex) =>
+      textIncludes(ex.nome, searchExercicio) ||
+      textIncludes(ex.grupo_muscular, searchExercicio)
+  );
+
+  const idsNaFicha = catalogIdsInFicha(items);
 
   const handleExportarPDF = async () => {
-    if (!nomeFicha.trim() || exercicios.length === 0) {
+    if (!nomeFicha.trim() || items.length === 0) {
       setError("Preencha os dados da ficha antes de exportar");
       return;
     }
@@ -215,112 +396,97 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
     try {
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
-      if (!coachId) throw new Error('Sessão inválida');
+      if (!coachId) throw new Error("Sessão inválida");
 
       const { data: alunoData } = await supabaseClient
-        .from('profiles')
-        .select('coaching_reference, email')
-        .eq('id', id)
+        .from("profiles")
+        .select("coaching_reference, email")
+        .eq("id", id)
         .single();
 
-      const nomeAluno = alunoData?.coaching_reference || alunoData?.email || 'Aluno';
-
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const nomeAluno = alunoData?.coaching_reference || alunoData?.email || "Aluno";
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       doc.setFontSize(20);
-      doc.setTextColor(40, 40, 40);
-      doc.text('FICHA DE TREINO', 105, 20, { align: 'center' });
-
+      doc.text("FICHA DE TREINO", 105, 20, { align: "center" });
       doc.setFontSize(12);
-      doc.setTextColor(100, 100, 100);
-      doc.text(nomeFicha, 105, 28, { align: 'center' });
-
+      doc.text(nomeFicha, 105, 28, { align: "center" });
       doc.setFontSize(10);
       doc.text(`Atleta: ${nomeAluno}`, 20, 40);
-      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 46);
-
-      doc.setDrawColor(200, 200, 200);
+      doc.text(`Data: ${new Date().toLocaleDateString("pt-BR")}`, 20, 46);
       doc.line(20, 50, 190, 50);
 
       let currentY = 58;
 
-      exercicios.forEach((exercicio, index) => {
-        if (currentY > 250) { doc.addPage(); currentY = 20; }
-
-        doc.setFontSize(12);
-        doc.setTextColor(212, 175, 55);
-        doc.text(`${index + 1}. ${exercicio.nome}`, 20, currentY);
-        currentY += 6;
-
-        if (exercicio.video_url) {
-          doc.setFontSize(8);
-          doc.setTextColor(70, 130, 180);
-          doc.textWithLink('🎥 Vídeo demonstrativo', 20, currentY, { url: exercicio.video_url });
-          currentY += 5;
+      items.forEach((item, index) => {
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
         }
 
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        if (exercicio.descanso) { doc.text(`Descanso: ${exercicio.descanso}`, 20, currentY); currentY += 5; }
-        if (exercicio.observacoes) {
-          const obsLines = doc.splitTextToSize(`Obs: ${exercicio.observacoes}`, 170);
-          doc.text(obsLines, 20, currentY);
-          currentY += (obsLines.length * 5);
+        const renderExercisePdf = (nome: string, series: SerieDefinicao[]) => {
+          doc.setFontSize(12);
+          doc.text(`${index + 1}. ${nome}`, 20, currentY);
+          currentY += 6;
+          const hasPeso = series.some((s) => s.peso_sugerido != null && s.peso_sugerido > 0);
+          const hasTecnica = series.some((s) => !!s.tecnica?.trim());
+          const hasTecnicaExtra = series.some((s) => !!s.tecnica_extra?.trim());
+          const tableData = series.map((serie) => {
+            const row: (string | number)[] = [serie.ordem, serie.reps_sugerido || "-"];
+            if (hasPeso) row.push(serie.peso_sugerido != null ? `${serie.peso_sugerido}kg` : "-");
+            if (hasTecnica) row.push(serie.tecnica || "-");
+            if (hasTecnicaExtra) row.push(serie.tecnica_extra || "-");
+            return row;
+          });
+          const headers = ["Série", "Reps"];
+          if (hasPeso) headers.push("kg");
+          if (hasTecnica) headers.push("TÉC");
+          if (hasTecnicaExtra) headers.push("Técnica Extra");
+          autoTable(doc, {
+            startY: currentY,
+            head: [headers],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [43, 127, 255], textColor: [255, 255, 255], fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            margin: { left: 20 },
+            tableWidth: 170,
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+        };
+
+        if (isBiSetFichaItem(item) && item.exercicioB) {
+          doc.setFontSize(11);
+          doc.text(`[BI-SET] ${item.exercicioA.nome} + ${item.exercicioB.nome}`, 20, currentY);
+          currentY += 8;
+          renderExercisePdf(item.exercicioA.nome, item.exercicioA.series);
+          renderExercisePdf(item.exercicioB.nome, item.exercicioB.series);
+        } else if (!isBiSetFichaItem(item)) {
+          renderExercisePdf(item.nome, item.series);
         }
-
-        const hasTecnica = exercicio.series.some(s => !!(s as any).tecnica?.trim());
-        const hasTecnicaExtra = exercicio.series.some(s => !!(s as any).tecnica_extra?.trim());
-
-        const tableData = exercicio.series.map((serie) => {
-          const tec = serie.tecnica || '-';
-          const row: any[] = [serie.ordem, serie.reps_sugerido || '-'];
-          if (hasTecnica) row.push(tec);
-          if (hasTecnicaExtra) row.push((serie as any).tecnica_extra || '-');
-          return row;
-        });
-
-        const headers = ['Série', 'Reps'];
-        if (hasTecnica) headers.push('TÉC');
-        if (hasTecnicaExtra) headers.push('Técnica Extra');
-
-        autoTable(doc, {
-          startY: currentY,
-          head: [headers],
-          body: tableData,
-          theme: 'grid',
-          headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0], fontSize: 9, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 9, textColor: [60, 60, 60] },
-          margin: { left: 20 },
-          tableWidth: 170
-        });
-
-        currentY = (doc as any).lastAutoTable.finalY + 10;
       });
 
-      const pdfBlob = doc.output('blob');
-      const fileName = `${id}/${Date.now()}_${nomeFicha.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      const pdfBlob = doc.output("blob");
+      const fileName = `${id}/${Date.now()}_${nomeFicha.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
 
       const { error: uploadError } = await supabaseClient.storage
-        .from('treinos-pdf')
-        .upload(fileName, pdfBlob, { contentType: 'application/pdf', cacheControl: '3600', upsert: false });
+        .from("treinos-pdf")
+        .upload(fileName, pdfBlob, { contentType: "application/pdf" });
 
       if (uploadError) throw uploadError;
 
-      const { error: dbError } = await supabaseClient
-        .from('treinos_alunos')
-        .insert({
-          aluno_id: id,
-          coach_id: coachId,
-          url_pdf: fileName,
-          nome_arquivo: `${nomeFicha}.pdf`,
-          data_upload: new Date().toISOString(),
-        });
+      const { error: dbError } = await supabaseClient.from("treinos_alunos").insert({
+        aluno_id: id,
+        coach_id: coachId,
+        url_pdf: fileName,
+        nome_arquivo: `${nomeFicha}.pdf`,
+        data_upload: new Date().toISOString(),
+      });
 
       if (dbError) throw dbError;
-
-      alert('PDF exportado com sucesso e salvo no acervo do aluno!');
-    } catch (err: any) {
-      setError('Erro ao exportar PDF: ' + (err.message || 'Erro desconhecido'));
+      alert("PDF exportado com sucesso e salvo no acervo do aluno!");
+    } catch (err: unknown) {
+      setError("Erro ao exportar PDF: " + (err instanceof Error ? err.message : "Erro desconhecido"));
     } finally {
       setExportingPDF(false);
     }
@@ -331,35 +497,35 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
       setError("Nome da ficha é obrigatório");
       return;
     }
+    if (items.length === 0) {
+      setError("Adicione pelo menos um exercício");
+      return;
+    }
+
+    for (const item of items) {
+      if (isBiSetFichaItem(item)) {
+        const err = validateBiSetGroup(item);
+        if (err) {
+          setError(err);
+          return;
+        }
+      }
+    }
 
     setSaving(true);
     try {
-      const { error } = await supabaseClient
+      const { error: saveError } = await supabaseClient
         .from("fichas_treino")
         .update({
           nome_rotina: nomeFicha,
-          configuracao: {
-            exercicios: exercicios.map(ex => ({
-              id: ex.id,
-              nome: ex.nome,
-              descanso: ex.descanso,
-              video_url: ex.video_url || "",
-              observacoes: ex.observacoes || "",
-              series: ex.series.map(s => ({
-                ordem: s.ordem,
-                reps: s.reps_sugerido ?? null,
-                tecnica: s.tecnica || null,
-                tecnica_extra: (s as any).tecnica_extra || null,
-              })),
-            })),
-          },
+          configuracao: { exercicios: serializeFichaItems(items) },
         })
         .eq("id", fichaId);
 
-      if (error) throw error;
+      if (saveError) throw saveError;
       router.push(`/admin/aluno/${id}`);
-    } catch (err: any) {
-      setError(err.message || "Erro ao salvar ficha");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar ficha");
     } finally {
       setSaving(false);
     }
@@ -373,22 +539,9 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  if (!ficha) {
-    return (
-      <div className="min-h-screen bg-surface-0 p-6">
-        <Link href={`/admin/aluno/${id}`} className="text-text-secondary hover:text-brand text-xs inline-flex items-center gap-1.5 mb-6 transition-colors">
-          <ArrowLeft size={14} /> Voltar
-        </Link>
-        <p className="text-danger text-xs font-semibold">Ficha não encontrada</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
       <div className="max-w-4xl mx-auto">
-
-        {/* Header */}
         <div className="mb-6 py-4 border-b border-border-subtle flex flex-col gap-2.5">
           <Link
             href={`/admin/aluno/${id}`}
@@ -396,24 +549,29 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           >
             <ArrowLeft size={14} /> Voltar para Perfil
           </Link>
-          <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">
-            Editar Ficha Digital
-          </h1>
-          <p className="text-xs text-text-secondary">Modifique os exercícios e cargas da ficha</p>
+          <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Editar Ficha Digital</h1>
+          <p className="text-xs text-text-secondary">Modifique exercícios, Bi-Sets e prescrições da ficha</p>
         </div>
 
         {error && (
           <div className="mb-6 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="shrink-0">
+            <button type="button" onClick={() => setError(null)} className="shrink-0">
               <X size={14} />
             </button>
           </div>
         )}
 
-        {/* Nome da Ficha */}
-        <div className="bg-surface-1 rounded-xl p-4 md:p-5 border border-border-subtle shadow-sm mb-6">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 block">Nome da Ficha</label>
+        {bisetToast && (
+          <div className="mb-4 px-3 py-2.5 bg-[#1a2d4a] border-l-[3px] border-brand rounded-lg text-xs text-text-primary">
+            {bisetToast}
+          </div>
+        )}
+
+        <div className="bg-surface-1 rounded-xl p-4 md:p-5 border border-border-subtle shadow-sm mb-4">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 block">
+            Nome da Ficha
+          </label>
           <input
             type="text"
             value={nomeFicha}
@@ -423,227 +581,51 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           />
         </div>
 
-        {/* Exercícios */}
-        <div className="space-y-4">
-          {exercicios.map((ex, exIdx) => (
-            <div key={ex.id} className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl p-4 md:p-5">
-              {/* Header do Exercício */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-bold text-text-primary truncate">{ex.nome}</h3>
-                  <p className="text-text-tertiary text-[9px] font-bold uppercase tracking-wider mt-0.5">{ex.grupo_muscular || 'Exercício'}</p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => handleMoveExercicio(exIdx, -1)}
-                    disabled={exIdx === 0}
-                    className="p-1.5 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-2 rounded-md transition-colors"
-                    title="Mover para cima"
-                  >
-                    <CaretUp size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleMoveExercicio(exIdx, 1)}
-                    disabled={exIdx === exercicios.length - 1}
-                    className="p-1.5 text-text-disabled hover:text-text-secondary disabled:opacity-30 hover:bg-surface-2 rounded-md transition-colors"
-                    title="Mover para baixo"
-                  >
-                    <CaretDown size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleRemoveExercicio(exIdx)}
-                    className="p-1.5 text-text-disabled hover:text-danger hover:bg-danger-subtle rounded-md transition-colors ml-1"
-                    title="Excluir exercício"
-                  >
-                    <Trash size={14} />
-                  </button>
-                </div>
-              </div>
+        <WorkoutPrescriptionSummary items={items} className="mb-4" />
 
-              {/* Descanso + Observações */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b border-border-subtle">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Descanso entre Séries</label>
-                  <TimeInput
-                    value={ex.descanso || "01:00"}
-                    onChange={(v) => {
-                      const updated = [...exercicios];
-                      updated[exIdx].descanso = v;
-                      setExercicios(updated);
-                    }}
-                    className={cn(fieldCls, "text-center")}
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Observações para o Aluno</label>
-                  <textarea
-                    value={ex.observacoes || ""}
-                    onChange={(e) => {
-                      const updated = [...exercicios];
-                      updated[exIdx].observacoes = e.target.value;
-                      setExercicios(updated);
-                    }}
-                    placeholder="Ex: Manter o core contraído, não arquear as costas..."
-                    className={cn(fieldCls, "resize-none h-10 py-1.5")}
-                    rows={1}
-                  />
-                </div>
-              </div>
-
-              {/* Bi-Set partner selector — aparece quando qualquer série tem técnica Bi-Set */}
-              {ex.series.some(s => s.tecnica_extra === 'Bi-Set') && (
-                <div className="mb-4 pb-3 border-b border-border-subtle flex items-center gap-2.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand shrink-0">🔗 Parceiro Bi-Set</span>
-                  <select
-                    value={ex.biset_parceiro_id || ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const updated = [...exercicios];
-                      updated[exIdx] = { ...updated[exIdx], biset_parceiro_id: val || undefined };
-                      setExercicios(updated);
-                    }}
-                    className="flex-1 h-7 px-2 bg-surface-0 border border-brand/30 rounded-md text-xs text-text-primary focus:outline-none"
-                  >
-                    <option value="">— Selecionar exercício parceiro —</option>
-                    {exercicios
-                      .filter((_, i) => i !== exIdx)
-                      .map((partnerEx) => (
-                        <option key={partnerEx.id} value={partnerEx.id}>{partnerEx.nome}</option>
-                      ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Séries */}
-              {(() => {
-                const temIsometria = ex.series.some(s => (s as any).tecnica_extra === "Isometria");
-                return (
-                  <div className="space-y-2 mb-4">
-                    {/* Desktop — scrollable table */}
-                    <div className="hidden md:block overflow-x-auto">
-                      {/* Header */}
-                      <div className="grid gap-1 px-2 mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">#</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">{temIsometria ? "Tempo" : "Reps"}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70">TÉC</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70"></span>
-                        <span></span>
-                      </div>
-                      {ex.series.map((serie, serieIdx) => (
-                        <div key={serieIdx} className="grid gap-1 bg-surface-2 border border-border-subtle p-1 rounded-lg mb-1 min-w-max" style={{ gridTemplateColumns: `2rem 5rem 4rem 5.5rem 2rem` }}>
-                          <div className="flex items-center justify-center w-7 h-7 rounded-md bg-brand-subtle text-brand text-xs font-bold">{serie.ordem}</div>
-                          {temIsometria ? (
-                            <TimeInput
-                              value={(serie as any).tempo_sugerido ?? '00:00'}
-                              onChange={(v) => handleUpdateSerie(exIdx, serieIdx, "tempo_sugerido", v)}
-                              className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none text-center"
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={serie.reps_sugerido}
-                              onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)}
-                              placeholder="12"
-                              className="w-full h-7 px-2 bg-surface-0 border border-border-subtle rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 text-center"
-                            />
-                          )}
-                          {/* TÉC */}
-                          <select
-                            value={(serie as any).tecnica ?? ''}
-                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                            className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                          >
-                            {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                          </select>
-                          {/* Técnica Extra */}
-                          <select
-                            value={(serie as any).tecnica_extra ?? ''}
-                            onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
-                            className="w-full h-7 px-1 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                          >
-                            {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                          </select>
-                          <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="flex items-center justify-center text-text-disabled hover:text-danger transition-colors">
-                            <Trash className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Mobile */}
-                    {ex.series.map((serie, serieIdx) => (
-                      <div key={serieIdx} className="md:hidden bg-surface-2 rounded-lg border border-border-subtle p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="w-7 h-7 rounded-md bg-brand-subtle flex items-center justify-center text-brand text-xs font-bold">{serie.ordem}</div>
-                          <button onClick={() => handleRemoveSerie(exIdx, serieIdx)} className="p-1.5 text-text-disabled hover:text-danger transition-colors"><Trash size={14} /></button>
-                        </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          <div className="space-y-0.5">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary px-1">{temIsometria ? "Tempo" : "Reps"}</label>
-                            {temIsometria ? (
-                              <TimeInput
-                                value={(serie as any).tempo_sugerido ?? '00:00'}
-                                onChange={(v) => handleUpdateSerie(exIdx, serieIdx, "tempo_sugerido", v)}
-                                className="w-full px-3 py-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none text-center h-10"
-                              />
-                            ) : (
-                              <input type="text" value={serie.reps_sugerido} onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "reps_sugerido", e.target.value)} placeholder="12" className={cn(fieldCls, "text-center")} />
-                            )}
-                          </div>
-                        </div>
-                        <div className="border-t border-border-subtle/50 pt-2 grid grid-cols-2 gap-2">
-                          <div className="space-y-0.5">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">TÉC</label>
-                            <select
-                              value={(serie as any).tecnica ?? ''}
-                              onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica", e.target.value)}
-                              className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                            >
-                              {TECNICAS_BASE_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                            </select>
-                          </div>
-                      <div className="space-y-0.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-brand/70 px-1">Técnica Extra</label>
-                        <select
-                          value={(serie as any).tecnica_extra ?? ''}
-                          onChange={(e) => handleUpdateSerie(exIdx, serieIdx, "tecnica_extra", e.target.value)}
-                          className="w-full h-8 px-2 bg-surface-0 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none"
-                        >
-                          {TECNICAS_EXTRA_OPCOES_EDIT.map(opt => <option key={opt} value={opt}>{opt || '—'}</option>)}
-                       </select>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-              <button
-                onClick={() => handleAddSerie(exIdx)}
-                className="w-full py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand border border-brand-border/40 rounded-lg hover:bg-brand-subtle/50 transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Plus size={12} weight="bold" /> Adicionar Série
-              </button>
-            </div>
-          ))}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text-primary">
+            Exercícios <span className="text-brand">({items.length})</span>
+          </h2>
         </div>
 
-        {/* Adicionar Exercício */}
+        {items.length === 0 ? (
+          <div className="bg-surface-2 rounded-xl p-8 text-center border border-dashed border-border-subtle mb-4">
+            <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">
+              Nenhum exercício nesta ficha
+            </p>
+          </div>
+        ) : (
+          <ExerciseList
+            items={items}
+            catalog={catalogo}
+            onReorder={handleReorder}
+            onUpdateSimple={atualizarExercicio}
+            onDeleteSimple={removerExercicioSimple}
+            onDuplicateSimple={duplicarExercicio}
+            onAddSetSimple={adicionarSerie}
+            onUpdateSerieSimple={atualizarSerie}
+            onDeleteSerieSimple={removerSerie}
+            onUpdateBiSetDescanso={atualizarBiSetDescanso}
+            onUpdateBiSetHalf={atualizarBiSetHalf}
+            onUpdateBiSetSerie={atualizarBiSetSerie}
+            onAddBiSetSerie={adicionarSerieBiSet}
+            onRemoveBiSetSerie={removerSerieBiSet}
+            onSelectBiSetPartner={selecionarParceiroBiSet}
+            onSwapBiSetPartner={trocarParceiroBiSet}
+            onUndoBiSet={desfazerBiSet}
+            onDeleteBiSet={removerExercicioSimple}
+          />
+        )}
+
         <button
-          onClick={() => setShowAddExercicioModal(true)}
-          className="w-full mt-4 py-3 px-6 bg-surface-1 border border-dashed border-brand-border/30 rounded-xl text-brand text-xs font-bold hover:bg-brand-subtle/40 transition-all flex items-center justify-center gap-2"
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="mt-4 w-full py-3 px-6 bg-surface-1 border border-dashed border-brand-border/30 rounded-xl text-brand text-xs font-bold hover:bg-brand-subtle/40 transition-all flex items-center justify-center gap-2"
         >
           <Plus size={14} weight="bold" /> Adicionar Exercício do Catálogo
         </button>
 
-        {exercicios.length === 0 && (
-          <div className="mt-4 bg-surface-2 rounded-xl p-8 text-center border border-dashed border-border-subtle">
-            <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">Nenhum exercício nesta ficha</p>
-          </div>
-        )}
-
-        {/* Botões de ação */}
         <div className="flex flex-col sm:flex-row gap-3 mt-8">
           <Button
             type="button"
@@ -676,14 +658,17 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           </Button>
         </div>
 
-        {/* Modal Adicionar Exercício */}
-        {showAddExercicioModal && (
+        {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-0/80 backdrop-blur-sm">
             <div className="bg-surface-1 rounded-xl border border-border-default shadow-2xl max-w-xl w-full max-h-[80vh] flex flex-col overflow-hidden">
               <div className="bg-surface-1 border-b border-border-subtle p-4 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-text-primary">Adicionar Exercício</h2>
                 <button
-                  onClick={() => { setShowAddExercicioModal(false); setSearchExercicio(""); }}
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setSearchExercicio("");
+                  }}
                   className="text-text-tertiary hover:text-text-primary transition-colors"
                 >
                   <X size={16} />
@@ -696,59 +681,74 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                   placeholder="Buscar exercício..."
                   value={searchExercicio}
                   onChange={(e) => setSearchExercicio(e.target.value)}
-                  className="w-full px-3 py-1.5 h-8 bg-surface-2 border border-border-subtle rounded-md text-text-primary text-2xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all"
+                  className="w-full px-3 py-1.5 h-10 bg-surface-2 border border-border-subtle rounded-md text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all"
                 />
               </div>
 
               <div className="flex-1 overflow-y-auto divide-y divide-border-subtle">
                 {filteredCatalogo.length > 0 ? (
                   filteredCatalogo.map((exCatalogo) => {
-                    const jáAdicionado = exercicios.some(e => e.id === exCatalogo.id);
+                    const jaAdicionado = idsNaFicha.has(exCatalogo.id);
                     const isSelected = selectedExerciseIds.has(exCatalogo.id);
                     return (
                       <button
                         key={exCatalogo.id}
                         type="button"
                         onClick={() => {
-                          if (jáAdicionado) return;
+                          if (jaAdicionado) return;
                           toggleSelectExercise(exCatalogo.id);
                         }}
-                        disabled={jáAdicionado}
+                        disabled={jaAdicionado}
                         className={cn(
                           "w-full p-4 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4 text-left border-b border-border-subtle/50",
                           isSelected && "bg-brand/5 border-l-2 border-l-brand",
-                          jáAdicionado && "opacity-50 cursor-not-allowed"
+                          jaAdicionado && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <div className="flex-1 min-w-0">
-                          <h3 className={cn("text-xs font-bold truncate", isSelected ? "text-brand" : "text-text-primary")}>{exCatalogo.nome}</h3>
+                          <h3
+                            className={cn(
+                              "text-xs font-bold truncate",
+                              isSelected ? "text-brand" : "text-text-primary"
+                            )}
+                          >
+                            {exCatalogo.nome}
+                          </h3>
                           <p className="text-text-tertiary text-[9px] font-bold uppercase tracking-wider mt-0.5">
-                            {exCatalogo.grupo_muscular || 'Exercício'}
+                            {exCatalogo.grupo_muscular || "Exercício"}
                           </p>
                         </div>
-                        {jáAdicionado ? (
-                          <span className="text-[10px] text-text-disabled font-semibold">Adicionado</span>
+                        {jaAdicionado ? (
+                          <span className="text-[10px] text-text-disabled font-semibold">Na ficha</span>
                         ) : isSelected ? (
-                          <span className="w-4 h-4 rounded-full bg-brand flex items-center justify-center text-[9px] text-text-on-brand font-bold">✓</span>
+                          <span className="w-4 h-4 rounded-full bg-brand flex items-center justify-center text-[9px] text-text-on-brand font-bold">
+                            ✓
+                          </span>
                         ) : (
-                          <span className="w-4 h-4 rounded-full border border-border-default flex items-center justify-center text-[10px] text-text-tertiary font-bold">+</span>
+                          <span className="w-4 h-4 rounded-full border border-border-default flex items-center justify-center text-[10px] text-text-tertiary font-bold">
+                            +
+                          </span>
                         )}
                       </button>
                     );
                   })
                 ) : (
                   <div className="p-10 text-center">
-                    <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">Nenhum exercício encontrado</p>
+                    <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">
+                      Nenhum exercício encontrado
+                    </p>
                   </div>
                 )}
               </div>
 
-              {/* Modal Footer with Add Button */}
               <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => { setSelectedExerciseIds(new Set()); setShowAddExercicioModal(false); }}
-                  className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedExerciseIds(new Set());
+                    setShowAddModal(false);
+                  }}
+                  className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors"
                 >
                   Cancelar
                 </button>
@@ -756,7 +756,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                   type="button"
                   onClick={handleAddSelectedExercises}
                   disabled={selectedExerciseIds.size === 0}
-                  className="px-4 py-2 bg-brand disabled:opacity-40 text-text-on-brand rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                  className="px-4 py-2 bg-brand disabled:opacity-40 text-text-on-brand rounded-xl text-xs font-semibold hover:opacity-90 transition-opacity"
                 >
                   Adicionar ({selectedExerciseIds.size})
                 </button>

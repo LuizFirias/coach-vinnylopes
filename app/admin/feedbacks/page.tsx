@@ -12,6 +12,7 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { textIncludes } from "@/lib/utils/textNormalize";
 
 interface Feedback {
   id: string;
@@ -192,14 +193,12 @@ export default function FeedbacksCoachPage() {
 
   // Filter list
   const filteredFeedbacks = feedbacks.filter(f => {
-    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const normalizedQuery = normalize(searchQuery);
-    const matchesSearch = 
-      normalize(f.aluno_nome || '').includes(normalizedQuery) ||
-      normalize(f.aluno_reference || '').includes(normalizedQuery) ||
-      normalize(f.texto_aluno || '').includes(normalizedQuery) ||
-      normalize(f.resposta_coach || '').includes(normalizedQuery) ||
-      normalize(f.ficha_nome || '').includes(normalizedQuery);
+    const matchesSearch =
+      textIncludes(f.aluno_nome, searchQuery) ||
+      textIncludes(f.aluno_reference, searchQuery) ||
+      textIncludes(f.texto_aluno, searchQuery) ||
+      textIncludes(f.resposta_coach, searchQuery) ||
+      textIncludes(f.ficha_nome, searchQuery);
 
     if (!matchesSearch) return false;
 

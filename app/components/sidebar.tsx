@@ -117,18 +117,18 @@ export default function Sidebar() {
       {/* Sidebar for Desktop */}
       <aside
         style={{ width: isExpanded ? '240px' : '80px' }}
-        className="hidden lg:flex fixed left-0 top-0 h-full bg-surface-1 border-r border-border-subtle flex-col py-5 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300"
+        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r border-border-subtle flex-col py-3 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300 overflow-hidden"
       >
-        <div className="flex flex-col items-center gap-3 mb-5 px-2 relative">
+        <div className="flex flex-col items-center gap-2 mb-3 px-2 relative shrink-0">
           <Link href={userRole === 'aluno' ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
             <Image 
               src="/logo.webp" 
               alt="Auronfit" 
-              width={isExpanded ? 48 : 40} 
-              height={isExpanded ? 48 : 40} 
+              width={isExpanded ? 40 : 36} 
+              height={isExpanded ? 40 : 36} 
               className={cn(
                 "object-contain group-hover:scale-105 transition-transform",
-                isExpanded ? "w-12 h-12" : "w-10 h-10"
+                isExpanded ? "w-10 h-10" : "w-9 h-9"
               )} 
             />
           </Link>
@@ -136,41 +136,41 @@ export default function Sidebar() {
           <button
             onClick={toggleSidebar}
             className={cn(
-              "w-7 h-7 rounded-lg border border-border-subtle bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
-              isExpanded ? "absolute right-2 top-1/2 -translate-y-1/2" : "mt-0.5"
+              "w-6 h-6 rounded-md border border-border-subtle bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
+              isExpanded ? "absolute right-1 top-1/2 -translate-y-1/2" : "mt-0.5"
             )}
             title={isExpanded ? "Recolher menu" : "Expandir menu"}
           >
-            {isExpanded ? <CaretLeft size={15} /> : <CaretRight size={15} />}
+            {isExpanded ? <CaretLeft size={13} /> : <CaretRight size={13} />}
           </button>
         </div>
 
-        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
            {currentMenuItems.map((m) => {
               const Icon = m.icon;
               const isActive = pathname === m.href;
               const isPerfil = m.name === 'Perfil' || m.name === 'Perfil Master';
               return (
-                <div key={m.href} className="flex flex-col gap-1 shrink-0">
+                <div key={m.href} className="flex flex-col gap-0.5 shrink-0">
                   {isPerfil && (
-                    <div className="border-t border-border-subtle my-1.5 mx-2" />
+                    <div className="border-t border-border-subtle my-1 mx-2" />
                   )}
                   <Link
                     href={m.href}
                     title={!isExpanded ? m.name : undefined}
                     className={cn(
-                      "flex items-center gap-3 px-3 h-10 transition-all group relative",
+                      "flex items-center gap-2.5 px-2.5 h-9 transition-all group relative",
                       isActive
                         ? "bg-brand/12 text-text-primary font-medium border-l-2 border-brand rounded-r-lg rounded-l-none"
                         : "text-text-disabled hover:text-brand hover:bg-brand/5 rounded-lg",
                       isExpanded ? "justify-start" : "justify-center"
                     )}
                   >
-                     {isActive && !isExpanded && <div className="absolute left-0 w-1 h-5 bg-brand rounded-r-full" />}
-                     <Icon size={16} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
+                     {isActive && !isExpanded && <div className="absolute left-0 w-1 h-4 bg-brand rounded-r-full" />}
+                     <Icon size={15} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
                      
                      {isExpanded && (
-                       <span className="text-xs font-medium tracking-wide truncate">
+                       <span className="text-[11px] font-medium tracking-wide truncate">
                          {m.name}
                        </span>
                      )}
@@ -186,13 +186,13 @@ export default function Sidebar() {
            })}
         </nav>
 
-        <div className="mt-auto border-t border-border-subtle pt-4 flex flex-col gap-2 shrink-0">
+        <div className="mt-auto border-t border-border-subtle pt-2.5 pb-1 flex flex-col gap-1.5 shrink-0">
           {isExpanded && user && (
-            <div className="flex flex-col min-w-0 px-2 py-1">
-              <span className="text-[9px] font-semibold text-text-tertiary uppercase tracking-[0.06em] mb-1">
+            <div className="flex flex-col min-w-0 px-2 py-0.5">
+              <span className="text-[8px] font-semibold text-text-tertiary uppercase tracking-[0.06em] mb-0.5">
                 Acesso
               </span>
-              <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide truncate">
+              <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide truncate">
                 {userRole?.replace('_', ' ') || 'Aluno'}
               </span>
             </div>
@@ -204,12 +204,12 @@ export default function Sidebar() {
               localStorage.clear();
               window.location.href = '/login';
             }}
-            className={`w-full h-10 rounded-lg flex items-center gap-3 text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group ${isExpanded ? 'px-3.5 justify-start' : 'justify-center'}`}
+            className={`w-full h-9 rounded-lg flex items-center gap-2.5 text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group ${isExpanded ? 'px-3 justify-start' : 'justify-center'}`}
             title="Sair"
           >
-             <SignOut size={16} className="shrink-0" />
+             <SignOut size={15} className="shrink-0" />
              {isExpanded && (
-                <span className="text-xs font-semibold tracking-wide">Sair</span>
+                <span className="text-[11px] font-semibold tracking-wide">Sair</span>
              )}
           </button>
         </div>

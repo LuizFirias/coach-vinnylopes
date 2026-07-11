@@ -19,6 +19,7 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
+import { textIncludes } from "@/lib/utils/textNormalize";
 import { WorkoutBuilderHeader } from "@/app/components/workout-builder/WorkoutBuilderHeader";
 import { WorkoutBuilderBottomBar } from "@/app/components/workout-builder/WorkoutBuilderBottomBar";
 import { WorkoutBuilderSettingsSheet } from "@/app/components/workout-builder/WorkoutBuilderSettingsSheet";
@@ -26,6 +27,15 @@ import { ExerciseList } from "@/app/components/workout-builder/ExerciseList";
 import { WorkoutPrescriptionSummary } from "@/app/components/workout-builder/WorkoutPrescriptionSummary";
 import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
 import { TIPOS_EXERCICIO } from "@/app/components/workout-builder/exerciseColumns";
+import type { ExercicioFichaItem } from "@/lib/utils/biset";
+import {
+  serializeFichaItems,
+  simpleToBiSetGroup,
+  bisetGroupToSimples,
+  halfFromCatalog,
+  validateBiSetGroup,
+  isBiSetFichaItem,
+} from "@/lib/utils/biset";
 
 interface Aluno {
   id: string;
@@ -83,7 +93,8 @@ export default function NovaFichaCoachPage() {
   const [exerciciosCatalogo, setExerciciosCatalogo] = useState<Exercicio[]>([]);
   const [alunoSelecionado, setAlunoSelecionado] = useState("");
   const [nomeRotina, setNomeRotina] = useState("");
-  const [exerciciosFicha, setExerciciosFicha] = useState<ExercicioFicha[]>([]);
+  const [exerciciosFicha, setExerciciosFicha] = useState<ExercicioFichaItem[]>([]);
+  const [bisetToast, setBisetToast] = useState<string | null>(null);
   const [modalExercicio, setModalExercicio] = useState(false);
   const [modalNovoExercicio, setModalNovoExercicio] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -158,6 +169,11 @@ export default function NovaFichaCoachPage() {
     }
   }, [exerciciosFicha.length]);
 
+  const showBisetToast = (msg: string) => {
+    setBisetToast(msg);
+    setTimeout(() => setBisetToast(null), 3500);
+  };
+
   const handleReorder = (fromIndex: number, toIndex: number) => {
     const next = [...exerciciosFicha];
     const [moved] = next.splice(fromIndex, 1);
@@ -197,26 +213,176 @@ export default function NovaFichaCoachPage() {
     setModalExercicio(false);
   };
 
-  const removerExercicio = (index: number) => {
+
+  const duplicarExercicio = (index: number) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const copy: ExercicioFicha = {
+        ...item,
+        instanceId: crypto.randomUUID(),
+        series: item.series.map((s) => ({ ...s })),
+      };
+      const next = [...prev];
+      next.splice(index + 1, 0, copy);
+      return next;
+    });
+    markDirty();
+  };
+
+  const transformarEmBiSet = (index: number) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = simpleToBiSetGroup(item);
+      return next;
+    });
+    markDirty();
+  };
+
+  const selecionarParceiroBiSet = (index: number, ex: Exercicio) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const group = { ...item };
+      group.exercicioB = halfFromCatalog(ex, item.exercicioA.series.map((s) => ({ ...s })));
+      next[index] = group;
+      return next;
+    });
+    markDirty();
+  };
+
+  const trocarParceiroBiSet = (index: number) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, exercicioB: null };
+      return next;
+    });
+    markDirty();
+  };
+
+  const desfazerBiSet = (index: number) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const simples = bisetGroupToSimples(item);
+      const next = [...prev];
+      next.splice(index, 1, ...simples);
+      return next;
+    });
+    markDirty();
+  };
+
+  const removerGrupoBiSet = (index: number) => {
+    removerExercicioSimple(index);
+  };
+
+  const atualizarBiSetDescanso = (index: number, descanso: string) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, descanso };
+      return next;
+    });
+    markDirty();
+  };
+
+  const atualizarBiSetHalf = (index: number, half: "a" | "b", patch: { nome?: string; observacoes?: string }) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const group = { ...item };
+      if (half === "a") group.exercicioA = { ...group.exercicioA, ...patch };
+      else if (group.exercicioB) group.exercicioB = { ...group.exercicioB, ...patch };
+      next[index] = group;
+      return next;
+    });
+    markDirty();
+  };
+
+  const atualizarBiSetSerie = (index: number, half: "a" | "b", serieIndex: number, campo: string, valor: unknown) => {
+    if (campo === "tecnica_extra" && valor === "Bi-Set") return;
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const group = { ...item, exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] } };
+      if (group.exercicioB) group.exercicioB = { ...group.exercicioB, series: [...group.exercicioB.series] };
+      const target = half === "a" ? group.exercicioA : group.exercicioB;
+      if (!target) return prev;
+      target.series[serieIndex] = { ...target.series[serieIndex], [campo]: valor };
+      next[index] = group;
+      return next;
+    });
+    markDirty();
+  };
+
+  const adicionarSerieBiSet = (index: number) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item) || !item.exercicioB) return prev;
+      const next = [...prev];
+      const group = { ...item, exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] }, exercicioB: { ...item.exercicioB, series: [...item.exercicioB.series] } };
+      const modeloA = group.exercicioA.series[group.exercicioA.series.length - 1];
+      const modeloB = group.exercicioB.series[group.exercicioB.series.length - 1];
+      const ordem = group.exercicioA.series.length + 1;
+      group.exercicioA.series.push({ ...modeloA, ordem });
+      group.exercicioB.series.push({ ...modeloB, ordem });
+      next[index] = group;
+      return next;
+    });
+    markDirty();
+  };
+
+  const removerSerieBiSet = (index: number, serieIndex: number) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item) || !item.exercicioB) return prev;
+      const next = [...prev];
+      const group = { ...item, exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] }, exercicioB: { ...item.exercicioB, series: [...item.exercicioB.series] } };
+      group.exercicioA.series = group.exercicioA.series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
+      group.exercicioB.series = group.exercicioB.series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
+      next[index] = group;
+      return next;
+    });
+    showBisetToast("Em Bi-Sets, séries são adicionadas e removidas em par. Ambos os exercícios foram atualizados.");
+    markDirty();
+  };
+
+  const removerExercicioSimple = (index: number) => {
     setExerciciosFicha((prev) => prev.filter((_, i) => i !== index));
     markDirty();
   };
 
   const atualizarExercicio = (index: number, patch: Partial<ExercicioFicha>) => {
     setExerciciosFicha((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
       const novos = [...prev];
-      novos[index] = { ...novos[index], ...patch };
+      novos[index] = { ...item, ...patch };
       return novos;
     });
     markDirty();
   };
 
   const atualizarSerie = (exIndex: number, serieIndex: number, campo: string, valor: unknown) => {
+    if (campo === "tecnica_extra" && valor === "Bi-Set") {
+      transformarEmBiSet(exIndex);
+      return;
+    }
     setExerciciosFicha((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
       const novos = [...prev];
-      const series = [...novos[exIndex].series];
+      const series = [...item.series];
       series[serieIndex] = { ...series[serieIndex], [campo]: valor };
-      novos[exIndex] = { ...novos[exIndex], series };
+      novos[exIndex] = { ...item, series };
       return novos;
     });
     markDirty();
@@ -224,8 +390,10 @@ export default function NovaFichaCoachPage() {
 
   const adicionarSerie = (exIndex: number) => {
     setExerciciosFicha((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
       const novos = [...prev];
-      const series = novos[exIndex].series;
+      const series = item.series;
       const proximaOrdem = series.length > 0 ? Math.max(...series.map((s) => s.ordem)) + 1 : 1;
       const modelo = series[series.length - 1] || {
         reps_sugerido: "12",
@@ -234,7 +402,7 @@ export default function NovaFichaCoachPage() {
         tecnica_extra: "",
         peso_sugerido: null,
       };
-      novos[exIndex] = { ...novos[exIndex], series: [...series, { ...modelo, ordem: proximaOrdem }] };
+      novos[exIndex] = { ...item, series: [...series, { ...modelo, ordem: proximaOrdem }] };
       return novos;
     });
     markDirty();
@@ -242,17 +410,19 @@ export default function NovaFichaCoachPage() {
 
   const removerSerie = (exIndex: number, serieIndex: number) => {
     setExerciciosFicha((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
       const novos = [...prev];
-      const series = novos[exIndex].series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
-      novos[exIndex] = { ...novos[exIndex], series };
+      const series = item.series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
+      novos[exIndex] = { ...item, series };
       return novos;
     });
     markDirty();
   };
 
   const filteredExercicios = exerciciosCatalogo.filter((ex) =>
-    ex.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ex.grupo_muscular.toLowerCase().includes(searchTerm.toLowerCase())
+    textIncludes(ex.nome, searchTerm) ||
+    textIncludes(ex.grupo_muscular, searchTerm)
   );
 
   const criarNovoExercicio = async () => {
@@ -295,35 +465,19 @@ export default function NovaFichaCoachPage() {
     if (!nomeRotina.trim()) { alert("Digite o nome da rotina"); return; }
     if (exerciciosFicha.length === 0) { alert("Adicione pelo menos um exercício"); return; }
 
+    for (const item of exerciciosFicha) {
+      if (isBiSetFichaItem(item)) {
+        const err = validateBiSetGroup(item);
+        if (err) { alert(err); return; }
+      }
+    }
+
     setSaving(true);
     try {
       const coachId = user?.id;
       if (!coachId) throw new Error("Sessão expirada");
 
-      const configuracao = {
-        exercicios: exerciciosFicha.map((ex) => ({
-          id: ex.id,
-          nome: ex.nome,
-          tipo_exercicio: ex.tipo_exercicio,
-          descanso: ex.descanso,
-          video_url: ex.video_url,
-          observacoes: ex.observacoes,
-          biset_parceiro_id: ex.biset_parceiro_id,
-          series: ex.series.map((s) => ({
-            ordem: s.ordem,
-            peso: s.peso_sugerido ?? null,
-            peso_sugerido: s.peso_sugerido ?? null,
-            reps: s.reps_sugerido ?? null,
-            reps_sugerido: s.reps_sugerido ?? null,
-            tempo: s.tempo_sugerido ?? null,
-            tempo_sugerido: s.tempo_sugerido ?? null,
-            distancia: s.distancia_sugerida ?? null,
-            distancia_sugerida: s.distancia_sugerida ?? null,
-            tecnica: s.tecnica || null,
-            tecnica_extra: s.tecnica_extra || null,
-          })),
-        })),
-      };
+      const configuracao = { exercicios: serializeFichaItems(exerciciosFicha) };
 
       const { error } = await supabaseClient.from("fichas_treino").insert({
         aluno_id: alunoSelecionado,
@@ -369,41 +523,49 @@ export default function NovaFichaCoachPage() {
 
       let currentY = 58;
 
-      exerciciosFicha.forEach((ex, index) => {
+      exerciciosFicha.forEach((item, index) => {
         if (currentY > 250) { doc.addPage(); currentY = 20; }
-        doc.setFontSize(12);
-        doc.text(`${index + 1}. ${ex.nome}`, 20, currentY);
-        currentY += 6;
 
-        const hasPeso = ex.series.some((s) => s.peso_sugerido != null && s.peso_sugerido > 0);
-        const hasTecnica = ex.series.some((s) => !!s.tecnica?.trim());
-        const hasTecnicaExtra = ex.series.some((s) => !!s.tecnica_extra?.trim());
+        const renderExercisePdf = (nome: string, series: SerieDefinicao[]) => {
+          doc.setFontSize(12);
+          doc.text(`${index + 1}. ${nome}`, 20, currentY);
+          currentY += 6;
+          const hasPeso = series.some((s) => s.peso_sugerido != null && s.peso_sugerido > 0);
+          const hasTecnica = series.some((s) => !!s.tecnica?.trim());
+          const hasTecnicaExtra = series.some((s) => !!s.tecnica_extra?.trim());
+          const tableData = series.map((serie) => {
+            const row: (string | number)[] = [serie.ordem, serie.reps_sugerido || "-"];
+            if (hasPeso) row.push(serie.peso_sugerido != null ? `${serie.peso_sugerido}kg` : "-");
+            if (hasTecnica) row.push(serie.tecnica || "-");
+            if (hasTecnicaExtra) row.push(serie.tecnica_extra || "-");
+            return row;
+          });
+          const headers = ["Série", "Reps"];
+          if (hasPeso) headers.push("kg");
+          if (hasTecnica) headers.push("TÉC");
+          if (hasTecnicaExtra) headers.push("Técnica Extra");
+          autoTable(doc, {
+            startY: currentY,
+            head: [headers],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [43, 127, 255], textColor: [255, 255, 255], fontSize: 9 },
+            bodyStyles: { fontSize: 9 },
+            margin: { left: 20 },
+            tableWidth: 170,
+          });
+          currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+        };
 
-        const tableData = ex.series.map((serie) => {
-          const row: (string | number)[] = [serie.ordem, serie.reps_sugerido || "-"];
-          if (hasPeso) row.push(serie.peso_sugerido != null ? `${serie.peso_sugerido}kg` : "-");
-          if (hasTecnica) row.push(serie.tecnica || "-");
-          if (hasTecnicaExtra) row.push(serie.tecnica_extra || "-");
-          return row;
-        });
-
-        const headers = ["Série", "Reps"];
-        if (hasPeso) headers.push("kg");
-        if (hasTecnica) headers.push("TÉC");
-        if (hasTecnicaExtra) headers.push("Técnica Extra");
-
-        autoTable(doc, {
-          startY: currentY,
-          head: [headers],
-          body: tableData,
-          theme: "grid",
-          headStyles: { fillColor: [43, 127, 255], textColor: [255, 255, 255], fontSize: 9 },
-          bodyStyles: { fontSize: 9 },
-          margin: { left: 20 },
-          tableWidth: 170,
-        });
-
-        currentY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+        if (isBiSetFichaItem(item) && item.exercicioB) {
+          doc.setFontSize(11);
+          doc.text(`[BI-SET] ${item.exercicioA.nome} + ${item.exercicioB.nome}`, 20, currentY);
+          currentY += 8;
+          renderExercisePdf(item.exercicioA.nome, item.exercicioA.series);
+          renderExercisePdf(item.exercicioB.nome, item.exercicioB.series);
+        } else if (!isBiSetFichaItem(item)) {
+          renderExercisePdf(item.nome, item.series);
+        }
       });
 
       const pdfBlob = doc.output("blob");
@@ -475,8 +637,14 @@ export default function NovaFichaCoachPage() {
           </div>
         )}
 
+        {bisetToast && (
+          <div className="mb-3 px-3 py-2.5 bg-[#1a2d4a] border-l-[3px] border-brand rounded-lg text-xs text-text-primary">
+            {bisetToast}
+          </div>
+        )}
+
         <WorkoutPrescriptionSummary
-          exercises={exerciciosFicha}
+          items={exerciciosFicha}
           isMobile={isMobile}
           className="mb-4"
         />
@@ -512,14 +680,25 @@ export default function NovaFichaCoachPage() {
         ) : (
           <>
           <ExerciseList
-            exercises={exerciciosFicha}
+            items={exerciciosFicha}
+            catalog={exerciciosCatalogo}
             onReorder={handleReorder}
-              onUpdate={atualizarExercicio}
-              onDelete={removerExercicio}
-              onAddSet={adicionarSerie}
-              onUpdateSerie={atualizarSerie}
-              onDeleteSerie={removerSerie}
-            />
+            onUpdateSimple={atualizarExercicio}
+            onDeleteSimple={removerExercicioSimple}
+            onDuplicateSimple={duplicarExercicio}
+            onAddSetSimple={adicionarSerie}
+            onUpdateSerieSimple={atualizarSerie}
+            onDeleteSerieSimple={removerSerie}
+            onUpdateBiSetDescanso={atualizarBiSetDescanso}
+            onUpdateBiSetHalf={atualizarBiSetHalf}
+            onUpdateBiSetSerie={atualizarBiSetSerie}
+            onAddBiSetSerie={adicionarSerieBiSet}
+            onRemoveBiSetSerie={removerSerieBiSet}
+            onSelectBiSetPartner={selecionarParceiroBiSet}
+            onSwapBiSetPartner={trocarParceiroBiSet}
+            onUndoBiSet={desfazerBiSet}
+            onDeleteBiSet={removerGrupoBiSet}
+          />
             <button
               type="button"
               onClick={() => setModalExercicio(true)}

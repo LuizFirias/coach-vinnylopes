@@ -1,5 +1,6 @@
 import { supabaseClient } from '@/lib/supabaseClient';
 import { NutritionFood, NutritionFoodCategory } from './types';
+import { textIncludes } from '@/lib/utils/textNormalize';
 
 /**
  * Retorna todos os alimentos globais ativos da base AURON.
@@ -56,9 +57,7 @@ export async function searchFoods(
 
   // Filtragem insensível a acentos (ex: PAO acha PÃO)
   if (query) {
-    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const normalizedQuery = normalize(query);
-    foods = foods.filter(f => normalize(f.name).includes(normalizedQuery));
+    foods = foods.filter((f) => textIncludes(f.name, query));
   }
 
   return foods.sort((a, b) => a.name.localeCompare(b.name));

@@ -21,6 +21,8 @@ import Link from "next/link";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { CANONICAL_MUSCLE_GROUPS } from "@/lib/constants/muscle-groups";
+import { textEquals, textIncludes } from "@/lib/utils/textNormalize";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -38,14 +40,7 @@ interface Exercicio {
   tipo_exercicio?: string;
 }
 
-const GRUPOS_MUSCULARES = [
-  "Peito Superior", "Peito Médio", "Peito Inferior",
-  "Dorsais", "Trapézio", "Lombar",
-  "Ombro Anterior", "Ombro Lateral", "Ombro Posterior",
-  "Bíceps", "Tríceps", "Antebraço",
-  "Quadríceps", "Posterior (Isquiotibiais)", "Panturrilha",
-  "Glúteos", "Abdômen", "Oblíquos", "Cardio",
-];
+const GRUPOS_MUSCULARES = [...CANONICAL_MUSCLE_GROUPS];
 
 const EQUIPAMENTOS = [
   "Nenhum", "Banda de Resistência", "Banda de Suspensão", "Barra",
@@ -138,15 +133,14 @@ export default function BibliotecaExerciciosPage() {
   const filtrarExercicios = () => {
     let resultado = [...exercicios];
     if (searchTerm.trim()) {
-      const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      const normalizedQuery = normalize(searchTerm);
-      resultado = resultado.filter((ex) =>
-        normalize(ex.nome).includes(normalizedQuery) ||
-        normalize(ex.grupo_muscular).includes(normalizedQuery)
+      resultado = resultado.filter(
+        (ex) =>
+          textIncludes(ex.nome, searchTerm) ||
+          textIncludes(ex.grupo_muscular, searchTerm)
       );
     }
     if (grupoSelecionado) {
-      resultado = resultado.filter((ex) => ex.grupo_muscular === grupoSelecionado);
+      resultado = resultado.filter((ex) => textEquals(ex.grupo_muscular, grupoSelecionado));
     }
     setFiltrados(resultado);
   };

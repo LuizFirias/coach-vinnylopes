@@ -2,24 +2,40 @@
 
 import { useMemo } from "react";
 import { Barbell } from "@phosphor-icons/react";
-import type { ExercicioFicha } from "./types";
+import type { ExercicioFichaItem } from "@/lib/utils/biset";
+import { isBiSetFichaItem } from "@/lib/utils/biset";
 import { cn } from "@/lib/utils/cn";
 
 interface WorkoutPrescriptionSummaryProps {
-  exercises: ExercicioFicha[];
+  items: ExercicioFichaItem[];
   isMobile?: boolean;
   className?: string;
 }
 
 export function WorkoutPrescriptionSummary({
-  exercises,
+  items,
   isMobile = false,
   className,
 }: WorkoutPrescriptionSummaryProps) {
   const stats = useMemo(() => {
-    const totalSets = exercises.reduce((acc, ex) => acc + ex.series.length, 0);
-    return { exerciseCount: exercises.length, totalSets };
-  }, [exercises]);
+    let exerciseCount = 0;
+    let totalSets = 0;
+    for (const item of items) {
+      if (isBiSetFichaItem(item)) {
+        if (item.exercicioB) {
+          exerciseCount += 2;
+          totalSets += item.exercicioA.series.length;
+        } else {
+          exerciseCount += 1;
+          totalSets += item.exercicioA.series.length;
+        }
+      } else {
+        exerciseCount += 1;
+        totalSets += item.series.length;
+      }
+    }
+    return { exerciseCount, totalSets };
+  }, [items]);
 
   if (stats.exerciseCount === 0) return null;
 

@@ -3,11 +3,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightning, Minus, Plus, Info, CaretDown, LinkSimple } from '@phosphor-icons/react';
+import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightning, Minus, Plus, Info, CaretDown } from '@phosphor-icons/react';
 import { RestTimerOverlay } from '@/app/components/treino/execucao/RestTimerOverlay';
 import { VolumeProgressDots } from '@/app/components/treinos/VolumeProgressDots';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { CompletionShareScreen } from '@/app/components/workout/share/CompletionShareScreen';
+import { resolveCoachShareHandle } from '@/lib/utils/workoutShare';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
 import { VideoPlayerCard } from '@/app/components/treino/execucao/VideoPlayerCard';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
@@ -15,6 +16,20 @@ import { cn } from '@/lib/utils/cn';
 import { haptic } from '@/lib/utils/haptics';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { StudentTechniqueCard } from '@/app/components/workout/StudentTechniqueCard';
+import { BiSetGroupPreviewCard } from '@/app/components/treino/execucao/BiSetGroupPreviewCard';
+import type { WorkoutBlock } from '@/lib/utils/biset';
+import {
+  buildWorkoutBlocksFromConfig,
+  collectBibliotecaIds,
+  flattenExercicios,
+  calcTotalSetsFromBlocks,
+  calcSetsCompletosFromBlocks,
+  calcVolumeFromBlocks,
+  isBlockComplete,
+  firstIncompleteRodada,
+  countWorkoutBlocks,
+} from '@/lib/utils/biset';
+import { formatRestTime } from '@/lib/utils/restTime';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -29,21 +44,15 @@ interface ExercicioConfig {
   id: string;
   nome: string;
   descanso?: string;
+  descanso_segundos?: number;
   video_url?: string;
   gif_url?: string;
   observacoes?: string;
   series: SerieConfig[];
   biset_parceiro_id?: string;
-}
-
-interface ExercicioConfig {
-  id: string;
-  nome: string;
-  descanso?: string;
-  video_url?: string;
-  gif_url?: string;
-  observacoes?: string;
-  series: SerieConfig[];
+  tipo?: string;
+  exercicioA?: { exercicio_id: string; nome: string; series: SerieConfig[] };
+  exercicioB?: { exercicio_id: string; nome: string; series: SerieConfig[] };
 }
 
 interface SerieState {
@@ -73,9 +82,10 @@ interface VolumePoint {
   volume: number;
 }
 
-function estimateDurationMin(exercicios: ExercicioState[]): number {
-  const totalSets = exercicios.reduce((acc, ex) => acc + ex.series.length, 0);
-  return Math.max(15, Math.round(exercicios.length * 3 + totalSets * 2));
+function estimateDurationMinFromBlocks(blocks: WorkoutBlock[]): number {
+  const flat = flattenExercicios(blocks);
+  const totalSets = blocks.reduce((acc, b) => acc + (b.kind === 'simples' ? b.exercise.series.length : b.exercicioA.series.length), 0);
+  return Math.max(15, Math.round(countWorkoutBlocks(blocks) * 3 + totalSets * 2));
 }
 
 const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px 1fr 52px 44px 34px 34px 36px';
@@ -351,13 +361,14 @@ export default function ExecucaoTreinoPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [nomeRotina, setNomeRotina] = useState('Treino');
-  const [exercicios, setExercicios] = useState<ExercicioState[]>([]);
+  const [blocks, setBlocks] = useState<WorkoutBlock[]>([]);
+  const exercicios = flattenExercicios(blocks);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [volumeHistory, setVolumeHistory] = useState<VolumePoint[]>([]);
   const [showConfirmAbandon, setShowConfirmAbandon] = useState(false);
-  const [coachUsername, setCoachUsername] = useState('coach');
+  const [coachUsername, setCoachUsername] = useState('@auronfit');
   const [prsCount, setPrsCount] = useState(0);
 
   // Timer principal
@@ -373,9 +384,12 @@ export default function ExecucaoTreinoPage() {
   const [restDuration, setRestDuration] = useState(90);
   const restPendingCb = useRef<(() => void) | null>(null);
 
-  // Modal de execução (por exercício)
-  const [modalExIdx, setModalExIdx] = useState<number | null>(null);
-  const [modalSerieIdx, setModalSerieIdx] = useState(0);
+  // Modal de execução (por bloco)
+  const [modalBlockIdx, setModalBlockIdx] = useState<number | null>(null);
+  const [modalRodadaIdx, setModalRodadaIdx] = useState(0);
+  const [bisetFase, setBisetFase] = useState<'a' | 'b' | 'transicao' | null>(null);
+  const [bisetTransitionName, setBisetTransitionName] = useState<string | null>(null);
+  const [restTimerMeta, setRestTimerMeta] = useState<{ title?: string; subtitle?: string; subtitleHighlight?: string }>({});
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
   const [showSeriesHistory, setShowSeriesHistory] = useState(false);
@@ -383,14 +397,11 @@ export default function ExecucaoTreinoPage() {
   const [techniqueCardExpanded, setTechniqueCardExpanded] = useState(false);
 
   useEffect(() => {
-    if (modalExIdx !== null) {
+    if (modalBlockIdx !== null) {
       setShowSeriesHistory(false);
-      setTechniqueCardExpanded(modalSerieIdx === 0);
+      setTechniqueCardExpanded(modalRodadaIdx === 0);
     }
-  }, [modalExIdx, modalSerieIdx]);
-
-  // Bi-Set: estado de retorno após completar o exercício parceiro
-  const [bisetReturnState, setBisetReturnState] = useState<{ originExIdx: number; nextSerieIdx: number } | null>(null);
+  }, [modalBlockIdx, modalRodadaIdx, bisetFase]);
 
   // Termômetro de treino — feedback após finalização
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -413,14 +424,14 @@ export default function ExecucaoTreinoPage() {
 
   // Ref sempre atualizado — usado nos listeners de pagehide/visibilitychange
   const persistRef = useRef<{
-    exercicios: ExercicioState[];
+    blocks: WorkoutBlock[];
     timerStartAt: number | null;
     treinoIniciado: boolean;
     saved: boolean;
-  }>({ exercicios: [], timerStartAt: null, treinoIniciado: false, saved: false });
+  }>({ blocks: [], timerStartAt: null, treinoIniciado: false, saved: false });
 
   useEffect(() => {
-    persistRef.current = { exercicios, timerStartAt, treinoIniciado, saved };
+    persistRef.current = { blocks, timerStartAt, treinoIniciado, saved };
   });
 
   // ── Carregar ficha ──────────────────────────────────────────────────────────
@@ -452,8 +463,7 @@ export default function ExecucaoTreinoPage() {
       const exerciciosConfig: ExercicioConfig[] = config?.exercicios || [];
       setNomeRotina(fichaData.nome_rotina);
 
-      // Buscar grupos musculares e gifs da biblioteca
-      const exercicioIds = exerciciosConfig.map(ex => ex.id).filter(Boolean);
+      const exercicioIds = collectBibliotecaIds(exerciciosConfig);
       let gruposMusculares: Record<string, string> = {};
       let gifsExercicios: Record<string, string> = {};
       let videosBiblioteca: Record<string, string> = {};
@@ -511,58 +521,74 @@ export default function ExecucaoTreinoPage() {
         }
       }
 
-      const exerciciosState: ExercicioState[] = exerciciosConfig.map((ex) => {
-        const ultimo = ultimoPorExercicio[ex.id];
-        const seriesPrev = (ultimo?.dados_sessao as any)?.series || [];
-
-        return {
-          id: ex.id,
-          nome: ex.nome,
-          descanso: parseDescanso(ex.descanso),
-          video_url: videosBiblioteca[ex.id] || undefined,
-          gif_url: gifsExercicios[ex.id] || '',
-          observacoes: ex.observacoes,
-          grupo_muscular: gruposMusculares[ex.id] || '',
-          biset_parceiro_id: ex.biset_parceiro_id,
-          series: (ex.series || []).map((s, idx) => {
-            const prev = seriesPrev[idx];
-            const anterior = prev ? `${prev.peso_atual || 0}kg × ${prev.reps || 0}` : '—';
-            return {
-              ordem: s.ordem ?? idx + 1,
-              peso_atual: prev?.peso_atual ?? 0,
-              reps: s.reps,
-              tecnica: s.tecnica,
-              tecnica_extra: s.tecnica_extra,
-              completado: false,
-              anterior,
-            };
-          }),
-        };
+      const blocksState = buildWorkoutBlocksFromConfig(exerciciosConfig, {
+        gruposMusculares,
+        gifs: gifsExercicios,
+        videos: videosBiblioteca,
+        ultimoPorExercicio,
       });
 
-      // Restaurar estado salvo (se existir e for do mesmo dia)
+      const mergeSavedIntoBlocks = (base: WorkoutBlock[], savedFlat: ExercicioState[]): WorkoutBlock[] => {
+        let flatIdx = 0;
+        return base.map((block) => {
+          if (block.kind === 'simples') {
+            const savedEx = savedFlat[flatIdx];
+            flatIdx += 1;
+            if (!savedEx || savedEx.id !== block.exercise.id) return block;
+            return {
+              ...block,
+              exercise: {
+                ...block.exercise,
+                series: block.exercise.series.map((s, j) => {
+                  const savedS = savedEx.series[j];
+                  if (!savedS) return s;
+                  return { ...s, peso_atual: savedS.peso_atual ?? s.peso_atual, completado: savedS.completado ?? false };
+                }),
+              },
+            };
+          }
+          const savedA = savedFlat[flatIdx];
+          const savedB = savedFlat[flatIdx + 1];
+          flatIdx += 2;
+          if (!savedA || !savedB) return block;
+          return {
+            ...block,
+            exercicioA: {
+              ...block.exercicioA,
+              series: block.exercicioA.series.map((s, j) => {
+                const savedS = savedA.series[j];
+                if (!savedS) return s;
+                return { ...s, peso_atual: savedS.peso_atual ?? s.peso_atual, completado: savedS.completado ?? false };
+              }),
+            },
+            exercicioB: {
+              ...block.exercicioB,
+              series: block.exercicioB.series.map((s, j) => {
+                const savedS = savedB.series[j];
+                if (!savedS) return s;
+                return { ...s, peso_atual: savedS.peso_atual ?? s.peso_atual, completado: savedS.completado ?? false };
+              }),
+            },
+          };
+        });
+      };
+
       const storageKey = `treino_${uid}_${fichaId}`;
       const savedRaw = localStorage.getItem(storageKey);
       if (savedRaw) {
         try {
           const saved = JSON.parse(savedRaw);
-          if (saved.exercicios && Date.now() - (saved.timestamp || 0) < 86400000) {
-            const restored = exerciciosState.map((ex, i) => {
-              const savedEx = saved.exercicios[i];
-              if (!savedEx || savedEx.id !== ex.id) return ex;
-              return {
-                ...ex,
-                series: ex.series.map((s, j) => {
-                  const savedS = savedEx.series?.[j];
-                  if (!savedS) return s;
-                  return { ...s, peso_atual: savedS.peso_atual ?? s.peso_atual, completado: savedS.completado ?? false };
-                }),
-              };
-            });
-            setExercicios(restored);
+          if (Date.now() - (saved.timestamp || 0) < 86400000) {
+            const savedBlocks: WorkoutBlock[] | undefined = saved.blocks;
+            const savedFlat: ExercicioState[] | undefined = saved.exercicios;
+            const restored = savedBlocks
+              ? savedBlocks
+              : savedFlat
+                ? mergeSavedIntoBlocks(blocksState, savedFlat)
+                : blocksState;
+            setBlocks(restored);
             setTreinoIniciado(true);
             setTimerStartAt(saved.timerStartAt || Date.now());
-            // Garantir que o pointer existe (para o banner global)
             localStorage.setItem('treino_ativo_pointer', JSON.stringify({
               fichaId,
               userId: uid,
@@ -570,14 +596,14 @@ export default function ExecucaoTreinoPage() {
             }));
           } else {
             localStorage.removeItem(storageKey);
-            setExercicios(exerciciosState);
+            setBlocks(blocksState);
           }
         } catch {
           localStorage.removeItem(storageKey);
-          setExercicios(exerciciosState);
+          setBlocks(blocksState);
         }
       } else {
-        setExercicios(exerciciosState);
+        setBlocks(blocksState);
       }
 
       // Buscar coach do aluno para obter username
@@ -591,13 +617,13 @@ export default function ExecucaoTreinoPage() {
         if (coachData?.coach_id) {
           const { data: profileData } = await supabaseClient
             .from('profiles')
-            .select('coaching_reference')
+            .select('coaching_reference, full_name')
             .eq('id', coachData.coach_id)
             .single();
 
-          if (profileData?.coaching_reference) {
-            setCoachUsername(profileData.coaching_reference);
-          }
+          setCoachUsername(
+            resolveCoachShareHandle(profileData?.coaching_reference, profileData?.full_name),
+          );
         }
       }
     } finally {
@@ -628,8 +654,8 @@ export default function ExecucaoTreinoPage() {
     if (!treinoIniciado || saved) return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const totalSets = calcTotalSets(exercicios);
-      const completedSets = calcSetsCompletos(exercicios);
+      const totalSets = calcTotalSetsFromBlocks(blocks);
+      const completedSets = calcSetsCompletosFromBlocks(blocks);
 
       if (completedSets < totalSets) {
         e.preventDefault();
@@ -640,7 +666,7 @@ export default function ExecucaoTreinoPage() {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [treinoIniciado, exercicios, saved]);
+  }, [treinoIniciado, blocks, saved]);
 
   // ── Persistência de estado do treino ────────────────────────────────────────
 
@@ -650,11 +676,12 @@ export default function ExecucaoTreinoPage() {
     if (!savedKey || !treinoIniciado || saved) return;
 
     localStorage.setItem(savedKey, JSON.stringify({
+      blocks,
       exercicios,
       timerStartAt,
       timestamp: Date.now(),
     }));
-  }, [savedKey, exercicios, treinoIniciado, timerStartAt, saved]);
+  }, [savedKey, blocks, exercicios, treinoIniciado, timerStartAt, saved]);
 
   // Limpar localStorage imediatamente quando treino é salvo com sucesso
   useEffect(() => {
@@ -669,10 +696,11 @@ export default function ExecucaoTreinoPage() {
     if (!fichaId || !userId) return;
 
     const saveNow = () => {
-      const { exercicios: exs, timerStartAt: tsa, treinoIniciado: ti, saved: sv } = persistRef.current;
+      const { blocks: blks, timerStartAt: tsa, treinoIniciado: ti, saved: sv } = persistRef.current;
       if (!ti || sv) return;
       localStorage.setItem(`treino_${userId}_${fichaId}`, JSON.stringify({
-        exercicios: exs,
+        blocks: blks,
+        exercicios: flattenExercicios(blks),
         timerStartAt: tsa,
         timestamp: Date.now(),
       }));
@@ -712,7 +740,12 @@ export default function ExecucaoTreinoPage() {
     };
   }, [restActive, restEndAt]);
 
-  function iniciarRest(durationSecs: number, onDone: () => void) {
+  function iniciarRest(
+    durationSecs: number,
+    onDone: () => void,
+    meta?: { title?: string; subtitle?: string; subtitleHighlight?: string }
+  ) {
+    setRestTimerMeta(meta || {});
     const endAt = Date.now() + durationSecs * 1000;
     restPendingCb.current = onDone;
     setRestDuration(durationSecs);
@@ -754,6 +787,7 @@ export default function ExecucaoTreinoPage() {
     // Salvar imediatamente — não esperar o useEffect (race condition em mobile)
     if (fichaId && userId) {
       localStorage.setItem(`treino_${userId}_${fichaId}`, JSON.stringify({
+        blocks,
         exercicios,
         timerStartAt: agora,
         timestamp: agora,
@@ -769,53 +803,115 @@ export default function ExecucaoTreinoPage() {
     setTimerStartAt(agora);
     haptic('medium');
     // Abre modal do primeiro exercício
-    abrirModalExercicio(0);
+    abrirModalBlock(0);
   };
 
-  function abrirModalExercicio(exIdx: number) {
-    if (exIdx < 0 || exIdx >= exercicios.length) return;
-    const ex = exercicios[exIdx];
-    // Encontrar primeira série não completada
-    const proxSerieIdx = ex.series.findIndex(s => !s.completado);
-    const serieIdx = proxSerieIdx >= 0 ? proxSerieIdx : 0;
-    setModalExIdx(exIdx);
-    setModalSerieIdx(serieIdx);
-    const carga = ex.series[serieIdx]?.peso_atual || 0;
-    setModalCarga(carga);
-    setModalCargaStr(carga > 0 ? String(carga) : '');
+  function abrirModalBlock(blockIdx: number) {
+    if (blockIdx < 0 || blockIdx >= blocks.length) return;
+    const block = blocks[blockIdx];
+    let rodadaIdx = 0;
+    let fase: 'a' | 'b' | null = null;
+
+    if (block.kind === 'simples') {
+      const prox = block.exercise.series.findIndex((s) => !s.completado);
+      rodadaIdx = prox >= 0 ? prox : 0;
+      const carga = block.exercise.series[rodadaIdx]?.peso_atual || 0;
+      setModalBlockIdx(blockIdx);
+      setModalRodadaIdx(rodadaIdx);
+      setBisetFase(null);
+      setModalCarga(carga);
+      setModalCargaStr(carga > 0 ? String(carga) : '');
+    } else {
+      rodadaIdx = firstIncompleteRodada(block);
+      const aDone = block.exercicioA.series[rodadaIdx]?.completado;
+      fase = aDone ? 'b' : 'a';
+      const ex = fase === 'a' ? block.exercicioA : block.exercicioB;
+      const carga = ex.series[rodadaIdx]?.peso_atual || 0;
+      setModalBlockIdx(blockIdx);
+      setModalRodadaIdx(rodadaIdx);
+      setBisetFase(fase);
+      setModalCarga(carga);
+      setModalCargaStr(carga > 0 ? String(carga) : '');
+    }
     setShowSeriesHistory(false);
   }
 
-  // ── Ações de séries ─────────────────────────────────────────────────────────
-
   const handlePesoChange = useCallback((exercicioId: string, serieOrdem: number, peso: number) => {
-    setExercicios(prev => prev.map(ex =>
-      ex.id !== exercicioId ? ex : {
-        ...ex,
-        series: ex.series.map(s => s.ordem !== serieOrdem ? s : { ...s, peso_atual: peso })
-      }
-    ));
+    setBlocks((prev) =>
+      prev.map((block) => {
+        if (block.kind === 'simples') {
+          if (block.exercise.id !== exercicioId) return block;
+          return {
+            ...block,
+            exercise: {
+              ...block.exercise,
+              series: block.exercise.series.map((s) =>
+                s.ordem !== serieOrdem ? s : { ...s, peso_atual: peso }
+              ),
+            },
+          };
+        }
+        const updateHalf = (half: 'exercicioA' | 'exercicioB') => {
+          if (block[half].id !== exercicioId) return block;
+          return {
+            ...block,
+            [half]: {
+              ...block[half],
+              series: block[half].series.map((s) =>
+                s.ordem !== serieOrdem ? s : { ...s, peso_atual: peso }
+              ),
+            },
+          };
+        };
+        const updatedA = updateHalf('exercicioA');
+        if (updatedA !== block) return updatedA;
+        return updateHalf('exercicioB');
+      })
+    );
   }, []);
 
   const handleCheck = useCallback((exercicioId: string, serieOrdem: number) => {
     if (!treinoIniciado) return;
-    setExercicios(prev => {
-      const exIdx = prev.findIndex(ex => ex.id === exercicioId);
-      if (exIdx === -1) return prev;
-      const ex = prev[exIdx];
-      const serieIdx = ex.series.findIndex(s => s.ordem === serieOrdem);
-      if (serieIdx === -1) return prev;
-      const toggled = !ex.series[serieIdx].completado;
-      const next = prev.map((e, i) => i !== exIdx ? e : {
-        ...e,
-        series: e.series.map(s => s.ordem !== serieOrdem ? s : { ...s, completado: toggled })
+    setBlocks((prev) => {
+      let toggled = false;
+      let descanso = 90;
+      const next = prev.map((block) => {
+        if (block.kind === 'simples') {
+          if (block.exercise.id !== exercicioId) return block;
+          const serieIdx = block.exercise.series.findIndex((s) => s.ordem === serieOrdem);
+          if (serieIdx === -1) return block;
+          toggled = !block.exercise.series[serieIdx].completado;
+          descanso = block.exercise.descanso;
+          return {
+            ...block,
+            exercise: {
+              ...block.exercise,
+              series: block.exercise.series.map((s) =>
+                s.ordem !== serieOrdem ? s : { ...s, completado: toggled }
+              ),
+            },
+          };
+        }
+        for (const half of ['exercicioA', 'exercicioB'] as const) {
+          if (block[half].id !== exercicioId) continue;
+          const serieIdx = block[half].series.findIndex((s) => s.ordem === serieOrdem);
+          if (serieIdx === -1) return block;
+          toggled = !block[half].series[serieIdx].completado;
+          descanso = block.descanso;
+          return {
+            ...block,
+            [half]: {
+              ...block[half],
+              series: block[half].series.map((s) =>
+                s.ordem !== serieOrdem ? s : { ...s, completado: toggled }
+              ),
+            },
+          };
+        }
+        return block;
       });
       if (toggled) {
         haptic('success');
-        const temProxima = serieIdx + 1 < ex.series.length;
-        if (temProxima) {
-          iniciarRest(ex.descanso, () => {});
-        }
       } else {
         haptic('light');
       }
@@ -825,96 +921,147 @@ export default function ExecucaoTreinoPage() {
 
   // ── Ações do modal ───────────────────────────────────────────────────────────
 
-  function concluirSerieModal() {
-    if (modalExIdx === null) return;
-    const ex = exercicios[modalExIdx];
-    const serie = ex.series[modalSerieIdx];
-
-    // Computar novo estado diretamente (evita double setState) e salvar de forma síncrona
-    const newExercicios = exercicios.map((e, i) => i !== modalExIdx ? e : {
-      ...e,
-      series: e.series.map(s => s.ordem !== serie.ordem ? s : { ...s, peso_atual: modalCarga, completado: true })
-    });
-    setExercicios(newExercicios);
-
+  function persistBlocksNow(nextBlocks: WorkoutBlock[]) {
     if (fichaId && userId) {
       localStorage.setItem(`treino_${userId}_${fichaId}`, JSON.stringify({
-        exercicios: newExercicios,
+        blocks: nextBlocks,
+        exercicios: flattenExercicios(nextBlocks),
         timerStartAt,
         timestamp: Date.now(),
       }));
     }
+  }
 
-    haptic('success');
+  function concluirSerieModal() {
+    if (modalBlockIdx === null) return;
+    const block = blocks[modalBlockIdx];
+    if (!block) return;
 
-    const isUltimaSerie = modalSerieIdx >= ex.series.length - 1;
-    const isUltimoExercicio = modalExIdx >= exercicios.length - 1;
+    if (block.kind === 'simples') {
+      const ex = block.exercise;
+      const serie = ex.series[modalRodadaIdx];
+      const newBlocks = blocks.map((b, i) => {
+        if (i !== modalBlockIdx || b.kind !== 'simples') return b;
+        return {
+          ...b,
+          exercise: {
+            ...b.exercise,
+            series: b.exercise.series.map((s, j) =>
+              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true }
+            ),
+          },
+        };
+      });
+      setBlocks(newBlocks);
+      persistBlocksNow(newBlocks);
+      haptic('success');
 
-    // ── Lógica de Bi-Set ────────────────────────────────────────────────────
-    const isBiSet = serie.tecnica_extra === 'Bi-Set';
-    if (isBiSet && ex.biset_parceiro_id) {
-      const partnerExIdx = exercicios.findIndex(e => e.id === ex.biset_parceiro_id);
-      if (partnerExIdx >= 0) {
-        const partnerEx = exercicios[partnerExIdx];
-        if (bisetReturnState === null) {
-          // Fase A → ir para o Exercício B (sem descanso entre A e B)
-          const partnerSerieIdx = partnerEx.series.findIndex(s => !s.completado);
-          const targetSerieIdx = partnerSerieIdx >= 0 ? partnerSerieIdx : 0;
-          // Salvar estado de retorno para voltar a A na próxima série
-          if (!isUltimaSerie) {
-            setBisetReturnState({ originExIdx: modalExIdx, nextSerieIdx: modalSerieIdx + 1 });
-          }
-          const nextCarga = partnerEx.series[targetSerieIdx]?.peso_atual || 0;
-          setModalExIdx(partnerExIdx);
-          setModalSerieIdx(targetSerieIdx);
-          setModalCarga(nextCarga);
-          setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
-          setShowSeriesHistory(false);
-          return;
-        } else {
-          // Fase B → descanso e depois volta para Exercício A na próxima série
-          const { originExIdx, nextSerieIdx } = bisetReturnState;
-          setBisetReturnState(null);
-          iniciarRest(ex.descanso, () => {
-            const originEx = exercicios[originExIdx];
-            if (nextSerieIdx < originEx.series.length) {
-              const nextCarga = originEx.series[nextSerieIdx]?.peso_atual || 0;
-              setModalExIdx(originExIdx);
-              setModalSerieIdx(nextSerieIdx);
-              setModalCarga(nextCarga);
-              setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
-              setShowSeriesHistory(false);
-            } else {
-              // Todas as séries de A concluídas — avançar para próximo exercício
-              const proxExIdx = isUltimoExercicio ? null : modalExIdx + 1;
-              if (proxExIdx !== null) abrirModalExercicio(proxExIdx);
-              else setModalExIdx(null);
-            }
-          });
+      const isUltimaSerie = modalRodadaIdx >= ex.series.length - 1;
+      const isUltimoBloco = modalBlockIdx >= blocks.length - 1;
+
+      if (isUltimaSerie) {
+        if (isUltimoBloco) {
+          setModalBlockIdx(null);
           return;
         }
+        iniciarRest(ex.descanso, () => abrirModalBlock(modalBlockIdx + 1), {
+          title: 'Descanso',
+        });
+      } else {
+        const prox = modalRodadaIdx + 1;
+        iniciarRest(ex.descanso, () => {
+          const nextCarga = ex.series[prox]?.peso_atual || modalCarga;
+          setModalRodadaIdx(prox);
+          setModalCarga(nextCarga);
+          setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+        });
       }
+      return;
     }
-    // ────────────────────────────────────────────────────────────────────────
 
-    if (isUltimaSerie) {
-      // Último exercício → fechar modal
-      if (isUltimoExercicio) {
-        setModalExIdx(null);
-        return;
-      }
-      // Próximo exercício
-      const proxExIdx = modalExIdx + 1;
-      iniciarRest(ex.descanso, () => abrirModalExercicio(proxExIdx));
-    } else {
-      // Próxima série
-      const proxSerieIdx = modalSerieIdx + 1;
-      iniciarRest(ex.descanso, () => {
-        const nextCarga = ex.series[proxSerieIdx]?.peso_atual || modalCarga;
-        setModalSerieIdx(proxSerieIdx);
+    // Bi-Set
+    const bisetBlock = block;
+    const totalRodadas = bisetBlock.exercicioA.series.length;
+    const isUltimaRodada = modalRodadaIdx >= totalRodadas - 1;
+    const isUltimoBloco = modalBlockIdx >= blocks.length - 1;
+
+    if (bisetFase === 'a') {
+      const newBlocks = blocks.map((b, i) => {
+        if (i !== modalBlockIdx || b.kind !== 'biset') return b;
+        return {
+          ...b,
+          exercicioA: {
+            ...b.exercicioA,
+            series: b.exercicioA.series.map((s, j) =>
+              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true }
+            ),
+          },
+        };
+      });
+      setBlocks(newBlocks);
+      persistBlocksNow(newBlocks);
+      haptic('success');
+
+      const bSerie = bisetBlock.exercicioB.series[modalRodadaIdx];
+      const nextCarga = bSerie?.peso_atual || 0;
+      setBisetTransitionName(bisetBlock.exercicioB.nome);
+      setBisetFase('transicao');
+      setTimeout(() => {
+        setBisetFase('b');
+        setBisetTransitionName(null);
         setModalCarga(nextCarga);
         setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+      }, 300);
+      return;
+    }
+
+    if (bisetFase === 'b') {
+      const newBlocks = blocks.map((b, i) => {
+        if (i !== modalBlockIdx || b.kind !== 'biset') return b;
+        return {
+          ...b,
+          exercicioB: {
+            ...b.exercicioB,
+            series: b.exercicioB.series.map((s, j) =>
+              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true }
+            ),
+          },
+        };
       });
+      setBlocks(newBlocks);
+      persistBlocksNow(newBlocks);
+      haptic('success');
+
+      const descanso = bisetBlock.descanso;
+      const nextBlock = blocks[modalBlockIdx + 1];
+      const nextBlockLabel = nextBlock
+        ? (nextBlock.kind === 'simples' ? nextBlock.exercise.nome : nextBlock.exercicioA.nome)
+        : undefined;
+
+      if (isUltimaRodada) {
+        setRestTimerMeta({
+          title: 'Descanso do Bi-Set',
+          subtitle: nextBlockLabel ? `Próximo exercício: ${nextBlockLabel}` : undefined,
+          subtitleHighlight: 'Bi-Set concluído ✓',
+        });
+        iniciarRest(descanso, () => {
+          if (isUltimoBloco) setModalBlockIdx(null);
+          else abrirModalBlock(modalBlockIdx + 1);
+        });
+      } else {
+        const proxRodada = modalRodadaIdx + 1;
+        setRestTimerMeta({
+          title: 'Descanso do Bi-Set',
+          subtitle: `Próxima rodada: ${bisetBlock.exercicioA.nome} · série ${proxRodada + 1}/${totalRodadas}`,
+        });
+        iniciarRest(descanso, () => {
+          const carga = bisetBlock.exercicioA.series[proxRodada]?.peso_atual || 0;
+          setModalRodadaIdx(proxRodada);
+          setBisetFase('a');
+          setModalCarga(carga);
+          setModalCargaStr(carga > 0 ? String(carga) : '');
+        });
+      }
     }
   }
 
@@ -1009,10 +1156,10 @@ export default function ExecucaoTreinoPage() {
       localStorage.removeItem('treino_ativo_pointer');
     }
     setTreinoIniciado(false);
-    setExercicios([]);
+    setBlocks([]);
     setElapsed(0);
     setTimerStartAt(null);
-    setModalExIdx(null);
+    setModalBlockIdx(null);
     setRestActive(false);
     setShowConfirmAbandon(false);
     haptic('light');
@@ -1029,8 +1176,8 @@ export default function ExecucaoTreinoPage() {
   }
 
   if (saved) {
-    const volume = calcVolume(exercicios);
-    const sets = calcSetsCompletos(exercicios);
+    const volume = calcVolumeFromBlocks(blocks);
+    const sets = calcSetsCompletosFromBlocks(blocks);
 
     return (
       <CompletionShareScreen
@@ -1044,13 +1191,27 @@ export default function ExecucaoTreinoPage() {
     );
   }
 
-  const volume = calcVolume(exercicios);
-  const setsCompletos = calcSetsCompletos(exercicios);
-  const totalSets = calcTotalSets(exercicios);
+  const volume = calcVolumeFromBlocks(blocks);
+  const setsCompletos = calcSetsCompletosFromBlocks(blocks);
+  const totalSets = calcTotalSetsFromBlocks(blocks);
+  const blockCount = countWorkoutBlocks(blocks);
 
-  // Modal exercício atual
-  const modalEx = modalExIdx !== null ? exercicios[modalExIdx] : null;
-  const modalSerie = modalEx?.series[modalSerieIdx];
+  const modalBlock = modalBlockIdx !== null ? blocks[modalBlockIdx] : null;
+  const modalIsBiSet = modalBlock?.kind === 'biset';
+  const modalEx = modalBlock
+    ? modalBlock.kind === 'simples'
+      ? modalBlock.exercise
+      : bisetFase === 'b' || bisetFase === 'transicao'
+        ? modalBlock.exercicioB
+        : modalBlock.exercicioA
+    : null;
+  const modalSerie = modalEx?.series[modalRodadaIdx];
+  const modalTotalRodadas = modalBlock
+    ? modalBlock.kind === 'simples'
+      ? modalBlock.exercise.series.length
+      : modalBlock.exercicioA.series.length
+    : 0;
+  const modalPartnerEx = modalBlock?.kind === 'biset' ? modalBlock.exercicioB : null;
 
   const hasHistorico = exercicios.some((ex) =>
     ex.series.some((s) => s.anterior && s.anterior !== '—')
@@ -1082,7 +1243,7 @@ export default function ExecucaoTreinoPage() {
               <p className="text-[11px] text-text-muted mt-0.5">{setsCompletos}/{totalSets} sets</p>
             ) : (
               <p className="text-[11px] text-text-muted mt-0.5">
-                {exercicios.length} exercícios · Est. {estimateDurationMin(exercicios)} min
+                {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
               </p>
             )}
           </div>
@@ -1128,7 +1289,7 @@ export default function ExecucaoTreinoPage() {
                 </Link>
                 <h1 className="text-xl font-bold text-text-primary">{nomeRotina}</h1>
                 <p className="text-[13px] text-text-muted mt-1">
-                  {exercicios.length} exercícios · Est. {estimateDurationMin(exercicios)} min
+                  {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
                 </p>
                 <VolumeProgressDots sessionsCompleted={sessionsCompleted} className="mt-5" />
                 <button
@@ -1168,7 +1329,7 @@ export default function ExecucaoTreinoPage() {
                   <ArrowLeft size={18} className="text-text-secondary" />
                   <span className="text-sm font-semibold text-text-primary">Exercícios</span>
                 </div>
-                <span className="text-xs text-text-muted">{exercicios.length} itens</span>
+                <span className="text-xs text-text-muted">{blockCount} blocos</span>
               </div>
             )}
 
@@ -1178,7 +1339,10 @@ export default function ExecucaoTreinoPage() {
                 <p className="text-xs text-success font-medium flex-1">Treino em andamento</p>
                 <button
                   type="button"
-                  onClick={() => abrirModalExercicio(exercicios.findIndex(ex => ex.series.some(s => !s.completado)))}
+                  onClick={() => {
+                    const idx = blocks.findIndex((b) => !isBlockComplete(b));
+                    abrirModalBlock(idx >= 0 ? idx : 0);
+                  }}
                   className="text-[10px] font-semibold text-brand hover:underline"
                 >
                   Retomar →
@@ -1187,20 +1351,35 @@ export default function ExecucaoTreinoPage() {
             )}
 
             <div className="flex flex-col gap-2.5">
-              {exercicios.map((ex, index) => (
+              {blocks.map((block, index) => (
                 <div
-                  key={ex.id}
+                  key={block.kind === 'simples' ? block.exercise.id : block.id}
                   className={index > 0 ? 'border-t border-dashed border-surface-2 pt-2.5' : undefined}
                 >
-                  <ExercicioCard
-                    exercicio={ex}
-                    treinoIniciado={treinoIniciado}
-                    showAnteriorCol={hasHistorico}
-                    isDesktop={isDesktop}
-                    onPesoChange={(ordem, peso) => handlePesoChange(ex.id, ordem, peso)}
-                    onCheck={(ordem) => handleCheck(ex.id, ordem)}
-                    onVideoOpen={setVideoUrl}
-                  />
+                  {block.kind === 'simples' ? (
+                    <ExercicioCard
+                      exercicio={block.exercise}
+                      treinoIniciado={treinoIniciado}
+                      showAnteriorCol={hasHistorico}
+                      isDesktop={isDesktop}
+                      onPesoChange={(ordem, peso) => handlePesoChange(block.exercise.id, ordem, peso)}
+                      onCheck={(ordem) => handleCheck(block.exercise.id, ordem)}
+                      onVideoOpen={setVideoUrl}
+                    />
+                  ) : (
+                    <BiSetGroupPreviewCard
+                      block={block}
+                      blockIdx={index}
+                      treinoIniciado={treinoIniciado}
+                      showAnteriorCol={hasHistorico}
+                      gridCols={getSeriesGridCols(hasHistorico, isDesktop)}
+                      onPesoChangeA={(ordem, peso) => handlePesoChange(block.exercicioA.id, ordem, peso)}
+                      onPesoChangeB={(ordem, peso) => handlePesoChange(block.exercicioB.id, ordem, peso)}
+                      onCheckA={(ordem) => handleCheck(block.exercicioA.id, ordem)}
+                      onCheckB={(ordem) => handleCheck(block.exercicioB.id, ordem)}
+                      onVideoOpen={setVideoUrl}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -1209,7 +1388,7 @@ export default function ExecucaoTreinoPage() {
       </div>
 
       {/* ── Rest Timer: bottom bar (só quando o modal de exercício está fechado) ── */}
-      {restActive && modalExIdx === null && (
+      {restActive && modalBlockIdx === null && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-1 border-t border-border-subtle shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
           <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center gap-2">
             <button
@@ -1398,45 +1577,79 @@ export default function ExecucaoTreinoPage() {
               total={restDuration}
               expired={restExpired}
               isDesktop={isDesktop}
+              title={restTimerMeta.title}
+              subtitle={restTimerMeta.subtitle}
+              subtitleHighlight={restTimerMeta.subtitleHighlight}
               onAddSeconds={restAddSecs}
               onSkip={restSkip}
               onAdvance={restAdvance}
             />
           )}
 
+          {bisetTransitionName && (
+            <div className="absolute inset-0 z-[55] flex flex-col items-center justify-center bg-[#0d0d0d] animate-in fade-in duration-300">
+              <p className="text-brand text-2xl font-bold">↓</p>
+              <p className="text-xl font-bold text-text-primary mt-1">{bisetTransitionName}</p>
+              <p className="text-xs text-[#7a8aab] mt-1">agora</p>
+            </div>
+          )}
+
           <div className="w-full h-0.5 bg-surface-2 flex-shrink-0">
             <div
               className="h-full bg-brand transition-all duration-300"
-              style={{ width: `${((modalSerieIdx + 1) / modalEx.series.length) * 100}%` }}
+              style={{ width: `${((modalRodadaIdx + 1) / modalTotalRodadas) * 100}%` }}
             />
           </div>
 
           <header className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 bg-surface-0 border-b border-surface-2 flex-shrink-0 pt-safe-top">
             <button
               type="button"
-              onClick={() => setModalExIdx(null)}
+              onClick={() => setModalBlockIdx(null)}
               className="w-9 h-9 rounded-lg bg-surface-1 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0"
               aria-label="Fechar execução"
             >
               <X size={20} />
             </button>
-            <h2 className="flex-1 min-w-0 text-base font-bold text-text-primary leading-tight truncate">
-              {toTitleCase(modalEx.nome)}
-            </h2>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold text-text-primary leading-tight truncate">
+                {toTitleCase(modalEx.nome)}
+                {modalIsBiSet && (
+                  <span className="ml-1.5 inline-block text-[10px] font-bold uppercase text-brand bg-[#1a2d4a] rounded px-1.5 py-0.5 align-middle">
+                    BI-SET {bisetFase === 'b' ? 'B/B' : 'A/B'}
+                  </span>
+                )}
+              </h2>
+            </div>
             <div className="text-right shrink-0">
               <p className="text-xs text-text-muted tabular-nums">
-                {(modalExIdx ?? 0) + 1}/{exercicios.length} · Série {modalSerieIdx + 1}/{modalEx.series.length}
+                Ex. {(modalBlockIdx ?? 0) + 1}/{blockCount}
+                {modalIsBiSet
+                  ? ` · Rodada ${modalRodadaIdx + 1}/${modalTotalRodadas} · A→B`
+                  : ` · Série ${modalRodadaIdx + 1}/${modalTotalRodadas}`}
               </p>
-              {modalEx.biset_parceiro_id && (
-                <p className="text-[10px] text-brand flex items-center justify-end gap-1 mt-0.5">
-                  <LinkSimple size={11} />
-                  Bi-Set {bisetReturnState !== null ? "← B" : "→ B"}
-                </p>
-              )}
             </div>
           </header>
 
           <div className="flex-1 overflow-y-auto pb-36">
+            {modalIsBiSet && modalPartnerEx && bisetFase === 'a' && (
+              <div className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg bg-[#0f1a2e] border-l-[3px] border-brand">
+                <p className="text-xs text-[#7a8aab]">
+                  ↓ Em seguida: {modalPartnerEx.nome} · {modalPartnerEx.series[modalRodadaIdx]?.reps} reps
+                  {modalPartnerEx.series[modalRodadaIdx]?.peso_atual
+                    ? ` · ${modalPartnerEx.series[modalRodadaIdx]?.peso_atual} kg`
+                    : ''}
+                </p>
+              </div>
+            )}
+
+            {modalIsBiSet && bisetFase === 'b' && modalBlock?.kind === 'biset' && (
+              <div className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg bg-[#0f1a2e] border-l-[3px] border-brand">
+                <p className="text-xs text-[#7a8aab]">
+                  ⊙ Após esta série: {formatRestTime(modalBlock.descanso)} de descanso
+                  {modalRodadaIdx < modalTotalRodadas - 1 ? ', depois repete' : ''}
+                </p>
+              </div>
+            )}
             {/* GIF de demonstração (vídeo fica após o histórico) */}
             {modalEx.gif_url && !modalEx.video_url && (
               <div className="px-4 mt-4 mb-4">
@@ -1615,6 +1828,34 @@ export default function ExecucaoTreinoPage() {
               </button>
               {showSeriesHistory && (
                 <div className="bg-[#141414] rounded-[10px] overflow-hidden border border-[#1e1e1e]">
+                  {modalIsBiSet && modalBlock?.kind === 'biset' ? (
+                    <div className="p-3 space-y-3">
+                      {modalBlock.exercicioA.series.map((_, rodadaIdx) => {
+                        const aSerie = modalBlock.exercicioA.series[rodadaIdx];
+                        const bSerie = modalBlock.exercicioB.series[rodadaIdx];
+                        if (!aSerie || !bSerie) return null;
+                        const rows = [
+                          { label: 'A', nome: modalBlock.exercicioA.nome, s: aSerie, color: 'text-brand' },
+                          { label: 'B', nome: modalBlock.exercicioB.nome, s: bSerie, color: 'text-[#7a8aab]' },
+                        ];
+                        return (
+                          <div key={rodadaIdx} className={rodadaIdx > 0 ? 'pt-3 border-t border-dashed border-[#1e1e1e]' : ''}>
+                            <p className="text-[10px] font-semibold uppercase text-text-disabled mb-2">Rodada {rodadaIdx + 1}</p>
+                            {rows.map(({ label, nome, s, color }) => (
+                              <div key={label} className="flex items-center justify-between py-1 text-xs">
+                                <span className="text-text-secondary truncate flex-1">{nome}</span>
+                                <span className="text-text-muted mx-2">{s.anterior || '—'}</span>
+                                <span className="font-bold tabular-nums">{s.peso_atual ? `${s.peso_atual}kg` : '—'}</span>
+                                <span className="text-accent mx-2 tabular-nums">{s.reps}</span>
+                                <span className={cn('text-[10px]', color)}>({label})</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <>
                   <div className="grid items-center px-3 py-2 border-b border-[#1e1e1e]" style={{ gridTemplateColumns: GRID_COLS_HISTORICO }}>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">Set</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted pl-2">Ant.</span>
@@ -1624,7 +1865,7 @@ export default function ExecucaoTreinoPage() {
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">T2</span>
                   </div>
                   {modalEx.series.map((s, idx) => {
-                    const isAtual = idx === modalSerieIdx;
+                    const isAtual = idx === modalRodadaIdx;
                     return (
                       <div
                         key={s.ordem}
@@ -1633,7 +1874,6 @@ export default function ExecucaoTreinoPage() {
                           s.completado ? 'bg-success/5' : isAtual ? 'bg-brand/5' : ''
                         )} style={{ gridTemplateColumns: GRID_COLS_HISTORICO }}
                       >
-                        {/* SET */}
                         <div className="flex justify-center">
                           <span className={cn(
                             'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold font-mono',
@@ -1642,32 +1882,18 @@ export default function ExecucaoTreinoPage() {
                             {idx + 1}
                           </span>
                         </div>
-
-                        {/* ANT */}
                         <span className="text-[11px] font-mono text-text-muted truncate pl-2">{s.anterior || '—'}</span>
-
-                        {/* PESO */}
                         <span className="text-[15px] font-bold font-mono tabular-nums text-text-primary text-right">
                           {isAtual ? (modalCarga ? `${modalCarga}kg` : '—') : (s.peso_atual ? `${s.peso_atual}kg` : '—')}
                         </span>
-
-                        {/* REPS */}
-                        <span className="text-[13px] font-semibold font-mono tabular-nums text-accent text-center">
-                          {s.reps}
-                        </span>
-
-                        {/* T1 */}
-                        <span className="text-[11px] font-medium text-text-secondary text-center">
-                          {duasLetrasTenica(s.tecnica) || '—'}
-                        </span>
-
-                        {/* T2 */}
-                        <span className="text-[11px] font-medium text-accent text-center">
-                          {abreviarTecnica(s.tecnica_extra) || '—'}
-                        </span>
+                        <span className="text-[13px] font-semibold font-mono tabular-nums text-accent text-center">{s.reps}</span>
+                        <span className="text-[11px] font-medium text-text-secondary text-center">{duasLetrasTenica(s.tecnica) || '—'}</span>
+                        <span className="text-[11px] font-medium text-accent text-center">{abreviarTecnica(s.tecnica_extra) || '—'}</span>
                       </div>
                     );
                   })}
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1693,20 +1919,34 @@ export default function ExecucaoTreinoPage() {
             <button
               type="button"
               onClick={concluirSerieModal}
-              disabled={restActive}
+              disabled={restActive || bisetFase === 'transicao'}
               className="w-full min-h-[52px] bg-brand text-text-on-brand rounded-[10px] flex items-center justify-center gap-2 text-[15px] font-bold shadow-lg shadow-brand/30 hover:opacity-90 active:bg-brand/90 transition-all disabled:opacity-40"
             >
               <Check size={18} weight="bold" />
-              {modalSerieIdx >= modalEx.series.length - 1
-                ? modalExIdx !== null && modalExIdx >= exercicios.length - 1
-                  ? 'Concluir treino'
-                  : 'Concluir exercício'
-                : `Concluir série ${modalSerieIdx + 1}/${modalEx.series.length}`
-              }
+              {(() => {
+                if (modalIsBiSet && modalPartnerEx && modalBlock?.kind === 'biset') {
+                  if (bisetFase === 'a') {
+                    return `Concluir ${modalEx.nome} → ${modalPartnerEx.nome}`;
+                  }
+                  const isUltimaRodada = modalRodadaIdx >= modalTotalRodadas - 1;
+                  if (isUltimaRodada) {
+                    return modalBlockIdx !== null && modalBlockIdx >= blocks.length - 1
+                      ? 'Concluir treino'
+                      : `Concluir ${modalEx.nome} → Finalizar Bi-Set`;
+                  }
+                  return `Concluir ${modalEx.nome} → Descanso ${formatRestTime(modalBlock.descanso)}`;
+                }
+                if (modalRodadaIdx >= modalTotalRodadas - 1) {
+                  return modalBlockIdx !== null && modalBlockIdx >= blocks.length - 1
+                    ? 'Concluir treino'
+                    : 'Concluir exercício';
+                }
+                return `Concluir série ${modalRodadaIdx + 1}/${modalTotalRodadas}`;
+              })()}
             </button>
-            {modalExIdx !== null && modalExIdx < exercicios.length - 1 && modalSerieIdx >= modalEx.series.length - 1 && (
+            {modalBlockIdx !== null && modalBlockIdx < blocks.length - 1 && modalRodadaIdx >= modalTotalRodadas - 1 && !modalIsBiSet && (
               <button
-                onClick={() => { setModalExIdx(null); }}
+                onClick={() => { setModalBlockIdx(null); }}
                 className="w-full h-10 text-text-tertiary text-xs hover:text-text-secondary transition-colors"
               >
                 Fechar e voltar à lista

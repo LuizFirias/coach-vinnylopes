@@ -8,6 +8,9 @@ interface RestTimerOverlayProps {
   total: number;
   expired: boolean;
   isDesktop?: boolean;
+  title?: string;
+  subtitle?: string;
+  subtitleHighlight?: string;
   onAddSeconds: (seconds: number) => void;
   onSkip: () => void;
   onAdvance: () => void;
@@ -24,6 +27,9 @@ export function RestTimerOverlay({
   total,
   expired,
   isDesktop = false,
+  title = "Descanso",
+  subtitle,
+  subtitleHighlight,
   onAddSeconds,
   onSkip,
   onAdvance,
@@ -35,8 +41,9 @@ export function RestTimerOverlay({
   const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const dashOffset = circumference * (1 - progress);
 
-  const nextLabel =
-    remaining >= 60
+  const nextLabel = subtitle
+    ? subtitle
+    : remaining >= 60
       ? `Próxima série em ${Math.ceil(remaining / 60)}min`
       : remaining > 0
         ? `Próxima série em ${remaining}s`
@@ -59,7 +66,7 @@ export function RestTimerOverlay({
         )}
       >
         <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary text-center mb-4">
-          Descanso
+          {title}
         </p>
 
         <div className="flex justify-center mb-6">
@@ -153,7 +160,12 @@ export function RestTimerOverlay({
             Série pronta →
           </button>
         ) : (
-          <p className="text-xs text-text-muted text-center">{nextLabel}</p>
+          <div className="text-center space-y-1">
+            {subtitleHighlight && (
+              <p className="text-[11px] text-success font-medium">{subtitleHighlight}</p>
+            )}
+            <p className="text-xs text-text-muted">{nextLabel}</p>
+          </div>
         )}
       </div>
     </div>

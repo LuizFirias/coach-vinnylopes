@@ -34,6 +34,7 @@ import { useAlunoBodyGender } from '@/app/contexts/AlunoBodyGenderContext';
 import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
 import type { BodyGender } from '@/lib/utils/bodyGender';
 import { cn } from '@/lib/utils/cn';
+import { resolveMuscleGroup } from '@/lib/constants/muscle-groups';
 
 // ─── Muscle mapping ──────────────────────────────────────────────────────────
 const MUSCLE_MAP: Record<string, string[]> = {
@@ -144,7 +145,9 @@ function countSetsByMuscle(
 ): Record<string, number> {
   const countSets: Record<string, number> = {};
   rows.forEach((row) => {
-    const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+    const grupo = resolveMuscleGroup(
+      exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
+    );
     const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
     if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
   });
@@ -218,7 +221,11 @@ export default function EstatisticasPage() {
           .from('exercicios_biblioteca')
           .select('id, grupo_muscular');
         const bibMap: Record<string, string> = {};
-        bibData?.forEach(item => { if (item.grupo_muscular) bibMap[item.id] = item.grupo_muscular; });
+        bibData?.forEach((item) => {
+          if (item.grupo_muscular) {
+            bibMap[item.id] = resolveMuscleGroup(item.grupo_muscular);
+          }
+        });
         setExerciciosBiblioteca(bibMap);
 
         const { data: histData } = await supabaseClient
@@ -361,7 +368,9 @@ export default function EstatisticasPage() {
     // Muscle groups for the month
     const countSets: Record<string, number> = {};
     monthHist.forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+      const grupo = resolveMuscleGroup(
+      exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
+    );
       const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
       if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
     });
@@ -518,7 +527,9 @@ export default function EstatisticasPage() {
     const muscleSetsByGroup: Record<string, number> = {};
     const now = Date.now();
     historico.filter(h => now - new Date(h.data_conclusao).getTime() <= 7 * 86400000).forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+      const grupo = resolveMuscleGroup(
+      exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
+    );
       const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
       if (series.length) muscleSetsByGroup[grupo] = (muscleSetsByGroup[grupo] || 0) + series.length;
     });
@@ -528,7 +539,9 @@ export default function EstatisticasPage() {
 
     const allMuscleSets: Record<string, number> = {};
     historico.filter(h => now - new Date(h.data_conclusao).getTime() <= 30 * 86400000).forEach(row => {
-      const grupo = exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular || 'Outro';
+      const grupo = resolveMuscleGroup(
+      exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
+    );
       const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
       if (series.length) allMuscleSets[grupo] = (allMuscleSets[grupo] || 0) + series.length;
     });

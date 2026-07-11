@@ -930,13 +930,13 @@ function FichaContent() {
                               </div>
 
                               {/* Téc 2 */}
-                              <div className="w-8 shrink-0 text-center">
+                              <div className="min-w-[3.5rem] max-w-[5.5rem] shrink-0 text-center">
                                 {serie.tecnica_extra ? (
                                   <button
                                     onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
-                                    className="px-1 py-0.5 bg-brand/5 border border-brand/15 rounded text-[8px] font-semibold text-brand/80 hover:bg-brand/10 transition-all uppercase leading-none"
+                                    className="px-1 py-0.5 bg-brand/5 border border-brand/15 rounded text-[8px] font-semibold text-brand/80 hover:bg-brand/10 transition-all leading-tight line-clamp-2"
                                   >
-                                    {serie.tecnica_extra.substring(0, 2).toUpperCase()}
+                                    {serie.tecnica_extra}
                                   </button>
                                 ) : (
                                   <span className="text-[10px] text-text-disabled">—</span>

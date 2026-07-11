@@ -16,6 +16,7 @@ import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { NutritionFood, NutritionFoodCategory, NutritionMealType } from '@/lib/nutrition/types';
 import { cn } from '@/lib/utils/cn';
+import { textIncludes } from '@/lib/utils/textNormalize';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface NutritionPlanBuilderProps {
@@ -400,7 +401,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   };
 
   const filteredFoods = foodLibrary.filter(food => {
-    const matchesQuery = food.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesQuery = textIncludes(food.name, searchQuery);
     const matchesCategory = categoryFilter ? food.category === categoryFilter : true;
     return matchesQuery && matchesCategory;
   });
