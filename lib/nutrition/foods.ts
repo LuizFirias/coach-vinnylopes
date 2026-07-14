@@ -60,7 +60,7 @@ export async function searchFoods(
     foods = foods.filter((f) => textIncludes(f.name, query));
   }
 
-  return foods.sort((a, b) => a.name.localeCompare(b.name));
+  return foods.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 }
 
 /**

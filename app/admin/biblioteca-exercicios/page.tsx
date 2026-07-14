@@ -16,6 +16,8 @@ import {
   Users,
   Barbell,
   UploadSimple,
+  CaretLeft,
+  CaretRight,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
@@ -87,12 +89,49 @@ export default function BibliotecaExerciciosPage() {
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   
   const inputGifRef = useRef<HTMLInputElement>(null);
+  const gruposScrollRef = useRef<HTMLDivElement>(null);
   const [uploadingGif, setUploadingGif] = useState(false);
+  const [canScrollGruposLeft, setCanScrollGruposLeft] = useState(false);
+  const [canScrollGruposRight, setCanScrollGruposRight] = useState(false);
 
   const isSuperAdmin = userRole === "super_admin";
 
+  const updateGruposScrollState = () => {
+    const el = gruposScrollRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    setCanScrollGruposLeft(el.scrollLeft > 4);
+    setCanScrollGruposRight(maxScroll > 4 && el.scrollLeft < maxScroll - 4);
+  };
+
+  const scrollGrupos = (direction: "left" | "right") => {
+    const el = gruposScrollRef.current;
+    if (!el) return;
+    const amount = Math.max(180, Math.floor(el.clientWidth * 0.55));
+    el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
+  };
+
   useEffect(() => { verificarAcessoECarregar(); }, []);
   useEffect(() => { filtrarExercicios(); }, [exercicios, searchTerm, grupoSelecionado]);
+
+  useEffect(() => {
+    updateGruposScrollState();
+    const el = gruposScrollRef.current;
+    if (!el) return;
+
+    const onScroll = () => updateGruposScrollState();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", updateGruposScrollState);
+
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateGruposScrollState) : null;
+    ro?.observe(el);
+
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", updateGruposScrollState);
+      ro?.disconnect();
+    };
+  }, [loading]);
 
   // ── Lógica ────────────────────────────────────────────────────────────────
 
@@ -330,37 +369,70 @@ export default function BibliotecaExerciciosPage() {
         </div>
 
         {/* Filtros por grupo muscular */}
-        <div className="relative mb-6">
-          {/* Left fade mask */}
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-surface-0 to-transparent pointer-events-none z-10" />
-          {/* Right fade mask */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-surface-0 to-transparent pointer-events-none z-10" />
-          
-          <div className="overflow-x-auto pb-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-2">
-            <div className="flex gap-1 p-0.5 bg-surface-2 border border-border-subtle rounded-md h-8.5 w-max items-center">
-              <button
-                onClick={() => setGrupoSelecionado("")}
-                className={cn(
-                  "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
-                  !grupoSelecionado ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                Todos
-              </button>
-              {GRUPOS_MUSCULARES.map((grupo) => (
+        <div className="relative mb-6 flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Grupos anteriores"
+            onClick={() => scrollGrupos("left")}
+            disabled={!canScrollGruposLeft}
+            className={cn(
+              "hidden lg:flex shrink-0 w-8 h-8 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-secondary transition-colors",
+              canScrollGruposLeft
+                ? "hover:text-text-primary hover:border-border-default cursor-pointer"
+                : "opacity-30 cursor-default"
+            )}
+          >
+            <CaretLeft size={16} weight="bold" />
+          </button>
+
+          <div className="relative min-w-0 flex-1">
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-surface-0 to-transparent pointer-events-none z-10" />
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-surface-0 to-transparent pointer-events-none z-10" />
+
+            <div
+              ref={gruposScrollRef}
+              className="overflow-x-auto pb-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-2"
+            >
+              <div className="flex gap-1 p-0.5 bg-surface-2 border border-border-subtle rounded-md h-8.5 w-max items-center">
                 <button
-                  key={grupo}
-                  onClick={() => setGrupoSelecionado(grupo)}
+                  onClick={() => setGrupoSelecionado("")}
                   className={cn(
                     "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
-                    grupoSelecionado === grupo ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                    !grupoSelecionado ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
                   )}
                 >
-                  {grupo}
+                  Todos
                 </button>
-              ))}
+                {GRUPOS_MUSCULARES.map((grupo) => (
+                  <button
+                    key={grupo}
+                    onClick={() => setGrupoSelecionado(grupo)}
+                    className={cn(
+                      "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
+                      grupoSelecionado === grupo ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {grupo}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            aria-label="Próximos grupos"
+            onClick={() => scrollGrupos("right")}
+            disabled={!canScrollGruposRight}
+            className={cn(
+              "hidden lg:flex shrink-0 w-8 h-8 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-secondary transition-colors",
+              canScrollGruposRight
+                ? "hover:text-text-primary hover:border-border-default cursor-pointer"
+                : "opacity-30 cursor-default"
+            )}
+          >
+            <CaretRight size={16} weight="bold" />
+          </button>
         </div>
 
         {/* Erro */}

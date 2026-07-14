@@ -80,13 +80,12 @@ export default function Sidebar() {
     document.documentElement.style.setProperty('--sidebar-width', next ? '240px' : '80px');
   };
 
-  console.log('[Sidebar] Rendered with role:', userRole, 'loading:', loading, 'user:', user?.id);
-
   // Ocultar em rotas públicas ou enquanto carrega
   if (
     pathname === '/login' || 
     pathname === '/' || 
-    pathname?.startsWith('/signup') || 
+    pathname?.startsWith('/auth/') ||
+    pathname?.startsWith('/signup') ||
     pathname === '/aluno/trocar-senha' ||
     pathname === '/admin/trocar-senha' ||
     pathname === '/aluno/onboarding' ||
@@ -121,15 +120,15 @@ export default function Sidebar() {
       >
         <div className="flex flex-col items-center gap-2 mb-3 px-2 relative shrink-0">
           <Link href={userRole === 'aluno' ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
-            <Image 
-              src="/logo.webp" 
-              alt="Auronfit" 
-              width={isExpanded ? 40 : 36} 
-              height={isExpanded ? 40 : 36} 
+            <Image
+              src="/LOGO-AURON.webp"
+              alt="Auronfit"
+              width={isExpanded ? 40 : 36}
+              height={isExpanded ? 40 : 36}
               className={cn(
                 "object-contain group-hover:scale-105 transition-transform",
                 isExpanded ? "w-10 h-10" : "w-9 h-9"
-              )} 
+              )}
             />
           </Link>
           
@@ -236,8 +235,15 @@ export default function Sidebar() {
       {/* Drawer Menu - Mobile Only */}
       <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         <div className="p-6 pb-4 flex items-center justify-between">
-          <div className="w-11 h-11 bg-surface-1 rounded-lg flex items-center justify-center shadow-lg border border-border-subtle overflow-hidden">
-            <Image src="/logo.webp" alt="Auronfit" width={36} height={36} className="object-contain" />
+          <div className="w-[66px] h-[66px] rounded-lg flex items-center justify-center overflow-hidden">
+            <Image
+              src="/LOGO-AURON.webp"
+              alt="Auronfit"
+              width={54}
+              height={54}
+              className="object-contain w-[54px] h-[54px]"
+              priority
+            />
           </div>
           <button
             onClick={() => setOpen(false)}

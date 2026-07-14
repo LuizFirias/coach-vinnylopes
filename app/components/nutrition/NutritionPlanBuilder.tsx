@@ -92,6 +92,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
               .from('nutrition_foods')
               .select('*, portions:nutrition_food_portions(*)')
               .eq('is_active', true)
+              .order('name', { ascending: true })
           );
         }
 
@@ -117,7 +118,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           }
         }
 
-        setFoodLibrary(foods || []);
+        const sortedFoods = [...(foods || [])].sort((a, b) =>
+          String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" }),
+        );
+        setFoodLibrary(sortedFoods);
 
         const ids = links?.map(l => l.aluno_id) || [];
 
@@ -400,11 +404,13 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
     }
   };
 
-  const filteredFoods = foodLibrary.filter(food => {
-    const matchesQuery = textIncludes(food.name, searchQuery);
-    const matchesCategory = categoryFilter ? food.category === categoryFilter : true;
-    return matchesQuery && matchesCategory;
-  });
+  const filteredFoods = foodLibrary
+    .filter(food => {
+      const matchesQuery = textIncludes(food.name, searchQuery);
+      const matchesCategory = categoryFilter ? food.category === categoryFilter : true;
+      return matchesQuery && matchesCategory;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
   const parentRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
@@ -1241,7 +1247,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                           height: `${virtualItem.size - 8}px`,
                           transform: `translateY(${virtualItem.start}px)`,
                         }}
-                        className="p-3 bg-surface-2 border border-border-subtle/50 hover:border-brand/40 rounded-lg flex items-center justify-between gap-4 cursor-pointer transition-all hover:scale-[1.01]"
+                        className="p-3 bg-surface-2 border border-border-subtle/50 hover:border-brand/40 hover:bg-surface-3 rounded-lg flex items-center justify-between gap-4 cursor-pointer"
                       >
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-text-primary leading-tight truncate">{food.name}</p>

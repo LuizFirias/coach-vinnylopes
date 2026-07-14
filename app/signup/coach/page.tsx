@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { loginComGoogle } from "@/lib/auth/googleOAuth";
+import { GoogleSignInButton } from "@/app/components/auth/GoogleSignInButton";
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -55,6 +57,7 @@ function CoachSignupForm() {
   const [instagram, setInstagram] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capsLockActive, setCapsLockActive] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -80,6 +83,16 @@ function CoachSignupForm() {
       setCapsLockActive(true);
     } else {
       setCapsLockActive(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setGoogleLoading(true);
+    setError(null);
+    const err = await loginComGoogle("signup-coach");
+    if (err) {
+      setError(err);
+      setGoogleLoading(false);
     }
   };
 
@@ -305,6 +318,19 @@ function CoachSignupForm() {
               </button>
             </div>
           )}
+
+          <GoogleSignInButton
+            loading={googleLoading}
+            disabled={loading}
+            label="Cadastrar com Google"
+            onClick={() => { void handleGoogleSignup(); }}
+          />
+
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex-1 h-px bg-border-subtle" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-disabled">ou</span>
+            <div className="flex-1 h-px bg-border-subtle" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Full Name */}

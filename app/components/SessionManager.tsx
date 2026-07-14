@@ -21,7 +21,8 @@ export default function SessionManager() {
       pathname === '/login' || 
       pathname === '/' || 
       pathname === '/reset-password' || 
-      pathname?.startsWith('/signup')
+      pathname?.startsWith('/signup') ||
+      pathname?.startsWith('/auth/')
     ) return;
 
     const handleVisibilityChange = async () => {

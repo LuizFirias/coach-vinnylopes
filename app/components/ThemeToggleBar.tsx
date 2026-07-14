@@ -11,6 +11,7 @@ export default function ThemeToggleBar() {
   if (
     pathname === '/login' ||
     pathname === '/' ||
+    pathname?.startsWith('/auth/') ||
     pathname?.startsWith('/signup') ||
     pathname === '/aluno/trocar-senha' ||
     pathname === '/admin/trocar-senha' ||

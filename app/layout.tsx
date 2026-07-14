@@ -1,5 +1,6 @@
 import './globals.css';
 import { Inter, JetBrains_Mono, Poppins, Montserrat } from 'next/font/google';
+import Script from 'next/script';
 import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
 import SessionManager from './components/SessionManager';
@@ -91,36 +92,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-br" suppressHydrationWarning className={`dark ${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable}`} data-theme="dark">
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Remove Chrome extension attributes immediately before React hydration
-              (function() {
-                function cleanExtensionAttributes() {
-                  const elements = document.querySelectorAll('[__gchrome_uniqueid], [__gchrome_remoteframetoken]');
-                  elements.forEach(function(el) {
-                    el.removeAttribute('__gchrome_uniqueid');
-                    el.removeAttribute('__gchrome_remoteframetoken');
-                  });
-                }
-                
-                // Run immediately
-                if (document.readyState === 'loading') {
-                  document.addEventListener('DOMContentLoaded', cleanExtensionAttributes);
-                } else {
-                  cleanExtensionAttributes();
-                }
-                
-                // Keep running to catch late injections
-                setInterval(cleanExtensionAttributes, 100);
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className="bg-surface-0 text-text-primary overflow-x-hidden min-h-screen" suppressHydrationWarning>
+        <Script id="auron-theme-init" strategy="beforeInteractive">
+          {themeInitScript.trim()}
+        </Script>
         <SuppressHydrationWarnings />
         <ChromeExtensionFix />
         <ThemeProvider>

@@ -21,13 +21,15 @@ import DumbbellLoader from "./components/DumbbellLoader";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
+import { loginComGoogle } from "@/lib/auth/googleOAuth";
+import { GoogleSignInButton } from "@/app/components/auth/GoogleSignInButton";
 
-function readInitialRoleTab(): "coach" | "aluno" {
-  if (typeof window === "undefined") return "coach";
-  const tabParam = new URLSearchParams(window.location.search).get("tab");
+function readStoredRoleTab(tabParam: string | null): "coach" | "aluno" {
   if (tabParam === "aluno" || tabParam === "coach") return tabParam;
-  const savedRoleTab = localStorage.getItem("auronfit-login-role-tab");
-  if (savedRoleTab === "aluno" || savedRoleTab === "coach") return savedRoleTab;
+  if (typeof window !== "undefined") {
+    const savedRoleTab = localStorage.getItem("auronfit-login-role-tab");
+    if (savedRoleTab === "aluno" || savedRoleTab === "coach") return savedRoleTab;
+  }
   return "coach";
 }
 
@@ -48,8 +50,8 @@ function LoginForm() {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
-  const [roleTab, setRoleTab] = useState<"coach" | "aluno">(readInitialRoleTab);
-  const roleTabRef = useRef<"coach" | "aluno">(readInitialRoleTab());
+  const [roleTab, setRoleTab] = useState<"coach" | "aluno">("coach");
+  const roleTabRef = useRef<"coach" | "aluno">("coach");
   const sessionCheckedRef = useRef(false);
   const allowAutoRedirectRef = useRef(true);
 
@@ -57,6 +59,7 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const [capsLockActive, setCapsLockActive] = useState(false);
   const [coachCount, setCoachCount] = useState<number | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const resolveLoginErrorMessage = async (emailAddress: string): Promise<string> => {
     try {
@@ -114,6 +117,28 @@ function LoginForm() {
   };
 
   useEffect(() => {
+    const errorParam = searchParams?.get("error");
+    const tabParam = searchParams?.get("tab");
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    }
+    const tab = readStoredRoleTab(tabParam);
+    roleTabRef.current = tab;
+    setRoleTab(tab);
+  }, [searchParams]);
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setError(null);
+    const intent = roleTabRef.current === "coach" ? "login-coach" : "login-aluno";
+    const err = await loginComGoogle(intent);
+    if (err) {
+      setError(err);
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (sessionCheckedRef.current) return;
     sessionCheckedRef.current = true;
 
@@ -124,10 +149,6 @@ function LoginForm() {
         setEmail(savedEmail);
         setRememberMe(true);
       }
-
-      const initialTab = readInitialRoleTab();
-      roleTabRef.current = initialTab;
-      setRoleTab(initialTab);
     }
 
     // Se Supabase redirecionar para /login com tokens de recovery, reencaminhar para /reset-password
@@ -151,19 +172,20 @@ function LoginForm() {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session?.user) return;
 
-      const desiredTab = roleTabRef.current;
-
       const { data: profile } = await supabaseClient
         .from("profiles")
         .select("role, must_change_password, first_access_completed")
         .eq("id", session.user.id)
         .single();
 
-      if (!profile) {
-        router.replace("/aluno/dashboard");
+      if (!profile) return;
+
+      if (allowAutoRedirectRef.current) {
+        router.replace(getPostLoginPath(profile));
         return;
       }
 
+      const desiredTab = roleTabRef.current;
       const role = profile.role || "aluno";
       const isCoachAccount = role === "coach" || role === "super_admin";
 
@@ -186,8 +208,6 @@ function LoginForm() {
         }
         return;
       }
-
-      if (!allowAutoRedirectRef.current) return;
 
       const { data: { session: freshSession } } = await supabaseClient.auth.getSession();
       if (!freshSession?.user) return;
@@ -619,6 +639,19 @@ function LoginForm() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                <GoogleSignInButton
+                  loading={googleLoading}
+                  disabled={loading}
+                  label="Entrar com Google"
+                  onClick={() => { void handleGoogleLogin(); }}
+                />
+
+                <div className="flex items-center gap-3 py-1">
+                  <div className="flex-1 h-px bg-border-subtle" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-text-disabled">ou</span>
+                  <div className="flex-1 h-px bg-border-subtle" />
+                </div>
 
                 {/* Email Input com validação inline */}
                 <div className="space-y-2">

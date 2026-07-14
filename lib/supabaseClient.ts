@@ -18,32 +18,29 @@ export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+function isPublicAuthPath(pathname: string) {
+  return (
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/signup') ||
+    pathname === '/reset-password'
+  );
+}
+
 // Global error handler for auth errors
 if (typeof window !== 'undefined') {
   supabaseClient.auth.onAuthStateChange((event, session) => {
-    // Log auth events para debug
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Auth] Event: ${event}`, session ? 'Session valid' : 'No session');
-    }
-
-    // If session is null and we're not on login page, redirect
-    // Guard against network-error-triggered SIGNED_OUT (token refresh fails when offline)
-    if (event === 'SIGNED_OUT' && !window.location.pathname.includes('/login')) {
+    if (event === 'SIGNED_OUT' && !isPublicAuthPath(window.location.pathname)) {
       if (!navigator.onLine) return;
       localStorage.removeItem('sb-auth-token');
       window.location.href = '/login';
     }
-    
-    // Handle token refresh errors
-    if (event === 'TOKEN_REFRESHED' && !session) {
-      console.warn('[Auth] Token refresh failed, redirecting to login');
-      localStorage.clear();
-      window.location.href = '/login';
-    }
 
-    // Log token refresh success
-    if (event === 'TOKEN_REFRESHED' && session) {
-      console.log('[Auth] ✓ Token refreshed successfully');
+    if (event === 'TOKEN_REFRESHED' && !session) {
+      if (isPublicAuthPath(window.location.pathname)) return;
+      localStorage.removeItem('sb-auth-token');
+      window.location.href = '/login';
     }
   });
 }

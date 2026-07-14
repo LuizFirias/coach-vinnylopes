@@ -497,7 +497,7 @@ export default function AlunoDashboardPage() {
 
         const { data: pdfsData } = await supabaseClient
           .from('treinos_alunos')
-          .select('id, nome')
+          .select('id, nome_arquivo')
           .eq('aluno_id', uid);
 
         const options: WorkoutOption[] = [];
@@ -505,7 +505,7 @@ export default function AlunoDashboardPage() {
           fichasData.forEach(f => options.push({ id: f.id, name: f.nome_rotina, type: 'ficha' }));
         }
         if (pdfsData) {
-          pdfsData.forEach(p => options.push({ id: p.id, name: p.nome, type: 'pdf' }));
+          pdfsData.forEach(p => options.push({ id: p.id, name: p.nome_arquivo, type: 'pdf' }));
         }
         setAvailableWorkouts(options);
       } catch (err) {
