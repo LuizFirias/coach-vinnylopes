@@ -9,7 +9,12 @@ import { getEffectiveAccessEnd, isAccessGranted } from "@/lib/subscriptions/disp
 
 import { getActiveStudentCount } from "@/lib/subscriptions/getActiveStudentCount";
 
-import { getPlansCatalog, getPlanLabel, getPlanOption } from "@/lib/subscriptions/plans";
+import {
+  getPlansCatalog,
+  getPlanLabel,
+  getPlanOption,
+  isTestPlanEnabled,
+} from "@/lib/subscriptions/plans";
 
 import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
 
@@ -223,6 +228,8 @@ export async function GET(req: Request) {
       currentPlan,
       gracePeriodEnd,
       effectiveAccessEnd,
+      /** debug QA — true se a flag liberar o card TESTE */
+      testPlanEnabled: isTestPlanEnabled(),
     });
 
   } catch (err: unknown) {

@@ -22,9 +22,22 @@ export interface PlanDefinition {
 /** Tiers comerciais (sem o plano de teste R$5). */
 export const PLAN_TIERS: PlanTier[] = ["start", "pro", "elite"];
 
-/** Inclui o plano TESTE quando NEXT_PUBLIC_SHOW_TEST_PLAN=true. */
+/**
+ * Plano QA R$5. Aceita NEXT_PUBLIC_SHOW_TEST_PLAN ou SHOW_TEST_PLAN.
+ * Usa acesso por colchetes para não “congelar” o valor no build do Next.
+ */
+export function isTestPlanEnabled(): boolean {
+  const raw =
+    process.env["NEXT_PUBLIC_SHOW_TEST_PLAN"] ??
+    process.env["SHOW_TEST_PLAN"] ??
+    "";
+  const v = String(raw).trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
+/** Inclui o plano TESTE quando a flag de QA estiver ativa. */
 export function getVisiblePlanTiers(): PlanTier[] {
-  if (process.env.NEXT_PUBLIC_SHOW_TEST_PLAN === "true") {
+  if (isTestPlanEnabled()) {
     return ["test", ...PLAN_TIERS];
   }
   return PLAN_TIERS;
@@ -153,7 +166,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
 export function isValidPlanCombo(tier: string, period: string): tier is PlanTier {
   const allVariants: PlanTier[] = ["test", "start", "pro", "elite"];
   if (!allVariants.includes(tier as PlanTier)) return false;
-  if (tier === "test" && process.env.NEXT_PUBLIC_SHOW_TEST_PLAN !== "true") {
+  if (tier === "test" && !isTestPlanEnabled()) {
     return false;
   }
   return Boolean(PLANS[tier as PlanTier].billing[period as BillingPeriod]);
