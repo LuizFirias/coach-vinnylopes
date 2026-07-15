@@ -12,6 +12,8 @@ import {
 
 } from "@/lib/subscriptions/plans";
 
+import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
+
 
 
 const MP_API_BASE = "https://api.mercadopago.com";
@@ -74,6 +76,9 @@ export interface MpPreapprovalCreateBody {
 
   status: "authorized";
 
+  /** Webhook de Assinaturas — o painel MP "Assinaturas" não configura isso sozinho. */
+  notification_url: string;
+
   preapproval_plan_id?: string;
 
   auto_recurring?: {
@@ -118,6 +123,8 @@ export function buildMpPreapprovalBody(
 
   const planId = getMpPreapprovalPlanId(tier, period);
 
+  const siteUrl = getSiteUrl().replace(/\/$/, "");
+
 
 
   const body: MpPreapprovalCreateBody = {
@@ -131,6 +138,8 @@ export function buildMpPreapprovalBody(
     card_token_id: params.cardTokenId,
 
     back_url: params.backUrl,
+
+    notification_url: `${siteUrl}/api/webhooks/mercadopago`,
 
     status: "authorized",
 

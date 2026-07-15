@@ -1,4 +1,4 @@
-export type PlanTier = "start" | "pro" | "elite";
+export type PlanTier = "start" | "pro" | "elite" | "test";
 export type BillingPeriod = "monthly" | "semester" | "yearly";
 
 export interface PlanBillingOption {
@@ -15,9 +15,20 @@ export interface PlanDefinition {
   description: string;
   features: string[];
   billing: Partial<Record<BillingPeriod, PlanBillingOption>>;
+  /** Destaque visual (ex.: plano QA em vermelho). */
+  accent?: "danger";
 }
 
+/** Tiers comerciais (sem o plano de teste R$5). */
 export const PLAN_TIERS: PlanTier[] = ["start", "pro", "elite"];
+
+/** Inclui o plano TESTE quando NEXT_PUBLIC_SHOW_TEST_PLAN=true. */
+export function getVisiblePlanTiers(): PlanTier[] {
+  if (process.env.NEXT_PUBLIC_SHOW_TEST_PLAN === "true") {
+    return ["test", ...PLAN_TIERS];
+  }
+  return PLAN_TIERS;
+}
 
 export const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
   monthly: "Mensal",
@@ -26,6 +37,27 @@ export const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
 };
 
 export const PLANS: Record<PlanTier, PlanDefinition> = {
+  test: {
+    tier: "test",
+    label: "TESTE",
+    studentLimit: 30,
+    description: "Plano QA — R$ 5 (mesmo benefício do START). Remover após validação.",
+    accent: "danger",
+    features: [
+      "Até 30 alunos ativos",
+      "Treinos e nutrição",
+      "Relatórios básicos",
+      "Biblioteca de exercícios",
+    ],
+    billing: {
+      monthly: {
+        price: 5,
+        priceDisplay: "R$ 5,00/mês",
+        periodLabel: "Mensal",
+        mpFrequencyMonths: 1,
+      },
+    },
+  },
   start: {
     tier: "start",
     label: "START",
@@ -119,7 +151,11 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
 };
 
 export function isValidPlanCombo(tier: string, period: string): tier is PlanTier {
-  if (!PLAN_TIERS.includes(tier as PlanTier)) return false;
+  const allVariants: PlanTier[] = ["test", "start", "pro", "elite"];
+  if (!allVariants.includes(tier as PlanTier)) return false;
+  if (tier === "test" && process.env.NEXT_PUBLIC_SHOW_TEST_PLAN !== "true") {
+    return false;
+  }
   return Boolean(PLANS[tier as PlanTier].billing[period as BillingPeriod]);
 }
 
@@ -160,7 +196,7 @@ export function getMpPlanEnvKey(tier: PlanTier, period: BillingPeriod): string {
 }
 
 export function getPlansCatalog() {
-  return PLAN_TIERS.map((tier) => {
+  return getVisiblePlanTiers().map((tier) => {
     const plan = PLANS[tier];
     return {
       tier,
@@ -168,6 +204,7 @@ export function getPlansCatalog() {
       studentLimit: plan.studentLimit,
       description: plan.description,
       features: plan.features,
+      accent: plan.accent ?? null,
       billingOptions: getBillingPeriodsForTier(tier).map((period) => ({
         period,
         ...plan.billing[period]!,

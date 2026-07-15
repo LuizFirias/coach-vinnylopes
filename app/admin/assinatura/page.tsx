@@ -64,6 +64,8 @@ interface PlanCatalogItem {
 
   features: string[];
 
+  accent?: "danger" | null;
+
   billingOptions: PlanBillingOption[];
 
 }
@@ -857,11 +859,17 @@ export default function AssinaturaPage() {
 
           <>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+              className={cn(
+                "grid grid-cols-1 gap-4",
+                data.plans.length > 3 ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3",
+              )}
+            >
 
               {data.plans.map((plan) => {
 
                 const isSelected = selectedTier === plan.tier;
+                const isTestPlan = plan.tier === "test" || plan.accent === "danger";
 
                 return (
 
@@ -877,11 +885,15 @@ export default function AssinaturaPage() {
 
                       "text-left rounded-xl border p-5 transition-all",
 
-                      isSelected
+                      isTestPlan &&
+                        (isSelected
+                          ? "border-danger bg-danger-subtle/40 shadow-sm ring-1 ring-danger/40"
+                          : "border-danger/60 bg-danger-subtle/20 hover:border-danger"),
 
-                        ? "border-brand bg-brand/5 shadow-sm ring-1 ring-brand/30"
-
-                        : "border-border-subtle/80 bg-surface-1 hover:border-border-default"
+                      !isTestPlan &&
+                        (isSelected
+                          ? "border-brand bg-brand/5 shadow-sm ring-1 ring-brand/30"
+                          : "border-border-subtle/80 bg-surface-1 hover:border-border-default"),
 
                     )}
 
@@ -889,7 +901,12 @@ export default function AssinaturaPage() {
 
                     <div className="flex items-center justify-between mb-2">
 
-                      <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">
+                      <h3
+                        className={cn(
+                          "text-sm font-bold uppercase tracking-wider",
+                          isTestPlan ? "text-danger" : "text-text-primary",
+                        )}
+                      >
 
                         {plan.label}
 
@@ -897,7 +914,14 @@ export default function AssinaturaPage() {
 
                       {isSelected && (
 
-                        <span className="text-[10px] font-bold text-brand uppercase">Selecionado</span>
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold uppercase",
+                            isTestPlan ? "text-danger" : "text-brand",
+                          )}
+                        >
+                          Selecionado
+                        </span>
 
                       )}
 
@@ -905,7 +929,12 @@ export default function AssinaturaPage() {
 
                     <p className="text-xs text-text-secondary mb-3">{plan.description}</p>
 
-                    <p className="text-xs font-semibold text-brand mb-3">
+                    <p
+                      className={cn(
+                        "text-xs font-semibold mb-3",
+                        isTestPlan ? "text-danger" : "text-brand",
+                      )}
+                    >
 
                       Até {plan.studentLimit} alunos ativos
 
@@ -917,7 +946,13 @@ export default function AssinaturaPage() {
 
                         <li key={feature} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
 
-                          <Check className="w-3.5 h-3.5 text-brand flex-shrink-0" weight="bold" />
+                          <Check
+                            className={cn(
+                              "w-3.5 h-3.5 shrink-0",
+                              isTestPlan ? "text-danger" : "text-brand",
+                            )}
+                            weight="bold"
+                          />
 
                           {feature}
 
