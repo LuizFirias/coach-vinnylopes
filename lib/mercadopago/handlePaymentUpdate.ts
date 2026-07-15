@@ -1,8 +1,10 @@
 import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mpFetch } from "@/lib/mercadopago/client";
+import { calcGracePeriodEnd } from "@/lib/mercadopago/statusMapping";
 import { setUserAccess } from "@/lib/access/setUserAccess";
 import { sendPaymentFailedEmail } from "@/lib/mercadopago/emails";
+import { computePeriodEndFromPayment } from "@/lib/subscriptions/billingPeriod";
 
 interface MpPayment {
   id: number | string;
@@ -10,8 +12,15 @@ interface MpPayment {
   external_reference?: string;
   preapproval_id?: string;
   date_approved?: string;
+  metadata?: Record<string, unknown>;
 }
 
+const GRACE_FAIL_THRESHOLD = 1;
+
+/**
+ * payment / subscription_authorized_payment —
+ * sempre revalida via GET /v1/payments/{id}.
+ */
 export async function handlePaymentUpdate(paymentId: string): Promise<void> {
   const payment = await mpFetch<MpPayment>(`/v1/payments/${paymentId}`);
   const supabase = getSupabaseAdmin();
@@ -19,7 +28,10 @@ export async function handlePaymentUpdate(paymentId: string): Promise<void> {
   let subscriptionQuery = supabase.from("subscriptions").select("*");
 
   if (payment.preapproval_id) {
-    subscriptionQuery = subscriptionQuery.eq("mp_preapproval_id", payment.preapproval_id);
+    subscriptionQuery = subscriptionQuery.eq(
+      "mp_preapproval_id",
+      String(payment.preapproval_id),
+    );
   } else if (payment.external_reference) {
     subscriptionQuery = subscriptionQuery.eq("user_id", payment.external_reference);
   } else {
@@ -34,38 +46,74 @@ export async function handlePaymentUpdate(paymentId: string): Promise<void> {
   }
 
   const lastPaymentStatus = payment.status;
-  const periodEnd = payment.date_approved
-    ? new Date(
-        new Date(payment.date_approved).getTime() + 30 * 24 * 60 * 60 * 1000
-      ).toISOString()
-    : subscription.current_period_end;
-
-  await supabase
-    .from("subscriptions")
-    .update({
-      last_payment_status: lastPaymentStatus,
-      current_period_end: periodEnd,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", subscription.id);
+  const planInfo =
+    subscription.plan_tier &&
+    subscription.billing_period &&
+    subscription.student_limit != null
+      ? {
+          planTier: subscription.plan_tier,
+          billingPeriod: subscription.billing_period,
+          studentLimit: subscription.student_limit,
+        }
+      : null;
 
   if (lastPaymentStatus === "approved") {
+    const periodEnd = computePeriodEndFromPayment({
+      dateApproved: payment.date_approved,
+      existingPeriodEnd: subscription.current_period_end,
+      billingPeriod: subscription.billing_period,
+      planTier: subscription.plan_tier,
+    });
+
     await supabase
       .from("subscriptions")
-      .update({ status: "authorized" })
+      .update({
+        status: "authorized",
+        last_payment_status: "approved",
+        current_period_end: periodEnd,
+        grace_period_end: null,
+        payment_failure_count: 0,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", subscription.id);
 
-    const planInfo =
-      subscription.plan_tier && subscription.billing_period && subscription.student_limit
-        ? {
-            planTier: subscription.plan_tier,
-            billingPeriod: subscription.billing_period,
-            studentLimit: subscription.student_limit,
-          }
-        : null;
+    await setUserAccess(subscription.user_id, "authorized", periodEnd, planInfo, null);
+    return;
+  }
 
-    await setUserAccess(subscription.user_id, "authorized", periodEnd, planInfo);
-  } else if (lastPaymentStatus === "rejected") {
+  if (
+    lastPaymentStatus === "rejected" ||
+    lastPaymentStatus === "cancelled" ||
+    lastPaymentStatus === "refunded"
+  ) {
+    const failureCount = (subscription.payment_failure_count ?? 0) + 1;
+    const periodEnd = subscription.current_period_end;
+    const nextStatus =
+      failureCount >= GRACE_FAIL_THRESHOLD ? "past_due" : subscription.status;
+    const gracePeriodEnd =
+      nextStatus === "past_due" ? calcGracePeriodEnd(periodEnd) : null;
+
+    await supabase
+      .from("subscriptions")
+      .update({
+        status: nextStatus,
+        last_payment_status: "rejected",
+        payment_failure_count: failureCount,
+        ...(gracePeriodEnd != null ? { grace_period_end: gracePeriodEnd } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", subscription.id);
+
+    if (nextStatus === "past_due") {
+      await setUserAccess(
+        subscription.user_id,
+        "past_due",
+        periodEnd,
+        planInfo,
+        gracePeriodEnd,
+      );
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name, email")
@@ -75,5 +123,19 @@ export async function handlePaymentUpdate(paymentId: string): Promise<void> {
     if (profile?.email) {
       sendPaymentFailedEmail(profile.email, profile.full_name || "Coach");
     }
+    return;
   }
+
+  const normalizedLast =
+    lastPaymentStatus === "in_process" || lastPaymentStatus === "pending"
+      ? lastPaymentStatus
+      : "pending";
+
+  await supabase
+    .from("subscriptions")
+    .update({
+      last_payment_status: normalizedLast,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", subscription.id);
 }

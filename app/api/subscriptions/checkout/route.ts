@@ -117,100 +117,73 @@ export async function POST(req: Request) {
     const supabase = getSupabaseAdmin();
 
     const { data: existing } = await supabase
-
       .from("subscriptions")
-
-      .select("status, mp_preapproval_id")
-
+      .select("id, status, mp_preapproval_id")
       .eq("user_id", auth.userId)
-
-      .in("status", ["authorized", "pending", "paused"])
-
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-
-
+    // authorized bloqueia; canceling/expired/cancelled/past_due podem reativar via checkout
     if (existing?.status === "authorized") {
-
-      return NextResponse.json({ error: "Você já possui uma assinatura ativa" }, { status: 409 });
-
+      return NextResponse.json(
+        { error: "Você já possui uma assinatura ativa" },
+        { status: 409 },
+      );
     }
-
-
 
     const siteUrl = getSiteUrl();
 
     const mpBody = buildMpPreapprovalBody(tier, period, {
-
       userId: auth.userId,
-
       email,
-
       cardTokenId,
-
       backUrl: `${siteUrl}/admin/assinatura?status=success`,
-
     });
-
-
 
     const preapproval = await mpFetch<MpPreapprovalResponse>("/preapproval", {
-
       method: "POST",
-
       body: JSON.stringify(mpBody),
-
     });
 
-
-
     const status = mapMpPreapprovalStatus(preapproval.status);
-
     const periodEnd = preapproval.next_payment_date || null;
 
-
-
     const planInfo = {
-
       planTier: tier,
-
       billingPeriod: period,
-
       studentLimit: planOption.studentLimit,
-
     };
 
+    const row = {
+      user_id: auth.userId,
+      mp_preapproval_id: preapproval.id,
+      mp_plan_id: preapproval.preapproval_plan_id || mpBody.preapproval_plan_id || null,
+      status,
+      current_period_end: periodEnd,
+      grace_period_end: null,
+      plan_tier: tier,
+      billing_period: period,
+      student_limit: planOption.studentLimit,
+      payment_failure_count: 0,
+      updated_at: new Date().toISOString(),
+    };
 
+    if (existing?.id) {
+      const { error: updateError } = await supabase
+        .from("subscriptions")
+        .update(row)
+        .eq("id", existing.id);
 
-    await supabase.from("subscriptions").upsert(
-
-      {
-
-        user_id: auth.userId,
-
-        mp_preapproval_id: preapproval.id,
-
-        mp_plan_id: preapproval.preapproval_plan_id || mpBody.preapproval_plan_id || null,
-
-        status,
-
-        current_period_end: periodEnd,
-
-        plan_tier: tier,
-
-        billing_period: period,
-
-        student_limit: planOption.studentLimit,
-
-        updated_at: new Date().toISOString(),
-
-      },
-
-      { onConflict: "mp_preapproval_id" }
-
-    );
-
-
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+    } else {
+      const { error: insertError } = await supabase.from("subscriptions").insert(row);
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+    }
 
     await setUserAccess(auth.userId, status, periodEnd, planInfo);
 

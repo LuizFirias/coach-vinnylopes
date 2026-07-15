@@ -5,7 +5,7 @@ import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
 
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
-import { isAccessGranted } from "@/lib/subscriptions/display";
+import { getEffectiveAccessEnd, isAccessGranted } from "@/lib/subscriptions/display";
 
 import { getActiveStudentCount } from "@/lib/subscriptions/getActiveStudentCount";
 
@@ -132,9 +132,11 @@ export async function GET(req: Request) {
 
 
     const mpActive = subscription
-
-      ? isAccessGranted(subscription.status, subscription.current_period_end)
-
+      ? isAccessGranted(
+          subscription.status,
+          subscription.current_period_end,
+          subscription.grace_period_end,
+        )
       : Boolean(profile?.subscription_active);
 
 
@@ -201,32 +203,26 @@ export async function GET(req: Request) {
 
 
 
+    const gracePeriodEnd = subscription?.grace_period_end ?? null;
+    const effectiveAccessEnd = subscription
+      ? getEffectiveAccessEnd(subscription.current_period_end, gracePeriodEnd)
+      : null;
+
     return NextResponse.json({
-
       subscription: subscription || null,
-
       isActive,
-
       accountType,
-
       isSuperAdmin: false,
-
       planTier,
-
       billingPeriod,
-
       studentLimit,
-
       activeStudentCount,
-
       siteUrl,
-
       publicKey,
-
       plans,
-
       currentPlan,
-
+      gracePeriodEnd,
+      effectiveAccessEnd,
     });
 
   } catch (err: unknown) {

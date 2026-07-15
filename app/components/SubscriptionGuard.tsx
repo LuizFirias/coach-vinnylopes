@@ -13,7 +13,7 @@ export default function SubscriptionGuard({ children }: Props) {
   const [allowed, setAllowed] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
-  const [coachWhatsapp, setCoachWhatsapp] = useState("556781232717");
+  const [coachWhatsapp, setCoachWhatsapp] = useState<string | null>("556781232717");
 
   useEffect(() => {
     const check = async () => {
@@ -53,9 +53,13 @@ export default function SubscriptionGuard({ children }: Props) {
               const res = await fetch(`/api/aluno/coach-whatsapp?coachId=${profile.coach_id}`, {
                 headers,
               });
-              const data = await res.json();
-              if (data?.whatsapp) {
-                setCoachWhatsapp(data.whatsapp);
+              if (!res.ok) {
+                setCoachWhatsapp(null);
+              } else {
+                const data = await res.json();
+                if (data?.whatsapp) {
+                  setCoachWhatsapp(data.whatsapp);
+                }
               }
             } catch (e) {
               console.warn("Erro ao buscar whatsapp do coach:", e);
@@ -116,14 +120,20 @@ export default function SubscriptionGuard({ children }: Props) {
         </p>
 
         <div className="flex flex-col items-stretch justify-center">
-          <a
-            href={`https://wa.me/${coachWhatsapp}?text=${waMessage}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center h-11 px-6 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-md"
-          >
-            Falar com Coach no WhatsApp
-          </a>
+          {coachWhatsapp ? (
+            <a
+              href={`https://wa.me/${coachWhatsapp}?text=${waMessage}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center h-11 px-6 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-md"
+            >
+              Falar com Coach no WhatsApp
+            </a>
+          ) : (
+            <p className="text-xs text-text-tertiary">
+              Entre em contato com seu coach para renovar o acesso.
+            </p>
+          )}
         </div>
       </div>
     </div>

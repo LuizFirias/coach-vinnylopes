@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
+import {
+  assertCoachWriteAccess,
+  coachWriteAccessErrorResponse,
+} from "@/lib/subscriptions/assertCoachWriteAccess";
 
 export async function DELETE(req: Request) {
   try {
     const auth = await getAuthenticatedCoach(req);
     if ("error" in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    try {
+      await assertCoachWriteAccess(auth.userId);
+    } catch (err) {
+      const denied = coachWriteAccessErrorResponse(err);
+      if (denied) return denied;
+      throw err;
     }
 
     const { searchParams } = new URL(req.url);

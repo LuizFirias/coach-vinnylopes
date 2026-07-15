@@ -5,12 +5,24 @@ import {
   deleteWorkoutPlan,
   type WorkoutPlanTipo,
 } from "@/lib/admin/deleteWorkoutPlan";
+import {
+  assertCoachWriteAccess,
+  coachWriteAccessErrorResponse,
+} from "@/lib/subscriptions/assertCoachWriteAccess";
 
 export async function DELETE(request: NextRequest) {
   try {
     const auth = await getAuthenticatedCoach(request);
     if ("error" in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    try {
+      await assertCoachWriteAccess(auth.userId);
+    } catch (err) {
+      const denied = coachWriteAccessErrorResponse(err);
+      if (denied) return denied;
+      throw err;
     }
 
     const body = await request.json().catch(() => null);

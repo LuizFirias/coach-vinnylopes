@@ -87,14 +87,18 @@ export default function CoachPerfilPage() {
         } else {
           const { data: subData } = await supabaseClient
             .from("subscriptions")
-            .select("status, current_period_end")
+            .select("status, current_period_end, grace_period_end")
             .eq("user_id", authData.user.id)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
 
           const active = subData
-            ? isAccessGranted(subData.status, subData.current_period_end)
+            ? isAccessGranted(
+                subData.status,
+                subData.current_period_end,
+                subData.grace_period_end,
+              )
             : hasActiveAccess(profileData ?? {});
           setSubscriptionActive(active);
           setSubscriptionStatus(subData?.status ?? null);

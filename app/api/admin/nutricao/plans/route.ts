@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedCoach } from '@/lib/auth/getAuthenticatedCoach';
+import {
+  assertCoachWriteAccess,
+  coachWriteAccessErrorResponse,
+} from '@/lib/subscriptions/assertCoachWriteAccess';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,6 +19,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { userId, role } = auth;
+
+    try {
+      await assertCoachWriteAccess(userId);
+    } catch (err) {
+      const denied = coachWriteAccessErrorResponse(err);
+      if (denied) return denied;
+      throw err;
+    }
 
     const body = await request.json();
     const { plan, meals, id: existingPlanId } = body;

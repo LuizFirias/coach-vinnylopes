@@ -2,9 +2,11 @@
 
 
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 
 import Link from "next/link";
+
+import { useRouter } from "next/navigation";
 
 import { supabaseClient } from "@/lib/supabaseClient";
 
@@ -17,6 +19,8 @@ import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { Card } from "@/components/ui/Card";
 
 import { Button } from "@/components/ui/Button";
+
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 import { Check, ArrowLeft, ShieldCheck, Users } from "@phosphor-icons/react";
 
@@ -74,9 +78,15 @@ interface SubscriptionData {
 
     current_period_end: string | null;
 
+    grace_period_end?: string | null;
+
     last_payment_status: string | null;
 
   } | null;
+
+  gracePeriodEnd?: string | null;
+
+  effectiveAccessEnd?: string | null;
 
   isActive: boolean;
 
@@ -144,9 +154,15 @@ declare global {
 
 export default function AssinaturaPage() {
 
+  const router = useRouter();
+
   const brickContainerRef = useRef<HTMLDivElement>(null);
 
   const brickControllerRef = useRef<{ unmount?: () => void } | null>(null);
+
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const pollAttemptsRef = useRef(0);
 
 
 
@@ -162,6 +178,12 @@ export default function AssinaturaPage() {
 
   const [brickReady, setBrickReady] = useState(false);
 
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const [canceling, setCanceling] = useState(false);
+
+  const [pollingTimedOut, setPollingTimedOut] = useState(false);
+
 
 
   const [selectedTier, setSelectedTier] = useState<PlanTier>("start");
@@ -170,7 +192,7 @@ export default function AssinaturaPage() {
 
 
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async (): Promise<SubscriptionData | null> => {
 
     const {
 
@@ -184,7 +206,7 @@ export default function AssinaturaPage() {
 
       setLoading(false);
 
-      return;
+      return null;
 
     }
 
@@ -204,7 +226,7 @@ export default function AssinaturaPage() {
 
       setLoading(false);
 
-      return;
+      return null;
 
     }
 
@@ -212,15 +234,91 @@ export default function AssinaturaPage() {
 
     setLoading(false);
 
-  };
+    return json as SubscriptionData;
+
+  }, []);
+
+
+
+  const stopPolling = useCallback(() => {
+
+    if (pollingRef.current) {
+
+      clearInterval(pollingRef.current);
+
+      pollingRef.current = null;
+
+    }
+
+  }, []);
+
+
+
+  const startPolling = useCallback(() => {
+
+    if (pollingRef.current) return;
+
+    pollAttemptsRef.current = 0;
+
+    setPollingTimedOut(false);
+
+    pollingRef.current = setInterval(async () => {
+
+      pollAttemptsRef.current += 1;
+
+      if (pollAttemptsRef.current > 36) {
+
+        stopPolling();
+
+        setPollingTimedOut(true);
+
+        return;
+
+      }
+
+      const status = await loadStatus();
+
+      if (status?.isActive) {
+
+        stopPolling();
+
+        setPollingTimedOut(false);
+
+        router.refresh();
+
+      }
+
+    }, 5000);
+
+  }, [loadStatus, router, stopPolling]);
 
 
 
   useEffect(() => {
 
-    loadStatus();
+    void loadStatus();
 
-  }, []);
+  }, [loadStatus]);
+
+
+
+  useEffect(() => {
+
+    if (loading) return;
+
+    if (data && !data.isActive && !data.isSuperAdmin) {
+
+      startPolling();
+
+    } else {
+
+      stopPolling();
+
+    }
+
+    return () => stopPolling();
+
+  }, [data?.isActive, data?.isSuperAdmin, loading, startPolling, stopPolling]);
 
 
 
@@ -262,15 +360,59 @@ export default function AssinaturaPage() {
 
 
 
+  const subscriptionStatus = data?.subscription?.status ?? null;
+
+  // Em canceling ainda há acesso, mas o grid de reativação já aparece
   const needsCheckout =
-
-    data &&
-
+    !!data &&
     !data.isSuperAdmin &&
+    (!data.isActive ||
+      ["canceling", "expired", "cancelled"].includes(subscriptionStatus || "")) &&
+    subscriptionStatus !== "authorized";
 
-    !data.isActive &&
+  const canCancel =
+    !!data &&
+    !data.isSuperAdmin &&
+    (subscriptionStatus === "authorized" || subscriptionStatus === "past_due");
 
-    data.subscription?.status !== "authorized";
+  const handleCancel = async () => {
+    setCanceling(true);
+    setError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+
+      if (!session?.access_token) {
+        setError("Sessão expirada. Faça login novamente.");
+        return;
+      }
+
+      const res = await fetch("/api/admin/subscription/cancel", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(json.error || "Não foi possível cancelar a assinatura");
+        return;
+      }
+
+      setShowCancelModal(false);
+      setSuccess(
+        json.access_until
+          ? `Assinatura cancelada. Acesso até ${new Date(json.access_until).toLocaleDateString("pt-BR")}.`
+          : "Assinatura cancelada.",
+      );
+      setLoading(true);
+      await loadStatus();
+    } catch {
+      setError("Não foi possível cancelar a assinatura");
+    } finally {
+      setCanceling(false);
+    }
+  };
 
 
 
@@ -552,6 +694,16 @@ export default function AssinaturaPage() {
 
         )}
 
+        {pollingTimedOut && !data?.isActive && (
+
+          <div className="px-4 py-2.5 rounded-lg bg-warning-subtle border border-warning-border text-warning text-xs font-semibold">
+
+            Aguardando confirmação do pagamento. Atualize a página em alguns instantes.
+
+          </div>
+
+        )}
+
         {success && (
 
           <div className="px-4 py-2.5 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
@@ -589,16 +741,23 @@ export default function AssinaturaPage() {
               ) : null}
 
               {subscription?.current_period_end && (
-
                 <p className="text-xs text-text-secondary mt-1">
-
                   Próximo ciclo:{" "}
-
                   {new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}
-
                 </p>
-
               )}
+              {(subscription?.status === "past_due" || subscription?.status === "paused") &&
+                (data?.gracePeriodEnd || subscription?.grace_period_end) && (
+                  <p className="text-xs text-warning mt-1">
+                    Acesso até{" "}
+                    {new Date(
+                      data?.gracePeriodEnd ||
+                        subscription?.grace_period_end ||
+                        "",
+                    ).toLocaleDateString("pt-BR")}{" "}
+                    (período de carência)
+                  </p>
+                )}
 
               {studentUsage && (
 
@@ -610,6 +769,23 @@ export default function AssinaturaPage() {
 
                 </p>
 
+              )}
+
+              {subscription?.status === "canceling" && subscription.current_period_end && (
+                <p className="text-xs text-warning mt-2">
+                  Cancelamento agendado — acesso até{" "}
+                  {new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}
+                </p>
+              )}
+
+              {canCancel && (
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(true)}
+                  className="text-sm text-danger hover:opacity-80 mt-4"
+                >
+                  Cancelar assinatura
+                </button>
               )}
 
             </div>
@@ -632,9 +808,22 @@ export default function AssinaturaPage() {
 
         </Card>
 
+        <ConfirmModal
+          open={showCancelModal}
+          title="Cancelar assinatura?"
+          description={
+            subscription?.current_period_end
+              ? `Você mantém o acesso até ${new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}. Após essa data o painel será bloqueado.`
+              : "Após o cancelamento, o painel será bloqueado ao fim do ciclo atual."
+          }
+          confirmLabel="Sim, cancelar"
+          confirmVariant="danger"
+          loading={canceling}
+          onConfirm={handleCancel}
+          onClose={() => !canceling && setShowCancelModal(false)}
+        />
 
-
-        {data?.isActive && (
+        {data?.isActive && subscription?.status !== "canceling" && (
 
           <Card className="rounded-xl border border-success-border/50 bg-success-subtle/30 p-5 shadow-sm">
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -26,7 +27,10 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const { data: { user }, error: authError } = await adminClient.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await adminClient.auth.getUser(token);
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -52,7 +56,23 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const { data: { user: coachUser }, error } = await adminClient.auth.admin.getUserById(coachId);
+    const { data: coachProfile } = await adminClient
+      .from("profiles")
+      .select("subscription_active, account_type, role")
+      .eq("id", coachId)
+      .maybeSingle();
+
+    const coachCanContact =
+      coachProfile?.role === "super_admin" || hasActiveAccess(coachProfile ?? {});
+
+    if (!coachCanContact) {
+      return NextResponse.json({ error: "indisponível" }, { status: 403 });
+    }
+
+    const {
+      data: { user: coachUser },
+      error,
+    } = await adminClient.auth.admin.getUserById(coachId);
 
     if (error || !coachUser) {
       console.error("[COACH_WHATSAPP] Error fetching coach user from Auth:", error?.message);

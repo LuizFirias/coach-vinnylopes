@@ -3,33 +3,77 @@ export type AuronSubscriptionStatus =
   | "authorized"
   | "paused"
   | "cancelled"
-  | "past_due";
+  | "past_due"
+  | "expired"
+  | "canceling";
 
+/**
+ * Mapeia status do preapproval do Mercado Pago → status interno.
+ * - paused (falha temporária de cobrança no MP) → past_due + grace
+ * - cancelled → cancelamento definitivo (sem grace)
+ * - canceling é interno (coach pediu cancelamento; MP ainda manda cancelled)
+ */
 export function mapMpPreapprovalStatus(mpStatus: string): AuronSubscriptionStatus {
-  switch (mpStatus) {
+  switch ((mpStatus || "").toLowerCase()) {
     case "authorized":
       return "authorized";
     case "paused":
-      return "paused";
+      return "past_due";
     case "cancelled":
       return "cancelled";
     case "pending":
+      return "pending";
     default:
       return "pending";
   }
 }
 
+/** Grace = current_period_end + 3 dias. */
+export function calcGracePeriodEnd(currentPeriodEnd: string | null | undefined): string | null {
+  if (!currentPeriodEnd) return null;
+  const d = new Date(currentPeriodEnd);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + 3);
+  return d.toISOString();
+}
+
+/** Data efetiva usada no grace: grace_period_end ?? current_period_end */
+export function getEffectiveAccessEnd(
+  currentPeriodEnd: string | null | undefined,
+  gracePeriodEnd?: string | null | undefined,
+): string | null {
+  return gracePeriodEnd || currentPeriodEnd || null;
+}
+
+/**
+ * Liberação de acesso do coach:
+ * - authorized → ativo
+ * - canceling → até current_period_end (já cancelado no MP)
+ * - past_due / paused → grace até grace_period_end ?? current_period_end
+ * - cancelled / expired / pending → revogado
+ */
 export function isAccessGranted(
-  status: AuronSubscriptionStatus,
-  currentPeriodEnd: string | null
+  status: AuronSubscriptionStatus | string | null | undefined,
+  currentPeriodEnd: string | null | undefined,
+  gracePeriodEnd?: string | null | undefined,
 ): boolean {
-  const now = new Date();
+  if (!status) return false;
 
   if (status === "authorized") return true;
 
-  if (status === "paused" || status === "cancelled") {
+  if (status === "cancelled" || status === "pending" || status === "expired") {
+    return false;
+  }
+
+  if (status === "canceling") {
     if (!currentPeriodEnd) return false;
-    return new Date(currentPeriodEnd) >= now;
+    return new Date(currentPeriodEnd).getTime() >= Date.now();
+  }
+
+  if (status === "past_due" || status === "paused") {
+    const accessEnd = getEffectiveAccessEnd(currentPeriodEnd, gracePeriodEnd);
+    if (!accessEnd) return false;
+    return new Date(accessEnd).getTime() >= Date.now();
   }
 
   return false;

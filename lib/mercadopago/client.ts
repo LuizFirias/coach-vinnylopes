@@ -212,3 +212,17 @@ export async function mpFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 }
 
+
+
+/** Cancela preapproval no Mercado Pago (PUT status=cancelled). */
+export async function cancelMPPreapproval(preapprovalId: string): Promise<void> {
+  if (!preapprovalId) {
+    throw new Error("mp_preapproval_id ausente");
+  }
+
+  await mpFetch(`/preapproval/${preapprovalId}`, {
+    method: "PUT",
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+}
+

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
+import {
+  assertCoachWriteAccess,
+  coachWriteAccessErrorResponse,
+} from "@/lib/subscriptions/assertCoachWriteAccess";
 
 type CreateExercisePayload = {
   nome?: string;
@@ -18,6 +22,14 @@ export async function POST(req: Request) {
     });
     if ("error" in auth) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    try {
+      await assertCoachWriteAccess(auth.userId);
+    } catch (err) {
+      const denied = coachWriteAccessErrorResponse(err);
+      if (denied) return denied;
+      throw err;
     }
 
     let body: CreateExercisePayload;

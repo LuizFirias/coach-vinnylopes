@@ -122,6 +122,7 @@ export default function AlunoDashboardPage() {
   // Coach
   const [coachInfo, setCoachInfo] = useState<{ nome: string; avatar: string | null } | null>(null);
   const [coachPendings, setCoachPendings] = useState({ mensagens: 0, feedbacks: 0 });
+  const [coachContactAvailable, setCoachContactAvailable] = useState(true);
 
   // Treino de hoje
   const [treinoHoje, setTreinoHoje] = useState<{
@@ -356,6 +357,7 @@ export default function AlunoDashboardPage() {
       }
 
       // ── Coach info ────────────────────────────────────────────────────────
+      let coachActiveForExtras = true;
       if (profile?.coach_id) {
         try {
           const { data: coachData } = await supabaseClient
@@ -374,6 +376,23 @@ export default function AlunoDashboardPage() {
           console.log('[Dashboard] Erro ao buscar coach:', err);
         }
 
+        // Disponibilidade de extras (WhatsApp/parceiros) via API — service role
+        try {
+          const session = await getSafeSession();
+          const token = session?.access_token;
+          if (token) {
+            const res = await fetch(
+              `/api/aluno/coach-whatsapp?coachId=${profile.coach_id}`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            coachActiveForExtras = res.ok;
+          }
+        } catch {
+          // ignora — assume disponível
+        }
+
+        setCoachContactAvailable(coachActiveForExtras);
+
         try {
           const { count: fbCount } = await supabaseClient
             .from('feedbacks_treinos')
@@ -383,6 +402,17 @@ export default function AlunoDashboardPage() {
           setCoachPendings(prev => ({ ...prev, feedbacks: fbCount ?? 0 }));
         } catch (err) {
           console.warn('[Dashboard] Erro ao buscar feedbacks pendentes:', err);
+        }
+
+        if (coachActiveForExtras) {
+          const { data: parceirosData } = await supabaseClient
+            .from('parceiros')
+            .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
+            .eq('coach_id', profile.coach_id)
+            .order('nome_marca', { ascending: true });
+          setParceiros(parceirosData || []);
+        } else {
+          setParceiros([]);
         }
       }
 
@@ -459,16 +489,6 @@ export default function AlunoDashboardPage() {
         }
       } catch {
         // sem plano digital — não exibe card
-      }
-
-      // Parceiros
-      if (profile?.coach_id) {
-        const { data: parceirosData } = await supabaseClient
-          .from('parceiros')
-          .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
-          .eq('coach_id', profile.coach_id)
-          .order('nome_marca', { ascending: true });
-        setParceiros(parceirosData || []);
       }
 
       // ── Água ─────────────────────────────────────────────────────────────
@@ -665,7 +685,7 @@ export default function AlunoDashboardPage() {
             onRemove={() => updateAgua(-1)}
           />
 
-          {parceiros.length > 0 && (
+          {parceiros.length > 0 && coachContactAvailable && (
             <Link
               href="/aluno/parceiros"
               className="mobile-card-surface flex items-center justify-between rounded-2xl border px-4 py-3 text-sm text-text-secondary transition-colors hover:text-text-primary"
