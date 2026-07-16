@@ -48,6 +48,7 @@ export default function TreinosPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showPdfUpload, setShowPdfUpload] = useState(false);
   const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<WorkoutPlan | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutPlan | null>(null);
 
   const [fichas, setFichas] = useState<WorkoutPlan[]>([]);
@@ -69,57 +70,98 @@ export default function TreinosPage() {
       const coachId = authData?.user?.id;
       if (!coachId) { setError('Sessão inválida'); setFetchingData(false); return; }
 
-      // 1. Fetch coach's student associations
       const { data: links, error: linkError } = await supabaseClient
         .from('coach_alunos').select('aluno_id').eq('coach_id', coachId);
 
       if (linkError) throw linkError;
       const ids = links?.map(l => l.aluno_id) || [];
-      
+
       if (ids.length === 0) {
         setAlunos([]);
         setFichas([]);
         setAlunosSemFicha([]);
+        setFichasAtivas(0);
+        setFichasCriadasMes(0);
+        setAlunosAtendidos(0);
+        setTreinosExecutados(0);
         setFetchingData(false);
         return;
       }
 
-      // 2. Fetch profiles
-      let profilesList: Aluno[] = [];
-      if (ids.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabaseClient
-          .from('profiles').select('id, coaching_reference, full_name, email')
-          .in('id', ids).eq('arquivado', false).order('coaching_reference', { ascending: true });
-
-        if (profilesError) throw profilesError;
-        profilesList = (profilesData as Aluno[]) || [];
-        setAlunos(profilesList);
-      } else {
-        setAlunos([]);
-      }
-
-      // Dates
       const trintaDiasAtras = new Date();
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+      const trintaDiasIso = trintaDiasAtras.toISOString();
 
-      // 3. Fetch Digital sheets (fichas_treino) by coach_id
-      const { data: digitalData, error: digitalError } = await supabaseClient
-        .from('fichas_treino')
-        .select('id, aluno_id, nome_rotina, configuracao, ativo, criado_em')
-        .eq('coach_id', coachId)
-        .order('criado_em', { ascending: false });
+      // Cada .from() do supabase-js é um HTTP request independente ao PostgREST
+      // (JWT por request). Promise.all paraleliza round-trips reais; não compartilham
+      // a mesma sessão Postgres — o pool (Supavisor) atende em paralelo.
+      const listSelectWithCount =
+        'id, aluno_id, nome_rotina, ativo, criado_em, exercicios_count';
+      const listSelectLegacy =
+        'id, aluno_id, nome_rotina, ativo, criado_em, configuracao';
 
-      if (digitalError) throw digitalError;
+      const [profilesResult, digitalPrimary, pdfResult, executionsResult] = await Promise.all([
+        supabaseClient
+          .from('profiles')
+          .select('id, coaching_reference, full_name, email')
+          .in('id', ids)
+          .eq('arquivado', false)
+          .order('coaching_reference', { ascending: true }),
+        supabaseClient
+          .from('fichas_treino')
+          .select(listSelectWithCount)
+          .eq('coach_id', coachId)
+          .order('criado_em', { ascending: false }),
+        supabaseClient
+          .from('treinos_alunos')
+          .select('id, aluno_id, nome_arquivo, url_pdf, data_upload')
+          .eq('coach_id', coachId)
+          .order('data_upload', { ascending: false }),
+        supabaseClient
+          .from('historico_treinos')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', ids)
+          .gte('data_conclusao', trintaDiasIso),
+      ]);
 
-      // Última execução por ficha digital (historico_treinos)
-      const digitalIds = (digitalData || []).map((f) => f.id);
+      if (profilesResult.error) throw profilesResult.error;
+      if (pdfResult.error) throw pdfResult.error;
+
+      // Fallback se a migration 0043 (coluna exercicios_count) ainda não foi aplicada
+      let digitalData: Array<{
+        id: string;
+        aluno_id: string;
+        nome_rotina: string;
+        ativo: boolean;
+        criado_em: string;
+        exercicios_count?: number | null;
+        configuracao?: { exercicios?: unknown[] } | null;
+      }> = digitalPrimary.data || [];
+
+      if (digitalPrimary.error) {
+        const digitalFallback = await supabaseClient
+          .from('fichas_treino')
+          .select(listSelectLegacy)
+          .eq('coach_id', coachId)
+          .order('criado_em', { ascending: false });
+        if (digitalFallback.error) throw digitalFallback.error;
+        digitalData = digitalFallback.data || [];
+      }
+
+      const profilesList = (profilesResult.data as Aluno[]) || [];
+      setAlunos(profilesList);
+
+      const pdfData = pdfResult.data || [];
+      const digitalIds = digitalData.map((f) => f.id);
+
       const lastExecByFicha = new Map<string, string>();
       if (digitalIds.length > 0) {
         const { data: execData } = await supabaseClient
           .from('historico_treinos')
           .select('ficha_id, data_conclusao')
           .in('ficha_id', digitalIds)
-          .order('data_conclusao', { ascending: false });
+          .order('data_conclusao', { ascending: false })
+          .limit(2000);
 
         (execData || []).forEach((row) => {
           if (row.ficha_id && !lastExecByFicha.has(row.ficha_id)) {
@@ -128,30 +170,24 @@ export default function TreinosPage() {
         });
       }
 
-      // 4. Fetch PDF sheets (treinos_alunos) by coach_id
-      const { data: pdfData, error: pdfError } = await supabaseClient
-        .from('treinos_alunos')
-        .select('id, aluno_id, nome_arquivo, url_pdf, data_upload')
-        .eq('coach_id', coachId)
-        .order('data_upload', { ascending: false });
-
-      if (pdfError) throw pdfError;
-
-      // Map combined routines list
       const combinedRoutines: WorkoutPlan[] = [];
       let activeCount = 0;
       let monthCreatedCount = 0;
       const uniqueStudentsActive = new Set<string>();
+      const profilesById = new Map(profilesList.map((p) => [p.id, p]));
 
-      (digitalData || []).forEach(f => {
-        const student = profilesList.find(p => p.id === f.aluno_id);
-        const exCount = f.configuracao?.exercicios?.length || 0;
-        
+      digitalData.forEach((f) => {
+        const student = profilesById.get(f.aluno_id);
+        const exCount =
+          typeof f.exercicios_count === 'number'
+            ? f.exercicios_count
+            : f.configuracao?.exercicios?.length || 0;
+
         if (f.ativo) {
           activeCount++;
           uniqueStudentsActive.add(f.aluno_id);
         }
-        
+
         const createdDate = new Date(f.criado_em);
         if (createdDate >= trintaDiasAtras) {
           monthCreatedCount++;
@@ -168,18 +204,17 @@ export default function TreinosPage() {
           tipo: 'digital',
           exercicios_count: exCount,
           ultima_execucao: lastExecByFicha.get(f.id) ?? null,
-          configuracao: f.configuracao ?? null,
+          configuracao: null,
         });
       });
 
-      (pdfData || []).forEach(p => {
-        const student = profilesList.find(prof => prof.id === p.aluno_id);
+      pdfData.forEach((p) => {
+        const student = profilesById.get(p.aluno_id);
         const createdDate = new Date(p.data_upload);
         if (createdDate >= trintaDiasAtras) {
           monthCreatedCount++;
         }
-        
-        // PDFs are active by definition in simple schema
+
         uniqueStudentsActive.add(p.aluno_id);
 
         combinedRoutines.push({
@@ -197,29 +232,15 @@ export default function TreinosPage() {
         });
       });
 
-      // Sort combined list by date descending
       combinedRoutines.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
       setFichas(combinedRoutines);
-
-      // 5. Fetch executions in the last 30 days (historico_treinos)
-      let executionsCount = 0;
-      if (ids.length > 0) {
-        const { count } = await supabaseClient
-          .from('historico_treinos')
-          .select('id', { count: 'exact', head: true })
-          .in('aluno_id', ids)
-          .gte('data_conclusao', trintaDiasAtras.toISOString());
-        executionsCount = count || 0;
-      }
 
       setFichasAtivas(activeCount);
       setFichasCriadasMes(monthCreatedCount);
       setAlunosAtendidos(uniqueStudentsActive.size);
-      setTreinosExecutados(executionsCount || 0);
+      setTreinosExecutados(executionsResult.count || 0);
 
-      // 6. Identify students without active routines
-      const studentsWithoutActiveRoutine = profilesList.filter(p => !uniqueStudentsActive.has(p.id));
-      setAlunosSemFicha(studentsWithoutActiveRoutine);
+      setAlunosSemFicha(profilesList.filter((p) => !uniqueStudentsActive.has(p.id)));
 
     } catch (err: any) {
       console.error(err);
@@ -326,7 +347,32 @@ export default function TreinosPage() {
     setStatusFilter('todas');
   };
 
-  const handleViewWorkout = (plan: WorkoutPlan) => setSelectedRoutineForPreview(plan);
+  const handleViewWorkout = async (plan: WorkoutPlan) => {
+    if (plan.tipo !== 'digital') {
+      setSelectedRoutineForPreview(plan);
+      return;
+    }
+
+    setSelectedRoutineForPreview(plan);
+    setPreviewLoading(true);
+    try {
+      const { data, error } = await supabaseClient
+        .from('fichas_treino')
+        .select('configuracao')
+        .eq('id', plan.id)
+        .single();
+      if (error) throw error;
+      setSelectedRoutineForPreview({
+        ...plan,
+        configuracao: data?.configuracao ?? null,
+      });
+    } catch (err) {
+      console.error(err);
+      setError('Erro ao carregar preview da ficha');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
   const handleEditWorkout = (plan: WorkoutPlan) =>
     router.push(`/admin/aluno/${plan.aluno_id}/ficha/${plan.id}`);
 
@@ -610,7 +656,11 @@ export default function TreinosPage() {
 
             {/* Modal Body */}
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {(() => {
+              {previewLoading ? (
+                <div className="flex justify-center py-8">
+                  <DumbbellLoader text="Carregando exercícios..." />
+                </div>
+              ) : (() => {
                 const exercises = selectedRoutineForPreview.configuracao?.exercicios || [];
                 if (exercises.length === 0) {
                   return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;

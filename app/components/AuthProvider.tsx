@@ -125,8 +125,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const cached = readCachedRole(sessionUser.id);
       if (cached) {
+        // Paint rápido com cache — mas sempre revalida no DB (role pode ter mudado no Supabase).
         applyRole(sessionUser.id, cached);
         if (mountedRef.current) setLoading(false);
+        roleCacheRef.current = null;
+        const roleFromDb = await fetchRoleFromDatabase(sessionUser.id);
+        if (!mountedRef.current) return;
+        if (roleFromDb && roleFromDb !== cached) {
+          applyRole(sessionUser.id, roleFromDb);
+        }
         return;
       }
 
@@ -193,6 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (cached) {
             applyRole(newUserId, cached);
             setLoading(false);
+            roleCacheRef.current = null;
+            void fetchRoleFromDatabase(newUserId).then((roleFromDb) => {
+              if (!mountedRef.current || !roleFromDb) return;
+              if (roleFromDb !== cached) applyRole(newUserId, roleFromDb);
+            });
             return;
           }
 

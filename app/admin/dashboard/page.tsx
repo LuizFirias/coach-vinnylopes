@@ -492,7 +492,7 @@ export default function AdminDashboard() {
         });
       });
 
-      setPrioridades(tempPrioridades.slice(0, 6));
+      setPrioridades(tempPrioridades);
 
       // 7. Faturamento mensal â€” sÃ©rie NORMALIZADA (valor rateado pela duraÃ§Ã£o do plano).
       // Eixo X: inÃ­cio fixo em Jan/2026 (inÃ­cio da operaÃ§Ã£o) atÃ© mÃªs atual + 6 (projeÃ§Ã£o).

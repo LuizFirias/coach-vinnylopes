@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { ArrowLeft, FloppyDisk, Plus, X, FileArrowDown } from "@phosphor-icons/react";
 import Link from "next/link";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
@@ -394,6 +392,11 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
     setExportingPDF(true);
     try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
       const { data: authData } = await supabaseClient.auth.getUser();
       const coachId = authData?.user?.id;
       if (!coachId) throw new Error("Sessão inválida");

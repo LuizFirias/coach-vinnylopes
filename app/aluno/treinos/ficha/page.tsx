@@ -13,8 +13,6 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { YouTubePlayer } from "@/app/components/YouTubePlayer";
 import TecnicaInfoModal from "@/app/components/TecnicaInfoModal";
 import { TecnicasTooltipModal, TecnicasTooltipTrigger } from "@/app/components/treino/TecnicasTooltipModal";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 interface Serie {
   ordem: number;
@@ -536,6 +534,11 @@ function FichaContent() {
     if (!ficha) return;
     setDownloadingPDF(true);
     try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
       const { data: authData } = await supabaseClient.auth.getUser();
       const userId = authData?.user?.id;
       if (!userId) throw new Error("Sessão inválida");

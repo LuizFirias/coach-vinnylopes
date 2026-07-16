@@ -318,7 +318,6 @@ export default function AssinaturaPage() {
   const brickControllerRef = useRef<{ unmount?: () => void } | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollAttemptsRef = useRef(0);
-  const preferredTestOnceRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -497,14 +496,6 @@ export default function AssinaturaPage() {
     if (!billing) return null;
     return { ...plan, billing };
   }, [checkoutSelection, data?.plans]);
-
-  useEffect(() => {
-    if (preferredTestOnceRef.current || !data?.plans?.length) return;
-    if (data.plans.some((p) => p.tier === "test")) {
-      preferredTestOnceRef.current = true;
-      setSelectedTier("test");
-    }
-  }, [data?.plans]);
 
   useEffect(() => {
     if (!data?.plans?.length) return;

@@ -13,9 +13,7 @@ interface ExerciseCardProps {
   exercicio: ExercicioFicha;
   exIndex: number;
   dragHandleProps?: {
-    draggable?: boolean;
-    onDragStart?: () => void;
-    onDragEnd?: () => void;
+    onPointerDown?: (e: React.PointerEvent) => void;
   };
   isDragging?: boolean;
   onUpdate: (index: number, patch: Partial<ExercicioFicha>) => void;
@@ -57,15 +55,16 @@ export function ExerciseCard({
     <div
       className={cn(
         "bg-surface-1 border border-border-subtle shadow-sm rounded-xl overflow-hidden transition-opacity",
-        isDragging && "opacity-60"
+        isDragging && "opacity-95 border-brand/50"
       )}
     >
       <div className="flex items-center justify-between gap-1.5 px-3 py-2 bg-surface-2/40 border-b border-border-subtle">
         <div className="flex items-center gap-1 min-w-0 flex-1">
           <button
             type="button"
-            className="shrink-0 p-0.5 cursor-grab active:cursor-grabbing text-text-muted touch-none"
+            className="shrink-0 p-0.5 cursor-grab active:cursor-grabbing text-text-muted touch-none select-none"
             title="Arrastar para reordenar"
+            aria-label="Arrastar para reordenar"
             {...dragHandleProps}
           >
             <DotsSixVertical size={15} />

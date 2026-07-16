@@ -392,16 +392,16 @@ export default function ExecucaoTreinoPage() {
   const [restTimerMeta, setRestTimerMeta] = useState<{ title?: string; subtitle?: string; subtitleHighlight?: string }>({});
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
-  const [showSeriesHistory, setShowSeriesHistory] = useState(false);
+  const [showSeriesHistory, setShowSeriesHistory] = useState(true);
 
   const [techniqueCardExpanded, setTechniqueCardExpanded] = useState(false);
 
   useEffect(() => {
     if (modalBlockIdx !== null) {
-      setShowSeriesHistory(false);
-      setTechniqueCardExpanded(modalRodadaIdx === 0);
+      setShowSeriesHistory(true);
+      setTechniqueCardExpanded(false);
     }
-  }, [modalBlockIdx, modalRodadaIdx, bisetFase]);
+  }, [modalBlockIdx]);
 
   // Termômetro de treino — feedback após finalização
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -849,7 +849,6 @@ export default function ExecucaoTreinoPage() {
       setModalCarga(carga);
       setModalCargaStr(carga > 0 ? String(carga) : '');
     }
-    setShowSeriesHistory(false);
   }
 
   const handlePesoChange = useCallback((exercicioId: string, serieOrdem: number, peso: number) => {
@@ -1714,7 +1713,7 @@ export default function ExecucaoTreinoPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (hasTecnica) setTechniqueCardExpanded(true);
+                      if (hasTecnica) setTechniqueCardExpanded((v) => !v);
                     }}
                     disabled={!hasTecnica}
                     className={cn(

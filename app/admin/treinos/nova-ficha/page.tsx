@@ -13,8 +13,6 @@ import {
   WarningCircle,
   CircleNotch,
 } from "@phosphor-icons/react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
@@ -505,6 +503,11 @@ export default function NovaFichaCoachPage() {
 
     setExporting(true);
     try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
       const coachId = user?.id;
       if (!coachId) throw new Error("Sessão inválida");
 

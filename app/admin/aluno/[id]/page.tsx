@@ -42,8 +42,6 @@ import {
   ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
 import { MeasurementsView } from '@/app/components/measurements/MeasurementsView';
 import type { MedicaoRecord } from '@/lib/measurements/types';
@@ -783,8 +781,13 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     };
   }, [historicoTreinos]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (medidas.length === 0) return;
+
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
 
     const doc = new jsPDF({
       orientation: "portrait",

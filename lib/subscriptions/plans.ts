@@ -23,10 +23,18 @@ export interface PlanDefinition {
 export const PLAN_TIERS: PlanTier[] = ["start", "pro", "elite"];
 
 /**
+ * Stand-by do plano QA R$5 na tela de assinaturas.
+ * `true` = oculto (checkout também rejeita). Para nova rodada de QA:
+ * setar false aqui + NEXT_PUBLIC_SHOW_TEST_PLAN=true (e redeploy).
+ */
+const TEST_PLAN_STANDBY = true;
+
+/**
  * Plano QA R$5. Aceita NEXT_PUBLIC_SHOW_TEST_PLAN ou SHOW_TEST_PLAN.
  * Usa acesso por colchetes para não “congelar” o valor no build do Next.
  */
 export function isTestPlanEnabled(): boolean {
+  if (TEST_PLAN_STANDBY) return false;
   const raw =
     process.env["NEXT_PUBLIC_SHOW_TEST_PLAN"] ??
     process.env["SHOW_TEST_PLAN"] ??

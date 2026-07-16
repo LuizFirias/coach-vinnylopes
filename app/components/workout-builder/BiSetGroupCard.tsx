@@ -30,9 +30,7 @@ interface BiSetGroupCardProps {
   groupIndex: number;
   catalog: CatalogExercise[];
   dragHandleProps?: {
-    draggable?: boolean;
-    onDragStart?: () => void;
-    onDragEnd?: () => void;
+    onPointerDown?: (e: React.PointerEvent) => void;
   };
   isDragging?: boolean;
   onUpdateDescanso: (descanso: string) => void;
@@ -109,7 +107,7 @@ export function BiSetGroupCard({
       <div
         className={cn(
           "bg-[#141414] border border-brand rounded-[14px] overflow-hidden transition-opacity",
-          isDragging && "opacity-60"
+          isDragging && "opacity-95 shadow-elev-3"
         )}
       >
         {/* Exercício A */}
@@ -118,8 +116,9 @@ export function BiSetGroupCard({
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <button
                 type="button"
-                className="shrink-0 p-0.5 cursor-grab active:cursor-grabbing text-text-muted touch-none"
+                className="shrink-0 p-0.5 cursor-grab active:cursor-grabbing text-text-muted touch-none select-none"
                 title="Arrastar grupo Bi-Set"
+                aria-label="Arrastar grupo Bi-Set"
                 {...dragHandleProps}
               >
                 <DotsSixVertical size={15} />
