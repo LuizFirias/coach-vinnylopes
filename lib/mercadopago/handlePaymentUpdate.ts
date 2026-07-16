@@ -13,6 +13,10 @@ interface MpPayment {
   preapproval_id?: string;
   date_approved?: string;
   metadata?: Record<string, unknown>;
+  card?: {
+    last_four_digits?: string;
+    last_four?: string;
+  };
 }
 
 const GRACE_FAIL_THRESHOLD = 1;
@@ -65,6 +69,9 @@ export async function handlePaymentUpdate(paymentId: string): Promise<void> {
       planTier: subscription.plan_tier,
     });
 
+    const cardLastFour =
+      payment.card?.last_four_digits || payment.card?.last_four || null;
+
     await supabase
       .from("subscriptions")
       .update({
@@ -73,6 +80,7 @@ export async function handlePaymentUpdate(paymentId: string): Promise<void> {
         current_period_end: periodEnd,
         grace_period_end: null,
         payment_failure_count: 0,
+        ...(cardLastFour ? { card_last_four: String(cardLastFour).slice(-4) } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", subscription.id);

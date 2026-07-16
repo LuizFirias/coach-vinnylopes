@@ -231,3 +231,36 @@ export function formatStudentUsage(count: number, limit: number | null): string 
   if (limit == null) return `${count} alunos`;
   return `${count}/${limit} alunos`;
 }
+
+/** Meses do ciclo (1 / 6 / 12). */
+export function getBillingMonths(period: BillingPeriod): number {
+  if (period === "yearly") return 12;
+  if (period === "semester") return 6;
+  return 1;
+}
+
+/** Equivalente mensal do preço total do ciclo. */
+export function getMonthlyEquivalent(totalPrice: number, period: BillingPeriod): number {
+  const months = getBillingMonths(period);
+  return totalPrice / months;
+}
+
+export function formatCurrencyBRL(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+/** Economia % vs pagar mensal o mesmo número de meses. */
+export function getPeriodSavingsPercent(
+  periodPrice: number,
+  monthlyPrice: number,
+  period: BillingPeriod,
+): number {
+  const months = getBillingMonths(period);
+  if (months <= 1) return 0;
+  const fullMonthly = monthlyPrice * months;
+  if (fullMonthly <= periodPrice) return 0;
+  return Math.round((1 - periodPrice / fullMonthly) * 100);
+}
