@@ -332,22 +332,52 @@ export function buildRodadaHistory(block: Extract<WorkoutBlock, { kind: "biset" 
   return { rodada: rodadaIdx + 1, aSerie, bSerie, aNome: block.exercicioA.nome, bNome: block.exercicioB.nome };
 }
 
+type PrevSerieSessao = {
+  ordem?: number;
+  peso_atual?: number;
+  reps?: number | string;
+  completado?: boolean;
+};
+
 type BibMeta = {
   gruposMusculares: Record<string, string>;
   gifs: Record<string, string>;
   videos: Record<string, string>;
-  ultimoPorExercicio: Record<string, { dados_sessao?: { series?: Array<{ peso_atual?: number; reps?: number | string }> } }>;
+  ultimoPorExercicio: Record<string, { dados_sessao?: { series?: PrevSerieSessao[] } }>;
 };
+
+/** Última série válida da sessão anterior (completada com carga), por ordem. */
+function findPrevSerie(
+  prevSeries: PrevSerieSessao[],
+  ordem: number,
+  idx: number
+): PrevSerieSessao | undefined {
+  const byOrdem = prevSeries.find(
+    (p) =>
+      (p.ordem ?? 0) === ordem &&
+      p.completado === true &&
+      (p.peso_atual ?? 0) > 0
+  );
+  if (byOrdem) return byOrdem;
+
+  // Fallback por índice (sessões antigas sem ordem / séries reordenadas)
+  const byIdx = prevSeries[idx];
+  if (byIdx && byIdx.completado === true && (byIdx.peso_atual ?? 0) > 0) {
+    return byIdx;
+  }
+  return undefined;
+}
 
 function buildSerieExecucao(
   s: SeriePrescricao,
   idx: number,
-  prevSeries: Array<{ peso_atual?: number; reps?: number | string }>
+  prevSeries: PrevSerieSessao[]
 ) {
-  const prev = prevSeries[idx];
-  const anterior = prev ? `${prev.peso_atual || 0}kg × ${prev.reps || 0}` : "—";
+  const ordem = s.ordem ?? idx + 1;
+  const prev = findPrevSerie(prevSeries, ordem, idx);
+  const anterior = prev ? `${prev.peso_atual}kg × ${prev.reps || 0}` : "—";
   return {
-    ordem: s.ordem ?? idx + 1,
+    ordem,
     peso_atual: prev?.peso_atual ?? 0,
     reps: s.reps_sugerido ?? s.reps ?? "12",
     tecnica: s.tecnica ?? undefined,
@@ -363,7 +393,7 @@ function buildHalfExecucao(
 ): ExercicioExecucao {
   const eid = half.exercicio_id;
   const ultimo = meta.ultimoPorExercicio[eid];
-  const prevSeries = (ultimo?.dados_sessao?.series || []) as Array<{ peso_atual?: number; reps?: number | string }>;
+  const prevSeries = (ultimo?.dados_sessao?.series || []) as PrevSerieSessao[];
   return {
     id: eid,
     nome: half.nome,
@@ -379,7 +409,7 @@ function buildHalfExecucao(
 function buildSimpleExecucao(ex: ExercicioSimplesPrescricao, meta: BibMeta): ExercicioExecucao {
   const eid = ex.id;
   const ultimo = meta.ultimoPorExercicio[eid];
-  const prevSeries = (ultimo?.dados_sessao?.series || []) as Array<{ peso_atual?: number; reps?: number | string }>;
+  const prevSeries = (ultimo?.dados_sessao?.series || []) as PrevSerieSessao[];
   const descanso = ex.descanso_segundos ?? descansoToSeconds(ex.descanso || "01:00");
   return {
     id: eid,

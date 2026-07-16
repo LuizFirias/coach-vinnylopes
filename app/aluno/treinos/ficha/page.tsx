@@ -200,10 +200,10 @@ function FichaContent() {
           supabaseClient
             .from("historico_treinos")
             .select("exercicio_id, dados_sessao")
-            .eq("ficha_id", fichaId)
             .eq("aluno_id", userId)
             .in("exercicio_id", exercicioIds)
-            .order("data_conclusao", { ascending: false }),
+            .order("data_conclusao", { ascending: false })
+            .limit(Math.max(exercicioIds.length * 10, 50)),
           supabaseClient
             .from("exercicios_biblioteca")
             .select("id, video_url")
@@ -225,12 +225,30 @@ function FichaContent() {
           ...ex,
           video_url: videosBiblioteca[ex.id] || undefined,
           series: (ex.series || []).map((serie: any, idx: number) => {
-            const seriePrev = historicoEx?.series?.[idx];
-            const anterior = seriePrev ? `${seriePrev.peso_atual || 0}kg x ${seriePrev.reps || 0}` : "—";
+            const ordem = serie.ordem || idx + 1;
+            const seriesPrev = (historicoEx?.series || []) as Array<{
+              ordem?: number;
+              peso_atual?: number;
+              reps?: number | string;
+              completado?: boolean;
+            }>;
+            const seriePrev =
+              seriesPrev.find(
+                (p) =>
+                  (p.ordem ?? 0) === ordem &&
+                  p.completado === true &&
+                  (p.peso_atual ?? 0) > 0
+              ) ||
+              (seriesPrev[idx]?.completado === true && (seriesPrev[idx].peso_atual ?? 0) > 0
+                ? seriesPrev[idx]
+                : undefined);
+            const anterior = seriePrev
+              ? `${seriePrev.peso_atual}kg x ${seriePrev.reps || 0}`
+              : "—";
             return {
-              ordem: serie.ordem || idx + 1,
+              ordem,
               anterior,
-              peso_atual: 0,
+              peso_atual: seriePrev?.peso_atual ?? 0,
               reps: serie.reps ?? serie.reps_sugerido ?? 0,
               tecnica: serie.tecnica || "",
               tecnica_extra: serie.tecnica_extra

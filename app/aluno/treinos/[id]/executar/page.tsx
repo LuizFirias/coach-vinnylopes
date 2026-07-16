@@ -484,16 +484,33 @@ export default function ExecucaoTreinoPage() {
         );
       }
 
-      // Buscar histórico para gráfico e anterior de cada exercício
-      const { data: historicoData } = await supabaseClient
+      // Histórico da ficha (volume) + última sessão por exercício (cargas "Anterior").
+      // Importante: data_conclusao DESC — ASC + limit cortava as sessões mais recentes.
+      const historicoFichaQuery = supabaseClient
         .from('historico_treinos')
         .select('data_conclusao, dados_sessao, exercicio_id')
         .eq('ficha_id', fichaId)
         .eq('aluno_id', uid)
-        .order('data_conclusao', { ascending: true })
-        .limit(50);
+        .order('data_conclusao', { ascending: false })
+        .limit(200);
 
-      // Montar gráfico de volume: agrupar por dia
+      const historicoExercicioQuery =
+        exercicioIds.length > 0
+          ? supabaseClient
+              .from('historico_treinos')
+              .select('data_conclusao, dados_sessao, exercicio_id')
+              .eq('aluno_id', uid)
+              .in('exercicio_id', exercicioIds)
+              .order('data_conclusao', { ascending: false })
+              .limit(Math.max(exercicioIds.length * 10, 50))
+          : Promise.resolve({ data: null as null });
+
+      const [{ data: historicoData }, { data: historicoPorExercicio }] = await Promise.all([
+        historicoFichaQuery,
+        historicoExercicioQuery,
+      ]);
+
+      // Montar gráfico de volume: agrupar por dia (ordem cronológica)
       const volumePorDia: Record<string, number> = {};
       for (const h of (historicoData || [])) {
         const dia = h.data_conclusao?.slice(0, 10) || '';
@@ -505,20 +522,19 @@ export default function ExecucaoTreinoPage() {
         }, 0);
         volumePorDia[dia] = (volumePorDia[dia] || 0) + vol;
       }
-      const volumePoints = Object.entries(volumePorDia).map(([data, volume]) => ({
-        data: new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
-        volume,
-      }));
+      const volumePoints = Object.entries(volumePorDia)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([data, volume]) => ({
+          data: new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+          volume,
+        }));
       setVolumeHistory(volumePoints);
 
-      // Último histórico por exercício para mostrar "anterior"
+      // Última sessão por exercício (qualquer ficha) — rows já vêm DESC
       const ultimoPorExercicio: Record<string, any> = {};
-      for (const h of (historicoData || [])) {
-        if (!h.exercicio_id) continue;
-        const current = ultimoPorExercicio[h.exercicio_id];
-        if (!current || h.data_conclusao > current.data_conclusao) {
-          ultimoPorExercicio[h.exercicio_id] = h;
-        }
+      for (const h of (historicoPorExercicio || historicoData || [])) {
+        if (!h.exercicio_id || ultimoPorExercicio[h.exercicio_id]) continue;
+        ultimoPorExercicio[h.exercicio_id] = h;
       }
 
       const blocksState = buildWorkoutBlocksFromConfig(exerciciosConfig, {
