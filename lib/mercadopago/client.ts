@@ -128,6 +128,12 @@ export function buildMpPreapprovalBody(
   // source_news=webhooks: MP envia Webhooks (com x-signature), não IPN legado.
   const notificationUrl = `${siteUrl}/api/webhooks/mercadopago?source_news=webhooks`;
 
+  console.log("[checkout] notification_url enviado:", notificationUrl, {
+    siteUrl,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || null,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || null,
+  });
+
   const body: MpPreapprovalCreateBody = {
 
     reason: option.reason,

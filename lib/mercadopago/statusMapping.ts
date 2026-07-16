@@ -48,7 +48,7 @@ export function getEffectiveAccessEnd(
 /**
  * Liberação de acesso do coach:
  * - authorized → ativo
- * - canceling → até current_period_end (já cancelado no MP)
+ * - canceling → ativo enquanto current_period_end >= now (cancelamento não é imediato)
  * - past_due / paused → grace até grace_period_end ?? current_period_end
  * - cancelled / expired / pending → revogado
  */
@@ -65,9 +65,12 @@ export function isAccessGranted(
     return false;
   }
 
+  // canceling: mantém acesso até o fim do ciclo pago
   if (status === "canceling") {
     if (!currentPeriodEnd) return false;
-    return new Date(currentPeriodEnd).getTime() >= Date.now();
+    const end = new Date(currentPeriodEnd).getTime();
+    if (Number.isNaN(end)) return false;
+    return end >= Date.now();
   }
 
   if (status === "past_due" || status === "paused") {

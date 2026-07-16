@@ -21,6 +21,7 @@ import {
   type BillingPeriod,
   type PlanTier,
 } from "@/lib/subscriptions/plans";
+import { resolveAccessUntilOnCancel } from "@/lib/subscriptions/billingPeriod";
 
 interface PlanBillingOption {
   period: BillingPeriod;
@@ -411,15 +412,38 @@ export default function AssinaturaPage() {
     void loadStatus();
   }, [loadStatus]);
 
+  // Polling só no pós-checkout (pending / sem status), nunca em canceling/cancelled/expired.
   useEffect(() => {
-    if (loading) return;
-    if (data && !data.isActive && !data.isSuperAdmin) {
+    if (loading || !data || data.isSuperAdmin) {
+      stopPolling();
+      return;
+    }
+
+    const subStatus = data.subscription?.status ?? null;
+    const shouldPoll =
+      !data.isActive &&
+      subStatus !== "canceling" &&
+      subStatus !== "cancelled" &&
+      subStatus !== "expired" &&
+      subStatus !== "authorized" &&
+      subStatus !== "past_due" &&
+      subStatus !== "paused" &&
+      (subStatus === "pending" || subStatus == null);
+
+    if (shouldPoll) {
       startPolling();
     } else {
       stopPolling();
     }
     return () => stopPolling();
-  }, [data?.isActive, data?.isSuperAdmin, loading, startPolling, stopPolling]);
+  }, [
+    data?.isActive,
+    data?.isSuperAdmin,
+    data?.subscription?.status,
+    loading,
+    startPolling,
+    stopPolling,
+  ]);
 
   const selectedPlan = useMemo(() => {
     if (!data?.plans?.length) return null;
@@ -482,11 +506,12 @@ export default function AssinaturaPage() {
   const needsCheckout =
     !!data &&
     !data.isSuperAdmin &&
-    (!data.isActive ||
-      ["canceling", "expired", "cancelled"].includes(subscriptionStatus || "")) &&
+    subscriptionStatus !== "canceling" &&
     subscriptionStatus !== "authorized" &&
     subscriptionStatus !== "past_due" &&
-    subscriptionStatus !== "paused";
+    subscriptionStatus !== "paused" &&
+    (!data.isActive ||
+      ["expired", "cancelled"].includes(subscriptionStatus || ""));
 
   const canCancel =
     !!data &&
@@ -522,11 +547,15 @@ export default function AssinaturaPage() {
       setShowCancelModal(false);
       setSuccess(
         json.access_until
-          ? `Acesso até ${new Date(json.access_until).toLocaleDateString("pt-BR")}.`
-          : "Assinatura cancelada.",
+          ? `Assinatura cancelada. Acesso até ${new Date(json.access_until).toLocaleDateString("pt-BR")}.`
+          : "Assinatura cancelada. Você mantém o acesso até o fim do ciclo.",
       );
+      stopPolling();
+      setPollingTimedOut(false);
+      setCheckoutSelection(null);
       setLoading(true);
       await loadStatus();
+      router.refresh();
     } catch {
       setError("Não foi possível cancelar a assinatura");
     } finally {
@@ -720,6 +749,12 @@ export default function AssinaturaPage() {
   const monthlyRef = selectedPlan?.billingOptions.find((b) => b.period === "monthly");
   const cardLastFour = subscription?.card_last_four || null;
   const billingLabel = statusPeriod ? BILLING_PERIOD_LABELS[statusPeriod] : null;
+  const cancelAccessUntil = resolveAccessUntilOnCancel({
+    currentPeriodEnd: subscription?.current_period_end,
+    billingPeriod: data?.billingPeriod ?? data?.currentPlan?.period ?? null,
+    planTier: data?.planTier ?? data?.currentPlan?.tier ?? null,
+  });
+  const cancelAccessUntilLabel = formatDateBR(cancelAccessUntil);
   const showFinancialMeta =
     displayStatus === "active" ||
     displayStatus === "canceling" ||
@@ -859,7 +894,10 @@ export default function AssinaturaPage() {
           <p className="text-[11px] font-semibold text-[#39c75a] py-3">{success}</p>
         )}
 
-        {(pollingActive || pollingTimedOut) && !data?.isActive && (
+        {(pollingActive || pollingTimedOut) &&
+          !data?.isActive &&
+          data?.subscription?.status !== "canceling" &&
+          displayStatus !== "canceling" && (
           <p className="text-[11px] font-semibold text-[#f59e0b] py-3">
             {pollingTimedOut
               ? "Aguardando confirmação do pagamento. Atualize a página em alguns instantes."
@@ -946,9 +984,9 @@ export default function AssinaturaPage() {
           open={showCancelModal}
           title="Cancelar assinatura?"
           description={
-            subscription?.current_period_end
-              ? `Você mantém o acesso até ${new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}. Após essa data o painel será bloqueado.`
-              : "Após o cancelamento, o painel será bloqueado ao fim do ciclo atual."
+            cancelAccessUntilLabel
+              ? `Você mantém o acesso até ${cancelAccessUntilLabel}. Após essa data o painel será bloqueado. Não haverá novas cobranças.`
+              : "Após o cancelamento, o painel permanece ativo até o fim do ciclo atual. Não haverá novas cobranças."
           }
           confirmLabel="Sim, cancelar"
           confirmVariant="danger"

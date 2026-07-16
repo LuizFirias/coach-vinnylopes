@@ -29,9 +29,30 @@ export async function setUserAccess(
     return;
   }
 
-  const update: Record<string, unknown> = {
-    subscription_active: active,
-  };
+  const update: Record<string, unknown> = {};
+
+  // canceling: acesso permanece até current_period_end — NÃO forçar false aqui.
+  // O cron (expire-subscriptions) é quem seta expired + subscription_active=false.
+  if (status === "canceling") {
+    update.subscription_active = active;
+    if (active && currentPeriodEnd) {
+      update.data_expiracao = currentPeriodEnd.split("T")[0];
+      update.status_pagamento = "pago";
+    } else {
+      // period_end já passou — só nesse caso revoga (espelha o cron)
+      update.subscription_active = false;
+      update.status_pagamento = "atrasado";
+    }
+    if (planInfo && active) {
+      if (planInfo.planTier) update.plan_tier = planInfo.planTier;
+      if (planInfo.billingPeriod) update.billing_period = planInfo.billingPeriod;
+      if (planInfo.studentLimit != null) update.student_limit = planInfo.studentLimit;
+    }
+    await supabase.from("profiles").update(update).eq("id", userId);
+    return;
+  }
+
+  update.subscription_active = active;
 
   if (planInfo && (status === "authorized" || active)) {
     if (planInfo.planTier) update.plan_tier = planInfo.planTier;
@@ -46,7 +67,7 @@ export async function setUserAccess(
   } else if (status === "cancelled" || status === "expired") {
     update.status_pagamento = "atrasado";
     update.subscription_active = false;
-  } else if (!active && (status === "past_due" || status === "canceling")) {
+  } else if (!active && status === "past_due") {
     update.status_pagamento = "atrasado";
     update.subscription_active = false;
   }

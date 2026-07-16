@@ -23,6 +23,7 @@ import {
 } from "@/lib/subscriptions/plans";
 
 import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
+import { resolvePeriodEndFromMp } from "@/lib/subscriptions/billingPeriod";
 
 
 
@@ -141,7 +142,8 @@ export async function POST(req: Request) {
       backUrl: `${siteUrl}/admin/assinatura?status=success`,
     });
 
-    console.log("[SUBSCRIPTIONS-CHECKOUT] notification_url=", mpBody.notification_url, {
+    console.log("[checkout] notification_url enviado:", mpBody.notification_url, {
+      siteUrl,
       tier,
       period,
       userId: auth.userId,
@@ -153,12 +155,17 @@ export async function POST(req: Request) {
     });
 
     const status = mapMpPreapprovalStatus(preapproval.status);
-    const periodEnd = preapproval.next_payment_date || null;
+    const periodEnd = resolvePeriodEndFromMp({
+      nextPaymentDate: preapproval.next_payment_date || null,
+      billingPeriod: period,
+      planTier: tier,
+    });
 
     console.log("[SUBSCRIPTIONS-CHECKOUT] MP preapproval", {
       id: preapproval.id,
       mpStatus: preapproval.status,
       mappedStatus: status,
+      mpNextPaymentDate: preapproval.next_payment_date || null,
       periodEnd,
     });
 

@@ -3,6 +3,7 @@ import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { cancelMPPreapproval } from "@/lib/mercadopago/client";
 import { setUserAccess } from "@/lib/access/setUserAccess";
+import { resolveAccessUntilOnCancel } from "@/lib/subscriptions/billingPeriod";
 import type { BillingPeriod, PlanTier } from "@/lib/subscriptions/plans";
 
 const CANCELABLE_STATUSES = ["authorized", "past_due", "paused"] as const;
@@ -10,7 +11,7 @@ const CANCELABLE_STATUSES = ["authorized", "past_due", "paused"] as const;
 /**
  * POST /api/admin/subscription/cancel
  * Cancela o preapproval no MP e seta canceling no DB.
- * Acesso permanece até current_period_end — o cron seta expired depois.
+ * Acesso permanece até o fim do ciclo pago (nunca imediato) — o cron seta expired depois.
  */
 export async function POST(req: Request) {
   try {
@@ -62,11 +63,18 @@ export async function POST(req: Request) {
 
     await cancelMPPreapproval(sub.mp_preapproval_id);
 
+    const accessUntil = resolveAccessUntilOnCancel({
+      currentPeriodEnd: sub.current_period_end,
+      billingPeriod: sub.billing_period,
+      planTier: sub.plan_tier,
+    });
+
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("subscriptions")
       .update({
         status: "canceling",
+        current_period_end: accessUntil,
         grace_period_end: null,
         updated_at: now,
       })
@@ -89,18 +97,12 @@ export async function POST(req: Request) {
           }
         : null;
 
-    // Mantém acesso até current_period_end (isAccessGranted trata canceling)
-    await setUserAccess(
-      auth.userId,
-      "canceling",
-      sub.current_period_end,
-      planInfo,
-      null,
-    );
+    // Mantém acesso até accessUntil (isAccessGranted trata canceling)
+    await setUserAccess(auth.userId, "canceling", accessUntil, planInfo, null);
 
     return NextResponse.json({
       ok: true,
-      access_until: sub.current_period_end,
+      access_until: accessUntil,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erro interno";

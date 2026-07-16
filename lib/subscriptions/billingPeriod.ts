@@ -51,3 +51,56 @@ export function computePeriodEndFromPayment(opts: {
   end.setMonth(end.getMonth() + months);
   return end.toISOString();
 }
+
+/**
+ * Fim de acesso ao cancelar: não é imediato.
+ * Usa current_period_end se ainda for futuro (>1 dia);
+ * senão, agora + duração do ciclo (ex.: mensal ≈ 30 dias).
+ */
+export function resolveAccessUntilOnCancel(opts: {
+  currentPeriodEnd?: string | null;
+  billingPeriod?: string | null;
+  planTier?: string | null;
+  now?: Date;
+}): string {
+  const now = opts.now ?? new Date();
+  const minFutureMs = now.getTime() + 24 * 60 * 60 * 1000;
+  const existing = opts.currentPeriodEnd ? new Date(opts.currentPeriodEnd) : null;
+
+  if (existing && !Number.isNaN(existing.getTime()) && existing.getTime() > minFutureMs) {
+    return existing.toISOString();
+  }
+
+  return computePeriodEndFromPayment({
+    dateApproved: now.toISOString(),
+    existingPeriodEnd: null,
+    billingPeriod: opts.billingPeriod,
+    planTier: opts.planTier,
+  });
+}
+
+/**
+ * Normaliza next_payment_date do MP: se ausente ou ≤1 dia no futuro,
+ * calcula pelo ciclo do plano (mensal/semestral/anual).
+ */
+export function resolvePeriodEndFromMp(opts: {
+  nextPaymentDate?: string | null;
+  billingPeriod?: string | null;
+  planTier?: string | null;
+  now?: Date;
+}): string {
+  const now = opts.now ?? new Date();
+  const minFutureMs = now.getTime() + 24 * 60 * 60 * 1000;
+  const next = opts.nextPaymentDate ? new Date(opts.nextPaymentDate) : null;
+
+  if (next && !Number.isNaN(next.getTime()) && next.getTime() > minFutureMs) {
+    return next.toISOString();
+  }
+
+  return computePeriodEndFromPayment({
+    dateApproved: now.toISOString(),
+    existingPeriodEnd: null,
+    billingPeriod: opts.billingPeriod,
+    planTier: opts.planTier,
+  });
+}
