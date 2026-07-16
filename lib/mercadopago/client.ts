@@ -10,6 +10,8 @@ import {
 
   getPlanOption,
 
+  isMpTestDailyCycleEnabled,
+
 } from "@/lib/subscriptions/plans";
 
 import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
@@ -18,28 +20,70 @@ import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
 
 const MP_API_BASE = "https://api.mercadopago.com";
 
+function maskSecret(value: string | null | undefined, keep = 15): string {
+  if (!value) return "(ausente)";
+  if (value.length <= keep) return `${value.slice(0, 4)}…`;
+  return `${value.slice(0, keep)}…`;
+}
 
+function credentialMode(value: string | null | undefined): "test" | "prod" | "unknown" {
+  if (!value) return "unknown";
+  if (value.startsWith("TEST-")) return "test";
+  if (value.startsWith("APP_USR-")) return "prod";
+  return "unknown";
+}
+
+/** Public key alinhada ao mesmo ambiente do access token (prod vs test). */
+export function getMpPublicKey(): string | null {
+  const isProd = process.env.NODE_ENV === "production";
+  return isProd
+    ? process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || null
+    : process.env.NEXT_PUBLIC_MP_PUBLIC_KEY_TEST ||
+        process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ||
+        null;
+}
 
 export function getMpAccessToken(): string {
-
   const isProd = process.env.NODE_ENV === "production";
-
   const token = isProd
-
     ? process.env.MP_ACCESS_TOKEN
-
     : process.env.MP_ACCESS_TOKEN_TEST || process.env.MP_ACCESS_TOKEN;
 
-
-
   if (!token) {
-
     throw new Error("Mercado Pago access token não configurado");
-
   }
 
   return token;
+}
 
+/**
+ * Diagnóstico de par Public Key ↔ Access Token (mascarado).
+ * Em produção ambos devem ser APP_USR; em dev ambos TEST.
+ */
+export function getMpCredentialDiagnostics() {
+  const isProd = process.env.NODE_ENV === "production";
+  const publicKey = getMpPublicKey();
+  const accessToken = (() => {
+    try {
+      return getMpAccessToken();
+    } catch {
+      return null;
+    }
+  })();
+
+  const pkMode = credentialMode(publicKey);
+  const atMode = credentialMode(accessToken);
+  const pairMatch = pkMode !== "unknown" && pkMode === atMode;
+
+  return {
+    nodeEnv: process.env.NODE_ENV,
+    expectedMode: isProd ? ("prod" as const) : ("test" as const),
+    publicKeyMasked: maskSecret(publicKey),
+    accessTokenMasked: maskSecret(accessToken),
+    publicKeyMode: pkMode,
+    accessTokenMode: atMode,
+    pairMatch,
+  };
 }
 
 
@@ -85,7 +129,7 @@ export interface MpPreapprovalCreateBody {
 
     frequency: number;
 
-    frequency_type: "months";
+    frequency_type: "months" | "days";
 
     transaction_amount: number;
 
@@ -125,6 +169,9 @@ export function buildMpPreapprovalBody(
 
   const siteUrl = getSiteUrl();
 
+  // QA: ciclo diário só no plano TESTE — nunca em start/pro/elite
+  const dailyCycle = tier === "test" && isMpTestDailyCycleEnabled();
+
   // source_news=webhooks: MP envia Webhooks (com x-signature), não IPN legado.
   const notificationUrl = `${siteUrl}/api/webhooks/mercadopago?source_news=webhooks`;
 
@@ -132,11 +179,15 @@ export function buildMpPreapprovalBody(
     siteUrl,
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || null,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || null,
+    tier,
+    dailyCycle,
   });
 
   const body: MpPreapprovalCreateBody = {
 
-    reason: option.reason,
+    reason: dailyCycle
+      ? `${option.reason} (QA ciclo diário)`
+      : option.reason,
 
     external_reference: params.userId,
 
@@ -152,32 +203,27 @@ export function buildMpPreapprovalBody(
 
   };
 
-
-
-  if (planId) {
-
-    body.preapproval_plan_id = planId;
-
-  } else {
-
+  // Ciclo diário: sempre auto_recurring dinâmico (ignora preapproval_plan_id mensal)
+  if (dailyCycle) {
     body.auto_recurring = {
-
-      frequency: option.mpFrequencyMonths,
-
-      frequency_type: "months",
-
+      frequency: 1,
+      frequency_type: "days",
       transaction_amount: option.price,
-
       currency_id: "BRL",
-
     };
-
+    console.log("[checkout] MP_TEST_DAILY_CYCLE ativo — auto_recurring days", body.auto_recurring);
+  } else if (planId) {
+    body.preapproval_plan_id = planId;
+  } else {
+    body.auto_recurring = {
+      frequency: option.mpFrequencyMonths,
+      frequency_type: "months",
+      transaction_amount: option.price,
+      currency_id: "BRL",
+    };
   }
 
-
-
   return body;
-
 }
 
 

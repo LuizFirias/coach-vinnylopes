@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
 
-import { buildMpPreapprovalBody, mpFetch, MpApiError } from "@/lib/mercadopago/client";
+import { buildMpPreapprovalBody, mpFetch, MpApiError, getMpCredentialDiagnostics } from "@/lib/mercadopago/client";
 
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -151,6 +151,22 @@ export async function POST(req: Request) {
       existingStatus: existing?.status ?? null,
     });
 
+    const creds = getMpCredentialDiagnostics();
+    console.log("[checkout] public key usada:", creds.publicKeyMasked);
+    console.log("[checkout] access token usado:", creds.accessTokenMasked);
+    console.log("[checkout] credenciais:", {
+      nodeEnv: creds.nodeEnv,
+      expectedMode: creds.expectedMode,
+      publicKeyMode: creds.publicKeyMode,
+      accessTokenMode: creds.accessTokenMode,
+      pairMatch: creds.pairMatch,
+    });
+    if (!creds.pairMatch) {
+      console.error(
+        "[checkout] ALERTA: Public Key e Access Token parecem de ambientes diferentes (TEST vs APP_USR). Isso costuma causar token inválido no MP.",
+      );
+    }
+
     let preapproval: MpPreapprovalResponse;
     try {
       preapproval = await mpFetch<MpPreapprovalResponse>("/preapproval", {
@@ -165,6 +181,13 @@ export async function POST(req: Request) {
           causeCode: err.causeCode,
           message: err.message,
           body: err.body,
+          credentials: {
+            publicKey: creds.publicKeyMasked,
+            accessToken: creds.accessTokenMasked,
+            publicKeyMode: creds.publicKeyMode,
+            accessTokenMode: creds.accessTokenMode,
+            pairMatch: creds.pairMatch,
+          },
           request: {
             tier,
             period,
@@ -182,6 +205,12 @@ export async function POST(req: Request) {
             mpStatus: err.status,
             mpCause: err.causeCode,
             mpBody: err.body,
+            credentialPairMatch: creds.pairMatch,
+            credentialMode: {
+              publicKey: creds.publicKeyMode,
+              accessToken: creds.accessTokenMode,
+              expected: creds.expectedMode,
+            },
           },
           { status: httpStatus },
         );

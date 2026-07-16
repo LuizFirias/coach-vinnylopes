@@ -14,6 +14,7 @@ import {
   getPlanLabel,
   getPlanOption,
   isTestPlanEnabled,
+  isMpTestDailyCycleEnabled,
 } from "@/lib/subscriptions/plans";
 
 import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
@@ -22,25 +23,9 @@ import { resolveAccessUntilOnCancel } from "@/lib/subscriptions/billingPeriod";
 
 import { setUserAccess } from "@/lib/access/setUserAccess";
 
+import { getMpPublicKey } from "@/lib/mercadopago/client";
+
 import type { BillingPeriod, PlanTier } from "@/lib/subscriptions/plans";
-
-
-
-function getMpPublicKey(): string | null {
-
-  const isProd = process.env.NODE_ENV === "production";
-
-  return isProd
-
-    ? process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || null
-
-    : process.env.NEXT_PUBLIC_MP_PUBLIC_KEY_TEST ||
-
-        process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ||
-
-        null;
-
-}
 
 
 
@@ -282,6 +267,8 @@ export async function GET(req: Request) {
       effectiveAccessEnd,
       /** debug QA — true se a flag liberar o card TESTE */
       testPlanEnabled: isTestPlanEnabled(),
+      /** QA — ciclo diário no plano TESTE (MP_TEST_DAILY_CYCLE) */
+      testDailyCycle: isMpTestDailyCycleEnabled(),
     });
 
   } catch (err: unknown) {

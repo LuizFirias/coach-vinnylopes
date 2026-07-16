@@ -35,6 +35,18 @@ export function isTestPlanEnabled(): boolean {
   return v === "true" || v === "1" || v === "yes";
 }
 
+/**
+ * QA: cobrança diária no plano TESTE (frequency_type=days).
+ * Ativar só para validar renovação automática; desligar após o teste.
+ * Env: MP_TEST_DAILY_CYCLE=true
+ */
+export function isMpTestDailyCycleEnabled(): boolean {
+  const v = String(process.env["MP_TEST_DAILY_CYCLE"] ?? "")
+    .trim()
+    .toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
 /** Inclui o plano TESTE quando a flag de QA estiver ativa. */
 export function getVisiblePlanTiers(): PlanTier[] {
   if (isTestPlanEnabled()) {

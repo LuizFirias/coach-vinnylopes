@@ -66,6 +66,9 @@ interface SubscriptionData {
     priceDisplay: string;
     studentLimit: number;
   } | null;
+  testPlanEnabled?: boolean;
+  /** QA: MP_TEST_DAILY_CYCLE — renovação diária no plano TESTE */
+  testDailyCycle?: boolean;
 }
 
 type DisplayStatus =
@@ -943,6 +946,15 @@ export default function AssinaturaPage() {
       />
 
       <div className="px-4 max-w-5xl mx-auto flex flex-col gap-0">
+        {data?.testDailyCycle && selectedTier === "test" && (
+          <AlertLine borderColor="#e05555">
+            <span className="text-[#e05555]">
+              QA ativo: plano TESTE com ciclo diário (MP_TEST_DAILY_CYCLE). Desligue a env após
+              validar 2–3 renovações.
+            </span>
+          </AlertLine>
+        )}
+
         {error && (
           <AlertLine borderColor="#e05555">
             <span className="text-[#e05555]">{error}</span>

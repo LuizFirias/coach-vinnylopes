@@ -1,5 +1,9 @@
 import type { BillingPeriod, PlanTier } from "@/lib/subscriptions/plans";
-import { PLANS, isValidPlanCombo } from "@/lib/subscriptions/plans";
+import {
+  PLANS,
+  isValidPlanCombo,
+  isMpTestDailyCycleEnabled,
+} from "@/lib/subscriptions/plans";
 
 /** Meses do ciclo conforme billing_period (e plano, se informado). */
 export function getBillingFrequencyMonths(
@@ -25,10 +29,16 @@ export function getBillingFrequencyMonths(
   }
 }
 
+/** true quando o checkout/renovação do plano TESTE usa ciclo diário (QA). */
+export function shouldUseDailyBillingCycle(planTier?: string | null): boolean {
+  return planTier === "test" && isMpTestDailyCycleEnabled();
+}
+
 /**
  * Calcula o fim do período a partir do pagamento aprovado.
  * Se já houver period_end futuro, estende a partir dele (renovação);
  * senão, a partir da data de aprovação.
+ * Com MP_TEST_DAILY_CYCLE + tier test → +1 dia (não +meses).
  */
 export function computePeriodEndFromPayment(opts: {
   dateApproved?: string | null;
@@ -36,7 +46,6 @@ export function computePeriodEndFromPayment(opts: {
   billingPeriod?: string | null;
   planTier?: string | null;
 }): string {
-  const months = getBillingFrequencyMonths(opts.billingPeriod, opts.planTier);
   const approved = opts.dateApproved ? new Date(opts.dateApproved) : new Date();
   const existing = opts.existingPeriodEnd
     ? new Date(opts.existingPeriodEnd)
@@ -48,14 +57,21 @@ export function computePeriodEndFromPayment(opts: {
       : approved;
 
   const end = new Date(base.getTime());
+
+  if (shouldUseDailyBillingCycle(opts.planTier)) {
+    end.setDate(end.getDate() + 1);
+    return end.toISOString();
+  }
+
+  const months = getBillingFrequencyMonths(opts.billingPeriod, opts.planTier);
   end.setMonth(end.getMonth() + months);
   return end.toISOString();
 }
 
 /**
  * Fim de acesso ao cancelar: não é imediato.
- * Usa current_period_end se ainda for futuro (>1 dia);
- * senão, agora + duração do ciclo (ex.: mensal ≈ 30 dias).
+ * Usa current_period_end se ainda for futuro (>1 dia, ou >1h no ciclo diário);
+ * senão, agora + duração do ciclo.
  */
 export function resolveAccessUntilOnCancel(opts: {
   currentPeriodEnd?: string | null;
@@ -64,7 +80,8 @@ export function resolveAccessUntilOnCancel(opts: {
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
-  const minFutureMs = now.getTime() + 24 * 60 * 60 * 1000;
+  const daily = shouldUseDailyBillingCycle(opts.planTier);
+  const minFutureMs = now.getTime() + (daily ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000);
   const existing = opts.currentPeriodEnd ? new Date(opts.currentPeriodEnd) : null;
 
   if (existing && !Number.isNaN(existing.getTime()) && existing.getTime() > minFutureMs) {
@@ -80,8 +97,8 @@ export function resolveAccessUntilOnCancel(opts: {
 }
 
 /**
- * Normaliza next_payment_date do MP: se ausente ou ≤1 dia no futuro,
- * calcula pelo ciclo do plano (mensal/semestral/anual).
+ * Normaliza next_payment_date do MP: se ausente ou pouco no futuro,
+ * calcula pelo ciclo do plano (mensal/semestral/anual ou diário QA).
  */
 export function resolvePeriodEndFromMp(opts: {
   nextPaymentDate?: string | null;
@@ -90,7 +107,9 @@ export function resolvePeriodEndFromMp(opts: {
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
-  const minFutureMs = now.getTime() + 24 * 60 * 60 * 1000;
+  const daily = shouldUseDailyBillingCycle(opts.planTier);
+  // Ciclo diário: aceita next_payment mesmo ~horas à frente
+  const minFutureMs = now.getTime() + (daily ? 30 * 60 * 1000 : 24 * 60 * 60 * 1000);
   const next = opts.nextPaymentDate ? new Date(opts.nextPaymentDate) : null;
 
   if (next && !Number.isNaN(next.getTime()) && next.getTime() > minFutureMs) {
