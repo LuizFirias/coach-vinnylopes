@@ -182,51 +182,88 @@ export function buildMpPreapprovalBody(
 
 
 
+export class MpApiError extends Error {
+  status: number;
+  path: string;
+  body: unknown;
+  causeCode: string | null;
+
+  constructor(opts: {
+    status: number;
+    path: string;
+    message: string;
+    body: unknown;
+    causeCode?: string | null;
+  }) {
+    super(opts.message);
+    this.name = "MpApiError";
+    this.status = opts.status;
+    this.path = opts.path;
+    this.body = opts.body;
+    this.causeCode = opts.causeCode ?? null;
+  }
+}
+
+function extractMpErrorMessage(data: unknown, status: number): {
+  message: string;
+  causeCode: string | null;
+} {
+  const obj = (data && typeof data === "object" ? data : {}) as {
+    message?: string;
+    error?: string;
+    cause?: Array<{ code?: string | number; description?: string; message?: string }>;
+  };
+
+  const firstCause = Array.isArray(obj.cause) ? obj.cause[0] : null;
+  const causeCode =
+    firstCause?.code != null ? String(firstCause.code) : null;
+  const causeDesc =
+    firstCause?.description || firstCause?.message || null;
+
+  const message =
+    causeDesc ||
+    obj.message ||
+    obj.error ||
+    `Mercado Pago API error ${status}`;
+
+  return { message, causeCode };
+}
+
 export async function mpFetch<T>(path: string, init?: RequestInit): Promise<T> {
-
   const token = getMpAccessToken();
-
   const res = await fetch(`${MP_API_BASE}${path}`, {
-
     ...init,
-
     headers: {
-
       Authorization: `Bearer ${token}`,
-
       "Content-Type": "application/json",
-
       ...init?.headers,
-
     },
-
   });
-
-
 
   const data = await res.json().catch(() => ({}));
 
-
-
   if (!res.ok) {
-
-    const message =
-
-      (data as { message?: string })?.message ||
-
-      (data as { error?: string })?.error ||
-
-      `Mercado Pago API error ${res.status}`;
-
-    throw new Error(message);
-
+    const { message, causeCode } = extractMpErrorMessage(data, res.status);
+    console.error("[MP-API] request failed", {
+      path,
+      method: init?.method || "GET",
+      status: res.status,
+      causeCode,
+      message,
+      body: data,
+    });
+    throw new MpApiError({
+      status: res.status,
+      path,
+      message,
+      body: data,
+      causeCode,
+    });
   }
 
-
-
   return data as T;
-
 }
+
 
 
 

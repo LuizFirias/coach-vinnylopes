@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
 
-import { buildMpPreapprovalBody, mpFetch } from "@/lib/mercadopago/client";
+import { buildMpPreapprovalBody, mpFetch, MpApiError } from "@/lib/mercadopago/client";
 
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -147,12 +147,47 @@ export async function POST(req: Request) {
       tier,
       period,
       userId: auth.userId,
+      hasCardToken: Boolean(cardTokenId),
+      existingStatus: existing?.status ?? null,
     });
 
-    const preapproval = await mpFetch<MpPreapprovalResponse>("/preapproval", {
-      method: "POST",
-      body: JSON.stringify(mpBody),
-    });
+    let preapproval: MpPreapprovalResponse;
+    try {
+      preapproval = await mpFetch<MpPreapprovalResponse>("/preapproval", {
+        method: "POST",
+        body: JSON.stringify(mpBody),
+      });
+    } catch (err: unknown) {
+      if (err instanceof MpApiError) {
+        console.error("[checkout] erro MP:", {
+          status: err.status,
+          path: err.path,
+          causeCode: err.causeCode,
+          message: err.message,
+          body: err.body,
+          request: {
+            tier,
+            period,
+            userId: auth.userId,
+            notification_url: mpBody.notification_url,
+            has_preapproval_plan_id: Boolean(mpBody.preapproval_plan_id),
+            has_auto_recurring: Boolean(mpBody.auto_recurring),
+          },
+        });
+        // 4xx do MP → 400 (mensagem real); 5xx do MP → 502
+        const httpStatus = err.status >= 400 && err.status < 500 ? 400 : 502;
+        return NextResponse.json(
+          {
+            error: err.message,
+            mpStatus: err.status,
+            mpCause: err.causeCode,
+            mpBody: err.body,
+          },
+          { status: httpStatus },
+        );
+      }
+      throw err;
+    }
 
     const status = mapMpPreapprovalStatus(preapproval.status);
     const periodEnd = resolvePeriodEndFromMp({
@@ -224,14 +259,30 @@ export async function POST(req: Request) {
     });
 
   } catch (err: unknown) {
-
     const message = err instanceof Error ? err.message : "Erro interno";
 
-    console.error("[SUBSCRIPTIONS-CHECKOUT]", err);
+    if (err instanceof MpApiError) {
+      console.error("[checkout] erro MP (catch geral):", {
+        status: err.status,
+        path: err.path,
+        causeCode: err.causeCode,
+        message: err.message,
+        body: err.body,
+      });
+      const httpStatus = err.status >= 400 && err.status < 500 ? 400 : 502;
+      return NextResponse.json(
+        {
+          error: err.message,
+          mpStatus: err.status,
+          mpCause: err.causeCode,
+          mpBody: err.body,
+        },
+        { status: httpStatus },
+      );
+    }
 
+    console.error("[checkout] erro:", err);
     return NextResponse.json({ error: message }, { status: 500 });
-
   }
-
 }
 

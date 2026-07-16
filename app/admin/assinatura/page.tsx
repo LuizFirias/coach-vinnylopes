@@ -276,26 +276,33 @@ const BRICK_VISUAL = {
       baseColor: "#2b7fff",
       buttonTextColor: "#ffffff",
       formBackgroundColor: "transparent",
-      inputBackgroundColor: "transparent",
+      inputBackgroundColor: "#141414",
       textPrimaryColor: "#ffffff",
       textSecondaryColor: "#7a8aab",
       outlinePrimaryColor: "#2b7fff",
-      outlineSecondaryColor: "#1e1e1e",
+      outlineSecondaryColor: "#282828",
       baseColorFirstVariant: "#5a9fff",
-      baseColorSecondVariant: "#1a1a1a",
+      // Fundo de listas/dropdowns — evita texto preto ilegível no dark
+      baseColorSecondVariant: "#1e1e1e",
       errorColor: "#e05555",
       successColor: "#39c75a",
-      borderRadiusSmall: "6px",
-      borderRadiusMedium: "6px",
-      borderRadiusLarge: "6px",
-      // Espaço entre campos e entre o último input e o botão Pagar
-      inputVerticalPadding: "14px",
-      inputHorizontalPadding: "4px",
-      formPadding: "8px 0 28px 0",
+      borderRadiusSmall: "8px",
+      borderRadiusMedium: "8px",
+      borderRadiusLarge: "10px",
+      inputVerticalPadding: "16px",
+      inputHorizontalPadding: "12px",
+      // Padding inferior grande = espaço entre e-mail e botão Pagar
+      formPadding: "12px 0 48px 0",
       inputBorderWidth: "1px",
       inputFocusedBorderWidth: "1px",
     },
   },
+};
+
+/** Assinatura recorrente: só à vista — evita dropdown de parcelas com contraste ruim. */
+const BRICK_PAYMENT_METHODS = {
+  minInstallments: 1,
+  maxInstallments: 1,
 };
 
 export default function AssinaturaPage() {
@@ -637,7 +644,10 @@ export default function AssinaturaPage() {
 
         const controller = await bricksBuilder.create("cardPayment", "mp-card-brick", {
           initialization: { amount },
-          customization: { visual: BRICK_VISUAL },
+          customization: {
+            visual: BRICK_VISUAL,
+            paymentMethods: BRICK_PAYMENT_METHODS,
+          },
           callbacks: {
             onReady: () => {
               if (!cancelled) setBrickReady(true);
@@ -666,7 +676,14 @@ export default function AssinaturaPage() {
                 });
 
                 const json = await res.json();
-                if (!res.ok) throw new Error(json.error || "Erro ao processar assinatura");
+                if (!res.ok) {
+                  const detail =
+                    json.mpCause != null
+                      ? `${json.error || "Erro ao processar assinatura"} (MP ${json.mpStatus ?? "?"} · ${json.mpCause})`
+                      : json.error || "Erro ao processar assinatura";
+                  console.error("[assinatura:checkout] falhou", json);
+                  throw new Error(detail);
+                }
 
                 // TEMP debug — resposta síncrona do checkout vs o que o status API lê
                 console.log("[assinatura:checkout]", {
@@ -901,7 +918,7 @@ export default function AssinaturaPage() {
         key={`${checkoutSelection.tier}-${checkoutSelection.period}`}
         id="mp-card-brick"
         ref={brickContainerRef}
-        className={cn("min-h-[200px] mt-2 pb-4", !brickReady && "opacity-50")}
+        className={cn("mp-card-brick min-h-[200px] mt-2 pb-8", !brickReady && "opacity-50")}
       />
       {submitting && (
         <p className="text-[11px] text-[#7a8aab] mt-4">Confirmando pagamento...</p>

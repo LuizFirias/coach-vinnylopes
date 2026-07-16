@@ -623,3 +623,57 @@ html[data-theme="light"] .dashboard-hero-chip {
 .dashboard-text-muted { color: var(--dash-text-muted); }
 .dashboard-text-subtle { color: var(--dash-text-subtle); }
 .dashboard-progress-track { background-color: var(--dash-progress-track); }
+
+/* ── Mercado Pago Card Brick (assinatura) ──
+   Herança HTML: classes internas do Brick mudam a cada build.
+   Não usar seletores por classe gerada — só #mp-card-brick + elementos. */
+#mp-card-brick {
+  color-scheme: dark;
+  color: #ffffff;
+}
+
+#mp-card-brick select,
+#mp-card-brick option {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+#mp-card-brick option:checked,
+#mp-card-brick option:hover,
+#mp-card-brick option:focus {
+  background-color: #2b7fff !important;
+  color: #ffffff !important;
+}
+
+/* Listas customizadas do Brick (parcelas / bancos) */
+#mp-card-brick [role="listbox"],
+#mp-card-brick [role="menu"],
+#mp-card-brick ul[role="listbox"],
+#mp-card-brick div[role="listbox"] {
+  background-color: #1e1e1e !important;
+  border: 1px solid #282828 !important;
+  color: #ffffff !important;
+}
+
+#mp-card-brick [role="option"],
+#mp-card-brick [role="menuitem"],
+#mp-card-brick li[role="option"] {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+#mp-card-brick [role="option"]:hover,
+#mp-card-brick [role="option"][aria-selected="true"],
+#mp-card-brick [role="menuitem"]:hover,
+#mp-card-brick li[role="option"]:hover {
+  background-color: rgba(43, 127, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+/* Espaço entre o último campo (e-mail) e o botão Pagar */
+#mp-card-brick form > button,
+#mp-card-brick form button[type="submit"],
+#mp-card-brick button[type="submit"] {
+  margin-top: 28px !important;
+}
+
