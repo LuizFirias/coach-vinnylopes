@@ -63,7 +63,6 @@ async function processMpEvent(eventType: string, resourceId: string): Promise<vo
  */
 export async function POST(req: NextRequest) {
   const url = new URL(req.url);
-  const dataId = url.searchParams.get("data.id") || url.searchParams.get("id");
   const xSignature = req.headers.get("x-signature");
   const xRequestId = req.headers.get("x-request-id");
   const secret = process.env.MP_WEBHOOK_SECRET;
@@ -80,7 +79,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
 
+  // MP às vezes manda data.id só no body (sem query). Sem isso a assinatura falha e nada entra em webhook_events.
+  const dataId =
+    url.searchParams.get("data.id") ||
+    url.searchParams.get("id") ||
+    (body.data?.id != null ? String(body.data.id) : null) ||
+    (body.id != null ? String(body.id) : null);
+
   if (!xSignature || !verifyMpSignature(xSignature, xRequestId, dataId, secret)) {
+    console.error("[MP-WEBHOOK] Assinatura inválida", {
+      hasSignature: Boolean(xSignature),
+      xRequestId,
+      dataId,
+      eventType: resolveEventType(body),
+    });
     return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }
 

@@ -141,6 +141,12 @@ export async function POST(req: Request) {
       backUrl: `${siteUrl}/admin/assinatura?status=success`,
     });
 
+    console.log("[SUBSCRIPTIONS-CHECKOUT] notification_url=", mpBody.notification_url, {
+      tier,
+      period,
+      userId: auth.userId,
+    });
+
     const preapproval = await mpFetch<MpPreapprovalResponse>("/preapproval", {
       method: "POST",
       body: JSON.stringify(mpBody),
@@ -148,6 +154,13 @@ export async function POST(req: Request) {
 
     const status = mapMpPreapprovalStatus(preapproval.status);
     const periodEnd = preapproval.next_payment_date || null;
+
+    console.log("[SUBSCRIPTIONS-CHECKOUT] MP preapproval", {
+      id: preapproval.id,
+      mpStatus: preapproval.status,
+      mappedStatus: status,
+      periodEnd,
+    });
 
     const planInfo = {
       planTier: tier,
@@ -187,22 +200,20 @@ export async function POST(req: Request) {
 
     await setUserAccess(auth.userId, status, periodEnd, planInfo);
 
-
+    console.log("[SUBSCRIPTIONS-CHECKOUT] setUserAccess aplicado", {
+      userId: auth.userId,
+      status,
+      accessGranted: status === "authorized",
+    });
 
     return NextResponse.json({
-
       success: true,
-
       status,
-
       planTier: tier,
-
       billingPeriod: period,
-
       studentLimit: planOption.studentLimit,
-
       initPoint: preapproval.init_point || null,
-
+      notificationUrl: mpBody.notification_url,
     });
 
   } catch (err: unknown) {

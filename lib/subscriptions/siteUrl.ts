@@ -1,3 +1,7 @@
 export function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || "https://www.auronfit.com.br";
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://www.auronfit.com.br";
+  return raw.replace(/\/$/, "");
 }

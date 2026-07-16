@@ -150,6 +150,16 @@ export async function GET(req: Request) {
 
     const accountType = profile?.account_type ?? "padrao";
 
+    // TEMP debug — remover após validar webhook / polling
+    console.log("[subscriptions/status]", {
+      userId: auth.userId,
+      isActive,
+      profileSubscriptionActive: profile?.subscription_active ?? null,
+      mpActive,
+      subscriptionStatus: subscription?.status ?? null,
+      accountType,
+    });
+
 
 
     const planTier = (subscription?.plan_tier ?? profile?.plan_tier) as PlanTier | null;

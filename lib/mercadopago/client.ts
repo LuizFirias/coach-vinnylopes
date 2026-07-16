@@ -123,9 +123,10 @@ export function buildMpPreapprovalBody(
 
   const planId = getMpPreapprovalPlanId(tier, period);
 
-  const siteUrl = getSiteUrl().replace(/\/$/, "");
+  const siteUrl = getSiteUrl();
 
-
+  // source_news=webhooks: MP envia Webhooks (com x-signature), não IPN legado.
+  const notificationUrl = `${siteUrl}/api/webhooks/mercadopago?source_news=webhooks`;
 
   const body: MpPreapprovalCreateBody = {
 
@@ -139,7 +140,7 @@ export function buildMpPreapprovalBody(
 
     back_url: params.backUrl,
 
-    notification_url: `${siteUrl}/api/webhooks/mercadopago`,
+    notification_url: notificationUrl,
 
     status: "authorized",
 

@@ -335,8 +335,10 @@ export default function AssinaturaPage() {
       return null;
     }
 
-    const res = await fetch("/api/subscriptions/status", {
+    // cache-bust: evita resposta stale enquanto o polling espera o webhook
+    const res = await fetch(`/api/subscriptions/status?_=${Date.now()}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
+      cache: "no-store",
     });
     const json = await res.json();
 
@@ -345,6 +347,16 @@ export default function AssinaturaPage() {
       setLoading(false);
       return null;
     }
+
+    // TEMP debug — remover após validar fluxo R$5 / webhook
+    console.log("[assinatura:loadStatus]", {
+      isActive: json.isActive,
+      subscriptionStatus: json.subscription?.status ?? null,
+      planTier: json.planTier,
+      accountType: json.accountType,
+      studentLimit: json.studentLimit,
+      cardLastFour: json.subscription?.card_last_four ?? null,
+    });
 
     setData(json);
     setLoading(false);
@@ -370,10 +382,24 @@ export default function AssinaturaPage() {
       if (pollAttemptsRef.current > 36) {
         stopPolling();
         setPollingTimedOut(true);
+        console.warn("[assinatura:polling] timeout após 36 tentativas (~3min)");
         return;
       }
       const status = await loadStatus();
-      if (status?.isActive) {
+      const subStatus = status?.subscription?.status ?? null;
+      const activated =
+        Boolean(status?.isActive) ||
+        subStatus === "authorized" ||
+        subStatus === "past_due";
+
+      console.log("[assinatura:polling]", {
+        attempt: pollAttemptsRef.current,
+        isActive: status?.isActive,
+        subStatus,
+        activated,
+      });
+
+      if (activated) {
         stopPolling();
         setPollingTimedOut(false);
         router.refresh();
@@ -586,9 +612,24 @@ export default function AssinaturaPage() {
                 const json = await res.json();
                 if (!res.ok) throw new Error(json.error || "Erro ao processar assinatura");
 
-                setSuccess("Aguardando confirmação...");
+                // TEMP debug — resposta síncrona do checkout vs o que o status API lê
+                console.log("[assinatura:checkout]", {
+                  status: json.status,
+                  notificationUrl: json.notificationUrl,
+                  planTier: json.planTier,
+                });
+
+                setSuccess(
+                  json.status === "authorized"
+                    ? "Assinatura confirmada."
+                    : "Aguardando confirmação...",
+                );
                 startPolling();
-                await loadStatus();
+                const latest = await loadStatus();
+                if (json.status === "authorized" || latest?.isActive) {
+                  stopPolling();
+                  router.refresh();
+                }
                 return;
               } catch (err: unknown) {
                 const msg = err instanceof Error ? err.message : "Erro ao assinar";
@@ -628,6 +669,8 @@ export default function AssinaturaPage() {
     data?.publicKey,
     loadStatus,
     startPolling,
+    stopPolling,
+    router,
   ]);
 
   if (loading) {
