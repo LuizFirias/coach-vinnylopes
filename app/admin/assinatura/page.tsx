@@ -127,7 +127,7 @@ function resolveDisplayStatus(data: SubscriptionData | null): DisplayStatus {
 
 const STATUS_LINE: Record<DisplayStatus, { label: string; color: string }> = {
   active: { label: "Ativo", color: "#39c75a" },
-  canceling: { label: "Cancelando", color: "#7a8aab" },
+  canceling: { label: "Cancelamento agendado", color: "#7a8aab" },
   past_due: { label: "Pendente", color: "#f59e0b" },
   expired: { label: "Expirada", color: "#e05555" },
   cancelled: { label: "Expirada", color: "#e05555" },
@@ -320,6 +320,8 @@ export default function AssinaturaPage() {
   const [canceling, setCanceling] = useState(false);
   const [pollingTimedOut, setPollingTimedOut] = useState(false);
   const [pollingActive, setPollingActive] = useState(false);
+  /** Só true após submit do Brick — nunca após cancelamento. */
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
 
   const [selectedTier, setSelectedTier] = useState<PlanTier>("start");
   const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod>("monthly");
@@ -358,6 +360,18 @@ export default function AssinaturaPage() {
       studentLimit: json.studentLimit,
       cardLastFour: json.subscription?.card_last_four ?? null,
     });
+
+    const subStatus = (json as SubscriptionData).subscription?.status ?? null;
+    if (
+      subStatus === "canceling" ||
+      subStatus === "cancelled" ||
+      subStatus === "expired" ||
+      subStatus === "authorized" ||
+      (json as SubscriptionData).isActive
+    ) {
+      setAwaitingPayment(false);
+      setPollingTimedOut(false);
+    }
 
     setData(json);
     setLoading(false);
@@ -412,7 +426,7 @@ export default function AssinaturaPage() {
     void loadStatus();
   }, [loadStatus]);
 
-  // Polling só no pós-checkout (pending / sem status), nunca em canceling/cancelled/expired.
+  // Polling só no pós-checkout (pending), nunca em canceling/cancelled/expired.
   useEffect(() => {
     if (loading || !data || data.isSuperAdmin) {
       stopPolling();
@@ -420,14 +434,24 @@ export default function AssinaturaPage() {
     }
 
     const subStatus = data.subscription?.status ?? null;
+
+    if (
+      subStatus === "canceling" ||
+      subStatus === "cancelled" ||
+      subStatus === "expired" ||
+      subStatus === "authorized" ||
+      subStatus === "past_due" ||
+      subStatus === "paused"
+    ) {
+      setAwaitingPayment(false);
+      setPollingTimedOut(false);
+      stopPolling();
+      return;
+    }
+
     const shouldPoll =
+      awaitingPayment &&
       !data.isActive &&
-      subStatus !== "canceling" &&
-      subStatus !== "cancelled" &&
-      subStatus !== "expired" &&
-      subStatus !== "authorized" &&
-      subStatus !== "past_due" &&
-      subStatus !== "paused" &&
       (subStatus === "pending" || subStatus == null);
 
     if (shouldPoll) {
@@ -437,6 +461,7 @@ export default function AssinaturaPage() {
     }
     return () => stopPolling();
   }, [
+    awaitingPayment,
     data?.isActive,
     data?.isSuperAdmin,
     data?.subscription?.status,
@@ -506,12 +531,13 @@ export default function AssinaturaPage() {
   const needsCheckout =
     !!data &&
     !data.isSuperAdmin &&
-    subscriptionStatus !== "canceling" &&
     subscriptionStatus !== "authorized" &&
     subscriptionStatus !== "past_due" &&
     subscriptionStatus !== "paused" &&
-    (!data.isActive ||
-      ["expired", "cancelled"].includes(subscriptionStatus || ""));
+    (subscriptionStatus === "canceling" ||
+      subscriptionStatus === "expired" ||
+      subscriptionStatus === "cancelled" ||
+      !data.isActive);
 
   const canCancel =
     !!data &&
@@ -550,6 +576,7 @@ export default function AssinaturaPage() {
           ? `Assinatura cancelada. Acesso até ${new Date(json.access_until).toLocaleDateString("pt-BR")}.`
           : "Assinatura cancelada. Você mantém o acesso até o fim do ciclo.",
       );
+      setAwaitingPayment(false);
       stopPolling();
       setPollingTimedOut(false);
       setCheckoutSelection(null);
@@ -651,11 +678,13 @@ export default function AssinaturaPage() {
                 setSuccess(
                   json.status === "authorized"
                     ? "Assinatura confirmada."
-                    : "Aguardando confirmação...",
+                    : "Pagamento enviado. Confirmando assinatura...",
                 );
+                setAwaitingPayment(true);
                 startPolling();
                 const latest = await loadStatus();
                 if (json.status === "authorized" || latest?.isActive) {
+                  setAwaitingPayment(false);
                   stopPolling();
                   router.refresh();
                 }
@@ -724,17 +753,30 @@ export default function AssinaturaPage() {
 
   const periodEnd = subscription?.current_period_end;
   const graceEnd = data?.gracePeriodEnd || subscription?.grace_period_end;
+  // Em canceling, se o period_end no banco estiver “curto” (ex.: data de hoje),
+  // mostra o fim de ciclo real (agora + billing) — mesma regra do cancel.
+  const cancelingAccessIso =
+    displayStatus === "canceling"
+      ? resolveAccessUntilOnCancel({
+          currentPeriodEnd: periodEnd,
+          billingPeriod: data?.billingPeriod ?? data?.currentPlan?.period ?? null,
+          planTier: data?.planTier ?? data?.currentPlan?.tier ?? null,
+        })
+      : null;
   const accessEndDate = formatDateBR(
-    displayStatus === "past_due" ? graceEnd || periodEnd : periodEnd,
+    displayStatus === "past_due"
+      ? graceEnd || periodEnd
+      : displayStatus === "canceling"
+        ? cancelingAccessIso
+        : periodEnd,
   );
 
   const dateLine = (() => {
     if (!accessEndDate) return null;
-    if (
-      displayStatus === "active" ||
-      displayStatus === "canceling" ||
-      displayStatus === "super_admin"
-    ) {
+    if (displayStatus === "canceling") {
+      return { label: "Acesso até", date: accessEndDate, color: "#7a8aab" };
+    }
+    if (displayStatus === "active" || displayStatus === "super_admin") {
       return { label: "Próximo ciclo", date: accessEndDate, color: "#7a8aab" };
     }
     if (displayStatus === "past_due") {
@@ -862,7 +904,7 @@ export default function AssinaturaPage() {
         className={cn("min-h-[200px] mt-2 pb-4", !brickReady && "opacity-50")}
       />
       {submitting && (
-        <p className="text-[11px] text-[#7a8aab] mt-4">Aguardando confirmação...</p>
+        <p className="text-[11px] text-[#7a8aab] mt-4">Confirmando pagamento...</p>
       )}
     </div>
   );
@@ -894,14 +936,15 @@ export default function AssinaturaPage() {
           <p className="text-[11px] font-semibold text-[#39c75a] py-3">{success}</p>
         )}
 
-        {(pollingActive || pollingTimedOut) &&
+        {awaitingPayment &&
+          (pollingActive || pollingTimedOut) &&
           !data?.isActive &&
           data?.subscription?.status !== "canceling" &&
           displayStatus !== "canceling" && (
           <p className="text-[11px] font-semibold text-[#f59e0b] py-3">
             {pollingTimedOut
-              ? "Aguardando confirmação do pagamento. Atualize a página em alguns instantes."
-              : "Aguardando confirmação..."}
+              ? "Ainda não recebemos a confirmação. Você pode atualizar a página ou voltar em alguns minutos."
+              : "Confirmando pagamento..."}
           </p>
         )}
 
@@ -943,7 +986,15 @@ export default function AssinaturaPage() {
                       value="recusada"
                       valueColor="#f59e0b"
                     />
-                  ) : displayStatus === "active" || displayStatus === "canceling" ? (
+                  ) : displayStatus === "canceling" ? (
+                    <>
+                      <MetaRow label="Próxima cobrança" value="cancelada" />
+                      <MetaRow
+                        label="Cobrança"
+                        value="encerrada · sem novas cobranças"
+                      />
+                    </>
+                  ) : displayStatus === "active" ? (
                     <>
                       <MetaRow
                         label="Próxima cobrança"
@@ -994,6 +1045,17 @@ export default function AssinaturaPage() {
           onConfirm={handleCancel}
           onClose={() => !canceling && setShowCancelModal(false)}
         />
+
+        {displayStatus === "canceling" && accessEndDate && (
+          <section className="py-5 border-b border-[#1a1a1a]">
+            <AlertLine borderColor="#7a8aab">
+              Renovação cancelada. Seu acesso continua até{" "}
+              <span className="text-white font-medium">{accessEndDate}</span>
+              . Não haverá novas cobranças. Se quiser continuar depois, escolha um
+              plano abaixo para reativar.
+            </AlertLine>
+          </section>
+        )}
 
         {displayStatus === "past_due" && accessEndDate && (
           <section className="py-5 border-b border-[#1a1a1a]">

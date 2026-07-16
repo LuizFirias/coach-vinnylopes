@@ -18,6 +18,10 @@ import {
 
 import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
 
+import { resolveAccessUntilOnCancel } from "@/lib/subscriptions/billingPeriod";
+
+import { setUserAccess } from "@/lib/access/setUserAccess";
+
 import type { BillingPeriod, PlanTier } from "@/lib/subscriptions/plans";
 
 
@@ -130,11 +134,49 @@ export async function GET(req: Request) {
 
 
 
-    const subscription = subscriptionResult.data;
+    let subscription = subscriptionResult.data;
 
     const profile = profileResult.data;
 
+    // Repara canceling com period_end “curto” (ex.: data da assinatura/hoje)
+    // para o coach não perder acesso no mesmo dia do cancelamento.
+    if (subscription?.status === "canceling") {
+      const fixedEnd = resolveAccessUntilOnCancel({
+        currentPeriodEnd: subscription.current_period_end,
+        billingPeriod: subscription.billing_period,
+        planTier: subscription.plan_tier,
+      });
+      if (fixedEnd !== subscription.current_period_end) {
+        await supabase
+          .from("subscriptions")
+          .update({
+            current_period_end: fixedEnd,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", subscription.id);
 
+        const planInfo =
+          subscription.plan_tier &&
+          subscription.billing_period &&
+          subscription.student_limit != null
+            ? {
+                planTier: subscription.plan_tier as PlanTier,
+                billingPeriod: subscription.billing_period as BillingPeriod,
+                studentLimit: subscription.student_limit as number,
+              }
+            : null;
+
+        await setUserAccess(
+          auth.userId,
+          "canceling",
+          fixedEnd,
+          planInfo,
+          null,
+        );
+
+        subscription = { ...subscription, current_period_end: fixedEnd };
+      }
+    }
 
     const mpActive = subscription
       ? isAccessGranted(
