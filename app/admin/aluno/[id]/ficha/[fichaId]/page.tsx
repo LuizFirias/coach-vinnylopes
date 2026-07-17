@@ -4,7 +4,6 @@ import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { ArrowLeft, FloppyDisk, Plus, X, FileArrowDown } from "@phosphor-icons/react";
-import Link from "next/link";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
@@ -22,6 +21,10 @@ import {
   validateBiSetGroup,
   isBiSetFichaItem,
 } from "@/lib/utils/biset";
+import {
+  alunoTreinosReturnUrl,
+  readReturnUrl,
+} from "@/lib/utils/adminNav";
 
 interface Ficha {
   id: string;
@@ -86,6 +89,15 @@ function catalogIdsInFicha(items: ExercicioFichaItem[]): Set<string> {
 export default function EditarFichaPage({ params }: { params: Promise<{ id: string; fichaId: string }> }) {
   const router = useRouter();
   const { id, fichaId } = use(params);
+
+  const goBack = useCallback(() => {
+    const fallback = alunoTreinosReturnUrl(id);
+    const target =
+      typeof window !== "undefined"
+        ? readReturnUrl(window.location.search, fallback)
+        : fallback;
+    router.push(target);
+  }, [id, router]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -526,7 +538,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         .eq("id", fichaId);
 
       if (saveError) throw saveError;
-      router.push(`/admin/aluno/${id}`);
+      goBack();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao salvar ficha");
     } finally {
@@ -546,12 +558,13 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
     <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 py-4 border-b border-border-subtle flex flex-col gap-2.5">
-          <Link
-            href={`/admin/aluno/${id}`}
+          <button
+            type="button"
+            onClick={goBack}
             className="inline-flex items-center gap-1.5 text-text-secondary hover:text-brand text-xs transition-colors mb-1"
           >
             <ArrowLeft size={14} /> Voltar para Perfil
-          </Link>
+          </button>
           <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Editar Ficha Digital</h1>
           <p className="text-xs text-text-secondary">Modifique exercícios, Bi-Sets e prescrições da ficha</p>
         </div>
@@ -654,7 +667,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
             type="button"
             variant="ghost"
             className="h-10 text-xs rounded-lg flex-1"
-            onClick={() => router.push(`/admin/aluno/${id}`)}
+            onClick={goBack}
             leftIcon={<X size={14} />}
           >
             Cancelar

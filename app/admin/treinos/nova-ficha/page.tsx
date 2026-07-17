@@ -18,6 +18,7 @@ import { useAuth } from "@/app/components/AuthProvider";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 import { textIncludes } from "@/lib/utils/textNormalize";
+import { readReturnUrl } from "@/lib/utils/adminNav";
 import { WorkoutBuilderHeader } from "@/app/components/workout-builder/WorkoutBuilderHeader";
 import { WorkoutBuilderBottomBar } from "@/app/components/workout-builder/WorkoutBuilderBottomBar";
 import { WorkoutBuilderSettingsSheet } from "@/app/components/workout-builder/WorkoutBuilderSettingsSheet";
@@ -111,9 +112,16 @@ export default function NovaFichaCoachPage() {
   const markDirty = useCallback(() => setIsDirty(true), []);
 
   useEffect(() => {
-    const param = new URLSearchParams(window.location.search).get("alunoId");
+    const params = new URLSearchParams(window.location.search);
+    const param = params.get("alunoId");
     if (param) setAlunoSelecionado(param);
   }, []);
+
+  const fallbackReturn = "/admin/treinos";
+  const goBack = useCallback(() => {
+    const target = readReturnUrl(window.location.search, fallbackReturn);
+    router.push(target);
+  }, [router]);
 
   const loadData = useCallback(async (coachId: string) => {
     setLoading(true);
@@ -486,7 +494,7 @@ export default function NovaFichaCoachPage() {
       });
 
       if (error) throw error;
-      router.push("/admin/treinos");
+      goBack();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
       alert("Erro ao salvar: " + message);
@@ -626,7 +634,7 @@ export default function NovaFichaCoachPage() {
           exporting={exporting}
           canSave={canSave}
           isDirty={isDirty}
-          onBack={() => router.push("/admin/treinos")}
+          onBack={goBack}
           onAlunoChange={(id) => { setAlunoSelecionado(id); markDirty(); }}
           onRotinaChange={(n) => { setNomeRotina(n); markDirty(); }}
           onSave={handleSalvarFicha}

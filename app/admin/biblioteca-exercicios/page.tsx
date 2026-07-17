@@ -333,7 +333,7 @@ export default function BibliotecaExerciciosPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24 p-4 md:p-6 lg:p-10 lg:pl-28">
-      <div className="max-w-7xl mx-auto flex flex-col gap-6">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-6">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">

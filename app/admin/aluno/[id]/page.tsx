@@ -24,7 +24,6 @@ import {
   PencilSimple,
   AppleLogo,
   Eye,
-  Trophy,
   Ruler,
   Copy,
   X,
@@ -44,13 +43,30 @@ import {
 } from "recharts";
 import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
 import { MeasurementsView } from '@/app/components/measurements/MeasurementsView';
+import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
 import type { MedicaoRecord } from '@/lib/measurements/types';
+import {
+  buildDailyAdherenceSeries,
+  getStatusAdherenceWeight,
+} from '@/lib/nutrition/adherence';
 import { profileSexoToBodyGender, type BodyGender } from '@/lib/utils/bodyGender';
 import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
 import { resolveMuscleGroup } from '@/lib/constants/muscle-groups';
 import {
   ChartLine, ChartPieSlice, PersonSimpleRun, CalendarBlank, Fire, CaretRight, Question
 } from "@phosphor-icons/react";
+import { FichasKanban } from "@/app/components/admin/alunos/FichasKanban";
+import { KanbanWorkoutBuilderSheet } from "@/app/components/admin/alunos/KanbanWorkoutBuilderSheet";
+import {
+  ExerciseLibraryModal,
+  type LibraryExercise,
+} from "@/app/components/workout-builder/ExerciseLibraryModal";
+import {
+  alunoTreinosReturnUrl,
+  withReturnUrl,
+} from "@/lib/utils/adminNav";
+import { parseFichaItems, serializeFichaItems } from "@/lib/utils/biset";
+import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -214,6 +230,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   // Tab State
   const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
   const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
+  const [treinoPdfOpen, setTreinoPdfOpen] = useState(false);
+  const [nutritionPdfOpen, setNutritionPdfOpen] = useState(false);
+  const [kanbanBuilderOpen, setKanbanBuilderOpen] = useState(false);
+  const [addExerciseFichaId, setAddExerciseFichaId] = useState<string | null>(null);
+  const [exerciseCatalog, setExerciseCatalog] = useState<LibraryExercise[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   useEffect(() => { load(); }, [id]);
 
@@ -506,6 +528,96 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleUpdateFichaExercicios = async (fichaId: string, exercicios: unknown[]) => {
+    const ficha = fichas.find((f) => f.id === fichaId);
+    const nextConfig = { ...(ficha?.configuracao || {}), exercicios };
+    setFichas((prev) =>
+      prev.map((f) =>
+        f.id === fichaId ? { ...f, configuracao: nextConfig } : f,
+      ),
+    );
+    const { error } = await supabaseClient
+      .from("fichas_treino")
+      .update({ configuracao: nextConfig })
+      .eq("id", fichaId);
+    if (error) {
+      setError(error.message);
+      await load();
+    }
+  };
+
+  const handleReorderFichas = (orderedIds: string[]) => {
+    setFichas((prev) => {
+      const map = new Map(prev.map((f) => [f.id, f]));
+      return orderedIds.map((id) => map.get(id)).filter(Boolean) as FichaTreino[];
+    });
+  };
+
+  const ensureExerciseCatalog = async () => {
+    if (exerciseCatalog.length > 0 || catalogLoading) return;
+    setCatalogLoading(true);
+    try {
+      const { data } = await supabaseClient
+        .from("exercicios_biblioteca")
+        .select("id, nome, grupo_muscular, tipo_exercicio, video_url")
+        .order("nome", { ascending: true });
+      setExerciseCatalog((data as LibraryExercise[]) || []);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const openAddExercise = async (fichaId: string) => {
+    await ensureExerciseCatalog();
+    setAddExerciseFichaId(fichaId);
+  };
+
+  const criarSeriesPadraoLocal = (tipo: string): SerieDefinicao[] => {
+    const base = {
+      ordem: 1,
+      tecnica: "",
+      tecnica_extra: "",
+      peso_sugerido: null as number | null,
+    };
+    switch (tipo) {
+      case "Duração":
+      case "Duração e Peso":
+      case "Distância e Duração":
+        return [1, 2, 3].map((o) => ({ ...base, ordem: o, tempo_sugerido: "01:00" }));
+      case "Peso e Distância":
+        return [1, 2, 3].map((o) => ({ ...base, ordem: o, distancia_sugerida: 0 }));
+      default:
+        return [1, 2, 3].map((o) => ({ ...base, ordem: o, reps_sugerido: "12" }));
+    }
+  };
+
+  const handleAddExercisesToFicha = async (selected: LibraryExercise[]) => {
+    if (!addExerciseFichaId) return;
+    const ficha = fichas.find((f) => f.id === addExerciseFichaId);
+    if (!ficha) return;
+    const current = parseFichaItems(
+      (ficha.configuracao as { exercicios?: unknown[] })?.exercicios || [],
+    );
+    const novos: ExercicioFicha[] = selected.map((ex) => {
+      const tipoEx = ex.tipo_exercicio || "Peso & Repetições";
+      return {
+        instanceId: crypto.randomUUID(),
+        id: ex.id,
+        nome: ex.nome,
+        tipo_exercicio: tipoEx,
+        descanso: "01:00",
+        video_url: ex.video_url || "",
+        observacoes: "",
+        series: criarSeriesPadraoLocal(tipoEx),
+      };
+    });
+    await handleUpdateFichaExercicios(
+      addExerciseFichaId,
+      serializeFichaItems([...current, ...novos]),
+    );
+    setAddExerciseFichaId(null);
+  };
+
   const abrirClonarFicha = async (ficha: FichaTreino) => {
     setClonandoFicha(ficha);
     setAlunoAlvoId("");
@@ -623,16 +735,55 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const expectedSessions = 3;
   const adesaoSemanal = Math.min(100, Math.round((completedThisWeek / expectedSessions) * 100));
 
-  const ultimoMedidaVal = medidas[0] ? `${medidas[0].peso?.toFixed(1)} kg` : "Sem dados";
-  const vencimentoVal = profile?.data_expiracao ? new Date(profile.data_expiracao).toLocaleDateString("pt-BR") : "A definir";
-  const volTotal = historicoTreinos.length;
-
-  // Overview Priorities list for this student
-  const studentPriorities: { id: string; desc: string; type: 'danger' | 'warning' | 'info'; action: string; tab: any }[] = [];
   const today = new Date();
   const isPaid = profile?.status_pagamento === "pago";
   const expiration = profile?.data_expiracao ? new Date(profile.data_expiracao) : null;
-  const isExpired = expiration && expiration < today;
+  const isExpired = !!(expiration && expiration < today);
+
+  const ultimoMedidaVal = medidas[0] ? `${medidas[0].peso?.toFixed(1)} kg` : "Sem dados";
+  const pesoDelta =
+    medidas[0]?.peso != null && medidas[1]?.peso != null
+      ? Number(medidas[0].peso) - Number(medidas[1].peso)
+      : null;
+  const pesoDeltaLabel =
+    pesoDelta == null
+      ? null
+      : `${pesoDelta > 0 ? "+" : ""}${pesoDelta.toFixed(1)}`;
+  const diasParaVencer =
+    expiration
+      ? Math.ceil((expiration.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+  const vencimentoVal =
+    diasParaVencer != null
+      ? diasParaVencer < 0
+        ? "Expirado"
+        : `${diasParaVencer} dias`
+      : profile?.data_expiracao
+        ? new Date(profile.data_expiracao).toLocaleDateString("pt-BR")
+        : "A definir";
+  const adesaoTone =
+    adesaoSemanal >= 80 ? "good" : adesaoSemanal < 50 ? "bad" : "neutral";
+  const adesaoSuffix =
+    adesaoSemanal >= 80 ? "muito boa" : adesaoSemanal < 50 ? "baixa" : null;
+  const vencimentoTone =
+    diasParaVencer != null && diasParaVencer >= 0 && diasParaVencer <= 7
+      ? "warn"
+      : "neutral";
+  const activeFicha = fichas.find((f) => f.ativo) || null;
+  const fichaAtualizadaLabel = (() => {
+    if (!activeFicha?.criado_em) return null;
+    const days = Math.floor(
+      (today.getTime() - new Date(activeFicha.criado_em).getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+    if (days <= 0) return "Atualizada hoje";
+    if (days === 1) return "Atualizada há 1 dia";
+    return `Atualizada há ${days} dias`;
+  })();
+
+  // Overview Priorities list for this student
+  const studentPriorities: { id: string; desc: string; type: 'danger' | 'warning' | 'info'; action: string; tab: any }[] = [];
+  // isPaid / expiration / isExpired já calculados acima
 
   if (!isPaid || isExpired) {
     studentPriorities.push({
@@ -987,7 +1138,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans max-w-7xl mx-auto flex flex-col gap-6">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-6">
 
       {/* ── Page Header & Quick actions ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1009,7 +1160,10 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {/* Quick action buttons — Nova Ficha full-width, Gerir/Enviar 50/50 abaixo */}
         <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 w-full lg:w-auto">
           <button
-            onClick={() => router.push("/admin/treinos/nova-ficha")}
+            onClick={() => {
+              setActiveTab("treinos");
+              setKanbanBuilderOpen(true);
+            }}
             className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-2.5 py-1.5 bg-brand hover:bg-brand-hover text-text-on-brand text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 shadow-sm shadow-brand/10"
           >
             <Plus size={10} weight="bold" /> Nova Ficha
@@ -1090,18 +1244,22 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <h2 className="text-lg font-bold text-text-primary tracking-tight truncate">
                   {profileName}
                 </h2>
-                <span className={cn(
-                  "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
-                  profile.arquivado
-                    ? "bg-surface-3 border-border-subtle text-text-disabled"
-                    : isPaid && !isExpired
-                      ? "bg-success-subtle border-success/15 text-success"
-                      : "bg-danger-subtle border-danger/15 text-danger"
-                )}>
-                  {profile.arquivado
-                    ? "Desativado"
-                    : isPaid && !isExpired ? "Acesso Ativo" : "Inadimplente/Bloqueado"}
-                </span>
+                {profile.arquivado ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7a8aab]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#555555]" />
+                    desativado
+                  </span>
+                ) : isPaid && !isExpired ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#39c75a]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#39c75a]" />
+                    ativo
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#e05555]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#e05555]" />
+                    bloqueado
+                  </span>
+                )}
               </div>
               <p className="text-xs text-text-secondary mt-0.5">{profile.email}</p>
               
@@ -1130,25 +1288,82 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </Card>
       )}
 
-      {/* ── Sub-header: Quick stats row ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          { icon: Barbell, label: "Treino Ativo", value: activeRoutine, color: "text-blue-400", bg: "from-blue-500/10 to-blue-600/5" },
-          { icon: ChartLineUp, label: "Adesão da semana", value: `${adesaoSemanal}%`, color: "text-success", bg: "from-success/10 to-emerald-600/5" },
-          { icon: Ruler, label: "Última Medida", value: ultimoMedidaVal, color: "text-purple-400", bg: "from-purple-500/10 to-purple-600/5" },
-          { icon: Calendar, label: "Vencimento", value: vencimentoVal, color: "text-amber-400", bg: "from-amber-500/10 to-amber-600/5" },
-          { icon: Clock, label: "Volume Total", value: `${volTotal} treinos`, color: "text-rose-400", bg: "from-rose-500/10 to-rose-600/5" },
-          { icon: Trophy, label: "Pontos", value: `${pontosTotais} pts`, color: "text-yellow-400", bg: "from-yellow-500/10 to-yellow-600/5" },
-        ].map(({ icon: Icon, label, value, color, bg }) => (
-          <div key={label} className="relative overflow-hidden bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm flex flex-col gap-1.5">
-            <div className={cn("absolute inset-0 bg-gradient-to-br pointer-events-none opacity-40", bg)} />
-            <div className="flex items-center gap-1.5 text-text-tertiary relative z-10">
-              <Icon className={cn("w-3.5 h-3.5 shrink-0", color)} />
-              <span className="text-[10px] font-semibold uppercase tracking-wider truncate">{label}</span>
+      {/* ── Hero unificado (métricas neutras; cor só em exceção) ── */}
+      <div
+        className="rounded-xl border border-[#222222] bg-[#141414] px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-6"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          {avatarUrl ? (
+            <div className="w-11 h-11 rounded-xl overflow-hidden border border-[#222222] shrink-0">
+              <img src={avatarUrl} alt={profileName} className="w-full h-full object-cover" />
             </div>
-            <div className="text-sm font-bold text-text-primary truncate mt-0.5 relative z-10 leading-none">{value}</div>
+          ) : (
+            <div className="w-11 h-11 rounded-xl bg-[#1e1e1e] border border-[#222222] flex items-center justify-center font-bold text-sm text-white shrink-0">
+              {profileName[0]?.toUpperCase() || "?"}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab] font-medium">
+              Treino atual
+            </p>
+            <p className="text-xl font-bold text-white truncate leading-tight mt-0.5">
+              {activeRoutine}
+            </p>
           </div>
-        ))}
+        </div>
+
+        <div className="hidden md:block" />
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 md:justify-self-end">
+          <div>
+            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Adesão</p>
+            <p
+              className={cn(
+                "text-base font-semibold mt-0.5",
+                adesaoTone === "good" && "text-[#39c75a]",
+                adesaoTone === "bad" && "text-[#e05555]",
+                adesaoTone === "neutral" && "text-white",
+              )}
+            >
+              {adesaoSemanal}%
+              {adesaoSuffix && (
+                <span className="text-[11px] ml-1 font-medium">{adesaoSuffix}</span>
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Peso</p>
+            <p className="text-base font-semibold text-white mt-0.5">
+              {ultimoMedidaVal}
+              {pesoDeltaLabel && (
+                <span className="text-[11px] ml-1 font-medium text-[#7a8aab]">
+                  {pesoDeltaLabel}
+                </span>
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Vencimento</p>
+            <p
+              className={cn(
+                "text-base font-semibold mt-0.5",
+                vencimentoTone === "warn" ? "text-[#f59e0b]" : "text-white",
+              )}
+            >
+              {vencimentoVal}
+              {vencimentoTone === "warn" && diasParaVencer != null && diasParaVencer >= 0 && (
+                <span className="text-[11px] ml-1 font-medium">atenção</span>
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Pontos</p>
+            <p className="text-base font-semibold text-white mt-0.5 tabular-nums">
+              {pontosTotais}
+              <span className="text-[11px] ml-1 font-medium text-[#7a8aab]">pts</span>
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ── Tab Navigation ── */}
@@ -1238,19 +1453,19 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     <div className="md:col-span-6 flex flex-col justify-between gap-4">
                       <div className="grid grid-cols-2 gap-3 h-full">
                         {[
-                          { label: 'Treinos', value: stats30.workouts.toString(), icon: CalendarBlank, color: 'text-brand' },
-                          { label: 'Duração estim.', value: `${Math.floor(stats30.minutes / 60)}h ${stats30.minutes % 60}m`, icon: Clock, color: 'text-amber-500' },
-                          { label: 'Volume total', value: stats30.volume > 0 ? `${(stats30.volume / 1000).toFixed(1)}k kg` : `${stats30.sets} séries`, icon: ChartLine, color: 'text-rose-500' },
-                          { label: 'Séries feitas', value: stats30.sets.toString(), icon: Barbell, color: 'text-purple-500' },
+                          { label: 'Treinos', value: stats30.workouts.toString(), icon: CalendarBlank },
+                          { label: 'Duração estim.', value: `${Math.floor(stats30.minutes / 60)}h ${stats30.minutes % 60}m`, icon: Clock },
+                          { label: 'Volume total', value: stats30.volume > 0 ? `${(stats30.volume / 1000).toFixed(1)}k kg` : `${stats30.sets} séries`, icon: ChartLine },
+                          { label: 'Séries feitas', value: stats30.sets.toString(), icon: Barbell },
                         ].map((stat) => {
                           const Icon = stat.icon;
                           return (
-                            <div key={stat.label} className="bg-surface-2 border border-border-subtle rounded-xl p-4 flex flex-col justify-between">
-                              <div className="flex items-center gap-1.5 text-text-tertiary">
-                                <Icon className={cn("w-3.5 h-3.5", stat.color)} />
-                                <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{stat.label}</span>
+                            <div key={stat.label} className="bg-[#141414] border border-[#222222] rounded-xl p-4 flex flex-col justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <Icon className="w-3.5 h-3.5 text-[#7a8aab]" />
+                                <span className="text-[10px] font-semibold text-[#7a8aab] uppercase tracking-wider">{stat.label}</span>
                               </div>
-                              <p className="text-lg font-bold text-text-primary mt-2 font-mono">{stat.value}</p>
+                              <p className="text-lg font-bold text-white mt-2 font-mono">{stat.value}</p>
                             </div>
                           );
                         })}
@@ -1286,10 +1501,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
                   </div>
                 ) : (
-                  <div className="py-8 text-center bg-surface-2 border border-border-subtle rounded-xl flex flex-col items-center justify-center gap-2">
-                    <Barbell size={24} className="text-text-tertiary" />
-                    <p className="text-xs text-text-secondary max-w-sm px-4">
-                      Este aluno ainda não concluiu nenhum treino na plataforma. Estatísticas avançadas e mapa de calor muscular serão exibidos aqui assim que os primeiros treinos forem registrados.
+                  <div className="rounded-xl border border-[#222222] bg-[#141414] p-4">
+                    <p className="text-xs text-[#555555]">
+                      Sem treinos concluídos ainda — os dados aparecem aqui após o primeiro treino registrado.
                     </p>
                   </div>
                 )}
@@ -1341,21 +1555,57 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-text-tertiary font-medium">Total de Pontos</span>
-                    <span className="font-bold text-brand tabular-nums">{pontosTotais} pts</span>
+                    <span className="text-[#7a8aab] font-medium">Total de Pontos</span>
+                    <span className="font-bold text-white tabular-nums">{pontosTotais} pts</span>
                   </div>
                 </div>
               </div>
 
-              {/* Treino Ativo Card */}
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex items-center gap-4">
-                <div className="w-10 h-10 bg-brand/10 border border-brand/20 rounded-xl flex items-center justify-center shrink-0 text-brand">
-                  <Barbell size={20} />
+              {/* Treino Ativo Card — resumo mínimo (link para Kanban/ficha) */}
+              <div className="bg-[#141414] border border-[#222222] rounded-2xl p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-[#1e1e1e] border border-[#222222] rounded-xl flex items-center justify-center shrink-0 text-[#7a8aab]">
+                    <Barbell size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-medium text-[#7a8aab] tracking-[1px] block">
+                      Ficha ativa
+                    </span>
+                    <span className="text-sm font-bold text-white block truncate mt-0.5">
+                      {activeRoutine}
+                    </span>
+                    {fichaAtualizadaLabel && (
+                      <span className="text-[11px] text-[#7a8aab] mt-0.5 block">
+                        {fichaAtualizadaLabel}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <span className="text-[10px] uppercase font-bold text-text-tertiary tracking-wider block">Ficha Digital Ativa</span>
-                  <span className="text-sm font-bold text-text-primary block truncate mt-0.5">{activeRoutine}</span>
-                </div>
+                {activeFicha && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        withReturnUrl(
+                          `/admin/aluno/${id}/ficha/${activeFicha.id}`,
+                          alunoTreinosReturnUrl(id),
+                        ),
+                      )
+                    }
+                    className="w-full text-center text-[11px] font-semibold text-[#2b7fff] hover:opacity-80 py-2 border border-[#222222] rounded-lg"
+                  >
+                    Ver ficha completa
+                  </button>
+                )}
+                {!activeFicha && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("treinos")}
+                    className="w-full text-center text-[11px] font-medium text-[#39c75a] hover:opacity-80 py-2"
+                  >
+                    + criar ficha digital
+                  </button>
+                )}
               </div>
 
             </div>
@@ -1365,159 +1615,135 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
         {/* ── TREINOS TAB ── */}
         {activeTab === 'treinos' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="flex flex-col gap-4">
             
-            {/* Coluna Esquerda: Fichas Digitais */}
-            <div className="lg:col-span-7 bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-text-primary">Fichas Digitais</h3>
-                  <p className="text-2xs text-text-tertiary">Treinos digitais estruturados em execução</p>
-                </div>
-                <button
-                  onClick={() => router.push("/admin/treinos/nova-ficha")}
-                  className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 hover:bg-brand text-brand hover:text-text-on-brand flex items-center justify-center font-bold text-lg transition-all"
-                  title="Criar nova ficha"
-                >
-                  +
-                </button>
-              </div>
-
-              {fichas.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  {fichas.map((ficha) => {
-                    const exCount = (ficha.configuracao as any)?.exercicios?.length || 0;
-                    const totalSets = (ficha.configuracao as any)?.exercicios?.reduce(
-                      (acc: number, ex: any) => acc + (ex.series?.length || 0), 
-                      0
-                    ) || 0;
-
-                    return (
-                      <div key={ficha.id} className="p-3 bg-surface-2 border border-border-subtle rounded-xl flex items-center justify-between gap-3 hover:border-brand/20 transition-all">
-                        <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-text-primary truncate">{ficha.nome_rotina}</h4>
-                          <p className="text-[10px] text-text-tertiary mt-0.5">
-                            {exCount} exercícios • {totalSets} séries • Criado em: {new Date(ficha.criado_em).toLocaleDateString("pt-BR")}
-                          </p>
-                        </div>
-                        
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            onClick={() => setSelectedRoutineForPreview(ficha)}
-                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-                            title="Visualizar Ficha"
-                          >
-                            <Eye size={13} />
-                          </button>
-                          <button
-                            onClick={() => router.push(`/admin/aluno/${id}/ficha/${ficha.id}`)}
-                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-                            title="Editar Ficha"
-                          >
-                            <PencilSimple size={13} />
-                          </button>
-                          <button
-                            onClick={() => abrirClonarFicha(ficha)}
-                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-                            title="Clonar Ficha"
-                          >
-                            <Copy size={13} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteFicha(ficha.id)}
-                            className="w-7 h-7 rounded-md bg-surface-3 border border-border-subtle text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
-                            title="Desativar Ficha"
-                          >
-                            <Trash size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="py-12 text-center flex flex-col items-center justify-center gap-3 bg-surface-2 border border-dashed border-border-subtle rounded-xl">
-                  <Barbell size={32} className="text-text-disabled" />
-                  <p className="text-xs text-text-tertiary">Nenhuma ficha digital ativa cadastrada.</p>
-                  <button
-                    onClick={() => router.push("/admin/treinos/nova-ficha")}
-                    className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-text-on-brand text-[10px] font-bold uppercase rounded-lg transition-all"
-                  >
-                    Criar ficha digital
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Coluna Direita: Upload de PDF individual */}
-            <div className="lg:col-span-5 bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-5">
+            {/* Kanban de Fichas Digitais */}
+            <div className="w-full bg-[#141414] border border-[#222222] rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0">
               <div>
-                <h3 className="text-sm font-bold text-text-primary">Ficha / Protocolo em PDF</h3>
-                <p className="text-2xs text-text-tertiary">Envio de plano de treino em formato PDF</p>
+                <h3 className="text-sm font-bold text-white">Fichas Digitais</h3>
+                <p className="text-[10px] text-[#7a8aab] mt-0.5">
+                  Treinos lado a lado — arraste exercícios entre colunas
+                </p>
               </div>
 
-              <form onSubmit={handleUploadPdf} className="flex flex-col gap-4">
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handlePdfChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
-                  />
-                  <div className={cn(
-                    "flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-dashed transition-all",
-                    pdfFile ? "border-brand bg-brand/5" : "border-border-default bg-surface-3 hover:border-brand/30"
-                  )}>
-                    <UploadSimple className={cn("w-6 h-6", pdfFile ? "text-brand" : "text-text-tertiary")} />
-                    <span className={cn("text-xs text-center px-4 truncate max-w-full", pdfFile ? "text-brand font-bold" : "text-text-tertiary")}>
-                      {pdfFile ? pdfFile.name : "Clique ou arraste o PDF do treino"}
+              <FichasKanban
+                fichas={fichas}
+                alunoId={id}
+                currentFichaId={activeFicha?.id ?? null}
+                onReorderFichas={handleReorderFichas}
+                onUpdateFichaExercicios={handleUpdateFichaExercicios}
+                onDeleteFicha={handleDeleteFicha}
+                onCloneFicha={(f) => abrirClonarFicha(f as FichaTreino)}
+                onPreviewFicha={(f) => setSelectedRoutineForPreview(f as FichaTreino)}
+                onCreateTreino={() => setKanbanBuilderOpen(true)}
+                onAddExercise={(fichaId) => void openAddExercise(fichaId)}
+              />
+            </div>
+
+            {/* Upload de PDF individual — compacto por padrão */}
+            <form
+              onSubmit={handleUploadPdf}
+              className="bg-[#141414] border border-[#222222] rounded-xl"
+            >
+              <div className="min-h-14 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTreinoPdfOpen((open) => !open)}
+                  className="flex items-center gap-2 min-w-0 text-left"
+                  aria-expanded={treinoPdfOpen}
+                >
+                  <FilePdf size={16} className="text-[#7a8aab] shrink-0" />
+                  <span className="text-[13px] text-[#7a8aab] font-medium">
+                    Ficha em PDF
+                  </span>
+                  {pdfFile && (
+                    <span className="text-[11px] text-white truncate">
+                      {pdfFile.name}
                     </span>
-                  </div>
+                  )}
+                </button>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setTreinoPdfOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#282828] bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors"
+                  >
+                    <UploadSimple size={12} />
+                    Enviar PDF
+                  </button>
+                  <Button
+                    type="submit"
+                    loading={uploading}
+                    disabled={!pdfFile}
+                    size="sm"
+                    className="h-8 px-3 text-[11px]"
+                  >
+                    Publicar
+                  </Button>
                 </div>
+              </div>
 
-                <Button type="submit" loading={uploading} disabled={!pdfFile} fullWidth>
-                  Publicar PDF
-                </Button>
-              </form>
-
-              {treinosPdf.length > 0 && (
-                <div className="flex flex-col gap-2 mt-2">
-                  <h4 className="text-[10px] font-bold uppercase text-text-tertiary tracking-wider">Histórico de PDFs</h4>
-                  <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
-                    {treinosPdf.map((t) => (
-                      <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-surface-2 border border-border-subtle">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="w-3.5 h-3.5 text-brand shrink-0" />
-                          <span className="text-xs text-text-secondary truncate font-medium">{t.nome_arquivo}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <a href={t.url_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-brand hover:underline font-semibold">
-                            Visualizar
-                          </a>
-                          <button onClick={() => handleDeleteTreino(t.id, t.original_url_pdf || t.url_pdf)} className="text-text-disabled hover:text-danger transition-colors">
-                            <Trash size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+              {treinoPdfOpen && (
+                <div className="border-t border-[#222222] px-4 py-3 flex flex-col gap-3">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handlePdfChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
+                    />
+                    <div className={cn(
+                      "flex items-center justify-center gap-2 min-h-20 rounded-lg border border-dashed transition-all",
+                      pdfFile ? "border-[#2b7fff]/50 bg-[#2b7fff]/5" : "border-[#282828] bg-[#1e1e1e] hover:border-[#2b7fff]/40"
+                    )}>
+                      <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-[#2b7fff]" : "text-[#7a8aab]")} />
+                      <span className={cn("text-xs text-center px-4 truncate max-w-full", pdfFile ? "text-white font-medium" : "text-[#7a8aab]")}>
+                        {pdfFile ? pdfFile.name : "Clique ou arraste o PDF do treino"}
+                      </span>
+                    </div>
                   </div>
+
+                  {treinosPdf.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <h4 className="text-[10px] font-semibold uppercase text-[#7a8aab] tracking-wider">Histórico de PDFs</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {treinosPdf.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between p-2 rounded-lg bg-[#1e1e1e] border border-[#222222]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="w-3.5 h-3.5 text-[#7a8aab] shrink-0" />
+                              <span className="text-xs text-[#7a8aab] truncate font-medium">{t.nome_arquivo}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <a href={t.url_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-[#2b7fff] hover:underline font-semibold">
+                                Visualizar
+                              </a>
+                              <button type="button" onClick={() => handleDeleteTreino(t.id, t.original_url_pdf || t.url_pdf)} className="text-text-disabled hover:text-danger transition-colors">
+                                <Trash size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+            </form>
 
           </div>
         )}
 
         {/* ── NUTRIÇÃO TAB ── */}
         {activeTab === 'nutricao' && (
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-6 max-w-3xl mx-auto">
+          <div className="w-full flex flex-col gap-4">
             
             {/* Seção 1: Plano Digital Ativo */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
+            <div className="bg-[#141414] border border-[#222222] rounded-xl p-5 flex flex-col gap-5">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">Acompanhamento Alimentar Digital</h3>
-                  <p className="text-2xs text-text-tertiary">Acompanhe a adesão em tempo real do aluno</p>
+                  <h3 className="text-sm font-bold text-white">Acompanhamento Alimentar Digital</h3>
+                  <p className="text-[10px] text-[#7a8aab] mt-0.5">Acompanhe a adesão em tempo real do aluno</p>
                 </div>
                 {!digitalPlan && (
                   <Link href="/admin/nutricao/novo-plano">
@@ -1530,104 +1756,123 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
               {digitalPlan ? (
                 <div className="flex flex-col gap-4">
-                  {/* Card do plano digital */}
-                  <div className="p-4 bg-surface-2 border border-border-subtle rounded-xl flex flex-col gap-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-success/15 border border-success/30 text-success">
-                          Ativo
-                        </span>
-                        <h4 className="text-xs font-bold text-text-primary mt-2">{digitalPlan.name}</h4>
-                        <p className="text-[11px] text-text-secondary">Objetivo: {digitalPlan.goal || 'Hipertrofia'}</p>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                    {/* Resumo: plano + macros + KPIs */}
+                    <div className="p-4 bg-[#1e1e1e] border border-[#222222] rounded-xl flex flex-col gap-4">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#39c75a]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#39c75a]" />
+                            ativo
+                          </span>
+                          <h4 className="text-xs font-bold text-white mt-2 truncate">{digitalPlan.name}</h4>
+                          <p className="text-[11px] text-[#7a8aab]">Objetivo: {digitalPlan.goal || 'Hipertrofia'}</p>
+                        </div>
+                        
+                        <div className="flex gap-2 shrink-0">
+                          <Link href={`/admin/nutricao/planos/${digitalPlan.id}`}>
+                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-[#282828]">
+                              Ver Plano
+                            </Button>
+                          </Link>
+                          <Link href={`/admin/nutricao/planos/${digitalPlan.id}/editar`}>
+                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-[#282828]">
+                              Editar
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
-                      
-                      <div className="flex gap-2 shrink-0">
-                        <Link href={`/admin/nutricao/planos/${digitalPlan.id}`}>
-                          <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-border-subtle">
-                            Ver Plano
-                          </Button>
-                        </Link>
-                        <Link href={`/admin/nutricao/planos/${digitalPlan.id}/editar`}>
-                          <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-border-subtle">
-                            Editar
-                          </Button>
-                        </Link>
-                      </div>
+
+                      {digitalPlan.calories_target && (
+                        <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-[#222222] py-2.5">
+                          <div className="flex flex-col">
+                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Calorias</span>
+                            <span className="text-white font-bold">{digitalPlan.calories_target} kcal</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Proteínas</span>
+                            <span className="text-white font-bold">{digitalPlan.protein_target || '—'}g</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Carbos</span>
+                            <span className="text-white font-bold">{digitalPlan.carbs_target || '—'}g</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Gorduras</span>
+                            <span className="text-white font-bold">{digitalPlan.fat_target || '—'}g</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {(() => {
+                        const todayISO = new Date().toISOString().slice(0, 10);
+                        const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
+                        const todayCheckins = digitalCheckins.filter(c => c.checkin_date === todayISO);
+                        let todayWeightSum = 0;
+                        todayCheckins.forEach(c => {
+                          todayWeightSum += getStatusAdherenceWeight(c.status);
+                        });
+                        const todayAdherence = mealsCount > 0 ? Math.min(100, Math.round((todayWeightSum / mealsCount) * 100)) : 100;
+
+                        const expected7dMeals = mealsCount * 7;
+                        let total7dWeightSum = 0;
+                        digitalCheckins.forEach(c => {
+                          total7dWeightSum += getStatusAdherenceWeight(c.status);
+                        });
+                        const weeklyAdherence = expected7dMeals > 0 ? Math.min(100, Math.round((total7dWeightSum / expected7dMeals) * 100)) : 100;
+
+                        const lastCheckin = digitalCheckins[0];
+                        const formattedLastCheckin = lastCheckin
+                          ? `${new Date(lastCheckin.checkin_date).toLocaleDateString('pt-BR')} (${lastCheckin.status.toUpperCase()})`
+                          : 'Nenhum recente';
+
+                        return (
+                          <div className="grid grid-cols-3 gap-4 text-xs font-medium">
+                            <div>
+                              <p className="text-[9px] uppercase font-semibold text-[#7a8aab] mb-0.5">Adesão Hoje</p>
+                              <p className="text-white font-bold font-mono">{todayAdherence}%</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] uppercase font-semibold text-[#7a8aab] mb-0.5">Adesão 7 Dias</p>
+                              <p className="text-white font-bold font-mono">{weeklyAdherence}%</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] uppercase font-semibold text-[#7a8aab] mb-0.5">Último Registro</p>
+                              <p className="text-[#7a8aab] truncate">{formattedLastCheckin}</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
-                    {/* Metas */}
-                    {digitalPlan.calories_target && (
-                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-border-subtle/30 py-2.5">
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Calorias</span>
-                          <span className="text-text-primary font-bold">{digitalPlan.calories_target} kcal</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Proteínas</span>
-                          <span className="text-text-primary font-bold">{digitalPlan.protein_target || '—'}g</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Carbos</span>
-                          <span className="text-text-primary font-bold">{digitalPlan.carbs_target || '—'}g</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider mb-0.5">Gorduras</span>
-                          <span className="text-text-primary font-bold">{digitalPlan.fat_target || '—'}g</span>
-                        </div>
+                    {/* Card: Adesão nos últimos 7 dias */}
+                    <div className="p-4 bg-[#141414] border border-[#222222] rounded-xl flex flex-col gap-3 min-h-[180px]">
+                      <div>
+                        <h4 className="text-[13px] font-semibold text-white">Adesão nos últimos 7 dias</h4>
+                        <p className="text-[10px] text-[#7a8aab] mt-0.5">Série diária — mesmo cálculo dos KPIs</p>
                       </div>
-                    )}
-
-                    {/* Adherence metrics */}
-                    {(() => {
-                      const todayISO = new Date().toISOString().slice(0, 10);
-                      const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
-                      
-                      // Today adherence
-                      const todayCheckins = digitalCheckins.filter(c => c.checkin_date === todayISO);
-                      let todayWeightSum = 0;
-                      todayCheckins.forEach(c => {
-                        if (c.status === 'done' || c.status === 'substituted') todayWeightSum += 1.0;
-                        else if (c.status === 'partial') todayWeightSum += 0.5;
-                      });
-                      const todayAdherence = mealsCount > 0 ? Math.min(100, Math.round((todayWeightSum / mealsCount) * 100)) : 100;
-
-                      // 7 days adherence
-                      const expected7dMeals = mealsCount * 7;
-                      let total7dWeightSum = 0;
-                      digitalCheckins.forEach(c => {
-                        if (c.status === 'done' || c.status === 'substituted') total7dWeightSum += 1.0;
-                        else if (c.status === 'partial') total7dWeightSum += 0.5;
-                      });
-                      const weeklyAdherence = expected7dMeals > 0 ? Math.min(100, Math.round((total7dWeightSum / expected7dMeals) * 100)) : 100;
-
-                      // Last checkin
-                      const lastCheckin = digitalCheckins[0];
-                      const formattedLastCheckin = lastCheckin
-                        ? `${new Date(lastCheckin.checkin_date).toLocaleDateString('pt-BR')} (${lastCheckin.status.toUpperCase()})`
-                        : 'Nenhum recente';
-
-                      return (
-                        <div className="grid grid-cols-3 gap-4 text-xs font-medium">
-                          <div>
-                            <p className="text-[9px] uppercase font-bold text-text-tertiary mb-0.5">Adesão Hoje</p>
-                            <p className="text-text-primary font-bold font-mono">{todayAdherence}%</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] uppercase font-bold text-text-tertiary mb-0.5">Adesão 7 Dias</p>
-                            <p className="text-text-primary font-bold font-mono">{weeklyAdherence}%</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] uppercase font-bold text-text-tertiary mb-0.5">Último Registro</p>
-                            <p className="text-text-secondary truncate">{formattedLastCheckin}</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                      {(() => {
+                        const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
+                        const series = buildDailyAdherenceSeries(digitalCheckins, mealsCount, 7);
+                        const chartData = series.map((p) => ({ date: p.date, value: p.value }));
+                        return (
+                          <MeasurementLineChart
+                            data={chartData}
+                            height={140}
+                            isDesktop
+                            yDomain={[0, 100]}
+                            labelMode="all"
+                            solidBackground
+                            formatValue={(v) => `${v}%`}
+                          />
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {/* Refeições Recentes (Hoje) */}
                   <div className="flex flex-col gap-2">
-                    <span className="text-[10px] uppercase font-bold text-text-tertiary tracking-wider mb-1">Adesão às refeições de hoje</span>
+                    <span className="text-[10px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-1">Adesão às refeições de hoje</span>
                     {digitalPlan.days?.[0]?.meals?.map((meal: any) => {
                       const todayISO = new Date().toISOString().slice(0, 10);
                       const checkin = digitalCheckins.find(c => c.meal_id === meal.id && c.checkin_date === todayISO);
@@ -1646,15 +1891,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         substituted: 'bg-brand/10 text-brand border-brand/20',
                         partial: 'bg-warning/10 text-warning border-warning/20',
                         skipped: 'bg-danger/10 text-danger border-danger/20',
-                        pending: 'bg-surface-3 text-text-tertiary border-border-subtle'
+                        pending: 'bg-[#1e1e1e] text-[#7a8aab] border-[#222222]'
                       };
 
                       return (
-                        <div key={meal.id} className="p-3 bg-surface-2/60 border border-border-subtle/50 rounded-lg flex items-center justify-between gap-4">
+                        <div key={meal.id} className="p-3 bg-[#1e1e1e] border border-[#222222] rounded-lg flex items-center justify-between gap-4">
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-text-primary leading-tight truncate">{meal.title}</p>
+                            <p className="text-xs font-bold text-white leading-tight truncate">{meal.title}</p>
                             {meal.time_suggestion && (
-                              <span className="text-[9px] text-text-disabled font-mono flex items-center gap-1 mt-0.5">
+                              <span className="text-[9px] text-[#555555] font-mono flex items-center gap-1 mt-0.5">
                                 <Clock size={10} /> {meal.time_suggestion.slice(0, 5)}
                               </span>
                             )}
@@ -1672,72 +1917,79 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
               ) : (
-                <div className="py-8 text-center flex flex-col items-center justify-center gap-2 bg-surface-2 border border-dashed border-border-subtle rounded-xl">
-                  <AppleLogo size={32} className="text-text-disabled" />
-                  <p className="text-xs text-text-tertiary font-semibold">Nenhum plano alimentar digital ativo para este aluno.</p>
-                  <p className="text-[10px] text-text-disabled max-w-xs leading-relaxed">Prescreva uma rotina digital para habilitar o acompanhamento automático de macros e adesão semanal.</p>
-                </div>
+                <p className="text-xs text-[#555555] p-4 rounded-xl border border-[#222222]">
+                  Sem plano alimentar digital ativo — os dados de adesão aparecem aqui após a prescrição.
+                </p>
               )}
             </div>
 
-            {/* Seção 2: Documentos em PDF */}
-            <div className="border-t border-border-subtle/40 pt-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-text-primary">Histórico de Planos PDF</h3>
-                  <p className="text-2xs text-text-tertiary">Planejamentos alimentares enviados em arquivo PDF</p>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={<UploadSimple className="w-4 h-4" />}
-                  onClick={() => setUploadNutritionOpen(true)}
-                  className="w-full md:w-auto shrink-0 whitespace-nowrap"
+            {/* Seção 2: PDF compacto / colapsável */}
+            <div className="bg-[#141414] border border-[#222222] rounded-xl">
+              <div className="min-h-14 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setNutritionPdfOpen((open) => !open)}
+                  className="flex items-center gap-2 min-w-0 text-left"
+                  aria-expanded={nutritionPdfOpen}
                 >
+                  <FilePdf size={16} className="text-[#7a8aab] shrink-0" />
+                  <span className="text-[13px] text-[#7a8aab] font-medium">
+                    Plano em PDF
+                  </span>
+                  {planosAlimentares.length > 0 && (
+                    <span className="text-[11px] text-white">
+                      {planosAlimentares.length} arquivo{planosAlimentares.length === 1 ? '' : 's'}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUploadNutritionOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#282828] bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors shrink-0"
+                >
+                  <UploadSimple size={12} />
                   Enviar PDF
-                </Button>
+                </button>
               </div>
 
-              {planosAlimentares.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {planosAlimentares.map((p) => (
-                    <div key={p.id} className="flex flex-col justify-between p-4 rounded-xl bg-surface-2 border border-border-subtle hover:border-brand/20 transition-all">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
-                          <AppleLogo size={16} />
+              {nutritionPdfOpen && (
+                <div className="border-t border-[#222222] px-4 py-3">
+                  {planosAlimentares.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {planosAlimentares.map((p) => (
+                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-[#1e1e1e] border border-[#222222]">
+                          <div className="min-w-0">
+                            <p className="text-xs text-white truncate font-medium">{p.nome_arquivo}</p>
+                            <span className="text-[10px] text-[#7a8aab] font-mono">
+                              {new Date(p.criado_em).toLocaleDateString("pt-BR")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <a
+                              href={p.pdf_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-[#2b7fff] hover:underline font-semibold"
+                            >
+                              Abrir
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteNutritionPlan(p.id, p.original_path || p.url_pdf || p.pdf_url)}
+                              className="text-text-disabled hover:text-danger transition-colors p-1"
+                            >
+                              <Trash size={12} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-text-primary truncate">{p.nome_arquivo}</p>
-                          {p.descricao && <p className="text-[11px] text-text-secondary mt-0.5 truncate">{p.descricao}</p>}
-                          <span className="text-[10px] text-text-tertiary mt-1 block font-mono">
-                            Envio: {new Date(p.criado_em).toLocaleDateString("pt-BR")}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-border-subtle/50">
-                        <a
-                          href={p.pdf_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-brand hover:underline font-semibold flex items-center gap-1"
-                        >
-                          Abrir PDF <ArrowRight size={10} />
-                        </a>
-                        <button
-                          onClick={() => handleDeleteNutritionPlan(p.id, p.original_path || p.url_pdf || p.pdf_url)}
-                          className="text-text-disabled hover:text-danger transition-colors p-1 cursor-pointer"
-                        >
-                          <Trash size={12} />
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-10 text-center flex flex-col items-center justify-center gap-3 bg-surface-2 border border-dashed border-border-subtle rounded-xl">
-                  <FilePdf size={28} className="text-text-disabled" />
-                  <p className="text-xs text-text-tertiary">Nenhum plano alimentar em PDF enviado.</p>
+                  ) : (
+                    <p className="text-xs text-[#555555] py-2">
+                      Nenhum plano em PDF enviado ainda.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -2100,6 +2352,21 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         )}
 
       </div>
+
+      <KanbanWorkoutBuilderSheet
+        open={kanbanBuilderOpen}
+        alunoId={id}
+        onClose={() => setKanbanBuilderOpen(false)}
+        onSaved={() => void load()}
+      />
+
+      {addExerciseFichaId && (
+        <ExerciseLibraryModal
+          catalog={exerciseCatalog}
+          onClose={() => setAddExerciseFichaId(null)}
+          onAdd={(selected) => void handleAddExercisesToFicha(selected)}
+        />
+      )}
 
       {/* Modal de upload de nutrição */}
       <UploadNutritionPlan

@@ -936,7 +936,7 @@ export default function AssinaturaPage() {
         }
       />
 
-      <div className="px-4 max-w-5xl mx-auto flex flex-col gap-0">
+      <div className="px-4 w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-0">
         {data?.testDailyCycle && selectedTier === "test" && (
           <AlertLine borderColor="#e05555">
             <span className="text-[#e05555]">

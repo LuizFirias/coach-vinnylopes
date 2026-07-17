@@ -478,7 +478,7 @@ export default function NutricaoPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
         <ScreenHeader
           title="Gestão de Nutrição"
           subtitle="Crie planos alimentares interativos digitais ou faça upload de PDFs para seus alunos"

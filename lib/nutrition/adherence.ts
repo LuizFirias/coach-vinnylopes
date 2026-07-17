@@ -1,4 +1,4 @@
-import { NutritionMealCheckin, NutritionMealCheckinStatus } from './types';
+import { NutritionMealCheckinStatus } from './types';
 
 export interface AdherenceSummary {
   plannedMeals: number;
@@ -7,6 +7,16 @@ export interface AdherenceSummary {
   skippedMeals: number;
   adherencePercent: number;
 }
+
+export interface DailyAdherencePoint {
+  /** Label curto do eixo X (ex.: seg, ter) */
+  date: string;
+  /** ISO yyyy-mm-dd */
+  isoDate: string;
+  value: number;
+}
+
+const WEEKDAY_SHORT_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'] as const;
 
 /**
  * Retorna o peso de adesão para cada status do check-in.
@@ -59,7 +69,6 @@ export function calculateAdherence(
     }
   });
 
-  // Calculate percentage
   const adherencePercent = Math.min(100, Math.round((weightSum / plannedMealsCount) * 100));
 
   return {
@@ -69,6 +78,52 @@ export function calculateAdherence(
     skippedMeals,
     adherencePercent
   };
+}
+
+function toLocalISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Série diária dos últimos `days` dias (padrão 7), mesma regra de peso
+ * usada nos KPIs (done/substituted = 1, partial = 0.5).
+ * Sempre devolve um ponto por dia — dias sem check-in ficam em 0%.
+ */
+export function buildDailyAdherenceSeries(
+  checkins: { checkin_date: string; status: string }[],
+  plannedMealsPerDay: number,
+  days = 7,
+  endDate: Date = new Date(),
+): DailyAdherencePoint[] {
+  const end = new Date(endDate);
+  end.setHours(12, 0, 0, 0);
+
+  const byDay = new Map<string, number>();
+  for (const c of checkins) {
+    const key = c.checkin_date.slice(0, 10);
+    byDay.set(key, (byDay.get(key) || 0) + getStatusAdherenceWeight(c.status));
+  }
+
+  const series: DailyAdherencePoint[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(end);
+    d.setDate(end.getDate() - i);
+    const iso = toLocalISODate(d);
+    const weightSum = byDay.get(iso) || 0;
+    const value =
+      plannedMealsPerDay > 0
+        ? Math.min(100, Math.round((weightSum / plannedMealsPerDay) * 100))
+        : 0;
+    series.push({
+      date: WEEKDAY_SHORT_PT[d.getDay()],
+      isoDate: iso,
+      value,
+    });
+  }
+  return series;
 }
 
 /**

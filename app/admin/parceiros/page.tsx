@@ -367,7 +367,7 @@ export default function ParceirosAdminPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
-      <div className="max-w-5xl mx-auto">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
 
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-b border-border-subtle">

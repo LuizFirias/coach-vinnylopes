@@ -288,7 +288,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto px-4">
         
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-6 border-b border-border-subtle/50 mb-6">

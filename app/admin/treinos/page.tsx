@@ -23,6 +23,7 @@ import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 import { cn } from '@/lib/utils/cn';
 import { textIncludes } from '@/lib/utils/textNormalize';
+import { alunoTreinosReturnUrl, withReturnUrl } from '@/lib/utils/adminNav';
 import type { WorkoutPlan, AlunoSemFicha } from '@/app/components/admin/workouts/types';
 import { WorkoutsTable, WorkoutsEmptyState } from '@/app/components/admin/workouts/WorkoutsTable';
 import { WorkoutsMobileList } from '@/app/components/admin/workouts/WorkoutsMobileList';
@@ -374,7 +375,12 @@ export default function TreinosPage() {
     }
   };
   const handleEditWorkout = (plan: WorkoutPlan) =>
-    router.push(`/admin/aluno/${plan.aluno_id}/ficha/${plan.id}`);
+    router.push(
+      withReturnUrl(
+        `/admin/aluno/${plan.aluno_id}/ficha/${plan.id}`,
+        "/admin/treinos",
+      ),
+    );
 
   // Filter in-memory routines
   const processedRoutines = fichas.filter(f => {
@@ -398,7 +404,7 @@ export default function TreinosPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans">
-      <div className="max-w-7xl mx-auto flex flex-col gap-8">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
 
         {/* ── Page Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4 border-b border-border-subtle">
@@ -617,7 +623,14 @@ export default function TreinosPage() {
 
               <StudentsWithoutWorkoutAlert
                 students={alunosSemFicha}
-                onAssignWorkout={(id) => router.push(`/admin/treinos/nova-ficha?alunoId=${id}`)}
+                onAssignWorkout={(alunoId) =>
+                  router.push(
+                    withReturnUrl(
+                      `/admin/treinos/nova-ficha?alunoId=${alunoId}`,
+                      "/admin/treinos",
+                    ),
+                  )
+                }
               />
 
             </div>

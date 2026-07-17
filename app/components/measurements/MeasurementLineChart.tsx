@@ -9,12 +9,24 @@ interface MeasurementLineChartProps {
   data: ChartPoint[];
   height?: number;
   isDesktop?: boolean;
+  /** Escala Y fixa (ex.: [0, 100] para adesão %). Sem isso, auto-escala pelo min/max. */
+  yDomain?: [number, number];
+  /** 'sparse' = 1ª / meio / última (padrão peso). 'all' = todos os pontos no eixo X. */
+  labelMode?: 'sparse' | 'all';
+  /** Formata o valor do ponto único (ex.: "80%"). Default: 1 casa decimal. */
+  formatValue?: (value: number) => string;
+  /** Usa fundo sólido do design system (#0f0f0f) em vez do token mobile. */
+  solidBackground?: boolean;
 }
 
 export function MeasurementLineChart({
   data,
   height,
   isDesktop = false,
+  yDomain,
+  labelMode = 'sparse',
+  formatValue,
+  solidBackground = false,
 }: MeasurementLineChartProps) {
   const chartHeight = height ?? (isDesktop ? 240 : 120);
   const width = 300;
@@ -23,8 +35,16 @@ export function MeasurementLineChart({
   const padding = { top: isSinglePoint ? 14 : 6, bottom: 6 };
   const chartH = chartHeight - padding.top - padding.bottom;
 
-  const minVal = hasData ? Math.min(...data.map((d) => d.value)) : 0;
-  const maxVal = hasData ? Math.max(...data.map((d) => d.value)) : 1;
+  const minVal = yDomain
+    ? yDomain[0]
+    : hasData
+      ? Math.min(...data.map((d) => d.value))
+      : 0;
+  const maxVal = yDomain
+    ? yDomain[1]
+    : hasData
+      ? Math.max(...data.map((d) => d.value))
+      : 1;
   const range = maxVal - minVal || 1;
 
   const toX = (i: number) =>
@@ -41,12 +61,23 @@ export function MeasurementLineChart({
   const midDate = data[Math.floor(data.length / 2)]?.date ?? '';
   const lastDate = data[data.length - 1]?.date ?? '';
   const lastPoint = data[data.length - 1];
+  const format = formatValue ?? ((v: number) => v.toFixed(1));
 
   return (
-    <div className="rounded-[10px] border mobile-stat-nav-card p-3">
+    <div
+      className={
+        solidBackground
+          ? 'rounded-[10px] border border-[#222222] p-3'
+          : 'rounded-[10px] border mobile-stat-nav-card p-3'
+      }
+    >
       <div
         className="rounded-[10px] p-2.5 pb-1.5"
-        style={{ backgroundColor: 'var(--mobile-secondary-bg)' }}
+        style={{
+          backgroundColor: solidBackground
+            ? '#0f0f0f'
+            : 'var(--mobile-secondary-bg)',
+        }}
       >
         <svg
           width="100%"
@@ -87,7 +118,7 @@ export function MeasurementLineChart({
                   fontSize={isDesktop ? 11 : 10}
                   fontWeight={600}
                 >
-                  {lastPoint.value.toFixed(1)}
+                  {format(lastPoint.value)}
                 </text>
               )}
               <circle
@@ -101,7 +132,20 @@ export function MeasurementLineChart({
           )}
         </svg>
 
-        {hasData && (
+        {hasData && labelMode === 'all' && (
+          <div className="mt-0.5 flex justify-between gap-0.5">
+            {data.map((d, i) => (
+              <span
+                key={`${d.date}-${i}`}
+                className="flex-1 text-center text-[7px] text-[#333333]"
+              >
+                {d.date}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {hasData && labelMode === 'sparse' && (
           <div className="mt-0.5 flex justify-between">
             <span className="text-[8px] text-text-muted">{firstDate}</span>
             {data.length > 2 && (

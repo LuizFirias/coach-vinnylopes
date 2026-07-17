@@ -209,7 +209,7 @@ export default function AdminAlunosPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans">
-      <div className="max-w-7xl mx-auto flex flex-col gap-8">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
 
         {/* ── Page Header ── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
