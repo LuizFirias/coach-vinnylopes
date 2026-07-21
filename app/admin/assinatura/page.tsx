@@ -15,6 +15,7 @@ import {
   BILLING_PERIOD_LABELS,
   formatCurrencyBRL,
   formatStudentUsage,
+  formatPlanStudentCap,
   getBillingMonths,
   getMonthlyEquivalent,
   getPeriodSavingsPercent,
@@ -22,6 +23,7 @@ import {
   type PlanTier,
 } from "@/lib/subscriptions/plans";
 import { resolveAccessUntilOnCancel } from "@/lib/subscriptions/billingPeriod";
+import { invalidateSubscriptionStatusCache } from "@/lib/subscriptions/statusClientCache";
 
 interface PlanBillingOption {
   period: BillingPeriod;
@@ -34,6 +36,8 @@ interface PlanCatalogItem {
   tier: PlanTier;
   label: string;
   studentLimit: number;
+  unlimitedStudents?: boolean;
+  studentCapLabel?: string;
   description: string;
   features: string[];
   accent?: "danger" | null;
@@ -332,7 +336,7 @@ export default function AssinaturaPage() {
   /** Só true após submit do Brick — nunca após cancelamento. */
   const [awaitingPayment, setAwaitingPayment] = useState(false);
 
-  const [selectedTier, setSelectedTier] = useState<PlanTier>("start");
+  const [selectedTier, setSelectedTier] = useState<PlanTier>("iniciante");
   const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod>("monthly");
   const [checkoutSelection, setCheckoutSelection] = useState<CheckoutSelection | null>(null);
 
@@ -348,6 +352,7 @@ export default function AssinaturaPage() {
     }
 
     // cache-bust: evita resposta stale enquanto o polling espera o webhook
+    invalidateSubscriptionStatusCache();
     const res = await fetch(`/api/subscriptions/status?_=${Date.now()}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
       cache: "no-store",
@@ -1145,7 +1150,7 @@ export default function AssinaturaPage() {
                         {selectedPlan.description}
                       </p>
                       <p className="text-[11px] text-[#7a8aab] mt-2">
-                        Até {selectedPlan.studentLimit} alunos · cobrança recorrente
+                        {formatPlanStudentCap(selectedPlan.tier, selectedPlan.studentLimit)} · cobrança recorrente
                       </p>
                       {periodControl}
                       {!checkoutSelection && (

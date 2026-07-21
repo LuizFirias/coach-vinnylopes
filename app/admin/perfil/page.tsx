@@ -1,15 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getPublicStorageUrl, extractStoragePath } from "@/lib/storageUrls";
-import { SignOut, Lock, Camera, CreditCard } from '@phosphor-icons/react';
+import {
+  SignOut,
+  Lock,
+  Camera,
+  CreditCard,
+  FloppyDisk,
+  CircleNotch,
+  Plus,
+  X,
+  Gear,
+  CaretLeft,
+  CaretRight,
+  Envelope,
+} from "@phosphor-icons/react";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { SubscriptionBadge } from "@/app/components/SubscriptionBadge";
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { ScreenHeader } from "@/components/layout/ScreenHeader";
@@ -17,113 +36,284 @@ import { cn } from "@/lib/utils/cn";
 import { isAccessGranted } from "@/lib/subscriptions/display";
 import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { formatStudentUsage, getPlanLabel } from "@/lib/subscriptions/plans";
+import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
+import {
+  COACH_COVER_SPECS,
+  EMPTY_PUBLIC_PROFILE,
+  PRICE_PRESETS,
+  COACH_MODALITIES,
+  formatCrefInput,
+  formToRow,
+  isValidCref,
+  isValidHandle,
+  isValidInstagramUrl,
+  normalizeHandle,
+  normalizeInstagramUrl,
+  rowToForm,
+  type CoachPublicProfileForm,
+} from "@/lib/coach/publicProfile";
+import { SpecialtyTagSelector } from "@/app/components/coach-profile/SpecialtyTagSelector";
+import { AvailabilityToggle } from "@/app/components/coach-profile/AvailabilityToggle";
+import { PhotoGalleryUploader } from "@/app/components/coach-profile/PhotoGalleryUploader";
+import { PublicProfilePreviewCard } from "@/app/components/coach-profile/PublicProfilePreviewCard";
+import { CityAutocomplete } from "@/app/components/coach-profile/CityAutocomplete";
+import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
+
+function SettingsRow({
+  icon: Icon,
+  label,
+  value,
+  onClick,
+  href,
+  danger,
+}: {
+  icon?: React.FC<{ className?: string; size?: number }>;
+  label: string;
+  value?: string;
+  onClick?: () => void;
+  href?: string;
+  danger?: boolean;
+}) {
+  const className = cn(
+    "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-border-subtle last:border-b-0 touch-manipulation",
+    danger ? "text-danger hover:text-danger/80" : "hover:bg-surface-2/60",
+  );
+
+  const content = (
+    <>
+      {Icon && (
+        <Icon
+          className={cn(
+            "w-4 h-4 flex-shrink-0",
+            danger ? "text-danger" : "text-text-tertiary",
+          )}
+        />
+      )}
+      <span
+        className={cn(
+          "flex-1 text-sm",
+          danger ? "text-danger font-medium" : "text-text-primary",
+        )}
+      >
+        {label}
+      </span>
+      {value && (
+        <span className="text-xs text-text-tertiary mr-1 truncate max-w-[45%]">
+          {value}
+        </span>
+      )}
+      {!danger && onClick == null && !href ? null : !danger ? (
+        <CaretRight className="w-4 h-4 text-text-tertiary flex-shrink-0" />
+      ) : null}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {content}
+    </button>
+  );
+}
+
+function SettingsSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface-1 overflow-hidden shadow-sm">
+      <div className="px-4 py-2.5 border-b border-border-subtle bg-surface-2/50">
+        <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-tertiary">
+          {title}
+        </span>
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+}
 
 export default function CoachPerfilPage() {
   const router = useRouter();
+  const isMobile = useBreakpoint("mobile");
+  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [fullName, setFullName] = useState("");
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [storedAvatarPath, setStoredAvatarPath] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [mercadoNotice, setMercadoNotice] = useState<string | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [planName, setPlanName] = useState("AuronFit");
   const [studentUsage, setStudentUsage] = useState<string | null>(null);
+  const [activeStudents, setActiveStudents] = useState<number | null>(null);
+  const [coachSinceYear, setCoachSinceYear] = useState<number | null>(null);
+  const [publicForm, setPublicForm] = useState<CoachPublicProfileForm>(EMPTY_PUBLIC_PROFILE);
+  const [certDraft, setCertDraft] = useState("");
+  const baselineRef = useRef("");
+
+  const snapshot = useCallback(
+    (name: string, avatar: string | null, form: CoachPublicProfileForm) =>
+      JSON.stringify({ name, avatar, form }),
+    [],
+  );
+
+  const isDirty = useMemo(
+    () =>
+      snapshot(fullName, storedAvatarPath, publicForm) !== baselineRef.current ||
+      Boolean(avatarFile),
+    [fullName, storedAvatarPath, publicForm, avatarFile, snapshot],
+  );
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
-  const loadProfile = async () => {
+  const patchPublic = <K extends keyof CoachPublicProfileForm>(
+    key: K,
+    value: CoachPublicProfileForm[K],
+  ) => {
+    setPublicForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const loadProfile = useCallback(async () => {
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      if (!authData?.user) {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      if (!session?.user) {
         router.push("/login");
         return;
       }
 
-      const { data: profileData, error: profileError } = await supabaseClient
-        .from("profiles")
-        .select("*")
-        .eq("id", authData.user.id)
-        .single();
+      const userId = session.user.id;
+      setProfileId(userId);
 
-      if (profileError) throw profileError;
+      const [profileResult, publicResult, statusJson] = await Promise.all([
+        supabaseClient
+          .from("profiles")
+          .select(
+            "id, full_name, email, avatar_url, role, subscription_active, plan_tier, student_limit, account_type, created_at",
+          )
+          .eq("id", userId)
+          .single(),
+        supabaseClient
+          .from("coach_public_profiles")
+          .select("*")
+          .eq("coach_id", userId)
+          .maybeSingle(),
+        session.access_token
+          ? fetchSubscriptionStatusCached(session.access_token)
+          : Promise.resolve(null),
+      ]);
 
-      setProfile(profileData);
-      setFullName(profileData?.full_name || "");
-      setEmail(authData.user.email || "");
-      setAvatarUrl(profileData?.avatar_url || null);
+      if (profileResult.error) throw profileResult.error;
+      const profileData = profileResult.data;
+
+      const name = profileData?.full_name || "";
+      const avatarPath = profileData?.avatar_url || null;
+      const form = rowToForm(publicResult.data as Record<string, unknown> | null);
+
+      setFullName(name);
+      setEmail(session.user.email || profileData?.email || "");
+      setAvatarUrl(avatarPath);
+      setStoredAvatarPath(avatarPath);
+      setAvatarFile(null);
+      setPublicForm(form);
+      baselineRef.current = snapshot(name, avatarPath, form);
+
+      if (profileData?.created_at) {
+        setCoachSinceYear(new Date(profileData.created_at).getFullYear());
+      }
 
       if (profileData?.role === "super_admin") {
         setSubscriptionActive(true);
         setSubscriptionStatus("authorized");
         setPlanName("Super Admin");
         setStudentUsage(null);
-      } else {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session?.access_token) {
-          const res = await fetch("/api/subscriptions/status", {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          if (res.ok) {
-            const subJson = await res.json();
-            setSubscriptionActive(subJson.isActive);
-            setSubscriptionStatus(subJson.subscription?.status ?? null);
-            setPlanName(
-              subJson.currentPlan?.label ??
-                (subJson.planTier ? getPlanLabel(subJson.planTier) : "AuronFit")
-            );
-            if (subJson.studentLimit != null) {
-              setStudentUsage(formatStudentUsage(subJson.activeStudentCount, subJson.studentLimit));
-            }
-          }
-        } else {
-          const { data: subData } = await supabaseClient
-            .from("subscriptions")
-            .select("status, current_period_end, grace_period_end")
-            .eq("user_id", authData.user.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const active = subData
-            ? isAccessGranted(
-                subData.status,
-                subData.current_period_end,
-                subData.grace_period_end,
-              )
-            : hasActiveAccess(profileData ?? {});
-          setSubscriptionActive(active);
-          setSubscriptionStatus(subData?.status ?? null);
+        setActiveStudents(statusJson?.activeStudentCount ?? null);
+      } else if (statusJson) {
+        setSubscriptionActive(statusJson.isActive);
+        setSubscriptionStatus(statusJson.subscription?.status ?? null);
+        setPlanName(
+          statusJson.currentPlan?.label ??
+            (statusJson.planTier ? getPlanLabel(statusJson.planTier) : "AuronFit"),
+        );
+        setActiveStudents(statusJson.activeStudentCount ?? null);
+        if (statusJson.studentLimit != null) {
+          setStudentUsage(
+            formatStudentUsage(
+              statusJson.activeStudentCount,
+              statusJson.studentLimit,
+            ),
+          );
         }
+      } else {
+        const { data: subData } = await supabaseClient
+          .from("subscriptions")
+          .select("status, current_period_end, grace_period_end")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const active = subData
+          ? isAccessGranted(
+              subData.status,
+              subData.current_period_end,
+              subData.grace_period_end,
+            )
+          : hasActiveAccess(profileData ?? {});
+        setSubscriptionActive(active);
+        setSubscriptionStatus(subData?.status ?? null);
       }
     } catch (err: any) {
       setError(err.message || "Erro ao carregar perfil");
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, snapshot]);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setAvatarUrl(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleLogout = async () => {
+    if (isDirty && !window.confirm("Há alterações não salvas. Sair mesmo assim?")) {
+      return;
+    }
     try {
       await supabaseClient.auth.signOut({ scope: "local" });
     } catch (err) {
@@ -134,40 +324,75 @@ export default function CoachPerfilPage() {
     }
   };
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateProfessional = (): string | null => {
+    if (publicForm.handle && !isValidHandle(normalizeHandle(publicForm.handle))) {
+      return "Instagram @ inválido (3–30 caracteres: letras, números, . e _)";
+    }
+    if (publicForm.instagram && !isValidInstagramUrl(publicForm.instagram)) {
+      return "Link do Instagram inválido. Use https://instagram.com/seu_usuario";
+    }
+    if (publicForm.headline.length > 60) {
+      return "Headline: máximo 60 caracteres";
+    }
+    if (publicForm.bio.length > 500) {
+      return "Bio: máximo 500 caracteres";
+    }
+    if (!isValidCref(publicForm.cref)) {
+      return "CREF inválido. Use o formato 000000-G/UF";
+    }
+    if (publicForm.disponivelNoMercado) {
+      if (!fullName.trim()) return "Nome é obrigatório para o Mercado";
+      if (!publicForm.handle) return "Seu @ do Instagram é obrigatório para o Mercado";
+      if (!publicForm.headline.trim()) return "Headline é obrigatória para o Mercado";
+      if (publicForm.specialties.length === 0) {
+        return "Selecione ao menos uma especialidade para o Mercado";
+      }
+      if (!publicForm.modality) return "Modalidade é obrigatória para o Mercado";
+      if (!publicForm.city.trim() || !publicForm.state) {
+        return "Cidade e UF são obrigatórios para o Mercado";
+      }
+    }
+    return null;
+  };
+
+  const handleSave = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!profileId || !isDirty) return;
+
+    const validationError = validateProfessional();
+    if (validationError) {
+      setError(validationError);
+      setShowSettings(false);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      if (!authData?.user) throw new Error("Usuário não autenticado");
-
-      let uploadedAvatarUrl = profile?.avatar_url;
+      let uploadedAvatarUrl = storedAvatarPath;
 
       if (avatarFile) {
         setUploadingAvatar(true);
         const fileExt = avatarFile.name.split(".").pop();
-        const fileName = `avatar_${authData.user.id}_${Date.now()}.${fileExt}`;
+        const fileName = `avatar_${profileId}_${Date.now()}.${fileExt}`;
 
-        if (profile?.avatar_url) {
+        if (storedAvatarPath) {
           try {
-            const oldPath = extractStoragePath("avatars", profile.avatar_url);
+            const oldPath = extractStoragePath("avatars", storedAvatarPath);
             if (oldPath) {
               await supabaseClient.storage.from("avatars").remove([oldPath]);
             }
           } catch {
-            // avatar antigo não encontrado
+            // ignore
           }
         }
 
         const { error: uploadError } = await supabaseClient.storage
           .from("avatars")
           .upload(fileName, avatarFile, { cacheControl: "3600", upsert: false });
-
         if (uploadError) throw uploadError;
-
         uploadedAvatarUrl = fileName;
         setUploadingAvatar(false);
       }
@@ -175,21 +400,52 @@ export default function CoachPerfilPage() {
       const { error: updateError } = await supabaseClient
         .from("profiles")
         .update({
-          full_name: fullName,
+          full_name: fullName.trim(),
           avatar_url: uploadedAvatarUrl,
         })
-        .eq("id", authData.user.id);
-
+        .eq("id", profileId);
       if (updateError) throw updateError;
 
+      const row = formToRow(publicForm, profileId);
+      const { error: publicError } = await supabaseClient
+        .from("coach_public_profiles")
+        .upsert(row, { onConflict: "coach_id" });
+      if (publicError) {
+        if (publicError.code === "23505") {
+          throw new Error("Este handle já está em uso. Escolha outro.");
+        }
+        throw publicError;
+      }
+
+      setStoredAvatarPath(uploadedAvatarUrl);
+      setAvatarUrl(uploadedAvatarUrl);
+      setAvatarFile(null);
+      baselineRef.current = snapshot(fullName.trim(), uploadedAvatarUrl, publicForm);
       setSuccess("Perfil atualizado com sucesso!");
-      await loadProfile();
     } catch (err: any) {
       setError(err.message || "Erro ao salvar perfil");
     } finally {
       setSaving(false);
       setUploadingAvatar(false);
     }
+  };
+
+  const onMercadoToggle = (next: boolean) => {
+    patchPublic("disponivelNoMercado", next);
+    if (next) {
+      setMercadoNotice(
+        "Seu perfil ficará visível para alunos buscando coach quando você salvar.",
+      );
+    } else {
+      setMercadoNotice(null);
+    }
+  };
+
+  const addCertification = () => {
+    const text = certDraft.trim();
+    if (!text) return;
+    patchPublic("certifications", [...publicForm.certifications, text]);
+    setCertDraft("");
   };
 
   if (loading) {
@@ -200,16 +456,116 @@ export default function CoachPerfilPage() {
     );
   }
 
+  const saveDisabled = saving || uploadingAvatar || !isDirty;
+
+  const headerActions = (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => setShowSettings(true)}
+        className="w-11 h-11 shrink-0 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors active:scale-95 cursor-pointer touch-manipulation"
+        title="Configurações da conta"
+        aria-label="Abrir configurações da conta"
+      >
+        <Gear size={20} />
+      </button>
+      <button
+        type="button"
+        onClick={() => void handleSave()}
+        disabled={saveDisabled}
+        className={cn(
+          "hidden lg:inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-xs font-semibold",
+          "bg-brand text-text-on-brand disabled:opacity-40 touch-manipulation",
+        )}
+      >
+        {saving ? (
+          <CircleNotch size={14} className="animate-spin" />
+        ) : (
+          <FloppyDisk size={14} />
+        )}
+        Salvar
+      </button>
+    </div>
+  );
+
+  if (showSettings) {
+    const emailDisplay =
+      email.length > 22 ? `${email.slice(0, 20)}…` : email;
+
+    return (
+      <div className="min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
+        <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-border-subtle">
+          <div className="px-4 max-w-2xl mx-auto pt-4 pb-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowSettings(false)}
+              className="inline-flex items-center gap-1.5 min-h-11 text-xs text-text-tertiary hover:text-text-primary transition-colors touch-manipulation"
+            >
+              <CaretLeft size={16} />
+              Voltar
+            </button>
+            <h1 className="flex-1 text-lg font-bold text-text-primary tracking-tight">
+              Configurações
+            </h1>
+          </div>
+        </div>
+
+        <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4 pt-4">
+          <SettingsSection title="Assinatura">
+            <div className="px-4 py-3 border-b border-border-subtle">
+              <SubscriptionBadge
+                planName={planName}
+                status={subscriptionStatus}
+                isActive={subscriptionActive}
+                studentUsage={studentUsage}
+                size="sm"
+              />
+            </div>
+            <SettingsRow
+              icon={CreditCard}
+              label="Gerenciar assinatura"
+              href="/admin/assinatura"
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Acesso">
+            <SettingsRow icon={Envelope} label="E-mail" value={emailDisplay} />
+            <SettingsRow
+              icon={Lock}
+              label="Trocar senha"
+              onClick={() => setChangePasswordModalOpen(true)}
+            />
+          </SettingsSection>
+
+          <SettingsSection title="Sessão">
+            <SettingsRow
+              icon={SignOut}
+              label="Sair da conta"
+              onClick={() => void handleLogout()}
+              danger
+            />
+          </SettingsSection>
+        </div>
+
+        <ChangePasswordModal
+          isOpen={changePasswordModalOpen}
+          onClose={() => setChangePasswordModalOpen(false)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-surface-0 pb-36 lg:pl-28">
-      <ScreenHeader
-        title="Configurações da Conta"
-        subtitle="Gerencie seus dados profissionais e de acesso"
-      />
+    <div className="min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
+      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-border-subtle">
+        <ScreenHeader
+          title="Perfil"
+          subtitle="Seu perfil profissional no Auron"
+          action={headerActions}
+        />
+      </div>
 
-      <div className="px-4 max-w-4xl mx-auto flex flex-col gap-4">
-
-        {/* Feedback */}
+      <div className="px-4 max-w-[min(1200px,96vw)] mx-auto flex flex-col gap-4 pt-4">
         {error && (
           <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
             <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
@@ -222,140 +578,368 @@ export default function CoachPerfilPage() {
             {success}
           </div>
         )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          
-          {/* Coluna 1: Avatar e resumo */}
-          <div className="lg:col-span-1">
-            <Card className="rounded-xl border border-border-subtle/80 p-5 flex flex-col items-center text-center shadow-sm">
-              <div className="mb-3">
-                <SubscriptionBadge
-                  planName={planName}
-                  status={subscriptionStatus}
-                  isActive={subscriptionActive}
-                  studentUsage={studentUsage}
-                  size="sm"
-                />
-              </div>
-              <div className="relative mb-4">
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-surface-3 border border-border-default flex items-center justify-center relative select-none">
-                  {avatarUrl ? (
-                    <img
-                      src={getPublicStorageUrl("avatars", avatarUrl) || ""}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-text-tertiary text-2xl font-bold font-mono">
-                      {fullName?.charAt(0)?.toUpperCase() || "C"}
-                    </div>
-                  )}
-                  {uploadingAvatar && (
-                    <div className="absolute inset-0 bg-surface-0/80 flex items-center justify-center">
-                      <div className="w-4 h-4 border-2 border-brand/35 border-t-brand rounded-full animate-spin" />
-                    </div>
-                  )}
-                </div>
-                <label className={cn(
-                  "absolute -bottom-1 -right-1 w-7 h-7 rounded-lg cursor-pointer",
-                  "bg-brand hover:bg-brand/90 active:scale-95 transition-all",
-                  "flex items-center justify-center text-text-on-brand shadow-sm"
-                )}>
-                  <Camera className="w-3.5 h-3.5" />
-                  <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
-                </label>
-              </div>
-
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider">{fullName || "Coach"}</h2>
-              <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wide mt-1.5 px-2 py-0.5 rounded bg-surface-3 border border-border-subtle">
-                Personal Trainer
-              </span>
-
-              <Link href="/admin/assinatura" className="mt-4 w-full">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="h-10 text-xs rounded-lg w-full"
-                  leftIcon={<CreditCard className="w-4 h-4" />}
-                >
-                  Gerenciar assinatura
-                </Button>
-              </Link>
-            </Card>
+        {mercadoNotice && (
+          <div className="px-4 py-2.5 rounded-lg border border-brand/30 bg-brand/5 text-xs text-text-secondary">
+            {mercadoNotice}
           </div>
+        )}
 
-          {/* Coluna 2: Dados e Segurança */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <Card className="rounded-xl border border-border-subtle/80 p-5 md:p-6 shadow-sm">
-              <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
-                
-                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2">
-                  Dados do Perfil
+        <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
+            <div className="lg:sticky lg:top-28 space-y-3">
+              <PublicProfilePreviewCard
+                form={publicForm}
+                fullName={fullName}
+                avatarUrl={avatarUrl}
+                activeStudents={activeStudents}
+                coachSinceYear={coachSinceYear}
+                compact={isMobile}
+              />
+              {!isMobile && (
+                <p className="text-[10px] text-text-tertiary px-1">
+                  Preview ao vivo do card público no Mercado
+                </p>
+              )}
+            </div>
+
+            <form
+              onSubmit={(e) => void handleSave(e)}
+              className="flex flex-col gap-5"
+            >
+              {/* Identidade */}
+              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-4">
+                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+                  Identidade
                 </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Nome completo"
-                    name="fullName"
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Ex: Prof. Ricardo Silva"
-                  />
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-text-secondary">E-mail de acesso</label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={email}
-                        disabled
-                        className="h-12 w-full rounded-md px-4 bg-surface-2 border border-border-subtle text-text-primary opacity-60 pr-10 text-xs cursor-not-allowed"
-                      />
-                      <Lock className="w-4 h-4 text-text-disabled absolute right-4.5 top-1/2 -translate-y-1/2" />
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-3 border border-border-default flex items-center justify-center">
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={
+                            avatarUrl.startsWith("data:")
+                              ? avatarUrl
+                              : getPublicStorageUrl("avatars", avatarUrl) || ""
+                          }
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-xl font-bold text-text-tertiary">
+                          {fullName?.charAt(0)?.toUpperCase() || "C"}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-text-tertiary">Somente leitura</p>
+                    <label
+                      className={cn(
+                        "absolute -bottom-1 -right-1 w-7 h-7 rounded-lg cursor-pointer",
+                        "bg-brand hover:bg-brand/90 active:scale-95 transition-all",
+                        "flex items-center justify-center text-text-on-brand",
+                      )}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex-1 grid gap-3">
+                    <Input
+                      label="Nome de exibição"
+                      name="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Ex: Prof. Ricardo Silva"
+                    />
+                    <Input
+                      label="@ do Instagram"
+                      name="handle"
+                      value={publicForm.handle}
+                      onChange={(e) =>
+                        patchPublic("handle", normalizeHandle(e.target.value))
+                      }
+                      placeholder="seu_usuario"
+                      helperText="Mesmo @ da sua conta. Aparece no rodapé das imagens compartilháveis no fim do treino do aluno."
+                    />
                   </div>
                 </div>
+              </Card>
 
-                <div className="pt-4 border-t border-border-subtle/50 flex flex-col sm:flex-row gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="h-12 text-sm rounded-lg flex-1"
-                    leftIcon={<Lock className="w-4 h-4" />}
-                    onClick={() => setChangePasswordModalOpen(true)}
+              {/* Profissional */}
+              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-4">
+                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+                  Perfil profissional
+                </h3>
+                <Input
+                  label="Headline"
+                  name="headline"
+                  value={publicForm.headline}
+                  maxLength={60}
+                  onChange={(e) => patchPublic("headline", e.target.value)}
+                  placeholder="Especialista em Hipertrofia e Emagrecimento"
+                  helperText={`${publicForm.headline.length}/60`}
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="bio"
+                    className="text-xs font-medium text-text-secondary"
                   >
-                    Trocar senha de acesso
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    className="h-12 text-sm rounded-lg flex-1"
-                    loading={saving || uploadingAvatar}
-                  >
-                    Salvar alterações
-                  </Button>
+                    Bio / Sobre mim
+                  </label>
+                  <textarea
+                    id="bio"
+                    value={publicForm.bio}
+                    maxLength={500}
+                    rows={4}
+                    onChange={(e) => patchPublic("bio", e.target.value)}
+                    placeholder="Conte sua abordagem, experiência e para quem você trabalha…"
+                    className="w-full rounded-md px-3 py-2.5 text-xs bg-surface-2 border border-border-subtle text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 resize-y min-h-[96px]"
+                  />
+                  <p className="text-xs text-text-tertiary">
+                    {publicForm.bio.length}/500
+                  </p>
                 </div>
-              </form>
-            </Card>
+                <Input
+                  label="CREF"
+                  name="cref"
+                  value={publicForm.cref}
+                  onChange={(e) =>
+                    patchPublic("cref", formatCrefInput(e.target.value))
+                  }
+                  placeholder="000000-G/SP"
+                  helperText="Opcional, mas reforça confiança"
+                />
+                <Input
+                  label="Anos de experiência"
+                  name="years"
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={publicForm.yearsExperience}
+                  onChange={(e) => patchPublic("yearsExperience", e.target.value)}
+                  placeholder="Ex: 8"
+                />
+                <div>
+                  <p className="text-xs font-medium text-text-secondary mb-2">
+                    Certificações / formação
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      value={certDraft}
+                      onChange={(e) => setCertDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addCertification();
+                        }
+                      }}
+                      placeholder="Ex: Pós em Fisiologia — USP"
+                      className="flex-1 h-10 rounded-md px-3 text-xs bg-surface-2 border border-border-subtle text-text-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCertification}
+                      className="h-10 w-10 rounded-lg border border-border-subtle text-brand flex items-center justify-center touch-manipulation"
+                      aria-label="Adicionar"
+                    >
+                      <Plus size={16} weight="bold" />
+                    </button>
+                  </div>
+                  {publicForm.certifications.length > 0 && (
+                    <ul className="mt-2 space-y-1.5">
+                      {publicForm.certifications.map((c, i) => (
+                        <li
+                          key={`${c}-${i}`}
+                          className="flex items-center gap-2 text-xs text-text-primary bg-surface-2 border border-border-subtle rounded-lg px-3 py-2"
+                        >
+                          <span className="flex-1 min-w-0">{c}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              patchPublic(
+                                "certifications",
+                                publicForm.certifications.filter((_, idx) => idx !== i),
+                              )
+                            }
+                            className="text-text-tertiary hover:text-danger"
+                            aria-label="Remover"
+                          >
+                            <X size={14} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </Card>
 
-            <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm">
-              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2 mb-4">
-                Sessão
-              </h3>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full h-12 border border-danger/30 rounded-xl text-danger text-sm font-medium flex items-center justify-center gap-2 hover:bg-danger/5 active:scale-[0.99] transition-all cursor-pointer"
-              >
-                <SignOut className="w-4 h-4" />
-                Sair da conta
-              </button>
-            </Card>
+              {/* Especialidades */}
+              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+                  Especialidades
+                </h3>
+                <SpecialtyTagSelector
+                  value={publicForm.specialties}
+                  onChange={(next) => patchPublic("specialties", next)}
+                />
+              </Card>
+
+              {/* Atendimento */}
+              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-4">
+                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+                  Atendimento
+                </h3>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-text-secondary">
+                    Modalidade
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {COACH_MODALITIES.map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => patchPublic("modality", m.value)}
+                        className={cn(
+                          "min-h-11 px-3 rounded-lg text-xs font-semibold border touch-manipulation",
+                          publicForm.modality === m.value
+                            ? "bg-brand/15 text-brand border-brand/40"
+                            : "bg-surface-2 text-text-secondary border-border-subtle",
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <CityAutocomplete
+                  city={publicForm.city}
+                  state={publicForm.state}
+                  onCityChange={(city) => patchPublic("city", city)}
+                  onStateChange={(state) => patchPublic("state", state)}
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="price"
+                    className="text-xs font-medium text-text-secondary"
+                  >
+                    Faixa de preço (opcional)
+                  </label>
+                  <select
+                    id="price"
+                    value={publicForm.priceDisplay}
+                    onChange={(e) => patchPublic("priceDisplay", e.target.value)}
+                    className="h-10 w-full rounded-md px-3 text-xs bg-surface-2 border border-border-subtle text-text-primary"
+                  >
+                    <option value="">Não exibir</option>
+                    {PRICE_PRESETS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </Card>
+
+              {/* Galeria */}
+              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+                  Galeria e capa
+                </h3>
+                <div className="rounded-lg border border-border-subtle bg-surface-2 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
+                  <p className="font-semibold text-text-primary mb-0.5">
+                    Capa sugerida: {COACH_COVER_SPECS.displayLabel} ({COACH_COVER_SPECS.ratioLabel})
+                  </p>
+                  <p>{COACH_COVER_SPECS.tip}</p>
+                  <p className="mt-1 text-text-tertiary">
+                    A 1ª foto vira a capa do card. No desktop o preview lateral usa ~360×144; no mobile do Mercado a mesma proporção evita corte estranho.
+                  </p>
+                </div>
+                {profileId && (
+                  <PhotoGalleryUploader
+                    paths={publicForm.galleryPaths}
+                    onChange={(paths) => patchPublic("galleryPaths", paths)}
+                    coachId={profileId}
+                    onUploadError={(msg) => setError(msg)}
+                  />
+                )}
+              </Card>
+
+              {/* Redes */}
+              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+                  Redes
+                </h3>
+                <Input
+                  label="Link do Instagram"
+                  name="instagram"
+                  value={publicForm.instagram}
+                  onChange={(e) => patchPublic("instagram", e.target.value)}
+                  onBlur={() => {
+                    const normalized = normalizeInstagramUrl(
+                      publicForm.instagram,
+                      publicForm.handle,
+                    );
+                    if (normalized && normalized !== publicForm.instagram) {
+                      patchPublic("instagram", normalized);
+                    }
+                  }}
+                  placeholder="https://instagram.com/seu_usuario"
+                  helperText="Cole o link completo. Quando o aluno tocar, abre direto o perfil no Instagram."
+                />
+              </Card>
+
+              {/* Mercado */}
+              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+                  Mercado
+                </h3>
+                <AvailabilityToggle
+                  emphasized
+                  checked={publicForm.disponivelNoMercado}
+                  onChange={onMercadoToggle}
+                  label="Disponível no Mercado"
+                  description="Opt-in explícito. Desligado por padrão — seu perfil só aparece para alunos sem coach quando você ativar."
+                />
+                <AvailabilityToggle
+                  checked={publicForm.aceitandoNovosAlunos}
+                  onChange={(v) => patchPublic("aceitandoNovosAlunos", v)}
+                  label="Aceitando novos alunos"
+                  description="Pode ficar visível com vagas fechadas (badge no card)."
+                />
+                <AvailabilityToggle
+                  checked={publicForm.showStudentCount}
+                  onChange={(v) => patchPublic("showStudentCount", v)}
+                  label="Exibir nº de alunos ativos"
+                  description="Selo social no card público."
+                />
+              </Card>
+            </form>
           </div>
+      </div>
 
-        </div>
-
+      <div
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-50 lg:hidden",
+          "border-t border-border-subtle bg-surface-0/95 backdrop-blur-md",
+          "px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saveDisabled}
+          className="w-full h-11 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand text-text-on-brand text-xs font-semibold disabled:opacity-40 touch-manipulation"
+        >
+          {saving ? (
+            <CircleNotch size={16} className="animate-spin" />
+          ) : (
+            <FloppyDisk size={16} />
+          )}
+          {saving ? "Salvando…" : "Salvar alterações"}
+        </button>
       </div>
 
       <ChangePasswordModal

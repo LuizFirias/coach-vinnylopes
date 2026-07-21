@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
+import { formatFoodQuantityDisplay } from '@/lib/nutrition/portionDisplay';
 import { cn } from '@/lib/utils/cn';
 
 interface VerPlanoPageProps {
@@ -135,6 +136,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
           name: newPlanName || `${plan.name} - Cópia`,
           goal: plan.goal,
           notes: plan.notes,
+          orientacoes_gerais: plan.orientacoes_gerais || plan.notes,
           calories_target: plan.calories_target,
           protein_target: plan.protein_target,
           carbs_target: plan.carbs_target,
@@ -204,6 +206,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
           name: newTemplateName || `Template: ${plan.name}`,
           goal: plan.goal,
           notes: plan.notes,
+          orientacoes_gerais: plan.orientacoes_gerais || plan.notes,
           calories_target: plan.calories_target,
           protein_target: plan.protein_target,
           carbs_target: plan.carbs_target,
@@ -375,13 +378,15 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                 </div>
               </div>
 
-              {plan.notes && (
-                <div className="bg-surface-2 p-3 rounded-lg border border-border-subtle/40">
-                  <p className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5">
+              {(plan.orientacoes_gerais || plan.notes) && (
+                <div className="bg-brand/5 p-3 rounded-lg border border-brand/25">
+                  <p className="text-[10px] text-brand uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5">
                     <Info size={12} />
-                    Observações gerais
+                    Orientações gerais
                   </p>
-                  <p className="text-xs text-text-secondary whitespace-pre-wrap font-medium">{plan.notes}</p>
+                  <p className="text-xs text-text-secondary whitespace-pre-wrap font-medium">
+                    {plan.orientacoes_gerais || plan.notes}
+                  </p>
                 </div>
               )}
             </Card>
@@ -433,8 +438,22 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                               <div key={itemIdx} className="py-2.5 first:pt-0 flex flex-col gap-1">
                                 <div className="flex justify-between items-baseline gap-3">
                                   <p className="text-xs font-bold text-text-primary min-w-0 truncate">{food.name}</p>
-                                  <span className="text-xs font-mono font-bold text-text-secondary shrink-0">
-                                    {item.quantity_grams}g {item.portion_label ? `(${item.portion_label})` : ''}
+                                  <span className="text-xs font-bold text-text-secondary shrink-0 text-right">
+                                    {(() => {
+                                      const qty = formatFoodQuantityDisplay(
+                                        item.quantity_grams,
+                                        item.portion_label,
+                                        food.portions?.find((p: any) => p.label === item.portion_label)?.grams,
+                                      );
+                                      return (
+                                        <>
+                                          {qty.primary}
+                                          {qty.secondary ? (
+                                            <span className="text-text-tertiary font-medium"> · {qty.secondary}</span>
+                                          ) : null}
+                                        </>
+                                      );
+                                    })()}
                                   </span>
                                 </div>
                                 <p className="text-[9px] font-mono text-text-tertiary">

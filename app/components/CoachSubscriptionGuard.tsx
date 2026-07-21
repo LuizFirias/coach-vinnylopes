@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
+import { getCachedAdminGuardProfile } from "@/lib/auth/adminGuardCache";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 
 const ALLOWED_WITHOUT_SUBSCRIPTION = [
@@ -41,32 +42,45 @@ export default function CoachSubscriptionGuard({
           return;
         }
 
-        const {
-          data: { user },
-        } = await supabaseClient.auth.getUser();
+        const cached = await getCachedAdminGuardProfile(async () => {
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          const user = session?.user;
+          if (!user) return null;
 
-        if (!user) {
+          const { data: profile } = await supabaseClient
+            .from("profiles")
+            .select("role, must_change_password, first_access_completed, subscription_active, account_type")
+            .eq("id", user.id)
+            .single();
+
+          if (!profile) return null;
+
+          return {
+            userId: user.id,
+            role: profile.role ?? null,
+            must_change_password: profile.must_change_password ?? null,
+            first_access_completed: profile.first_access_completed ?? null,
+            subscription_active: profile.subscription_active ?? null,
+            account_type: profile.account_type ?? null,
+          };
+        });
+
+        if (!cached) {
           router.replace("/login");
           return;
         }
 
-        const { data: profile } = await supabaseClient
-          .from("profiles")
-          .select("role, subscription_active, account_type")
-          .eq("id", user.id)
-          .single();
-
-        if (!profile) {
-          router.replace("/login");
-          return;
-        }
-
-        if (profile.role === "super_admin") {
+        if (cached.role === "super_admin") {
           if (!cancelled) setReady(true);
           return;
         }
 
-        if (hasActiveAccess(profile)) {
+        if (
+          hasActiveAccess({
+            subscription_active: cached.subscription_active,
+            account_type: cached.account_type,
+          })
+        ) {
           if (!cancelled) setReady(true);
           return;
         }
@@ -77,7 +91,6 @@ export default function CoachSubscriptionGuard({
       }
     };
 
-    setReady(false);
     void check();
     return () => {
       cancelled = true;

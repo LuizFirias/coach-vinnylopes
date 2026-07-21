@@ -1,8 +1,11 @@
 ﻿/**
- * Cria planos de preapproval no Mercado Pago (8 combinações tier + período).
+ * Cria planos de preapproval no Mercado Pago (tier + período).
  * Valores canônicos: lib/subscriptions/plans.ts
  *
  * USO: npm run mp:create-plans
+ *
+ * Nota: mudança de preço exige NOVOS plan_ids no MP (não editar os antigos).
+ * Assinantes ativos no preço antigo permanecem até migração explícita.
  */
 
 require('dotenv').config({ path: '.env.local' });
@@ -11,14 +14,17 @@ const MP_API = 'https://api.mercadopago.com/preapproval_plan';
 
 /** @type {Array<{ envKey: string; reason: string; price: number; frequencyMonths: number }>} */
 const PLANS = [
+  { envKey: 'MP_PLAN_INICIANTE_MONTHLY_ID', reason: 'AuronFit INICIANTE — Mensal', price: 24.9, frequencyMonths: 1 },
+  { envKey: 'MP_PLAN_INICIANTE_SEMESTER_ID', reason: 'AuronFit INICIANTE — Semestral', price: 93.9, frequencyMonths: 6 },
+  { envKey: 'MP_PLAN_INICIANTE_YEARLY_ID', reason: 'AuronFit INICIANTE — Anual', price: 156.9, frequencyMonths: 12 },
   { envKey: 'MP_PLAN_START_MONTHLY_ID', reason: 'AuronFit START — Mensal', price: 39.9, frequencyMonths: 1 },
   { envKey: 'MP_PLAN_START_SEMESTER_ID', reason: 'AuronFit START — Semestral', price: 149.9, frequencyMonths: 6 },
   { envKey: 'MP_PLAN_START_YEARLY_ID', reason: 'AuronFit START — Anual', price: 249.9, frequencyMonths: 12 },
   { envKey: 'MP_PLAN_PRO_MONTHLY_ID', reason: 'AuronFit PRO — Mensal', price: 64.9, frequencyMonths: 1 },
   { envKey: 'MP_PLAN_PRO_YEARLY_ID', reason: 'AuronFit PRO — Anual', price: 549.9, frequencyMonths: 12 },
-  { envKey: 'MP_PLAN_ELITE_MONTHLY_ID', reason: 'AuronFit ELITE — Mensal', price: 114.9, frequencyMonths: 1 },
-  { envKey: 'MP_PLAN_ELITE_SEMESTER_ID', reason: 'AuronFit ELITE — Semestral', price: 519.9, frequencyMonths: 6 },
-  { envKey: 'MP_PLAN_ELITE_YEARLY_ID', reason: 'AuronFit ELITE — Anual', price: 879.9, frequencyMonths: 12 },
+  { envKey: 'MP_PLAN_ELITE_MONTHLY_ID', reason: 'AuronFit ELITE — Mensal', price: 99.9, frequencyMonths: 1 },
+  { envKey: 'MP_PLAN_ELITE_SEMESTER_ID', reason: 'AuronFit ELITE — Semestral', price: 452.9, frequencyMonths: 6 },
+  { envKey: 'MP_PLAN_ELITE_YEARLY_ID', reason: 'AuronFit ELITE — Anual', price: 764.9, frequencyMonths: 12 },
 ];
 
 function getAccessToken() {
@@ -91,7 +97,7 @@ async function main() {
   }
 
   console.log('');
-  console.log('# Cole no .env.local:');
+  console.log('# Cole no .env.local / Vercel:');
   console.log(lines.join('\n'));
 }
 

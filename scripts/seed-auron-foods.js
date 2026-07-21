@@ -464,8 +464,30 @@ const foodsSeed = [
     origin: 'auron_global',
     is_active: true,
     portions: [
-      { label: '1 unidade média', grams: 50, is_default: true },
-      { label: '2 unidades médias', grams: 100 }
+      { label: 'Unidade média', grams: 50, is_default: true },
+      { label: '100g', grams: 100 }
+    ]
+  },
+  {
+    name: 'Ovo inteiro cru ou mexido',
+    slug: 'ovo-inteiro-cru-mexido',
+    category: 'proteina',
+    default_state: 'cru',
+    description: 'Ovo de galinha inteiro cru ou mexido (sem óleo)',
+    base_unit: 'g',
+    base_quantity: 100,
+    calories_per_100g: 143,
+    protein_per_100g: 13.0,
+    carbs_per_100g: 0.8,
+    fat_per_100g: 9.5,
+    fiber_per_100g: 0.0,
+    source_name: 'TACO',
+    source_reference: 'UNICAMP',
+    origin: 'auron_global',
+    is_active: true,
+    portions: [
+      { label: 'Unidade média', grams: 50, is_default: true },
+      { label: '100g', grams: 100 }
     ]
   },
   {
@@ -486,8 +508,8 @@ const foodsSeed = [
     origin: 'auron_global',
     is_active: true,
     portions: [
-      { label: '1 clara de ovo média', grams: 33, is_default: true },
-      { label: '3 claras de ovo médias', grams: 100 }
+      { label: 'Clara média', grams: 33, is_default: true },
+      { label: '100g', grams: 100 }
     ]
   },
   {
@@ -560,6 +582,52 @@ const foodsSeed = [
   },
 
   // 5. Gorduras e Oleaginosas
+  {
+    name: 'Farinha de arroz enriquecida',
+    slug: 'farinha-de-arroz-enriquecida',
+    category: 'carboidrato',
+    default_state: 'em_po',
+    description: 'Farinha de arroz enriquecida — comum em dietas off/cutting',
+    base_unit: 'g',
+    base_quantity: 100,
+    calories_per_100g: 363,
+    protein_per_100g: 1.3,
+    carbs_per_100g: 85.5,
+    fat_per_100g: 0.3,
+    fiber_per_100g: 0.6,
+    source_name: 'TACO',
+    source_reference: 'UNICAMP',
+    origin: 'auron_global',
+    is_active: true,
+    portions: [
+      { label: 'Colher de sopa cheia', grams: 10 },
+      { label: 'Colher de chá', grams: 3 },
+      { label: '30g', grams: 30, is_default: true }
+    ]
+  },
+  {
+    name: 'Farinha de arroz integral',
+    slug: 'farinha-de-arroz-integral',
+    category: 'carboidrato',
+    default_state: 'em_po',
+    description: 'Farinha de arroz integral',
+    base_unit: 'g',
+    base_quantity: 100,
+    calories_per_100g: 363,
+    protein_per_100g: 7.0,
+    carbs_per_100g: 76.0,
+    fat_per_100g: 2.2,
+    fiber_per_100g: 4.0,
+    source_name: 'TBCA',
+    source_reference: 'Valor médio',
+    origin: 'auron_global',
+    is_active: true,
+    portions: [
+      { label: 'Colher de sopa cheia', grams: 10 },
+      { label: 'Colher de chá', grams: 3 },
+      { label: '30g', grams: 30, is_default: true }
+    ]
+  },
   {
     name: 'Azeite de oliva',
     slug: 'azeite-de-oliva',

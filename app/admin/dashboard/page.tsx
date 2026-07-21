@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -20,6 +20,7 @@ import { PlanDistributionCard } from "@/app/components/dashboard/coach/PlanDistr
 import { PriorityActionsCard, type PriorityAction } from "@/app/components/dashboard/coach/PriorityActionsCard";
 import { RecentActivityFeed } from "@/app/components/dashboard/coach/RecentActivityFeed";
 import { StudentHealthTable } from "@/app/components/dashboard/coach/StudentHealthTable";
+import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
 
 // Interfaces
 interface ProfileRow {
@@ -70,6 +71,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const isMobile = useBreakpoint("mobile");
+  const hasDataRef = useRef(false);
   
   const today = new Date();
   const [loading, setLoading] = useState(true);
@@ -104,40 +106,34 @@ export default function AdminDashboard() {
     return "Perfis pagantes vigentes";
   }, [coachStudentLimit, linkedStudentCount, coachAccountType]);
 
-  const loadDashboardData = useCallback(async () => {
-    setLoading(true);
+  const loadDashboardData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const coachId = session?.user?.id;
       if (!coachId) { setError("Sessão inválida"); setLoading(false); return; }
 
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session?.access_token) {
-        try {
-          const statusRes = await fetch("/api/subscriptions/status", {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          if (statusRes.ok) {
-            const statusJson = await statusRes.json();
-            setCoachAccountType(statusJson.accountType ?? "padrao");
-            setCoachStudentLimit(statusJson.studentLimit ?? null);
-            setLinkedStudentCount(statusJson.activeStudentCount ?? 0);
-          }
-        } catch {
-          // indicador de limite Ã© opcional no dashboard
-        }
+      // Status + lista de alunos em paralelo (antes era sequencial)
+      const [statusResult, coachAlunosResult] = await Promise.all([
+        session.access_token
+          ? fetchSubscriptionStatusCached(session.access_token)
+          : Promise.resolve(null),
+        supabaseClient
+          .from('coach_alunos')
+          .select('aluno_id')
+          .eq('coach_id', coachId),
+      ]);
+
+      if (statusResult) {
+        setCoachAccountType(statusResult.accountType ?? "padrao");
+        setCoachStudentLimit(statusResult.studentLimit ?? null);
+        setLinkedStudentCount(statusResult.activeStudentCount ?? 0);
       }
 
-      // 1. Fetch coach's student associations
-      const { data: coachAlunosData, error: coachAlunosError } = await supabaseClient
-        .from('coach_alunos')
-        .select('aluno_id')
-        .eq('coach_id', coachId);
-
-      if (coachAlunosError) throw coachAlunosError;
+      if (coachAlunosResult.error) throw coachAlunosResult.error;
       
-      const alunosIds = (coachAlunosData || []).map(ca => ca.aluno_id);
+      const alunosIds = (coachAlunosResult.data || []).map(ca => ca.aluno_id);
       
       if (alunosIds.length === 0) {
         setTotalAlunos(0);
@@ -146,35 +142,35 @@ export default function AdminDashboard() {
         return;
       }
 
-      // 2. Fetch profiles
-      const { data: profiles, error: profilesError } = await supabaseClient
-        .from('profiles')
-        .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, created_at, valor_plano, arquivado')
-        .in('id', alunosIds)
-        .eq('arquivado', false);
+      // Profiles + planos de nutrição em paralelo
+      const [{ data: profiles, error: profilesError }, { data: activePlans }] = await Promise.all([
+        supabaseClient
+          .from('profiles')
+          .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, created_at, valor_plano, arquivado')
+          .in('id', alunosIds)
+          .eq('arquivado', false),
+        supabaseClient
+          .from('nutrition_plans')
+          .select(`
+            id,
+            student_id,
+            name,
+            days:nutrition_plan_days (
+              id,
+              meals:nutrition_meals (
+                id
+              )
+            )
+          `)
+          .in('student_id', alunosIds)
+          .eq('status', 'active'),
+      ]);
 
       if (profilesError) throw profilesError;
       
       const rows = (profiles as ProfileRow[]) || [];
       setTotalAlunos(rows.length);
       setSaudeAlunos(rows);
-
-      // 2b. Fetch active digital nutrition plans and day 1 meals count
-      const { data: activePlans } = await supabaseClient
-        .from('nutrition_plans')
-        .select(`
-          id,
-          student_id,
-          name,
-          days:nutrition_plan_days (
-            id,
-            meals:nutrition_meals (
-              id
-            )
-          )
-        `)
-        .in('student_id', alunosIds)
-        .eq('status', 'active');
 
       // Dates
       const today = new Date();
@@ -382,49 +378,52 @@ export default function AdminDashboard() {
         { name: 'Anual', count: counts.anual || 0 },
       ].filter(p => p.count > 0));
 
-      // 5. Fetch Pending checkins (counts of photos, measures, feedbacks in last 7 days)
-      const { count: photosCount } = await supabaseClient
-        .from('fotos_evolucao')
-        .select('id', { count: 'exact', head: true })
-        .in('aluno_id', alunosIds)
-        .gte('data_upload', seteDiasAtrasIso);
-
-      const { count: medidasCount } = await supabaseClient
-        .from('medidas_aluno')
-        .select('id', { count: 'exact', head: true })
-        .in('aluno_id', alunosIds)
-        .gte('data_medicao', seteDiasAtrasIso);
-
-      const { count: feedbacksCount } = await supabaseClient
-        .from('feedbacks_treinos')
-        .select('id', { count: 'exact', head: true })
-        .in('aluno_id', alunosIds)
-        .gte('created_at', seteDiasAtrasIso);
+      // 5. Counts + feeds recentes em paralelo
+      const [
+        { count: photosCount },
+        { count: medidasCount },
+        { count: feedbacksCount },
+        { data: recentWorkouts },
+        { data: recentManual },
+        { data: recentFeedbacks },
+      ] = await Promise.all([
+        supabaseClient
+          .from('fotos_evolucao')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', alunosIds)
+          .gte('data_upload', seteDiasAtrasIso),
+        supabaseClient
+          .from('medidas_aluno')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', alunosIds)
+          .gte('data_medicao', seteDiasAtrasIso),
+        supabaseClient
+          .from('feedbacks_treinos')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', alunosIds)
+          .gte('created_at', seteDiasAtrasIso),
+        supabaseClient
+          .from('historico_treinos')
+          .select('id, aluno_id, ficha_id, data_conclusao')
+          .in('aluno_id', alunosIds)
+          .order('data_conclusao', { ascending: false })
+          .limit(30),
+        supabaseClient
+          .from('treinos_manuais')
+          .select('id, aluno_id, descricao, data_treino')
+          .in('aluno_id', alunosIds)
+          .eq('concluido', true)
+          .order('data_treino', { ascending: false })
+          .limit(20),
+        supabaseClient
+          .from('feedbacks_treinos')
+          .select('id, aluno_id, feedback, created_at')
+          .in('aluno_id', alunosIds)
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ]);
 
       setCheckinsPendentes((photosCount || 0) + (medidasCount || 0) + (feedbacksCount || 0));
-
-      // 6. Fetch Recent Activity & Feedbacks
-      const { data: recentWorkouts } = await supabaseClient
-        .from('historico_treinos')
-        .select('id, aluno_id, ficha_id, data_conclusao')
-        .in('aluno_id', alunosIds)
-        .order('data_conclusao', { ascending: false })
-        .limit(30);
-
-      const { data: recentManual } = await supabaseClient
-        .from('treinos_manuais')
-        .select('id, aluno_id, descricao, data_treino')
-        .in('aluno_id', alunosIds)
-        .eq('concluido', true)
-        .order('data_treino', { ascending: false })
-        .limit(20);
-
-      const { data: recentFeedbacks } = await supabaseClient
-        .from('feedbacks_treinos')
-        .select('id, aluno_id, feedback, created_at')
-        .in('aluno_id', alunosIds)
-        .order('created_at', { ascending: false })
-        .limit(20);
 
       // Fetch related routine names to translate ficha_id
       const fichaIds = (recentWorkouts || []).filter(w => w.ficha_id).map(w => w.ficha_id);
@@ -533,19 +532,21 @@ export default function AdminDashboard() {
     } catch (e: any) {
       setError(e?.message ?? "Erro ao carregar dados da dashboard");
     } finally {
+      hasDataRef.current = true;
       setLoading(false);
     }
   }, [router]);
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.replace("/login");
-      } else {
-        loadDashboardData();
-      }
+    if (authLoading) return;
+    if (!user?.id) {
+      router.replace("/login");
+      return;
     }
-  }, [user, authLoading, router, loadDashboardData]);
+    void loadDashboardData({ silent: hasDataRef.current });
+    // Depende só do id — evita refetch quando AuthProvider troca a referência do user
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading]);
 
   if (authLoading || loading) {
     return (
@@ -561,7 +562,7 @@ export default function AdminDashboard() {
         <WarningCircle size={48} className="text-danger mb-4" />
         <h2 className="text-lg font-bold text-text-primary mb-2">Ops! Ocorreu um erro</h2>
         <p className="text-text-secondary text-sm max-w-sm mb-6">{error}</p>
-        <button onClick={loadDashboardData} className="btn-primary max-w-xs">
+        <button onClick={() => void loadDashboardData()} className="btn-primary max-w-xs">
           Tentar Novamente
         </button>
       </div>

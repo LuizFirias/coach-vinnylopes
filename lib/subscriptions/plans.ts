@@ -1,4 +1,4 @@
-export type PlanTier = "start" | "pro" | "elite" | "test";
+export type PlanTier = "iniciante" | "start" | "pro" | "elite" | "test";
 export type BillingPeriod = "monthly" | "semester" | "yearly";
 
 export interface PlanBillingOption {
@@ -11,7 +11,10 @@ export interface PlanBillingOption {
 export interface PlanDefinition {
   tier: PlanTier;
   label: string;
+  /** Teto técnico usado em validações / banco (ELITE usa valor alto, UI mostra "Ilimitado"). */
   studentLimit: number;
+  /** Se true, UI/marketing exibe "Ilimitado" em vez do teto técnico. */
+  unlimitedStudents?: boolean;
   description: string;
   features: string[];
   billing: Partial<Record<BillingPeriod, PlanBillingOption>>;
@@ -20,7 +23,7 @@ export interface PlanDefinition {
 }
 
 /** Tiers comerciais (sem o plano de teste R$5). */
-export const PLAN_TIERS: PlanTier[] = ["start", "pro", "elite"];
+export const PLAN_TIERS: PlanTier[] = ["iniciante", "start", "pro", "elite"];
 
 /**
  * Stand-by do plano QA R$5 na tela de assinaturas.
@@ -69,6 +72,9 @@ export const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
   yearly: "Anual",
 };
 
+/** Teto técnico do ELITE “ilimitado” — anti-abuso; não expor na UI. */
+export const ELITE_TECHNICAL_STUDENT_LIMIT = 1000;
+
 export const PLANS: Record<PlanTier, PlanDefinition> = {
   test: {
     tier: "test",
@@ -91,11 +97,43 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       },
     },
   },
+  iniciante: {
+    tier: "iniciante",
+    label: "INICIANTE",
+    studentLimit: 15,
+    description: "Entrada acessível para começar a consultoria",
+    features: [
+      "Até 15 alunos ativos",
+      "Treinos e nutrição",
+      "Relatórios básicos",
+      "Biblioteca de exercícios",
+    ],
+    billing: {
+      monthly: {
+        price: 24.9,
+        priceDisplay: "R$ 24,90/mês",
+        periodLabel: "Mensal",
+        mpFrequencyMonths: 1,
+      },
+      semester: {
+        price: 93.9,
+        priceDisplay: "R$ 93,90/semestre",
+        periodLabel: "Semestral",
+        mpFrequencyMonths: 6,
+      },
+      yearly: {
+        price: 156.9,
+        priceDisplay: "R$ 156,90/ano",
+        periodLabel: "Anual",
+        mpFrequencyMonths: 12,
+      },
+    },
+  },
   start: {
     tier: "start",
     label: "START",
     studentLimit: 30,
-    description: "Ideal para começar sua consultoria",
+    description: "Ideal para consolidar sua consultoria",
     features: [
       "Até 30 alunos ativos",
       "Treinos e nutrição",
@@ -152,30 +190,31 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   elite: {
     tier: "elite",
     label: "ELITE",
-    studentLimit: 500,
+    studentLimit: ELITE_TECHNICAL_STUDENT_LIMIT,
+    unlimitedStudents: true,
     description: "Escala profissional sem limites práticos",
     features: [
-      "Até 500 alunos ativos",
+      "Alunos ilimitados",
       "Tudo do PRO",
       "Gestão em escala",
       "Suporte dedicado",
     ],
     billing: {
       monthly: {
-        price: 114.9,
-        priceDisplay: "R$ 114,90/mês",
+        price: 99.9,
+        priceDisplay: "R$ 99,90/mês",
         periodLabel: "Mensal",
         mpFrequencyMonths: 1,
       },
       semester: {
-        price: 519.9,
-        priceDisplay: "R$ 519,90/semestre",
+        price: 452.9,
+        priceDisplay: "R$ 452,90/semestre",
         periodLabel: "Semestral",
         mpFrequencyMonths: 6,
       },
       yearly: {
-        price: 879.9,
-        priceDisplay: "R$ 879,90/ano",
+        price: 764.9,
+        priceDisplay: "R$ 764,90/ano",
         periodLabel: "Anual",
         mpFrequencyMonths: 12,
       },
@@ -184,7 +223,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
 };
 
 export function isValidPlanCombo(tier: string, period: string): tier is PlanTier {
-  const allVariants: PlanTier[] = ["test", "start", "pro", "elite"];
+  const allVariants: PlanTier[] = ["test", "iniciante", "start", "pro", "elite"];
   if (!allVariants.includes(tier as PlanTier)) return false;
   if (tier === "test" && !isTestPlanEnabled()) {
     return false;
@@ -223,6 +262,19 @@ export function getBillingPeriodsForTier(tier: PlanTier): BillingPeriod[] {
   return Object.keys(PLANS[tier].billing) as BillingPeriod[];
 }
 
+/** Texto de limite para UI/marketing (ELITE → Ilimitado). */
+export function formatPlanStudentCap(
+  tier: PlanTier | string | null | undefined,
+  limit?: number | null,
+): string {
+  if (tier && tier in PLANS && PLANS[tier as PlanTier].unlimitedStudents) {
+    return "Ilimitado";
+  }
+  const n = limit ?? (tier && tier in PLANS ? PLANS[tier as PlanTier].studentLimit : null);
+  if (n == null) return "—";
+  return `Até ${n} alunos`;
+}
+
 /** Chave de env opcional para preapproval_plan_id pré-criado no MP */
 export function getMpPlanEnvKey(tier: PlanTier, period: BillingPeriod): string {
   return `MP_PLAN_${tier.toUpperCase()}_${period.toUpperCase()}_ID`;
@@ -235,6 +287,8 @@ export function getPlansCatalog() {
       tier,
       label: plan.label,
       studentLimit: plan.studentLimit,
+      unlimitedStudents: Boolean(plan.unlimitedStudents),
+      studentCapLabel: formatPlanStudentCap(tier, plan.studentLimit),
       description: plan.description,
       features: plan.features,
       accent: plan.accent ?? null,
@@ -249,6 +303,7 @@ export function getPlansCatalog() {
 
 export function formatStudentUsage(count: number, limit: number | null): string {
   if (limit == null) return `${count} alunos`;
+  if (limit >= ELITE_TECHNICAL_STUDENT_LIMIT) return `${count} · Ilimitado`;
   return `${count}/${limit} alunos`;
 }
 

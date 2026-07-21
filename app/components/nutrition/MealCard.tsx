@@ -3,16 +3,20 @@
 import { Check, CaretDown, Clock } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 import { FoodItemRow } from "./FoodItemRow";
+import { formatFoodQuantityDisplay } from "@/lib/nutrition/portionDisplay";
 
 export interface MealFoodItem {
   id?: string;
   name: string;
   quantityGrams?: number | string | null;
   portionLabel?: string | null;
+  portionGrams?: number | null;
   quantityText?: string | null;
   substitutions?: Array<{
     name: string;
     quantityGrams?: number | string | null;
+    portionLabel?: string | null;
+    portionGrams?: number | null;
   }>;
 }
 
@@ -127,6 +131,7 @@ export function MealCard({
                     name={food.name}
                     quantityGrams={food.quantityGrams}
                     portionLabel={food.portionLabel}
+                    portionGrams={food.portionGrams}
                     quantityText={food.quantityText}
                   />
                   {food.substitutions && food.substitutions.length > 0 && (
@@ -135,19 +140,27 @@ export function MealCard({
                         Opções de substituição
                       </summary>
                       <div className="flex flex-col gap-1 mt-1 pl-2 border-l border-border-subtle">
-                        {food.substitutions.map((sub, subIdx) => (
-                          <div
-                            key={subIdx}
-                            className="text-[10px] text-text-secondary flex justify-between gap-2"
-                          >
-                            <span>• {sub.name}</span>
-                            {sub.quantityGrams != null && (
-                              <span className="font-mono font-semibold tabular-nums">
-                                {sub.quantityGrams}g
+                        {food.substitutions.map((sub, subIdx) => {
+                          const qty = formatFoodQuantityDisplay(
+                            sub.quantityGrams,
+                            sub.portionLabel,
+                            sub.portionGrams,
+                          );
+                          return (
+                            <div
+                              key={subIdx}
+                              className="text-[10px] text-text-secondary flex justify-between gap-2"
+                            >
+                              <span>• {sub.name}</span>
+                              <span className="font-semibold tabular-nums text-right">
+                                {qty.primary}
+                                {qty.secondary ? (
+                                  <span className="text-text-muted font-normal"> · {qty.secondary}</span>
+                                ) : null}
                               </span>
-                            )}
-                          </div>
-                        ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     </details>
                   )}

@@ -8,6 +8,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
 import { getPlanLabel } from '@/lib/subscriptions/plans';
+import { fetchSubscriptionStatusCached } from '@/lib/subscriptions/statusClientCache';
 import {
   Barbell,
   ForkKnife,
@@ -131,13 +132,10 @@ export default function Sidebar() {
         const token = sessionData.session?.access_token;
         if (!token) return;
 
-        const res = await fetch('/api/subscriptions/status', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok || cancelled) return;
+        const resData = await fetchSubscriptionStatusCached(token);
+        if (!resData || cancelled) return;
 
-        const data = await res.json();
-        if (cancelled) return;
+        const data = resData;
 
         const accountType = data.accountType as string | undefined;
         if (
@@ -170,7 +168,7 @@ export default function Sidebar() {
     return () => {
       cancelled = true;
     };
-  }, [user, userRole]);
+  }, [user?.id, userRole]);
 
   const toggleSidebar = () => {
     const next = !isExpanded;

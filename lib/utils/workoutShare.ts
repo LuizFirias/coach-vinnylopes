@@ -105,13 +105,23 @@ export function formatCoachHandle(handle: string): string {
   return clean ? `@${clean}` : '@auronfit';
 }
 
-/** @ do Instagram do coach, ou nome completo se não tiver usuário cadastrado. */
+/**
+ * @ do Instagram do coach nos cards de compartilhamento.
+ * Prioridade: handle do perfil público → coaching_reference legado → nome → @auronfit.
+ */
 export function resolveCoachShareHandle(
   instagramOrReference?: string | null,
   fullName?: string | null,
 ): string {
-  const insta = (instagramOrReference || '').replace('@', '').trim();
-  if (insta) return `@${insta}`;
+  const insta = (instagramOrReference || '').replace(/^@+/, '').trim();
+  if (insta) {
+    // Se veio URL, extrai o user
+    const fromUrl = insta.match(/instagram\.com\/([a-zA-Z0-9._]+)/i)?.[1];
+    const user = (fromUrl || insta).replace(/\/+$/, '');
+    if (user && !user.includes('/') && !user.includes('http')) {
+      return `@${user}`;
+    }
+  }
   const name = (fullName || '').trim();
   if (name) return name;
   return '@auronfit';

@@ -1,8 +1,12 @@
+import { formatFoodQuantityDisplay } from "@/lib/nutrition/portionDisplay";
+
 interface FoodItemRowProps {
   name: string;
   quantityGrams?: number | string | null;
   portionLabel?: string | null;
   quantityText?: string | null;
+  /** Gramas da porção unitária (para calcular "3 × unidade") */
+  portionGrams?: number | null;
 }
 
 export function FoodItemRow({
@@ -10,25 +14,25 @@ export function FoodItemRow({
   quantityGrams,
   portionLabel,
   quantityText,
+  portionGrams,
 }: FoodItemRowProps) {
-  const grams =
-    quantityGrams != null && quantityGrams !== ""
-      ? `${quantityGrams}g`
-      : quantityText || null;
+  const display = quantityText
+    ? { primary: quantityText, secondary: null as string | null }
+    : formatFoodQuantityDisplay(quantityGrams, portionLabel, portionGrams);
 
   return (
     <div className="py-2.5 border-b border-dashed border-surface-2 last:border-0">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[13px] font-medium text-text-primary leading-snug">{name}</p>
-        {grams && (
-          <p className="text-[13px] font-semibold text-text-primary tabular-nums shrink-0">
-            {grams}
+        {display.primary && (
+          <p className="text-[13px] font-semibold text-text-primary tabular-nums shrink-0 text-right max-w-[48%]">
+            {display.primary}
           </p>
         )}
       </div>
-      {portionLabel && (
+      {display.secondary && (
         <p className="text-[11px] text-text-muted text-right mt-0.5 leading-snug">
-          {portionLabel}
+          {display.secondary}
         </p>
       )}
     </div>

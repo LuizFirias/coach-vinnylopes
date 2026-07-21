@@ -631,14 +631,24 @@ export default function ExecucaoTreinoPage() {
           .single();
 
         if (coachData?.coach_id) {
-          const { data: profileData } = await supabaseClient
-            .from('profiles')
-            .select('coaching_reference, full_name')
-            .eq('id', coachData.coach_id)
-            .single();
+          const [{ data: publicProfile }, { data: profileData }] = await Promise.all([
+            supabaseClient
+              .from('coach_public_profiles')
+              .select('handle')
+              .eq('coach_id', coachData.coach_id)
+              .maybeSingle(),
+            supabaseClient
+              .from('profiles')
+              .select('coaching_reference, full_name')
+              .eq('id', coachData.coach_id)
+              .single(),
+          ]);
 
           setCoachUsername(
-            resolveCoachShareHandle(profileData?.coaching_reference, profileData?.full_name),
+            resolveCoachShareHandle(
+              publicProfile?.handle || profileData?.coaching_reference,
+              profileData?.full_name,
+            ),
           );
         }
       }

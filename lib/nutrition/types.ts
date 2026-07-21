@@ -73,6 +73,8 @@ export interface NutritionPlan {
   name: string;
   goal: string | null;
   notes: string | null;
+  /** Orientações gerais: suplementação, hidratação, timing, etc. */
+  orientacoes_gerais?: string | null;
   calories_target: number | null;
   protein_target: number | null;
   carbs_target: number | null;

@@ -9,10 +9,22 @@ import {
   YAxis,
   ResponsiveContainer,
   Tooltip,
-  Cell
+  Cell,
+  Rectangle,
 } from 'recharts';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { cn } from '@/lib/utils/cn';
+
+function ChartActiveBar(props: any) {
+  return (
+    <Rectangle
+      {...props}
+      fill="#5a9fff"
+      stroke="none"
+      strokeWidth={0}
+    />
+  );
+}
 
 const DURACAO_PLANO_MESES: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
 
@@ -390,7 +402,7 @@ export default function RelatoriosPage() {
                     <XAxis dataKey="mes" stroke="#8e8e93" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
                     <YAxis stroke="#8e8e93" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} width={44} />
                     <Tooltip
-                      cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                      cursor={false}
                       contentStyle={tooltipStyle}
                       itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
                       labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
@@ -399,7 +411,7 @@ export default function RelatoriosPage() {
                         props.payload.futuro ? 'Projeção' : 'Realizado',
                       ]}
                     />
-                    <Bar dataKey="receita" radius={[2, 2, 0, 0]} barSize={18}>
+                    <Bar dataKey="receita" radius={[2, 2, 0, 0]} barSize={18} activeBar={<ChartActiveBar />}>
                       {receitaPorMes.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
@@ -424,13 +436,13 @@ export default function RelatoriosPage() {
                       <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
                       <YAxis stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
                       <Tooltip
-                        cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                        cursor={false}
                         contentStyle={tooltipStyle}
                         itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
                         labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
                         formatter={(value: number) => [fmt(value), 'Receita']}
                       />
-                      <Bar dataKey="receita" radius={[2, 2, 0, 0]} barSize={26}>
+                      <Bar dataKey="receita" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />}>
                         {chartData.map((_, index) => (
                           <Cell
                             key={`cell-${index}`}
@@ -451,12 +463,12 @@ export default function RelatoriosPage() {
                       <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
                       <YAxis stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} />
                       <Tooltip
-                        cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                        cursor={false}
                         contentStyle={tooltipStyle}
                         labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
                         itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
                       />
-                      <Bar dataKey="alunos" name="Alunos" fill="#2563EB" radius={[2, 2, 0, 0]} barSize={26} />
+                      <Bar dataKey="alunos" name="Alunos" fill="#2563EB" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

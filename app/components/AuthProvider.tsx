@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
+import { invalidateAdminGuardCache } from '@/lib/auth/adminGuardCache';
+import { invalidateSubscriptionStatusCache } from '@/lib/subscriptions/statusClientCache';
 
 interface AuthContextType {
   user: User | null;
@@ -121,6 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mountedRef.current = true;
 
     const hydrateFromSession = async (sessionUser: User) => {
+      // Marca cedo para ignorar SIGNED_IN cosmético que chega durante o hydrate
+      resolvedUserIdRef.current = sessionUser.id;
       setUser(sessionUser);
 
       const cached = readCachedRole(sessionUser.id);
@@ -180,6 +184,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           roleCacheRef.current = null;
           localStorage.removeItem('user_role');
           localStorage.removeItem('user_id');
+          invalidateAdminGuardCache();
+          invalidateSubscriptionStatusCache();
           setLoading(false);
           return;
         }
@@ -187,9 +193,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
           const newUserId = session.user.id;
 
-          // Já resolvido para este user — não busca de novo
-          if (resolvedUserIdRef.current === newUserId && roleCacheRef.current?.userId === newUserId) {
-            setUser(session.user);
+          // Mesmo user já resolvido (ex.: resume de aba / SIGNED_IN cosmético do Supabase)
+          // — não chama setUser para evitar cascade de refetch em telas que dependem de `user`.
+          if (resolvedUserIdRef.current === newUserId) {
             setLoading(false);
             return;
           }
@@ -200,7 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (cached) {
             applyRole(newUserId, cached);
             setLoading(false);
-            roleCacheRef.current = null;
             void fetchRoleFromDatabase(newUserId).then((roleFromDb) => {
               if (!mountedRef.current || !roleFromDb) return;
               if (roleFromDb !== cached) applyRole(newUserId, roleFromDb);

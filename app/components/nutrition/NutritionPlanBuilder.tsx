@@ -15,6 +15,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { NutritionFood, NutritionFoodCategory, NutritionMealType } from '@/lib/nutrition/types';
+import { formatFoodQuantityDisplay, isGramsOnlyLabel } from '@/lib/nutrition/portionDisplay';
 import { cn } from '@/lib/utils/cn';
 import { textIncludes } from '@/lib/utils/textNormalize';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -39,6 +40,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const [planName, setPlanName] = useState('');
   const [goal, setGoal] = useState('Hipertrofia');
   const [notes, setNotes] = useState('');
+  const [orientacoesGerais, setOrientacoesGerais] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -141,6 +143,9 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           setPlanName(initialPlanData.name);
           setGoal(initialPlanData.goal || 'Hipertrofia');
           setNotes(initialPlanData.notes || '');
+          setOrientacoesGerais(
+            initialPlanData.orientacoes_gerais || initialPlanData.notes || '',
+          );
           setStartDate(initialPlanData.start_date || '');
           setEndDate(initialPlanData.end_date || '');
 
@@ -350,7 +355,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           student_id: selectedStudentId,
           name: planName,
           goal,
-          notes,
+          notes: orientacoesGerais || notes || null,
+          orientacoes_gerais: orientacoesGerais || null,
           calories_target: targetKcal ? Number(targetKcal) : null,
           protein_target: targetProtein ? Number(targetProtein) : null,
           carbs_target: targetCarbs ? Number(targetCarbs) : null,
@@ -542,15 +548,26 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Instruções ou Observações gerais</label>
+                <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">
+                  Orientações gerais
+                </label>
                 <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Instruções gerais, horários de água, etc..."
-                  rows={2}
+                  value={orientacoesGerais}
+                  onChange={(e) => {
+                    setOrientacoesGerais(e.target.value);
+                    setNotes(e.target.value);
+                  }}
+                  placeholder={`Suplementação e orientações do plano — ex.:
+• Creatina 5g/dia (após o treino)
+• Ômega 3 2 cápsulas no almoço
+• Beber 3–4 L de água ao longo do dia`}
+                  rows={5}
                   disabled={saving}
-                  className="w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-none"
+                  className="w-full px-3 py-2.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-y min-h-[100px]"
                 />
+                <p className="text-[10px] text-text-tertiary ml-1">
+                  Visível em destaque no app do aluno — use para suplementos, timing e avisos gerais.
+                </p>
               </div>
             </Card>
 
@@ -726,8 +743,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                 </div>
 
                                 <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
-                                  {/* Grams Input */}
-                                  <div className="flex items-center gap-1 bg-surface-3 border border-border-subtle rounded-md px-2 h-7 w-20">
+                                  {/* Modo: gramas sempre editável; medida caseira quando disponível */}
+                                  <div className="flex items-center gap-1 bg-surface-3 border border-border-subtle rounded-md px-2 h-7 w-20" title="Gramas (base do cálculo de macros)">
                                     <input
                                       type="number"
                                       value={item.quantity_grams}
@@ -741,7 +758,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                     <span className="text-[9px] font-mono text-text-tertiary">g</span>
                                   </div>
 
-                                  {/* Portions select dropdown */}
                                   {food.portions && food.portions.length > 0 && (
                                     <div className="flex items-center gap-1.5">
                                       <select
@@ -756,9 +772,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                           }
                                           setMeals(updated);
                                         }}
-                                        className="h-7 px-1.5 bg-surface-3 border border-border-subtle rounded-md text-[9px] text-text-secondary focus:outline-none"
+                                        className="h-7 px-1.5 bg-surface-3 border border-border-subtle rounded-md text-[9px] text-text-secondary focus:outline-none max-w-[140px]"
+                                        title="Medida caseira"
                                       >
-                                        <option value="">Porção caseira...</option>
+                                        <option value="">Só gramas</option>
                                         {food.portions.map((p, pIdx) => (
                                           <option key={pIdx} value={p.label}>
                                             {p.label} ({p.grams}g)
@@ -766,8 +783,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                         ))}
                                       </select>
 
-                                      {item.portion_label && (
-                                        <div className="flex items-center gap-0.5 bg-surface-3 border border-border-subtle rounded-md px-1 h-7 w-12" title="Quantidade de porções">
+                                      {item.portion_label && !isGramsOnlyLabel(item.portion_label) && (
+                                        <div className="flex items-center gap-0.5 bg-brand/10 border border-brand/30 rounded-md px-1 h-7 w-14" title="Quantidade de medidas (ex.: 3 ovos)">
                                           <input
                                             type="number"
                                             min={0.1}
@@ -786,12 +803,22 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                                 setMeals(updated);
                                               }
                                             }}
-                                            className="w-full bg-transparent border-none text-[10px] font-mono font-bold text-text-primary focus:outline-none text-right"
+                                            className="w-full bg-transparent border-none text-[10px] font-mono font-bold text-brand focus:outline-none text-right"
                                           />
-                                          <span className="text-[8px] text-text-tertiary">x</span>
+                                          <span className="text-[8px] text-brand font-bold">×</span>
                                         </div>
                                       )}
                                     </div>
+                                  )}
+
+                                  {item.portion_label && !isGramsOnlyLabel(item.portion_label) && (
+                                    <span className="text-[9px] text-brand font-medium hidden sm:inline">
+                                      {formatFoodQuantityDisplay(
+                                        item.quantity_grams,
+                                        item.portion_label,
+                                        food.portions?.find((p) => p.label === item.portion_label)?.grams,
+                                      ).primary}
+                                    </span>
                                   )}
 
                                   <button

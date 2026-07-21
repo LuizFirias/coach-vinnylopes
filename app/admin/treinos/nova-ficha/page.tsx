@@ -158,12 +158,12 @@ export default function NovaFichaCoachPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!user?.id) {
       router.push("/login");
       return;
     }
     void loadData(user.id);
-  }, [authLoading, user, loadData, router]);
+  }, [authLoading, user?.id, loadData, router]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

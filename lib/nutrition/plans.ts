@@ -161,7 +161,7 @@ export async function getFullPlanDetails(planId: string, client = supabaseClient
       for (const meal of meals) {
         const { data: items, error: itemsError } = await client
           .from('nutrition_meal_items')
-          .select('*, food:nutrition_foods(*)')
+          .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
           .eq('meal_id', meal.id)
           .order('sort_order', { ascending: true });
 
@@ -170,7 +170,7 @@ export async function getFullPlanDetails(planId: string, client = supabaseClient
           for (const item of items) {
             const { data: subs } = await client
               .from('nutrition_substitutions')
-              .select('*, food:nutrition_foods(*)')
+              .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
               .eq('meal_item_id', item.id);
             
             itemsWithSubstitutions.push({

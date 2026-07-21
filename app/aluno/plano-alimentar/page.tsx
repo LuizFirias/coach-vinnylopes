@@ -41,23 +41,46 @@ function mapDigitalMealFoods(meal: { items?: Array<{
   id?: string;
   quantity_grams?: number | string;
   portion_label?: string | null;
-  food?: { name: string };
-  substitutions?: Array<{ quantity_grams?: number | string; food?: { name: string } }>;
+  food?: {
+    name: string;
+    portions?: Array<{ label: string; grams: number }>;
+  };
+  substitutions?: Array<{
+    quantity_grams?: number | string;
+    portion_label?: string | null;
+    food?: {
+      name: string;
+      portions?: Array<{ label: string; grams: number }>;
+    };
+  }>;
 }> }): MealFoodItem[] {
   const foods: MealFoodItem[] = [];
   for (const item of meal.items ?? []) {
     const food = item.food;
     if (!food) continue;
+    const portionGrams =
+      item.portion_label && food.portions
+        ? food.portions.find((p) => p.label === item.portion_label)?.grams
+        : undefined;
     foods.push({
       id: item.id,
       name: food.name,
       quantityGrams: item.quantity_grams,
       portionLabel: item.portion_label,
+      portionGrams: portionGrams ?? null,
       substitutions: (item.substitutions ?? [])
-        .map((sub) => ({
-          name: sub.food?.name ?? '',
-          quantityGrams: sub.quantity_grams,
-        }))
+        .map((sub) => {
+          const subPortionGrams =
+            sub.portion_label && sub.food?.portions
+              ? sub.food.portions.find((p) => p.label === sub.portion_label)?.grams
+              : undefined;
+          return {
+            name: sub.food?.name ?? '',
+            quantityGrams: sub.quantity_grams,
+            portionLabel: sub.portion_label,
+            portionGrams: subPortionGrams ?? null,
+          };
+        })
         .filter((sub) => sub.name),
     });
   }
@@ -636,6 +659,16 @@ export default function PlanoAlimentarPage() {
               </aside>
 
               <main className="space-y-2 mb-4 lg:mb-0">
+                {(digitalPlan.orientacoes_gerais || digitalPlan.notes) && (
+                  <div className="rounded-xl border border-brand/30 bg-brand/5 p-4 mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[1.5px] text-brand mb-2">
+                      Orientações gerais
+                    </p>
+                    <p className="text-xs text-text-primary whitespace-pre-wrap leading-relaxed">
+                      {digitalPlan.orientacoes_gerais || digitalPlan.notes}
+                    </p>
+                  </div>
+                )}
                 {digitalPlan.days?.[0]?.meals?.map((meal: {
                   id: string;
                   title: string;

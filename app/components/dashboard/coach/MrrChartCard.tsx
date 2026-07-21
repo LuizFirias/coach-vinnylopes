@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   BarChart,
   Bar,
@@ -9,6 +8,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   Cell,
+  Rectangle,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -22,6 +22,18 @@ interface MrrChartCardProps {
   currentMrr: number;
   chartData: MrrChartDatum[];
   className?: string;
+}
+
+function ActiveBar(props: any) {
+  const futuro = Boolean(props?.payload?.futuro);
+  return (
+    <Rectangle
+      {...props}
+      fill={futuro ? "rgba(43, 127, 255, 0.45)" : "#5a9fff"}
+      stroke="none"
+      strokeWidth={0}
+    />
+  );
 }
 
 export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardProps) {
@@ -65,6 +77,7 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                 axisLine={false}
               />
               <Tooltip
+                cursor={false}
                 contentStyle={{
                   backgroundColor: "#1F1F23",
                   border: "1px solid #27272A",
@@ -75,13 +88,18 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                 itemStyle={{ color: "#2563EB", fontSize: "10px", padding: "2px 0" }}
                 formatter={(v: number | string) => [formatCurrency(Number(v)), "Faturamento"]}
               />
-              <Bar dataKey="receita" radius={[3, 3, 0, 0]}>
+              <Bar
+                dataKey="receita"
+                radius={[3, 3, 0, 0]}
+                activeBar={<ActiveBar />}
+              >
                 {chartData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={entry.futuro ? "rgba(43, 127, 255, 0.25)" : "#2b7fff"}
-                    stroke={entry.futuro ? "#2b7fff" : undefined}
+                    stroke={entry.futuro ? "#2b7fff" : "none"}
                     strokeDasharray={entry.futuro ? "4 3" : undefined}
+                    strokeWidth={entry.futuro ? 1 : 0}
                   />
                 ))}
               </Bar>
