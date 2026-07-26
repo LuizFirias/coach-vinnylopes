@@ -25,7 +25,7 @@ export function FoodItemRow({
       <div className="flex items-start justify-between gap-3">
         <p className="text-[13px] font-medium text-text-primary leading-snug">{name}</p>
         {display.primary && (
-          <p className="text-[13px] font-semibold text-text-primary tabular-nums shrink-0 text-right max-w-[48%]">
+          <p className="text-[13px] font-semibold text-text-primary tabular-nums lining-nums shrink-0 text-right max-w-[48%]">
             {display.primary}
           </p>
         )}

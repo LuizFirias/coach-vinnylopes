@@ -195,7 +195,6 @@ export default function MedidasPage() {
   };
 
   const handleDeleteMedida = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este registro?')) return;
     try {
       const { error } = await supabaseClient.from('medidas_aluno').delete().eq('id', id);
       if (error) throw error;

@@ -13,7 +13,7 @@ interface WorkoutBuilderBottomBarProps {
 }
 
 const sideBtnCls =
-  "w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-lg border border-border-subtle text-text-secondary hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40";
+  "w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-lg border border-card text-text-secondary hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40";
 
 export function WorkoutBuilderBottomBar({
   saving,
@@ -27,7 +27,7 @@ export function WorkoutBuilderBottomBar({
     <div
       className={cn(
         "fixed bottom-0 left-0 right-0 z-50 lg:pl-28",
-        "border-t border-border-subtle bg-surface-0/95 backdrop-blur-md",
+        "border-t border-divider bg-surface-0/95 backdrop-blur-md",
         "px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       )}
     >

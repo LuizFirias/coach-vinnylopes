@@ -18,12 +18,12 @@ interface KpiCardProps {
 export function KpiCard({ label, value, unit, compact, delta }: KpiCardProps) {
   if (compact) {
     return (
-      <div className="bg-surface-1 border border-border-subtle rounded-2xl p-3 flex flex-col gap-0.5 shadow-elev-1">
+      <div className="bg-surface-1 border-0 rounded-2xl p-3 flex flex-col gap-0.5 shadow-elev-1">
         <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary leading-none">
           {label}
         </span>
         <div className="flex items-baseline gap-1 mt-1">
-          <span className="font-mono tabular-nums font-bold text-xl text-text-primary leading-none">
+          <span className="font-mono tabular-nums lining-nums font-bold text-xl text-text-primary leading-none">
             {value}
           </span>
           {unit && <span className="text-2xs text-text-tertiary">{unit}</span>}
@@ -42,7 +42,7 @@ export function KpiCard({ label, value, unit, compact, delta }: KpiCardProps) {
         {label}
       </span>
       <div className="flex items-baseline gap-1">
-        <span className="font-mono tabular-nums font-semibold text-3xl text-text-primary tracking-tight">
+        <span className="font-mono tabular-nums lining-nums font-semibold text-3xl text-text-primary tracking-display">
           {value}
         </span>
         {unit && <span className="text-sm text-text-secondary">{unit}</span>}

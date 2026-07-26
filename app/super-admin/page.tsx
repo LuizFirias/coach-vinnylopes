@@ -76,8 +76,8 @@ export default function SuperAdminPage() {
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
-        <Card className="lg:col-span-3 rounded-xl border border-border-subtle/80 p-4 md:p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-5 pb-4 border-b border-border-subtle">
+        <Card className="lg:col-span-3 rounded-xl border border-card p-4 md:p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5 pb-4 border-b border-divider">
             <div className="w-9 h-9 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center shrink-0">
               <UserPlus className="w-4 h-4 text-brand" />
             </div>
@@ -148,7 +148,7 @@ export default function SuperAdminPage() {
           <Link href="/super-admin/convites" className="block group">
             <Card
               variant="interactive"
-              className="rounded-xl border border-border-subtle/80 p-4 md:p-5 h-full shadow-sm group-hover:border-brand/30"
+              className="rounded-xl border border-card p-4 md:p-5 h-full shadow-sm group-hover:border-card-hover"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
@@ -169,7 +169,7 @@ export default function SuperAdminPage() {
             </Card>
           </Link>
 
-          <Card className="rounded-xl border border-border-subtle/80 p-4 md:p-5 shadow-sm">
+          <Card className="rounded-xl border border-card p-4 md:p-5 shadow-sm">
             <p className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase mb-2">
               Sobre este painel
             </p>

@@ -19,10 +19,12 @@ import { supabaseClient } from"@/lib/supabaseClient";import { getSafeSession } f
   ShieldCheck,
   AppleLogo,
   SquaresFour,
+  HeartStraight,
 } from "@phosphor-icons/react";
 
 const menuItems = [
   { name:"TREINOS", href:"/aluno/treinos", icon: Barbell },
+  { name:"CARDIO", href:"/aluno/cardio", icon: HeartStraight },
   { name:"PLANO ALIMENTAR", href:"/aluno/plano-alimentar", icon: ForkKnife },
   { name:"MEDIDAS", href:"/aluno/medidas", icon: TrendUp },
   { name:"FOTOS", href:"/aluno/fotos", icon: Camera },
@@ -97,11 +99,11 @@ export default function ResponsiveNav() {
   return (
     <>
       {/* Mobile Header (hidden on desktop) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-surface-0/80 backdrop-blur-xl border-b border-white/[0.03] px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-surface-0/80 backdrop-blur-xl border-b border-card px-4">
         <div className="flex items-center justify-between h-full">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.03] border border-white/[0.05] active:scale-95 transition-all"
+            className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.03] border border-card active:scale-95 transition-all"
           >
             <List size={20} className="text-zinc-400" />
           </button>

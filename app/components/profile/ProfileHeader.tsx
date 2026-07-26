@@ -61,7 +61,10 @@ export function ProfileHeader({
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={onAvatarUpload}
+            onChange={(e) => {
+              onAvatarUpload(e);
+              e.target.value = "";
+            }}
           />
         </div>
 

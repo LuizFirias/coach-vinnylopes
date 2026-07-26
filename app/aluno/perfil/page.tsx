@@ -18,6 +18,7 @@ import DateOfBirthModal from '@/app/components/DateOfBirthModal';
 import ChangeNameModal from '@/app/components/ChangeNameModal';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { ProfileHeader } from '@/app/components/profile/ProfileHeader';
+import { AvatarCropModal } from '@/app/components/profile/AvatarCropModal';
 import { ProfileNavButtons } from '@/app/components/profile/ProfileNavButtons';
 import { ProfileWorkoutHistory } from '@/app/components/profile/ProfileWorkoutHistory';
 import { getAvatarGradient } from '@/lib/utils/avatarColor';
@@ -70,7 +71,7 @@ function SettingsRow({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-border-subtle last:border-b-0',
+        'w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-divider last:border-b-0',
         danger ? 'text-danger hover:text-danger/80' : 'hover:opacity-80'
       )}
       style={{ borderColor: 'rgba(41,48,61,0.5)' }}
@@ -125,6 +126,7 @@ export default function AlunoPerfil() {
 
   const [loading, setLoading] = useState(true);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
@@ -270,24 +272,46 @@ export default function AlunoPerfil() {
 
   // ── Avatar ───────────────────────────────────────────────────────────────
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file || !userId) return;
     if (!file.type.startsWith('image/')) { showToast('err', 'Selecione uma imagem válida'); return; }
-    if (file.size > 5 * 1024 * 1024) { showToast('err', 'Imagem muito grande. Máximo 5MB'); return; }
+    if (file.size > 8 * 1024 * 1024) { showToast('err', 'Imagem muito grande. Máximo 8MB'); return; }
 
+    const reader = new FileReader();
+    reader.onloadend = () => setCropSrc(reader.result as string);
+    reader.onerror = () => showToast('err', 'Não foi possível ler a imagem');
+    reader.readAsDataURL(file);
+  };
+
+  const closeCropModal = () => {
+    if (uploadingAvatar) return;
+    setCropSrc(null);
+  };
+
+  const handleAvatarCropConfirm = async (blob: Blob) => {
+    if (!userId) return;
     setUploadingAvatar(true);
     try {
       if (profile.avatar_url) {
         const oldPath = extractStoragePath('avatars', profile.avatar_url);
-        if (oldPath) await supabaseClient.storage.from('avatars').remove([oldPath]);
+        if (oldPath) {
+          try {
+            await supabaseClient.storage.from('avatars').remove([oldPath]);
+          } catch {
+            // ignore — upload novo segue mesmo se o delete falhar
+          }
+        }
       }
-      const ext = file.name.split('.').pop();
-      const fileName = `avatar_${userId}_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabaseClient.storage.from('avatars').upload(fileName, file, { upsert: false });
+      const fileName = `avatar_${userId}_${Date.now()}.jpg`;
+      const { error: upErr } = await supabaseClient.storage
+        .from('avatars')
+        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: false });
       if (upErr) throw upErr;
       await supabaseClient.from('profiles').update({ avatar_url: fileName }).eq('id', userId);
       setProfile(p => ({ ...p, avatar_url: fileName }));
+      setCropSrc(null);
       showToast('ok', 'Foto atualizada');
     } catch (err: any) {
       showToast('err', err.message || 'Erro no upload');
@@ -390,7 +414,7 @@ export default function AlunoPerfil() {
       >
         <div className="max-w-lg mx-auto flex flex-col gap-6">
           {/* Header de Voltar */}
-          <div className="flex items-center justify-between border-b border-border-subtle pb-4" style={{ borderColor: 'rgba(41,48,61,0.5)' }}>
+          <div className="flex items-center justify-between border-b border-divider pb-4" style={{ borderColor: 'rgba(41,48,61,0.5)' }}>
             <button
               onClick={() => setShowSettings(false)}
               className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
@@ -439,7 +463,7 @@ export default function AlunoPerfil() {
               >
                 <Camera size={10} weight="bold" />
               </label>
-              <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+              <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarSelect} />
             </div>
             <div>
               <p className="text-base font-bold text-text-primary">{profile.full_name || 'Atleta'}</p>
@@ -750,7 +774,7 @@ export default function AlunoPerfil() {
               <div className="flex gap-2">
                 <button
                   onClick={() => { setDeleteConfirmOpen(false); setDeleteInput(''); }}
-                  className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-border-subtle text-sm text-text-secondary hover:text-text-primary transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-card text-sm text-text-secondary hover:text-text-primary transition-colors"
                 >
                   Cancelar
                 </button>
@@ -765,6 +789,14 @@ export default function AlunoPerfil() {
             </div>
           </div>
         )}
+
+        <AvatarCropModal
+          open={Boolean(cropSrc)}
+          imageSrc={cropSrc || ''}
+          confirming={uploadingAvatar}
+          onCancel={closeCropModal}
+          onConfirm={handleAvatarCropConfirm}
+        />
       </div>
     );
   }
@@ -794,7 +826,15 @@ export default function AlunoPerfil() {
           uploadingAvatar={uploadingAvatar}
           isDesktop={isDesktop}
           onSettingsClick={() => setShowSettings(true)}
-          onAvatarUpload={handleAvatarUpload}
+          onAvatarUpload={handleAvatarSelect}
+        />
+
+        <AvatarCropModal
+          open={Boolean(cropSrc)}
+          imageSrc={cropSrc || ''}
+          confirming={uploadingAvatar}
+          onCancel={closeCropModal}
+          onConfirm={handleAvatarCropConfirm}
         />
 
         <ProfileNavButtons />

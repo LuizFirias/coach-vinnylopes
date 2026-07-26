@@ -7,6 +7,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 
 const menuItems = [
   { name: 'TREINOS', href: '/aluno/treinos' },
+  { name: 'CARDIO', href: '/aluno/cardio' },
   { name: 'PLANO ALIMENTAR', href: '/aluno/plano-alimentar' },
   { name: 'MEDIDAS', href: '/aluno/medidas' },
   { name: 'FOTOS', href: '/aluno/fotos' },

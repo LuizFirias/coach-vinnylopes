@@ -24,6 +24,7 @@ function shortenMuscleGroup(raw: string): string {
   const first = trimmed.split(/[\s,/]+/)[0];
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
+
 export function getRoutineMuscleSummary(
   exercicios: Array<{ nome?: string; grupo_muscular?: string }>
 ): string {
@@ -40,10 +41,17 @@ export function getRoutineMuscleSummary(
     return groups.slice(0, 4).join(" · ");
   }
 
-  const names = exercicios.map((ex) => ex.nome?.trim()).filter((n): n is string => Boolean(n));
-  if (names.length === 0) return "";
+  return getRoutineExercisePreview(exercicios);
+}
 
-  const preview = names.slice(0, 2).join(", ");
-  const suffix = names.length > 2 ? "..." : "";
-  return `${names.length} exercício${names.length !== 1 ? "s" : ""} · ${preview}${suffix}`;
+/** Prévia dos nomes de exercícios para cards do aluno (2 linhas no UI). */
+export function getRoutineExercisePreview(
+  exercicios: Array<{ nome?: string }>
+): string {
+  const names = exercicios
+    .map((ex) => ex.nome?.trim())
+    .filter((n): n is string => Boolean(n));
+
+  if (names.length === 0) return "";
+  return names.join(" · ");
 }

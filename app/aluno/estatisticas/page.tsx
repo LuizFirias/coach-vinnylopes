@@ -616,12 +616,12 @@ export default function EstatisticasPage() {
                 <span className="text-xs font-semibold text-text-tertiary">Séries</span>
               </div>
               <div className="flex flex-col">
-                <div className="flex justify-between px-4 py-3 border-b border-border-subtle/50">
+                <div className="flex justify-between px-4 py-3 border-b border-divider/50">
                   <span className="text-sm font-bold text-text-primary">Total</span>
                   <span className="text-sm font-bold text-text-primary">{totalSets}</span>
                 </div>
                 {Object.entries(allMuscleSets).sort((a, b) => b[1] - a[1]).map(([muscle, sets]) => (
-                  <div key={muscle} className="flex justify-between px-4 py-3 border-b border-border-subtle/30 last:border-b-0">
+                  <div key={muscle} className="flex justify-between px-4 py-3 border-b border-divider/30 last:border-b-0">
                     <span className="text-sm text-text-primary">{muscle}</span>
                     <span className="text-sm text-text-primary">{sets}</span>
                   </div>
@@ -663,7 +663,7 @@ export default function EstatisticasPage() {
               Últimos 30 dias <CaretRight size={12} className="rotate-90 opacity-60" />
             </button>
             {mainExercises.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-4 py-3 border-b border-border-subtle/50 last:border-b-0">
+              <div key={idx} className="flex items-center gap-4 py-3 border-b border-divider/50 last:border-b-0">
                 <div
                   className="w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0"
                   style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
@@ -880,7 +880,7 @@ export default function EstatisticasPage() {
               <div>
                 <p className="text-xs font-semibold text-text-tertiary mb-3">Exercícios em Destaque</p>
                 {topExercises.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 py-3 border-b border-border-subtle/50 last:border-b-0">
+                  <div key={idx} className="flex items-center gap-4 py-3 border-b border-divider/50 last:border-b-0">
                     <div
                       className="w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0"
                       style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}

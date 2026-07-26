@@ -98,7 +98,7 @@ export function PhotoGalleryUploader({
                 setDragFrom(null);
               }}
               className={cn(
-                "relative aspect-square rounded-lg overflow-hidden border border-border-subtle bg-surface-2 group",
+                "relative aspect-square rounded-lg overflow-hidden border border-card bg-surface-2 group",
                 dragFrom === index && "opacity-60",
               )}
             >

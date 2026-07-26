@@ -223,7 +223,7 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center gap-4 px-6">
-      <DumbbellLoader />
+      <DumbbellLoader variant="inline" />
       <p className="text-sm text-text-secondary text-center">{message}</p>
     </div>
   );

@@ -115,7 +115,7 @@ export default function NovoParceiroPage() {
         )}
 
         <Card className="rounded-2xl shadow-elev-1">
-          <div className="flex items-center gap-3 mb-5 pb-5 border-b border-border-subtle">
+          <div className="flex items-center gap-3 mb-5 pb-5 border-b border-divider">
             <div className="w-10 h-10 rounded-xl bg-danger-subtle border border-danger-border flex items-center justify-center text-danger">
               <ShoppingBag size={18} />
             </div>
@@ -195,7 +195,7 @@ export default function NovoParceiroPage() {
                   </div>
                 ))}
                 {imageFiles.length < 5 && (
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-border-subtle flex flex-col items-center justify-center cursor-pointer hover:border-danger/30 hover:bg-danger-subtle transition-all group/add">
+                  <label className="aspect-square rounded-xl border-2 border-dashed border-card flex flex-col items-center justify-center cursor-pointer hover:border-danger/30 hover:bg-danger-subtle transition-all group/add">
                     <Plus size={20} className="text-text-disabled group-hover/add:text-danger transition-colors" />
                     <span className="text-2xs text-text-disabled mt-1">Adicionar</span>
                     <input type="file" multiple accept="image/*" onChange={handleImagesChange} className="hidden" disabled={loading} />

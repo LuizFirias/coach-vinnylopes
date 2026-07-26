@@ -26,14 +26,14 @@ export function StreakRow({ sequenciaDias, treinosSemana, metaSemana }: StreakRo
       className="mx-4 grid grid-cols-2 gap-3"
     >
       <div
-        className="dashboard-card rounded-2xl border p-4"
+        className="dashboard-card rounded-2xl border-0 p-4"
         style={{ borderBottom: `2px solid ${dashboardColors.streak}` }}
       >
         <p className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest dashboard-text-subtle">
           <Flame className="h-3.5 w-3.5" weight="fill" style={{ color: dashboardColors.streak }} />
           Sequência
         </p>
-        <p className="text-4xl font-extrabold leading-none tracking-tight dashboard-text">
+        <p className="text-4xl font-extrabold leading-none tracking-display tabular-nums lining-nums dashboard-text">
           {animatedStreak}
         </p>
         <p className="mt-1 text-xs font-medium dashboard-text-subtle">
@@ -51,16 +51,16 @@ export function StreakRow({ sequenciaDias, treinosSemana, metaSemana }: StreakRo
       </div>
 
       <div
-        className="dashboard-card rounded-2xl border p-4"
+        className="dashboard-card rounded-2xl border-0 p-4"
         style={{ borderBottom: `2px solid ${dashboardColors.accent}` }}
       >
         <p className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest dashboard-text-subtle">
           <Lightning className="h-3.5 w-3.5" weight="fill" style={{ color: dashboardColors.accentLight }} />
           Esta semana
         </p>
-        <p className="text-4xl font-extrabold leading-none tracking-tight dashboard-text">
+        <p className="text-4xl font-extrabold leading-none tracking-display tabular-nums lining-nums dashboard-text">
           {treinosSemana}
-          <span className="text-xl font-semibold dashboard-text-subtle">/{metaSemana}</span>
+          <span className="text-xl font-semibold tabular-nums lining-nums dashboard-text-subtle">/{metaSemana}</span>
         </p>
         <p className="mt-1 text-xs font-medium dashboard-text-subtle">treinos</p>
         <div className="dashboard-progress-track mt-2.5 h-1 w-full overflow-hidden rounded-full">

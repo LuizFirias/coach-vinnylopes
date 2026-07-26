@@ -21,7 +21,7 @@ export function BottomNavNew() {
     <nav
       className={cn(
         'fixed bottom-0 left-0 right-0 z-40',
-        'bg-surface-0 border-t border-border-subtle',
+        'bg-surface-0 border-t border-divider',
         'pb-[env(safe-area-inset-bottom)]'
       )}
       aria-label="Navegação principal"

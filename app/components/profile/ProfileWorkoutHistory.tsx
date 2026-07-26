@@ -98,10 +98,10 @@ export function ProfileWorkoutHistory({
               idx < visible.length - 1 && "border-b border-surface-2"
             )}
           >
-            <p className="text-sm font-medium text-text-primary truncate min-w-0">
+            <p className="text-sm font-medium uppercase tracking-wide text-text-primary truncate min-w-0">
               {workout.nome_rotina}
             </p>
-            <p className="text-xs text-text-secondary shrink-0 tabular-nums">
+            <p className="text-xs text-text-secondary shrink-0 tabular-nums lining-nums">
               {formatWorkoutDateShort(workout.data_conclusao)} · {estimateDuration(workout.totalSets)}
             </p>
           </div>

@@ -22,7 +22,7 @@ sessões de refatoração do AURON (julho 2026).
 
 ### Paleta
 ```
-Background page:     #0d0d0d   (navy escuro — NÃO preto puro #000)
+Background page:     #080c14   (navy azulado — dashboard; NÃO preto puro #000)
 Background card:     #141414
 Background input:    #1e1e1e
 Borda input:         #282828   (1px)
@@ -34,7 +34,7 @@ Verde (sucesso/ativo):#39c75a
 Vermelho (risco):    #e05555
 Amarelo (atenção):   #f59e0b
 
-Texto primário:      #ffffff
+Texto primário:      #D8DCE6   (off-white suave — NÃO #fff puro)
 Texto secundário:    #7a8aab
 Texto muted:         #444444   (labels, datas, meta)
 Divisor:             #1a2540   (cards dark) / #222222 (cards neutros)
@@ -42,8 +42,12 @@ Divisor:             #1a2540   (cards dark) / #222222 (cards neutros)
 
 ### Tipografia
 ```
-Família:    Inter (400, 500, 600, 700, 800, 900)
-Fallback:   -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+Família:         Inter (400, 500, 600, 700, 800, 900)
+Fallback:        -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+Família mono:    JetBrains Mono (var: --font-mono)
+Uso mono:        Pesos de carga, KPIs numéricos, valores de série, código
+Pesos mono:      400 (leitura), 700 (destaque)
+Onde aparece:    tela de execução, tabelas de séries, KPIs de dashboard
 
 Valor principal (KPI/métrica):   48–96px / weight 900 / letter-spacing -2px
 Título de tela:                  20–28px / weight 800
@@ -53,6 +57,22 @@ Texto de tabela:                 12–14px / weight 400–500
 Texto secundário/sublinha:       10–12px / weight 400 / color text-secondary
 ```
 
+### Numerais (dados numéricos)
+Regra global em todo valor numérico exibido:
+  font-variant-numeric: tabular-nums lining-nums
+  font-feature-settings: "tnum" 1, "lnum" 1
+  Token: --numeric-features
+  Classes: tabular-nums lining-nums | .num | [data-numeric]
+
+Aplicar em: KPIs, tabelas de séries, peso, cargas, histórico, medidas,
+            calendário (números dos dias), cardio (kcal, FC, distância).
+NÃO aplicar em: texto de corpo, labels, datas por extenso.
+
+letter-spacing em display:
+  ≥ 36px: -0.03em (--tracking-display)
+  20–28px: -0.02em (--tracking-headline)
+  < 18px: 0 (não ajustar)
+
 ### Tokens de forma
 ```
 Border radius card:    12–14px
@@ -61,6 +81,18 @@ Border radius input:   8–10px
 Border radius badge:   4–6px
 Border radius pill:    9999px (APENAS status pills e tabs selecionadas)
 ```
+
+### Bordas (dark mode)
+--border-card:       transparent               ← cards de conteúdo (sem linha branca)
+--border-card-hover: rgba(255,255,255,0.06)    ← hover em cards interativos
+--border-input:      #282828                 ← inputs (manter sólido)
+--border-divider:    #1a1a1a                 ← linhas internas de card
+--border-accent:     rgba(43,127,255,0.40)   ← destaque/foco
+
+Regra: inputs mantêm borda sólida para feedback de toque.
+       Cards NÃO usam outline branco — separação só por diferença de surface.
+       NUNCA usar border-white/5, /8, /10 direto — sempre o token border-card.
+       Em grids de cards a borda deve ser invisível; o contraste vem do fundo.
 
 ### Tokens de espaçamento
 ```

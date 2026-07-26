@@ -18,7 +18,7 @@ interface WorkoutBuilderSettingsSheetProps {
 }
 
 const fieldCls =
-  "w-full h-10 px-3 bg-surface-2 border border-border-subtle rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40";
+  "w-full h-10 px-3 bg-surface-2 border border-input rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40";
 
 export function WorkoutBuilderSettingsSheet({
   alunos,
@@ -30,7 +30,7 @@ export function WorkoutBuilderSettingsSheet({
 }: WorkoutBuilderSettingsSheetProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-surface-1 border border-border-subtle rounded-t-2xl w-full max-w-lg p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="bg-surface-1 border border-card rounded-t-2xl w-full max-w-lg p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text-primary">Aluno e rotina</h3>
           <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-2">

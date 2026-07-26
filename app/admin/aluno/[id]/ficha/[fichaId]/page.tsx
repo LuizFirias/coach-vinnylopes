@@ -43,7 +43,7 @@ interface CatalogExercise {
 }
 
 const fieldCls =
-  "w-full px-3 py-2 bg-surface-2 border border-border-subtle rounded-lg text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all h-10";
+  "w-full px-3 py-2 bg-surface-2 border border-input rounded-lg text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all h-10";
 
 function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
   const base = { ordem: 1, tecnica: "", tecnica_extra: "", peso_sugerido: null as number | null };
@@ -557,7 +557,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6 py-4 border-b border-border-subtle flex flex-col gap-2.5">
+        <div className="mb-6 py-4 border-b border-divider flex flex-col gap-2.5">
           <button
             type="button"
             onClick={goBack}
@@ -584,7 +584,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        <div className="bg-surface-1 rounded-xl p-4 md:p-5 border border-border-subtle shadow-sm mb-4">
+        <div className="bg-surface-1 rounded-xl p-4 md:p-5 border border-card shadow-sm mb-4">
           <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 block">
             Nome da Ficha
           </label>
@@ -606,7 +606,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {items.length === 0 ? (
-          <div className="bg-surface-2 rounded-xl p-8 text-center border border-dashed border-border-subtle mb-4">
+          <div className="bg-surface-2 rounded-xl p-8 text-center border border-dashed border-card mb-4">
             <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">
               Nenhum exercício nesta ficha
             </p>
@@ -677,7 +677,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-0/80 backdrop-blur-sm">
             <div className="bg-surface-1 rounded-xl border border-border-default shadow-2xl max-w-xl w-full max-h-[80vh] flex flex-col overflow-hidden">
-              <div className="bg-surface-1 border-b border-border-subtle p-4 flex items-center justify-between">
+              <div className="bg-surface-1 border-b border-divider p-4 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-text-primary">Adicionar Exercício</h2>
                 <button
                   type="button"
@@ -691,13 +691,13 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                 </button>
               </div>
 
-              <div className="p-3 border-b border-border-subtle">
+              <div className="p-3 border-b border-divider">
                 <input
                   type="text"
                   placeholder="Buscar exercício..."
                   value={searchExercicio}
                   onChange={(e) => setSearchExercicio(e.target.value)}
-                  className="w-full px-3 py-1.5 h-10 bg-surface-2 border border-border-subtle rounded-md text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all"
+                  className="w-full px-3 py-1.5 h-10 bg-surface-2 border border-input rounded-md text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all"
                 />
               </div>
 
@@ -716,7 +716,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                         }}
                         disabled={jaAdicionado}
                         className={cn(
-                          "w-full p-4 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4 text-left border-b border-border-subtle/50",
+                          "w-full p-4 hover:bg-surface-2 transition-colors flex items-center justify-between gap-4 text-left border-b border-divider/50",
                           isSelected && "bg-brand/5 border-l-2 border-l-brand",
                           jaAdicionado && "opacity-50 cursor-not-allowed"
                         )}
@@ -757,7 +757,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
 
-              <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end gap-2 shrink-0">
+              <div className="p-4 border-t border-divider bg-surface-2/40 flex justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {

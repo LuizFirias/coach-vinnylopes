@@ -21,6 +21,13 @@ export function invalidateAdminGuardCache() {
   inflight = null;
 }
 
+/** Leitura síncrona — permite pular loader full-screen se o cache ainda é válido. */
+export function peekAdminGuardCache(): GuardProfileCache | null {
+  if (!cache) return null;
+  if (Date.now() - cache.fetchedAt >= TTL_MS) return null;
+  return cache;
+}
+
 export async function getCachedAdminGuardProfile(
   fetchFn: () => Promise<Omit<GuardProfileCache, "fetchedAt"> | null>,
 ): Promise<GuardProfileCache | null> {

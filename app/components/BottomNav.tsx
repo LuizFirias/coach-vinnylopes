@@ -3,30 +3,33 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  House, Barbell, ForkKnife, User,
+  ForkKnife, User, HeartStraight,
   Users, Chat, Plus, BookOpen, X, Handshake, ChartBar, ShieldWarning,
   AppleLogo, Trophy, List, Link as LinkIcon,
 } from '@phosphor-icons/react';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
 import { useState } from 'react';
+import { AuronLinkIcon } from '@/app/components/ui/Auronlinkicon';
+import { AuronAIcon } from '@/app/components/ui/auronAIcon';
 
-// ── Student nav (4 tabs — Progresso e Ranking acessados via Início e Perfil) ─
+// ── Student nav — Início no centro ────────────────────────────────────────────
 const STUDENT_ITEMS = [
-  { href: '/aluno/dashboard',       label: 'Início',   icon: House    },
-  { href: '/aluno/treinos',         label: 'Treinos',  icon: Barbell  },
-  { href: '/aluno/plano-alimentar', label: 'Nutrição', icon: ForkKnife },
-  { href: '/aluno/perfil',          label: 'Perfil',   icon: User     },
+  { href: '/aluno/treinos',         label: 'Treinos',  icon: AuronLinkIcon },
+  { href: '/aluno/cardio',          label: 'Cardio',   icon: HeartStraight },
+  { href: '/aluno/dashboard',       label: 'Início',   icon: AuronAIcon    },
+  { href: '/aluno/plano-alimentar', label: 'Nutrição', icon: ForkKnife     },
+  { href: '/aluno/perfil',          label: 'Perfil',   icon: User          },
 ] as const;
 
 // ── Coach nav (4 items + FAB) ─────────────────────────────────────────────────
 const COACH_LEFT = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: House },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: AuronAIcon },
   { href: '/admin/alunos',    label: 'Alunos',    icon: Users },
 ];
 const COACH_RIGHT = [
-  { href: '/admin/treinos',    label: 'Treinos',    icon: Barbell  },
-  { href: '/admin/relatorios', label: 'Financeiro', icon: ChartBar },
+  { href: '/admin/treinos',    label: 'Treinos',    icon: AuronLinkIcon },
+  { href: '/admin/relatorios', label: 'Financeiro', icon: ChartBar  },
 ];
 
 export default function BottomNav() {
@@ -77,16 +80,40 @@ export default function BottomNav() {
       <nav
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
-          'bg-surface-1/75 backdrop-blur-2xl backdrop-saturate-200',
-          'rounded-[28px]',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.06)]',
-          'border border-white/[0.09]',
-          'h-16',
+          'overflow-visible',
+          'border-0',
+          'h-13',
         )}
         style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
         aria-label="Navegação principal"
       >
-        <ul className="flex items-center justify-around h-full px-2">
+        {/* Fundo da barra com notch côncavo + pontas em cápsula (como rounded-[28px]) */}
+        <svg
+          className="absolute inset-0 w-full h-full overflow-visible"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.55))' }}
+        >
+          <path
+            d="
+              M 8,0
+              L 20,0
+              C 38,0 38,58 50,58
+              C 62,58 62,0 80,0
+              L 92,0
+              A 8 50 0 0 1 100 50
+              A 8 50 0 0 1 92 100
+              L 8,100
+              A 8 50 0 0 1 0 50
+              A 8 50 0 0 1 8 0
+              Z
+            "
+            fill="#122648"
+            fillOpacity="0.95"
+          />
+        </svg>
+        <ul className="relative flex items-center justify-around h-full px-2 overflow-visible">
           {STUDENT_ITEMS.map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href) ||
               (href === '/aluno/perfil' && (
@@ -95,31 +122,74 @@ export default function BottomNav() {
                 pathname.startsWith('/aluno/fotos') ||
                 pathname.startsWith('/aluno/ranking')
               ));
+            const isHome = href === '/aluno/dashboard';
+            const isTreinos = href === '/aluno/treinos';
+
+            // Ícone elevado no notch (Início / dashboard)
+            if (isHome) {
+              return (
+                <li
+                  key={href}
+                  className="relative flex flex-1 items-center justify-center"
+                >
+                  <Link
+                    href={href}
+                    className={cn(
+                      'absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5 transition-colors duration-fast',
+                      isActive ? 'text-brand' : 'text-text-tertiary',
+                    )}
+                    style={{ bottom: -20 }}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label="Início"
+                  >
+                    <AuronAIcon
+                      size={40}
+                      active={isActive}
+                      className={cn(
+                        'transition-transform duration-fast',
+                        isActive && 'scale-105',
+                      )}
+                      style={{
+                        filter: isActive
+                          ? 'drop-shadow(0 2px 8px rgba(43,127,255,0.55))'
+                          : 'none',
+                      }}
+                    />
+                    <span
+                      className={cn(
+                        'text-[9px]',
+                        isActive ? 'font-semibold text-brand' : 'font-medium text-text-tertiary',
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            }
+
             return (
-              <li key={href} className="flex-1 flex items-center justify-center">
+              <li key={href} className="flex flex-1 items-center justify-center">
                 <Link
                   href={href}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
-                    isActive ? 'text-[#1C65E8]' : 'text-text-tertiary',
+                    'flex w-full flex-col items-center justify-center gap-0.5 transition-colors duration-fast',
+                    isActive ? 'text-brand' : 'text-text-tertiary',
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <span
+                  <Icon
                     className={cn(
-                      'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-2xl transition-colors duration-fast',
-                      isActive && 'bg-[#1C65E8]/10',
+                      'transition-transform duration-fast',
+                      isTreinos ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
+                      isActive && 'scale-110',
                     )}
-                  >
-                    <Icon className={cn('w-[18px] h-[18px] transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                    <span className={cn('text-[9px]', isActive ? 'font-semibold text-[#77ACF3]' : 'font-medium')}>
-                      {label}
-                    </span>
+                    weight={isActive ? 'fill' : 'regular'}
+                    {...(Icon === AuronLinkIcon ? { active: isActive } : {})}
+                  />
+                  <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>
+                    {label}
                   </span>
-                  {/* Indicador de aba ativa */}
-                  {isActive && (
-                    <span className="w-1 h-1 rounded-full mt-0.5 flex-shrink-0" style={{ background: '#1C65E8' }} />
-                  )}
                 </Link>
               </li>
             );
@@ -149,7 +219,7 @@ export default function BottomNav() {
                   onClick={() => { setFabOpen(false); router.push(href); }}
                   className={cn(
                     'w-full flex items-center gap-4 px-5 py-4 text-left transition-colors active:bg-surface-3 cursor-pointer',
-                    i < actions.length - 1 && 'border-b border-border-subtle',
+                    i < actions.length - 1 && 'border-b border-divider',
                   )}
                 >
                   <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
@@ -167,10 +237,10 @@ export default function BottomNav() {
       <nav
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
-          'bg-surface-1/75 backdrop-blur-2xl backdrop-saturate-200',
           'rounded-[28px]',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.06)]',
-          'border border-white/[0.09]',
+          'bg-[#122648]/95 backdrop-blur-xl backdrop-saturate-150',
+          'shadow-[0_8px_32px_rgba(0,0,0,0.55)]',
+          'border-0',
           'h-16',
         )}
         style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
@@ -181,6 +251,7 @@ export default function BottomNav() {
           {/* Left 2 items */}
           {COACH_LEFT.map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href);
+            const isHome = href === '/admin/dashboard';
             return (
               <li key={href} className="flex-1 flex items-center justify-center">
                 <Link
@@ -191,15 +262,16 @@ export default function BottomNav() {
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <span
+                  <Icon
                     className={cn(
-                      'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-2xl transition-colors duration-fast',
-                      isActive && 'bg-brand/10',
+                      'transition-transform duration-fast',
+                      isHome ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
+                      isActive && 'scale-110',
                     )}
-                  >
-                    <Icon className={cn('w-[18px] h-[18px] transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                    <span className={cn('text-[9px]', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
-                  </span>
+                    weight={isActive ? 'fill' : 'regular'}
+                    {...(Icon === AuronAIcon ? { active: isActive } : {})}
+                  />
+                  <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>{label}</span>
                 </Link>
               </li>
             );
@@ -225,6 +297,7 @@ export default function BottomNav() {
           {/* Right 2 items */}
           {COACH_RIGHT.map(({ href, label, icon: Icon }) => {
             const isActive = pathname.startsWith(href);
+            const isTreinos = href === '/admin/treinos';
             return (
               <li key={href} className="flex-1 flex items-center justify-center">
                 <Link
@@ -235,15 +308,12 @@ export default function BottomNav() {
                   )}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <span
-                    className={cn(
-                      'flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-2xl transition-colors duration-fast',
-                      isActive && 'bg-brand/10',
-                    )}
-                  >
-                    <Icon className={cn('w-[18px] h-[18px] transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                    <span className={cn('text-[9px]', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
-                  </span>
+                  <Icon className={cn(
+                    'transition-transform duration-fast',
+                    isTreinos ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
+                    isActive && 'scale-110',
+                  )} weight={isActive ? 'fill' : 'regular'} {...(Icon === AuronLinkIcon ? { active: isActive } : {})} />
+                  <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>{label}</span>
                 </Link>
               </li>
             );

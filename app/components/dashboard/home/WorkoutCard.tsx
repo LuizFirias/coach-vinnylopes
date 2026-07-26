@@ -7,6 +7,11 @@ import { dashboardColors } from '@/lib/tokens/dashboardColors';
 
 type TreinoStatus = 'pendente' | 'concluido' | 'off' | 'sem-plano';
 
+const workoutCardBackground = {
+  background:
+    'linear-gradient(180deg, rgba(43, 127, 255, 0.14) 0%, rgba(43, 127, 255, 0.22) 100%), linear-gradient(180deg, var(--dash-hero-from) 0%, var(--dash-hero-to) 100%)',
+};
+
 interface WorkoutCardProps {
   status: TreinoStatus;
   nome?: string;
@@ -14,10 +19,6 @@ interface WorkoutCardProps {
   qtdExercicios?: number;
   checkinPontos?: number | null;
   onAlterar?: () => void;
-}
-
-function toTitleCase(str: string) {
-  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
 }
 
 export function WorkoutCard({
@@ -36,7 +37,8 @@ export function WorkoutCard({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, type: 'spring', stiffness: 260, damping: 24 }}
-        className="dashboard-card relative z-10 mx-4 -mt-6 rounded-[20px] border-x border-b p-6 text-center"
+        className="dashboard-card relative z-10 mx-4 -mt-6 rounded-[20px] border-0 p-6 text-center"
+        style={workoutCardBackground}
       >
         <ClipboardText
           className="mx-auto mb-2 h-8 w-8"
@@ -64,7 +66,8 @@ export function WorkoutCard({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, type: 'spring', stiffness: 260, damping: 24 }}
-        className="dashboard-card relative z-10 mx-4 -mt-6 rounded-[20px] border-x border-b p-5"
+        className="dashboard-card relative z-10 mx-4 -mt-6 rounded-[20px] border-0 p-5"
+        style={workoutCardBackground}
       >
         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: dashboardColors.accent }}>
           Treino de hoje
@@ -73,7 +76,7 @@ export function WorkoutCard({
         <p className="mt-1 text-sm dashboard-text-subtle">Recuperação ativa</p>
         <Link
           href="/aluno/medidas"
-          className="dashboard-card mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border text-sm font-medium dashboard-text-muted"
+          className="dashboard-card mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-0 text-sm font-medium dashboard-text-muted"
         >
           <Ruler className="h-4 w-4" />
           Registrar evolução
@@ -89,7 +92,8 @@ export function WorkoutCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, type: 'spring', stiffness: 260, damping: 24 }}
-      className="dashboard-card relative z-10 mx-4 -mt-6 rounded-[20px] border-x border-b p-5"
+      className="dashboard-card relative z-10 mx-4 -mt-6 rounded-[20px] border-0 p-5"
+      style={workoutCardBackground}
     >
       <div className="mb-1 flex items-center justify-between">
         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: dashboardColors.accent }}>
@@ -106,10 +110,10 @@ export function WorkoutCard({
         )}
       </div>
 
-      <p className="text-sm font-medium dashboard-text-muted">
-        {nome ? toTitleCase(nome) : 'Rotina prescrita'}
+      <p className="text-2xl font-extrabold uppercase tracking-tight dashboard-text">
+        {nome || 'Rotina prescrita'}
       </p>
-      <p className="mt-1 text-2xl font-extrabold tracking-tight dashboard-text">
+      <p className="mt-1 text-sm font-medium dashboard-text-muted">
         {isConcluido ? 'Treino concluído' : 'Pronto para treinar'}
       </p>
       <p className="mt-1 text-sm dashboard-text-subtle">

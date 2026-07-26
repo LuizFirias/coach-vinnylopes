@@ -145,7 +145,7 @@ export default function AdminRankingPage() {
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
-        <div className="mb-6 py-4 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="mb-6 py-4 border-b border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight font-display">
               Ranking de Performance
@@ -154,7 +154,7 @@ export default function AdminRankingPage() {
           </div>
 
           {/* Filtro de Período */}
-          <div className="flex gap-1 p-0.5 bg-surface-2 border border-border-subtle rounded-lg sm:w-80 w-full shrink-0 h-9.5 items-center">
+          <div className="flex gap-1 p-0.5 bg-surface-2 border border-card rounded-lg sm:w-80 w-full shrink-0 h-9.5 items-center">
             {[
               { key: 'total', label: 'Total' },
               { key: 'mes_atual', label: 'Este mês' },
@@ -166,7 +166,7 @@ export default function AdminRankingPage() {
                 className={cn(
                   'flex-1 py-1 px-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-8.5',
                   periodo === key
-                    ? 'bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm'
+                    ? 'bg-surface-0 border border-card/50 text-text-primary shadow-sm'
                     : 'text-text-secondary hover:text-text-primary'
                 )}
               >
@@ -185,19 +185,19 @@ export default function AdminRankingPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <DumbbellLoader text="Calculando posições..." />
+            <DumbbellLoader text="Calculando posições..." variant="inline" />
           </div>
         ) : entries.length === 0 ? (
-          <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl py-12 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
-            <div className="w-10 h-10 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled mb-4">
+          <div className="bg-surface-1 border border-card shadow-sm rounded-xl py-12 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="w-10 h-10 rounded-lg bg-surface-2 border border-card flex items-center justify-center text-text-disabled mb-4">
               <Star className="w-5 h-5" />
             </div>
             <h2 className="text-sm font-bold text-text-primary mb-1">Nenhum aluno listado</h2>
             <p className="text-xs text-text-tertiary max-w-xs leading-normal">O ranking será preenchido conforme os alunos concluírem treinos e acumularem pontos.</p>
           </div>
         ) : (
-          <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl overflow-hidden">
-            <div className="hidden md:grid grid-cols-[60px_1fr_120px_120px] px-5 py-2.5 bg-surface-2 border-b border-border-subtle">
+          <div className="bg-surface-1 border border-card shadow-sm rounded-xl overflow-hidden">
+            <div className="hidden md:grid grid-cols-[60px_1fr_120px_120px] px-5 py-2.5 bg-surface-2 border-b border-divider">
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Posição</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Aluno</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary text-right">Pontuação</span>
@@ -224,7 +224,7 @@ export default function AdminRankingPage() {
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
                       <div className={cn(
                         'w-7 h-7 rounded-md flex items-center justify-center overflow-hidden border flex-shrink-0',
-                        isTop3 ? 'border-brand/30 bg-surface-2' : 'border-border-subtle bg-surface-2',
+                        isTop3 ? 'border-brand/30 bg-surface-2' : 'border-card bg-surface-2',
                       )}>
                         {avatarSrc ? (
                           <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
@@ -242,7 +242,7 @@ export default function AdminRankingPage() {
 
                     <div className="hidden md:flex items-center justify-end gap-1 flex-shrink-0 min-w-[120px]">
                       <Lightning className="w-3.5 h-3.5 text-brand" />
-                      <span className="text-xs font-bold text-brand font-mono tabular-nums">{entry.total_pontos} pts</span>
+                      <span className="text-xs font-bold text-brand font-mono tabular-nums lining-nums">{entry.total_pontos} pts</span>
                     </div>
 
                     <div className="hidden md:flex items-center justify-end flex-shrink-0 min-w-[120px]">
@@ -254,7 +254,7 @@ export default function AdminRankingPage() {
                         className={cn(
                           "text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded transition-colors",
                           entry.oculto_no_ranking
-                            ? "bg-surface-3 border border-border-subtle text-text-tertiary hover:bg-surface-4"
+                            ? "bg-surface-3 border border-card text-text-tertiary hover:bg-surface-4"
                             : "bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20"
                         )}
                       >
@@ -265,7 +265,7 @@ export default function AdminRankingPage() {
                     {/* Mobile pontos */}
                     <div className="flex md:hidden items-center gap-0.5 flex-shrink-0">
                       <Lightning className="w-3 h-3 text-brand" />
-                      <span className="text-xs font-bold text-brand font-mono tabular-nums">{entry.total_pontos}</span>
+                      <span className="text-xs font-bold text-brand font-mono tabular-nums lining-nums">{entry.total_pontos}</span>
                     </div>
                   </div>
                 );

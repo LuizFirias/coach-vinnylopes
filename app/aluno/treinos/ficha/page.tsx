@@ -646,7 +646,7 @@ function FichaContent() {
   if (!ficha) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center p-6 lg:pl-28">
-        <div className="bg-surface-1 border border-border-subtle shadow-elev-2 rounded-2xl p-10 text-center max-w-sm w-full">
+        <div className="bg-surface-1 border border-card shadow-elev-2 rounded-2xl p-10 text-center max-w-sm w-full">
           <div className="w-16 h-16 rounded-2xl bg-surface-3 flex items-center justify-center mx-auto mb-5 text-text-tertiary">
             <Barbell className="w-7 h-7" />
           </div>
@@ -697,13 +697,13 @@ function FichaContent() {
                   <p className="text-2xs font-semibold uppercase tracking-caps text-brand">Tempo</p>
                   <p className="text-sm font-bold text-text-primary font-mono leading-tight">{formatTime(seconds)}</p>
                 </div>
-                <div className="px-3 py-2 bg-surface-1 border border-border-subtle shadow-elev-1 rounded-xl text-center min-w-[68px]">
+                <div className="px-3 py-2 bg-surface-1 border border-card shadow-elev-1 rounded-xl text-center min-w-[68px]">
                   <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Volume</p>
                   <p className="text-sm font-bold text-brand leading-tight">
                     {totalVolume}<span className="text-2xs text-text-disabled ml-0.5">kg</span>
                   </p>
                 </div>
-                <div className="px-3 py-2 bg-surface-1 border border-border-subtle shadow-elev-1 rounded-xl text-center min-w-[52px]">
+                <div className="px-3 py-2 bg-surface-1 border border-card shadow-elev-1 rounded-xl text-center min-w-[52px]">
                   <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Sets</p>
                   <p className="text-sm font-bold text-text-primary leading-tight">{totalSets}</p>
                 </div>
@@ -713,7 +713,7 @@ function FichaContent() {
 
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-text-primary tracking-tight leading-tight">
+              <h1 className="text-2xl font-bold uppercase tracking-wide text-text-primary leading-tight">
                 {ficha.nome_rotina}
               </h1>
               <p className="mt-0.5 text-xs font-medium text-text-tertiary">
@@ -724,7 +724,7 @@ function FichaContent() {
               <button
                 onClick={handleBaixarPDF}
                 disabled={downloadingPDF}
-                className="h-8.5 px-3 bg-surface-1 border border-border-subtle shadow-sm rounded-lg text-2xs font-bold text-text-secondary hover:text-text-primary hover:border-border-default transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                className="h-8.5 px-3 bg-surface-1 border border-card shadow-sm rounded-lg text-2xs font-bold text-text-secondary hover:text-text-primary hover:border-card-hover transition-colors flex items-center gap-1.5 disabled:opacity-50"
               >
                 {downloadingPDF ? <CircleNotch className="w-3 animate-spin" /> : <FileArrowDown className="w-3 h-3" />}
                 PDF
@@ -790,7 +790,7 @@ function FichaContent() {
 
         {/* ── Banner: treino iniciado, timer não começou ── */}
         {treinoIniciado && !timerStartAt && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl">
+          <div className="flex items-center gap-3 px-4 py-3 bg-surface-1 border border-card shadow-elev-1 rounded-2xl">
             <div className="w-8 h-8 rounded-full bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0 animate-pulse">
               <Lightning className="w-3.5 h-3.5" />
             </div>
@@ -805,16 +805,16 @@ function FichaContent() {
           {ficha.exercicios.map((exercicio, exIdx) => (
             <div
               key={exercicio.id}
-              className="bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-lg transition-all"
+              className="bg-surface-1 border border-card shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-lg transition-all"
             >
               {/* Cabeçalho do exercício */}
-              <div className="flex items-start gap-2.5 px-4 pt-4 pb-3 border-b border-border-subtle/50">
+              <div className="flex items-start gap-2.5 px-4 pt-4 pb-3 border-b border-divider/50">
                 <div className="w-8 h-8 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
                   <Barbell className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-semibold text-text-primary leading-tight">{toTitleCase(exercicio.nome)}</h3>
+                    <h3 className="text-sm font-normal text-text-primary leading-tight">{toTitleCase(exercicio.nome)}</h3>
                     {exercicio.video_url && (
                       <button
                         onClick={() => setVideoModal(exercicio.video_url || null)}
@@ -839,7 +839,7 @@ function FichaContent() {
 
               {/* Observações do coach */}
               {exercicio.observacoes && (
-                <div className="mx-4 mb-3 px-2.5 py-2 bg-surface-2 border border-border-subtle rounded-md">
+                <div className="mx-4 mb-3 px-2.5 py-2 bg-surface-2 border border-card rounded-md">
                   <p className="text-[10px] font-semibold uppercase tracking-caps text-text-tertiary mb-1">Observações</p>
                   <p className="text-[11px] text-text-secondary leading-relaxed">{exercicio.observacoes}</p>
                 </div>
@@ -897,7 +897,7 @@ function FichaContent() {
                           <div key={sIdx}>
                             {/* Mobile Set Row */}
                             <div className={cn(
-                              "md:hidden flex items-center gap-1 py-0.5 px-3 transition-all border border-border-subtle/30 rounded-md",
+                              "md:hidden flex items-center gap-1 py-0.5 px-3 transition-all border border-card/30 rounded-md",
                               serie.completado ? "bg-success/5 border-success-border/20" : "bg-surface-0"
                             )}>
                               {/* Set number */}
@@ -927,7 +927,7 @@ function FichaContent() {
                                   onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
                                   disabled={!treinoIniciado || serie.completado}
                                   placeholder="0"
-                                  className="w-full h-6 bg-surface-2 border border-border-subtle rounded-md text-center text-[10px] font-bold text-text-primary focus:border-brand focus:outline-none disabled:opacity-50"
+                                  className="w-full h-6 bg-surface-2 border border-input rounded-md text-center text-[10px] font-bold text-text-primary focus:border-brand focus:outline-none disabled:opacity-50"
                                 />
                               </div>
 
@@ -941,7 +941,7 @@ function FichaContent() {
                                 {serie.tecnica ? (
                                   <button
                                     onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                    className="px-1 py-0.5 bg-surface-2 border border-border-subtle/50 rounded text-[8px] font-semibold text-text-tertiary hover:border-brand/30 transition-colors uppercase leading-none"
+                                    className="px-1 py-0.5 bg-surface-2 border border-card/50 rounded text-[8px] font-semibold text-text-tertiary hover:border-brand/30 transition-colors uppercase leading-none"
                                   >
                                     {serie.tecnica.substring(0, 2).toUpperCase()}
                                   </button>
@@ -980,7 +980,7 @@ function FichaContent() {
                             {/* Desktop */}
                             <div className={cn(
                               "hidden md:grid gap-1.5 items-center p-1.5 rounded-lg border transition-all overflow-x-auto min-w-max",
-                              serie.completado ? "bg-success-subtle border-success-border" : "bg-surface-0/60 border-transparent hover:border-border-subtle"
+                              serie.completado ? "bg-success-subtle border-success-border" : "bg-surface-0/60 border-transparent hover:border-card"
                             )} style={{ gridTemplateColumns: gridTemplate }}>
                               <div className={cn(
                                 "w-7 h-7 rounded-full flex items-center justify-center border font-bold text-xs",
@@ -997,7 +997,7 @@ function FichaContent() {
                                   value={serie.peso_atual || ""}
                                   onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
                                   disabled={!treinoIniciado}
-                                  className="w-full h-8 bg-surface-3 border border-border-subtle rounded-md text-center text-xs font-semibold text-text-primary focus:border-brand/40 outline-none disabled:opacity-40"
+                                  className="w-full h-8 bg-surface-3 border border-input rounded-md text-center text-xs font-semibold text-text-primary focus:border-brand/40 outline-none disabled:opacity-40"
                                   placeholder="0"
                                 />
                               </div>
@@ -1006,7 +1006,7 @@ function FichaContent() {
                                   {serie.tecnica ? (
                                     <button
                                       onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-text-tertiary bg-surface-3 border border-border-subtle/50 hover:opacity-80 transition-opacity"
+                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-text-tertiary bg-surface-3 border border-card/50 hover:opacity-80 transition-opacity"
                                     >
                                       {serie.tecnica}
                                     </button>
@@ -1026,7 +1026,7 @@ function FichaContent() {
                                 </div>
                               )}
                               <div className="flex justify-center">
-                                <div className="w-full h-8 bg-surface-2 border border-border-subtle rounded-md flex items-center justify-center">
+                                <div className="w-full h-8 bg-surface-2 border border-card rounded-md flex items-center justify-center">
                                   <span className="text-xs font-semibold text-brand">{serie.reps || "0"}</span>
                                 </div>
                               </div>
@@ -1055,14 +1055,14 @@ function FichaContent() {
         </div>
 
         {/* ── Feedback ── */}
-        <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-5">
+        <div className="bg-surface-1 border border-card shadow-elev-1 rounded-2xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-0.5">Feedback do Treino</h3>
           <p className="text-xs text-text-tertiary mb-4">Apenas seu coach poderá ver este feedback</p>
           <textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Como foi o treino? Sentiu alguma dor? Conseguiu completar todas as séries?"
-            className="w-full px-3 py-2.5 bg-surface-3 border border-border-subtle rounded-xl text-sm text-text-primary placeholder:text-text-disabled focus:border-brand/40 outline-none resize-none mb-3 transition-colors"
+            className="w-full px-3 py-2.5 bg-surface-3 border border-input rounded-xl text-sm text-text-primary placeholder:text-text-disabled focus:border-brand/40 outline-none resize-none mb-3 transition-colors"
             rows={4}
           />
           <button
@@ -1107,7 +1107,7 @@ function FichaContent() {
       {/* ── Modal de Confirmação de Finalização ── */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm bg-surface-1 border border-border-subtle shadow-elev-2 rounded-2xl p-6">
+          <div className="relative w-full max-w-sm bg-surface-1 border border-card shadow-elev-2 rounded-2xl p-6">
             <div className="w-14 h-14 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-4">
               <WarningCircle className="w-7 h-7 text-brand" />
             </div>
@@ -1125,7 +1125,7 @@ function FichaContent() {
               </button>
               <button
                 onClick={() => setShowConfirmModal(false)}
-                className="w-full h-11 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
+                className="w-full h-11 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
               >
                 Continuar Treinando
               </button>
@@ -1160,7 +1160,7 @@ function FichaContent() {
               </button>
               <button
                 onClick={() => setShowDiscardModal(false)}
-                className="w-full h-11 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
+                className="w-full h-11 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
               >
                 Continuar Treinando
               </button>
@@ -1172,7 +1172,7 @@ function FichaContent() {
       {/* ── Modal de Saída ── */}
       {showExitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm bg-surface-1 border border-border-subtle shadow-elev-2 rounded-2xl p-6">
+          <div className="relative w-full max-w-sm bg-surface-1 border border-card shadow-elev-2 rounded-2xl p-6">
             <div className="w-14 h-14 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-4">
               <WarningCircle className="w-7 h-7 text-brand" />
             </div>
@@ -1190,7 +1190,7 @@ function FichaContent() {
               </button>
               <button
                 onClick={() => setShowExitModal(false)}
-                className="w-full h-11 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
+                className="w-full h-11 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
               >
                 Continuar Treinando
               </button>
@@ -1215,7 +1215,7 @@ function FichaContent() {
               <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-2.5 bg-surface-1 border-b border-brand/30">
                 <span className="text-base">⏱</span>
                 <span className="text-xs text-text-secondary">Descanso</span>
-                <span className="flex-1 text-center text-xl font-bold text-brand tabular-nums">
+                <span className="flex-1 text-center text-xl font-bold text-brand tabular-nums lining-nums">
                   {Math.floor(restTimer / 60)}:{String(restTimer % 60).padStart(2, '0')}
                 </span>
                 <button
@@ -1246,7 +1246,7 @@ function FichaContent() {
             </div>
 
             {/* Vídeo */}
-            <div className="w-full aspect-video bg-surface-0 border-y border-border-subtle flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-full aspect-video bg-surface-0 border-y border-divider flex items-center justify-center overflow-hidden flex-shrink-0">
               {ficha.exercicios[exercicioAtivo].video_url ? (
                 <iframe
                   src={ficha.exercicios[exercicioAtivo].video_url}
@@ -1281,7 +1281,7 @@ function FichaContent() {
                       </button>
                       <button
                         onClick={() => { setDescansoAtivo(false); setDescansoExpirado(false); setDescansoEndAt(null); }}
-                        className="w-full py-2 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs"
+                        className="w-full py-2 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs"
                       >
                         Cancelar
                       </button>
@@ -1292,10 +1292,10 @@ function FichaContent() {
                         <Clock className="w-6 h-6 text-brand" />
                       </div>
                       <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">Descanso</p>
-                      <p className="text-5xl font-bold text-text-primary font-mono mb-5">{formatarTempoDescanso(tempoDescanso)}</p>
+                      <p className="text-5xl font-bold text-text-primary font-mono mb-5 tabular-nums lining-nums tracking-display">{formatarTempoDescanso(tempoDescanso)}</p>
                       <button
                         onClick={() => { setDescansoAtivo(false); setDescansoExpirado(false); setDescansoEndAt(null); proximaSerie(); }}
-                        className="px-5 py-2 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs"
+                        className="px-5 py-2 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs"
                       >
                         Pular Descanso
                       </button>
@@ -1326,11 +1326,11 @@ function FichaContent() {
 
               {/* Stats da série */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-surface-2 border border-border-subtle rounded-xl p-3 text-center">
+                <div className="bg-surface-2 border border-card rounded-xl p-3 text-center">
                   <p className="text-2xs text-text-tertiary mb-1">Repetições</p>
                   <p className="text-lg font-bold text-brand">{ficha.exercicios[exercicioAtivo].series[serieAtual]?.reps || "0"}</p>
                 </div>
-                <div className="bg-surface-2 border border-border-subtle rounded-xl p-3 text-center">
+                <div className="bg-surface-2 border border-card rounded-xl p-3 text-center">
                   <p className="text-2xs text-text-tertiary mb-1">Carga</p>
                   <p className="text-lg font-bold text-text-primary">{cargaTemporaria} kg</p>
                 </div>
@@ -1343,7 +1343,7 @@ function FichaContent() {
                 return (
                   <div className={cn("grid gap-2", hasTec && hasExtra ? "grid-cols-2" : "grid-cols-1")}>
                     {hasTec && (
-                      <div className="bg-surface-2 border border-border-subtle rounded-xl p-3 text-center">
+                      <div className="bg-surface-2 border border-card rounded-xl p-3 text-center">
                         <p className="text-2xs text-text-tertiary mb-1">Técnica</p>
                         <p className="text-sm font-bold text-text-secondary">{serie.tecnica}</p>
                       </div>
@@ -1362,7 +1362,7 @@ function FichaContent() {
               })()}
 
               {/* Ajuste de carga */}
-              <div className="bg-surface-2 border border-border-subtle rounded-xl p-3">
+              <div className="bg-surface-2 border border-card rounded-xl p-3">
                 <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Ajustar Carga (kg)</p>
                 <div className="flex items-center gap-2">
                   <button
@@ -1375,7 +1375,7 @@ function FichaContent() {
                     type="number"
                     value={cargaTemporaria}
                     onChange={(e) => setCargaTemporaria(parseFloat(e.target.value) || 0)}
-                    className="flex-1 h-11 bg-surface-0 border border-border-subtle rounded-xl text-center text-xl font-bold text-text-primary focus:border-brand/40 outline-none"
+                    className="flex-1 h-11 bg-surface-0 border border-input rounded-xl text-center text-xl font-bold text-text-primary focus:border-brand/40 outline-none"
                     step="0.5"
                   />
                   <button
@@ -1389,7 +1389,7 @@ function FichaContent() {
 
               {/* Anterior */}
               {ficha.exercicios[exercicioAtivo].series[serieAtual]?.anterior && (
-                <div className="px-3 py-2.5 bg-surface-2 border border-border-subtle rounded-xl">
+                <div className="px-3 py-2.5 bg-surface-2 border border-card rounded-xl">
                   <p className="text-2xs text-text-tertiary mb-0.5">Última vez</p>
                   <p className="text-sm font-mono text-text-primary">
                     {ficha.exercicios[exercicioAtivo].series[serieAtual].anterior}
@@ -1399,7 +1399,7 @@ function FichaContent() {
             </div>
 
             {/* Botão concluir */}
-            <div className="px-5 py-4 border-t border-border-subtle">
+            <div className="px-5 py-4 border-t border-divider">
               <button
                 onClick={() => {
                   if (serieAtual >= ficha.exercicios[exercicioAtivo].series.length - 1) {

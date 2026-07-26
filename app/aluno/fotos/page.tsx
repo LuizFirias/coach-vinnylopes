@@ -231,7 +231,7 @@ export default function FotosPage() {
                 <div 
                   className={cn(
                     'aspect-[3/4] rounded-2xl border transition-all duration-120 flex flex-col items-center justify-center gap-2 relative overflow-hidden',
-                    'border-white/8 active:scale-97 hover:scale-[0.99] hover:border-brand/40',
+                    'border-card active:scale-97 hover:scale-[0.99] hover:border-brand/40',
                     uploading.has(tipo) ? 'bg-brand/5' : ''
                   )}
                   style={{
@@ -253,7 +253,7 @@ export default function FotosPage() {
                         <PoseIcon tipo={tipo} />
                       </div>
                       <span className="text-xs font-semibold text-text-secondary group-hover:text-text-primary transition-colors">{LABEL[tipo]}</span>
-                      <div className="w-6 h-6 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center text-text-tertiary group-hover:bg-brand/10 group-hover:border-brand/30 group-hover:text-brand transition-all">
+                      <div className="w-6 h-6 rounded-full bg-surface-3 border border-card flex items-center justify-center text-text-tertiary group-hover:bg-brand/10 group-hover:border-brand/30 group-hover:text-brand transition-all">
                         <UploadSimple className="w-3 h-3" />
                       </div>
                     </>
@@ -264,7 +264,7 @@ export default function FotosPage() {
           </div>
 
           {/* Dica educativa */}
-          <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-border-subtle">
+          <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-card">
             <span className="text-base leading-none mt-0.5">💡</span>
             <p className="text-xs text-text-tertiary leading-relaxed">
               Mesma roupa, mesma luz, mesmo horário. Manhã em jejum é o ideal para comparações consistentes.
@@ -273,7 +273,7 @@ export default function FotosPage() {
         </section>
 
         {/* ── Privacidade ── */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-border-subtle">
+        <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-card">
           <Lock className="w-3.5 h-3.5 text-text-tertiary flex-shrink-0" />
           <p className="text-xs text-text-tertiary">Suas fotos são privadas e visíveis apenas pelo seu coach.</p>
         </div>
@@ -281,7 +281,7 @@ export default function FotosPage() {
         {/* ── Timeline + galeria ── */}
         {sessoes.length === 0 ? (
           <div className="flex flex-col items-center py-16 gap-3 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-tertiary">
+            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-card flex items-center justify-center text-text-tertiary">
               <ImageIcon className="w-7 h-7" />
             </div>
             <p className="text-sm font-semibold text-text-primary">Nenhuma foto ainda</p>
@@ -340,7 +340,7 @@ export default function FotosPage() {
                     <div key={tipo} className="relative group">
                       <div
                         className={cn(
-                          'aspect-[3/4] rounded-2xl overflow-hidden border border-white/8 relative bg-surface-2 transition-all duration-120 active:scale-97 hover:scale-[0.99]',
+                          'aspect-[3/4] rounded-2xl overflow-hidden border border-card relative bg-surface-2 transition-all duration-120 active:scale-97 hover:scale-[0.99]',
                           foto && 'cursor-pointer'
                         )}
                         style={{
@@ -381,7 +381,7 @@ export default function FotosPage() {
                       {foto && (
                         <button
                           onClick={() => setPhotoToDelete(foto)}
-                          className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-xs flex items-center justify-center text-danger hover:bg-danger hover:text-white border border-white/5 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-xs flex items-center justify-center text-danger hover:bg-danger hover:text-white border border-card transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                         >
                           <Trash className="w-3.5 h-3.5" />
                         </button>
@@ -431,7 +431,7 @@ export default function FotosPage() {
               <button
                 onClick={() => setPhotoToDelete(null)}
                 disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-border-subtle text-sm text-text-secondary"
+                className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-card text-sm text-text-secondary"
               >
                 Cancelar
               </button>

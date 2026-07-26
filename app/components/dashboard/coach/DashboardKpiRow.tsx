@@ -32,7 +32,7 @@ export function CoachKpiCard({
   return (
     <div
       className={cn(
-        "bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm flex flex-col justify-center min-h-[88px]",
+        "bg-surface-1 border border-card rounded-xl p-4 shadow-sm flex flex-col justify-center min-h-[88px]",
         compact && "p-3 min-h-[80px]",
         alert && "border-danger/30"
       )}
@@ -50,8 +50,8 @@ export function CoachKpiCard({
       </div>
       <div
         className={cn(
-          "font-bold tracking-tight text-text-primary font-mono tabular-nums leading-none",
-          compact ? "text-[26px]" : "text-[32px]"
+          "font-bold text-text-primary font-mono tabular-nums lining-nums leading-none",
+          compact ? "text-[26px] tracking-tight" : "text-[32px] tracking-display"
         )}
       >
         {value}
@@ -93,7 +93,7 @@ export function DashboardKpiRow({
 }: DashboardKpiRowProps) {
   return (
     <div>
-      <h2 className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase border-t border-border-subtle/50 pt-3 mb-2.5">
+      <h2 className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase border-t border-divider/50 pt-3 mb-2.5">
         Visão geral
       </h2>
       <div

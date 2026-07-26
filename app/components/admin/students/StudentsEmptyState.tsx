@@ -28,7 +28,7 @@ export function StudentsEmptyState({ variant, onAddStudent }: StudentsEmptyState
   }
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-border-subtle pt-4 mt-2 px-1">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-divider pt-4 mt-2 px-1">
       <p className="text-xs text-text-tertiary leading-relaxed flex-1">
         Adicione mais alunos para ver análises comparativas de engajamento e performance.
       </p>

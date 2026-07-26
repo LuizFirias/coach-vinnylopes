@@ -15,7 +15,7 @@ export function QuickActions() {
       <Link
         href="/aluno/medidas"
         id="btn-registrar-evolucao"
-        className="dashboard-card flex flex-col items-center gap-1.5 rounded-[14px] border py-4 transition-colors active:scale-[0.98]"
+        className="dashboard-card flex flex-col items-center gap-1.5 rounded-[14px] border-0 py-4 transition-colors active:scale-[0.98]"
       >
         <TrendUp className="h-5 w-5 dashboard-text-muted" />
         <span className="text-center text-xs font-semibold dashboard-text-muted">
@@ -26,7 +26,7 @@ export function QuickActions() {
       <Link
         href="/aluno/treinos"
         id="btn-ver-historico"
-        className="dashboard-card flex flex-col items-center gap-1.5 rounded-[14px] border py-4 transition-colors active:scale-[0.98]"
+        className="dashboard-card flex flex-col items-center gap-1.5 rounded-[14px] border-0 py-4 transition-colors active:scale-[0.98]"
       >
         <Clock className="h-5 w-5 dashboard-text-muted" />
         <span className="text-center text-xs font-semibold dashboard-text-muted">

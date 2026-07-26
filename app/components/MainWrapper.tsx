@@ -12,7 +12,7 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
     pathname.startsWith('/super-admin');
 
   const className = isInternal
-    ? 'pb-20 lg:pb-0 lg:ml-[var(--sidebar-width,240px)] transition-[margin-left] duration-300'
+    ? 'lg:ml-[var(--sidebar-width,240px)] transition-[margin-left] duration-300'
     : 'pt-0';
 
   return <main className={className}>{children}</main>;

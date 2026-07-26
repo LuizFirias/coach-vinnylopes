@@ -28,7 +28,7 @@ function PasswordField({
           value={value}
           onChange={(e) => { onChange(e.target.value); onClearMessage?.(); }}
           placeholder={placeholder}
-          className="w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 pr-12 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+          className="w-full h-12 bg-surface-0 border border-input text-text-primary px-4 pr-12 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
         />
         <button type="button" onClick={onToggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors">
           {show ? <EyeSlash size={18} /> : <Eye size={18} />}
@@ -92,10 +92,10 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="relative bg-surface-1 border border-border-subtle rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="relative bg-surface-1 border border-card rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-border-subtle flex-shrink-0">
+        <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-divider flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-brand/10 flex items-center justify-center text-brand flex-shrink-0">
               <Lock size={18} />
@@ -129,7 +129,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
 
             {/* Requisitos */}
             {newPassword.length > 0 && (
-              <div className="bg-surface-0 border border-border-subtle rounded-xl p-4 space-y-2">
+              <div className="bg-surface-0 border border-card rounded-xl p-4 space-y-2">
                 <p className="text-2xs font-bold uppercase tracking-caps text-brand mb-2">Requisitos de segurança</p>
                 {[
                   [req.minLength, 'Mínimo 8 caracteres'],
@@ -159,7 +159,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
                   className={`w-full h-12 bg-surface-0 border text-text-primary px-4 pr-20 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none transition-colors ${
                     confirmPassword.length > 0
                       ? match ? 'border-success/40 focus:border-success/60' : 'border-danger/40 focus:border-danger/60'
-                      : 'border-border-subtle focus:border-brand/40'
+                      : 'border-card focus:border-brand/40'
                   }`}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -178,8 +178,8 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }: Chan
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-6 py-5 border-t border-border-subtle flex-shrink-0">
-          <button type="button" onClick={onClose} disabled={loading} className="flex-1 h-11 bg-surface-2 border border-border-subtle text-text-secondary text-xs font-semibold rounded-xl hover:bg-surface-3 transition-colors disabled:opacity-50">
+        <div className="flex gap-3 px-6 py-5 border-t border-divider flex-shrink-0">
+          <button type="button" onClick={onClose} disabled={loading} className="flex-1 h-11 bg-surface-2 border border-card text-text-secondary text-xs font-semibold rounded-xl hover:bg-surface-3 transition-colors disabled:opacity-50">
             Cancelar
           </button>
           <button

@@ -63,10 +63,10 @@ export default function ChangeNameModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="relative bg-surface-1 border border-border-subtle rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="relative bg-surface-1 border border-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-border-subtle">
+        <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-divider">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-brand/10 flex items-center justify-center text-brand flex-shrink-0">
               <User size={18} />
@@ -110,7 +110,7 @@ export default function ChangeNameModal({
               placeholder="Digite seu nome e sobrenome"
               disabled={loading}
               required
-              className="w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+              className="w-full h-12 bg-surface-0 border border-input text-text-primary px-4 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
             />
           </div>
 
@@ -119,7 +119,7 @@ export default function ChangeNameModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 h-11 bg-surface-2 border border-border-subtle text-text-secondary text-xs font-semibold rounded-xl hover:bg-surface-3 transition-colors disabled:opacity-50"
+              className="flex-1 h-11 bg-surface-2 border border-card text-text-secondary text-xs font-semibold rounded-xl hover:bg-surface-3 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>

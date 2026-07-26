@@ -180,7 +180,7 @@ export function FichasKanban({
             key={ficha.id}
             className={cn(
               "flex flex-col rounded-xl border bg-[#141414] transition-colors",
-              isColOver ? "border-[#2b7fff]/50" : "border-[#222222]",
+              isColOver ? "border-[#2b7fff]/50" : "border-card",
               dragColId === ficha.id && "opacity-60",
             )}
             onDragOver={(e) => {
@@ -195,7 +195,7 @@ export function FichasKanban({
             }}
           >
             {/* Column header */}
-            <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-[#222222]">
+            <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-divider">
               <div className="flex items-start gap-1.5 min-w-0 flex-1">
                 <button
                   type="button"
@@ -353,7 +353,7 @@ export function FichasKanban({
       <button
         type="button"
         onClick={onCreateTreino}
-        className="min-h-28 rounded-xl border border-dashed border-[#282828] bg-transparent text-[11px] font-medium text-[#39c75a] hover:border-[#39c75a]/40 hover:bg-[#39c75a]/5 transition-colors flex flex-col items-center justify-center gap-2"
+        className="min-h-28 rounded-xl border border-dashed border-card bg-transparent text-[11px] font-medium text-[#39c75a] hover:border-[#39c75a]/40 hover:bg-[#39c75a]/5 transition-colors flex flex-col items-center justify-center gap-2"
       >
         <Plus size={18} />
         + adicionar novo treino

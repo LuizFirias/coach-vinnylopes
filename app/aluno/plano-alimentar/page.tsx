@@ -13,6 +13,7 @@ import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHea
 import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
 import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
 import { HydrationSection } from '@/app/components/nutrition/HydrationSection';
+import DumbbellLoader from '@/app/components/DumbbellLoader';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -484,64 +485,8 @@ export default function PlanoAlimentarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen pb-24 lg:pb-12 bg-surface-0">
-        <div className="max-w-2xl lg:max-w-[1000px] mx-auto flex flex-col pt-safe lg:px-6 lg:pt-10 animate-pulse">
-          <div className="px-4 pt-4 pb-3 lg:px-0">
-            <div className="h-3 w-28 rounded bg-surface-2 mb-2" />
-            <div className="h-7 w-24 rounded bg-surface-2" />
-          </div>
-
-          <div className="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-6 lg:items-start px-4 lg:px-0">
-            <div className="space-y-4 mb-4 lg:mb-0">
-              <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="h-3 w-20 rounded bg-surface-2" />
-                  <div className="h-3 w-24 rounded bg-surface-2" />
-                </div>
-                <div className="h-4 w-48 rounded bg-surface-2" />
-                <div className="h-3 w-32 rounded bg-surface-2" />
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-border-subtle">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="h-2 w-10 rounded bg-surface-2" />
-                      <div className="h-5 w-14 rounded bg-surface-2" />
-                      <div className="h-2 w-12 rounded bg-surface-2" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="hidden lg:block bg-surface-1 border border-border-subtle rounded-xl p-4">
-                <div className="flex justify-between mb-4">
-                  <div className="h-3 w-20 rounded bg-surface-2" />
-                  <div className="h-3 w-24 rounded bg-surface-2" />
-                </div>
-                <div className="flex gap-2">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="w-7 h-7 rounded bg-surface-2" />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-surface-1 border border-border-subtle rounded-xl p-4 h-14"
-                />
-              ))}
-              <div className="lg:hidden bg-surface-1 border border-border-subtle rounded-xl p-4 mt-4">
-                <div className="h-3 w-24 rounded bg-surface-2 mb-4" />
-                <div className="flex gap-2">
-                  {Array.from({ length: 8 }).map((_, j) => (
-                    <div key={j} className="w-6 h-6 rounded bg-surface-2" />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen pb-24 lg:pb-12 bg-surface-0 flex items-center justify-center">
+        <DumbbellLoader />
       </div>
     );
   }
@@ -611,7 +556,7 @@ export default function PlanoAlimentarPage() {
           {/* ── SEM PLANO (Nem digital nem PDF) ── */}
           {!digitalPlan && !planoPDF && (
             <div className="flex flex-col items-center text-center gap-4 px-4 py-8">
-              <div className="w-16 h-16 border border-border-subtle rounded-2xl bg-surface-1 flex items-center justify-center">
+              <div className="w-16 h-16 border-0 rounded-2xl bg-[#111827] flex items-center justify-center">
                 <ForkKnife className="w-8 h-8 text-brand" />
               </div>
               <div>
@@ -629,7 +574,7 @@ export default function PlanoAlimentarPage() {
                   { icon: '🥩', text: 'Consuma fontes limpas de proteínas em todas as refeições' },
                   { icon: '⏰', text: 'Tente comer a cada 3 ou 4 horas para manter o metabolismo ativo' },
                 ].map((tip, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-surface-1 border border-border-subtle rounded-xl px-4 py-3">
+                  <div key={i} className="flex items-start gap-3 bg-[#111827] border-0 rounded-xl px-4 py-3">
                     <span className="text-lg leading-none flex-shrink-0">{tip.icon}</span>
                     <span className="text-xs text-text-secondary leading-relaxed font-medium">{tip.text}</span>
                   </div>
@@ -660,7 +605,7 @@ export default function PlanoAlimentarPage() {
 
               <main className="space-y-2 mb-4 lg:mb-0">
                 {(digitalPlan.orientacoes_gerais || digitalPlan.notes) && (
-                  <div className="rounded-xl border border-brand/30 bg-brand/5 p-4 mb-2">
+                  <div className="rounded-xl border border-brand/30 bg-[#111827] p-4 mb-2">
                     <p className="text-[10px] font-semibold uppercase tracking-[1.5px] text-brand mb-2">
                       Orientações gerais
                     </p>
@@ -708,9 +653,9 @@ export default function PlanoAlimentarPage() {
           {/* ── CASO 2: APENAS PLANO PDF ATIVO (Fallback) ── */}
           {!digitalPlan && planoPDF && (
             <div className="px-4 lg:px-0 space-y-4 mb-4">
-              <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 flex items-center justify-between gap-3">
+              <div className="bg-[#111827] border-0 rounded-xl p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg border border-border-subtle bg-surface-2 flex items-center justify-center text-brand shrink-0">
+                  <div className="w-10 h-10 rounded-lg border-0 bg-surface-2 flex items-center justify-center text-brand shrink-0">
                     <ForkKnife className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
@@ -725,7 +670,7 @@ export default function PlanoAlimentarPage() {
                 <button
                   onClick={openPdf}
                   id="btn-ver-pdf-nutricao"
-                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border-subtle bg-surface-2 text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg border-0 bg-surface-2 text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Ver PDF
@@ -781,7 +726,7 @@ export default function PlanoAlimentarPage() {
 
           {/* ── HISTÓRICO DE DOCUMENTOS PDF ADICIONAIS ── */}
           {historicoPDFs.length > 0 && (
-            <div className="mx-4 lg:mx-0 mb-6 bg-surface-1 border border-border-subtle rounded-xl p-4">
+            <div className="mx-4 lg:mx-0 mb-6 bg-[#111827] border-0 rounded-xl p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3 flex items-center gap-1.5">
                 <FilePdf className="w-3.5 h-3.5" />
                 Documentos em PDF
@@ -790,7 +735,7 @@ export default function PlanoAlimentarPage() {
                 {historicoPDFs.map(histPlano => (
                   <div
                     key={histPlano.id}
-                    className="border border-border-subtle rounded-lg p-3 bg-surface-2 flex items-center justify-between gap-3"
+                    className="border-0 rounded-lg p-3 bg-[#111827] ring-1 ring-white/5 flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <FilePdf className="w-4 h-4 text-text-secondary shrink-0" />
@@ -805,7 +750,7 @@ export default function PlanoAlimentarPage() {
                     </div>
                     <button
                       onClick={() => openPdfForPlan(histPlano)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-subtle bg-surface-1 text-[10px] font-bold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-0 bg-surface-1 text-[10px] font-bold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
                     >
                       Abrir PDF
                     </button>

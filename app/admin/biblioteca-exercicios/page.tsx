@@ -364,7 +364,7 @@ export default function BibliotecaExerciciosPage() {
             placeholder="Buscar por nome ou grupo muscular..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-8 pl-10 pr-4 bg-surface-2 border border-border-subtle rounded-md text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors text-2xs shadow-sm"
+            className="w-full h-8 pl-10 pr-4 bg-surface-2 border border-input rounded-md text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors text-2xs shadow-sm"
           />
         </div>
 
@@ -376,9 +376,9 @@ export default function BibliotecaExerciciosPage() {
             onClick={() => scrollGrupos("left")}
             disabled={!canScrollGruposLeft}
             className={cn(
-              "hidden lg:flex shrink-0 w-8 h-8 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-secondary transition-colors",
+              "hidden lg:flex shrink-0 w-8 h-8 items-center justify-center rounded-md border border-card bg-surface-2 text-text-secondary transition-colors",
               canScrollGruposLeft
-                ? "hover:text-text-primary hover:border-border-default cursor-pointer"
+                ? "hover:text-text-primary hover:border-card-hover cursor-pointer"
                 : "opacity-30 cursor-default"
             )}
           >
@@ -393,12 +393,12 @@ export default function BibliotecaExerciciosPage() {
               ref={gruposScrollRef}
               className="overflow-x-auto pb-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-2"
             >
-              <div className="flex gap-1 p-0.5 bg-surface-2 border border-border-subtle rounded-md h-8.5 w-max items-center">
+              <div className="flex gap-1 p-0.5 bg-surface-2 border border-card rounded-md h-8.5 w-max items-center">
                 <button
                   onClick={() => setGrupoSelecionado("")}
                   className={cn(
                     "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
-                    !grupoSelecionado ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                    !grupoSelecionado ? "bg-surface-0 border border-card/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
                   )}
                 >
                   Todos
@@ -409,7 +409,7 @@ export default function BibliotecaExerciciosPage() {
                     onClick={() => setGrupoSelecionado(grupo)}
                     className={cn(
                       "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
-                      grupoSelecionado === grupo ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                      grupoSelecionado === grupo ? "bg-surface-0 border border-card/50 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
                     )}
                   >
                     {grupo}
@@ -425,9 +425,9 @@ export default function BibliotecaExerciciosPage() {
             onClick={() => scrollGrupos("right")}
             disabled={!canScrollGruposRight}
             className={cn(
-              "hidden lg:flex shrink-0 w-8 h-8 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-secondary transition-colors",
+              "hidden lg:flex shrink-0 w-8 h-8 items-center justify-center rounded-md border border-card bg-surface-2 text-text-secondary transition-colors",
               canScrollGruposRight
-                ? "hover:text-text-primary hover:border-border-default cursor-pointer"
+                ? "hover:text-text-primary hover:border-card-hover cursor-pointer"
                 : "opacity-30 cursor-default"
             )}
           >
@@ -450,11 +450,11 @@ export default function BibliotecaExerciciosPage() {
               return (
                 <div
                   key={exercicio.id}
-                  className="group bg-surface-1 border border-border-subtle hover:border-brand/35 rounded-xl px-4 py-3 flex items-center justify-between gap-4 transition-all shadow-sm h-[72px]"
+                  className="group bg-surface-1 border border-card hover:border-brand/35 rounded-xl px-4 py-3 flex items-center justify-between gap-4 transition-all shadow-sm h-[72px]"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {/* Dumbbell Icon Thumbnail */}
-                    <div className="w-11 h-11 rounded-lg bg-surface-3 flex items-center justify-center text-text-tertiary border border-border-subtle shrink-0 select-none">
+                    <div className="w-11 h-11 rounded-lg bg-surface-3 flex items-center justify-center text-text-tertiary border border-card shrink-0 select-none">
                       <Barbell className="w-5 h-5" />
                     </div>
                     {/* Nome & Subtext */}
@@ -472,7 +472,7 @@ export default function BibliotecaExerciciosPage() {
                     {/* Video Camera Icon */}
                     {exercicio.video_url && (
                       <span 
-                        className="text-text-secondary flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider border border-border-subtle bg-surface-2 px-2 py-0.5 rounded"
+                        className="text-text-secondary flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider border border-card bg-surface-2 px-2 py-0.5 rounded"
                         title="Possui demonstração em vídeo"
                       >
                         <Video className="w-3.5 h-3.5 text-brand" weight="fill" />
@@ -485,7 +485,7 @@ export default function BibliotecaExerciciosPage() {
                       <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => abrirModalEdicao(exercicio)}
-                          className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-brand transition-colors"
+                          className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-card rounded-md text-text-secondary hover:text-brand transition-colors"
                           title="Editar exercício"
                         >
                           <PencilSimple className="w-3.5 h-3.5" />
@@ -493,7 +493,7 @@ export default function BibliotecaExerciciosPage() {
                         <button
                           onClick={() => deletarExercicio(exercicio.id)}
                           disabled={deleting === exercicio.id}
-                          className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle rounded-md text-text-secondary hover:text-danger transition-colors disabled:opacity-50"
+                          className="w-7 h-7 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-card rounded-md text-text-secondary hover:text-danger transition-colors disabled:opacity-50"
                           title="Excluir exercício"
                         >
                           {deleting === exercicio.id ? (
@@ -511,7 +511,7 @@ export default function BibliotecaExerciciosPage() {
           </div>
         ) : exercicios.length === 0 ? (
           /* Entire Library Empty State */
-          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
+          <div className="bg-surface-1 border border-card rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
             <Users size={44} className="text-brand/40 mx-auto mb-4" />
             <h3 className="text-base font-bold text-text-primary mb-2">Sua biblioteca AURON ainda está vazia</h3>
             <p className="text-text-secondary text-xs mb-6 max-w-sm mx-auto">
@@ -532,7 +532,7 @@ export default function BibliotecaExerciciosPage() {
           </div>
         ) : (
           /* Search Results Empty State */
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-12 text-center max-w-md mx-auto shadow-md">
+          <div className="bg-surface-1 border border-card rounded-2xl p-12 text-center max-w-md mx-auto shadow-md">
             <WarningCircle size={40} className="text-warning/60 mx-auto mb-3" />
             <h3 className="text-md font-bold text-text-primary mb-1">Nenhum exercício encontrado</h3>
             <p className="text-text-secondary text-xs mb-5">
@@ -562,11 +562,11 @@ export default function BibliotecaExerciciosPage() {
 
           <div className="relative bg-surface-1 w-full max-w-lg rounded-2xl border border-border-default overflow-hidden shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-divider">
               <h2 className="text-lg font-bold text-text-primary">{modoEdicao ? "Editar" : "Novo"} exercício</h2>
               <button
                 onClick={fecharModal}
-                className="w-8 h-8 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                className="w-8 h-8 rounded-xl bg-surface-3 border border-card flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -646,12 +646,12 @@ export default function BibliotecaExerciciosPage() {
                     <p className="text-xs text-text-secondary">Enviando arquivo...</p>
                   </div>
                 ) : formData.gif_url ? (
-                  <div className="relative rounded-xl overflow-hidden border border-border-subtle aspect-video bg-surface-3 flex items-center justify-center">
+                  <div className="relative rounded-xl overflow-hidden border border-card aspect-video bg-surface-3 flex items-center justify-center">
                     <img src={formData.gif_url} alt="Demonstração" className="max-h-full object-contain" />
                     <button
                       type="button"
                       onClick={removerGif}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-surface-0/80 border border-border-subtle flex items-center justify-center hover:bg-surface-1 transition-colors"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-surface-0/80 border border-card flex items-center justify-center hover:bg-surface-1 transition-colors"
                       title="Remover GIF"
                     >
                       <X className="w-3.5 h-3.5 text-text-primary" />
@@ -692,7 +692,7 @@ export default function BibliotecaExerciciosPage() {
             </div>
 
             {/* Footer */}
-            <div className="flex gap-3 px-6 py-4 border-t border-border-subtle bg-surface-2">
+            <div className="flex gap-3 px-6 py-4 border-t border-divider bg-surface-2">
               <Button variant="secondary" onClick={fecharModal} disabled={saving} fullWidth>
                 Cancelar
               </Button>

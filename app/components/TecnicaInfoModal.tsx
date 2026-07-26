@@ -44,7 +44,7 @@ export default function TecnicaInfoModal({ tecnica, onClose }: TecnicaInfoModalP
         <p className="text-sm text-text-secondary leading-relaxed">{item.studentInstruction}</p>
 
         {item.example && (
-          <div className="px-3 py-2.5 bg-surface-2 border border-border-subtle rounded-xl">
+          <div className="px-3 py-2.5 bg-surface-2 border border-card rounded-xl">
             <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">
               Exemplo
             </p>

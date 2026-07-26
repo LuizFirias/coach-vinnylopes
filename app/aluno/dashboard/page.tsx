@@ -1,22 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getPublicStorageUrl } from '@/lib/storageUrls';
 import Link from "next/link";
-import { ArrowRight, WarningCircle, X } from '@phosphor-icons/react';
+import { ArrowRight, WarningCircle } from '@phosphor-icons/react';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { getTodayBrazil } from '@/lib/dateUtils';
 import { CoachCard } from '@/app/components/dashboard/CoachCard';
 import { HeroHeader } from '@/app/components/dashboard/home/HeroHeader';
 import { WorkoutCard } from '@/app/components/dashboard/home/WorkoutCard';
 import { WeekCalendar, type DiaSemana } from '@/app/components/dashboard/home/WeekCalendar';
+import { DayConfigPicker } from '@/app/components/dashboard/home/DayConfigPicker';
 import { StreakRow } from '@/app/components/dashboard/home/StreakRow';
 import { NutritionCard } from '@/app/components/dashboard/home/NutritionCard';
 import { HydrationCard } from '@/app/components/dashboard/home/HydrationCard';
 import { QuickActions } from '@/app/components/dashboard/home/QuickActions';
+import { updateTreinoStatus } from '@/lib/aluno/updateTreinoStatus';
+import { hasActiveAccess } from '@/lib/access/hasActiveAccess';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -152,46 +155,71 @@ export default function AlunoDashboardPage() {
   // Configuração da agenda semanal
   const [availableWorkouts, setAvailableWorkouts] = useState<WorkoutOption[]>([]);
   const [editingDay, setEditingDay] = useState<number | null>(null); // jsDay 0..6
+  const [calendarEditMode, setCalendarEditMode] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
 
   // ── Carregar dados ──────────────────────────────────────────────────────────
 
+  const didFetchRef = useRef(false);
+  const skipInitialAgendaEffect = useRef(true);
+
   useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
     fetchDashboard();
   }, []);
 
   useEffect(() => {
-    if (userId) {
-      fetchWeeklyAgenda(userId, weekOffset);
+    if (!userId) return;
+    // Semana 0 já é carregada dentro de fetchDashboard — evita request duplicado
+    if (skipInitialAgendaEffect.current && weekOffset === 0) {
+      skipInitialAgendaEffect.current = false;
+      return;
     }
+    void fetchWeeklyAgenda(userId, weekOffset);
   }, [weekOffset, userId]);
 
-  const fetchWeeklyAgenda = async (uid: string, offset: number) => {
+  const fetchWeeklyAgenda = async (uid: string, offset: number): Promise<DiaSemana[]> => {
     const days = getWeekDays(offset);
     const startOfWeek = days[0].data;
     const endOfWeek = days[6].data;
 
     try {
-      // 1. Buscar agenda prescrita (dia_semana 0..6)
-      const { data: agendaSemana } = await supabaseClient
-        .from('agenda_semanal')
-        .select('dia_semana, ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina, configuracao)')
-        .eq('aluno_id', uid);
+      const [
+        { data: agendaSemana },
+        { data: agendaDiaria },
+        { data: checkinsSemana },
+      ] = await Promise.all([
+        supabaseClient
+          .from('agenda_semanal')
+          .select('dia_semana, ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina)')
+          .eq('aluno_id', uid),
+        supabaseClient
+          .from('agenda_diaria')
+          .select('data, ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina)')
+          .eq('aluno_id', uid)
+          .gte('data', startOfWeek)
+          .lte('data', endOfWeek),
+        supabaseClient
+          .from('treinos_manuais')
+          .select('data_treino, concluido, pontos_earn')
+          .eq('aluno_id', uid)
+          .eq('concluido', true)
+          .gte('data_treino', startOfWeek)
+          .lte('data_treino', endOfWeek),
+      ]);
 
-      // 2. Buscar checkins/treinos concluídos na semana
-      const { data: checkinsSemana } = await supabaseClient
-        .from('treinos_manuais')
-        .select('data_treino, concluido')
-        .eq('aluno_id', uid)
-        .eq('concluido', true)
-        .gte('data_treino', startOfWeek)
-        .lte('data_treino', endOfWeek);
+      const overrideByDate = new Map(
+        (agendaDiaria ?? []).map((item: any) => [item.data as string, item]),
+      );
 
-      const updatedDays = days.map(dia => {
+      const updatedDays = days.map((dia) => {
         const dateObj = new Date(dia.data + 'T12:00:00');
-        const jsDay = dateObj.getDay(); // 0=Dom, 1=Seg, ...
-        const agendaItem = agendaSemana?.find((item: any) => item.dia_semana === jsDay);
-        
+        const jsDay = dateObj.getDay();
+        const override = overrideByDate.get(dia.data);
+        const agendaItem =
+          override ?? agendaSemana?.find((item: any) => item.dia_semana === jsDay);
+
         let temTreino = false;
         let isOff = false;
         let nomeRotina = undefined;
@@ -201,12 +229,15 @@ export default function AlunoDashboardPage() {
         if (agendaItem) {
           temTreino = !!(agendaItem.ficha_id || agendaItem.treino_pdf_id);
           isOff = !!agendaItem.is_off;
-          nomeRotina = (agendaItem as any).fichas_treino?.nome_rotina || (agendaItem.treino_pdf_id ? 'Treino PDF' : undefined);
+          nomeRotina =
+            (agendaItem as any).fichas_treino?.nome_rotina ||
+            (agendaItem.treino_pdf_id ? 'Treino PDF' : undefined);
           fichaId = agendaItem.ficha_id;
           treinoPdfId = agendaItem.treino_pdf_id;
         }
 
-        const concluido = checkinsSemana?.some(c => c.data_treino === dia.data) || false;
+        const checkin = checkinsSemana?.find((c) => c.data_treino === dia.data);
+        const concluido = !!checkin;
 
         return {
           ...dia,
@@ -220,58 +251,153 @@ export default function AlunoDashboardPage() {
       });
 
       setDiasSemana(updatedDays);
-
-      // Definir dia selecionado inicial (hoje se estiver na semana atual, caso contrário o primeiro dia da semana)
-      const hojeDia = updatedDays.find(d => d.isHoje);
+      const hojeDia = updatedDays.find((d) => d.isHoje);
       setSelectedDia(hojeDia || updatedDays[0]);
+
+      // Pontos do check-in de hoje (se houver)
+      const todayStr = getTodayBrazil();
+      const todayCheckin = checkinsSemana?.find((c) => c.data_treino === todayStr);
+      if (todayCheckin) {
+        setCheckinFeito(true);
+        setCheckinPontos(todayCheckin.pontos_earn || 20);
+      }
+
+      return updatedDays;
     } catch (err) {
       console.error('[Dashboard] Erro ao buscar agenda semanal:', err);
+      return days;
     }
   };
 
-  const handleSaveDayConfig = async (dayOfWeek: number, option: WorkoutOption | 'rest') => {
-    if (!userId) return;
-    setSavingConfig(true);
-    try {
-      const payload: any = {
-        aluno_id: userId,
-        dia_semana: dayOfWeek,
-        is_off: option === 'rest',
-      };
+  const loadSecondaryDashboardData = async (
+    uid: string,
+    coachIdForExtras: string | null,
+    coachExtrasEnabled: boolean,
+  ) => {
+    // Nutrição leve — sem getFullPlanDetails / API N+1
+    void (async () => {
+      try {
+        const todayISO = getTodayBrazil();
+        const { data: plan } = await supabaseClient
+          .from('nutrition_plans')
+          .select('id, name')
+          .eq('student_id', uid)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (option !== 'rest') {
-        if (option.type === 'ficha') {
-          payload.ficha_id = option.id;
-          payload.treino_pdf_id = null;
-        } else if (option.type === 'pdf') {
-          payload.ficha_id = null;
-          payload.treino_pdf_id = option.id;
+        if (!plan) return;
+
+        const { data: day } = await supabaseClient
+          .from('nutrition_plan_days')
+          .select('id')
+          .eq('plan_id', plan.id)
+          .eq('day_index', 1)
+          .maybeSingle();
+
+        if (!day) {
+          setPlanoNutricao({
+            nome: plan.name,
+            refeicoesConcluidas: 0,
+            totalRefeicoes: 0,
+            proximaRefeicao: null,
+          });
+          return;
         }
-      } else {
-        payload.ficha_id = null;
-        payload.treino_pdf_id = null;
+
+        const [{ data: meals }, { data: checkins }] = await Promise.all([
+          supabaseClient
+            .from('nutrition_meals')
+            .select('id, title, time_suggestion')
+            .eq('plan_day_id', day.id)
+            .order('sort_order', { ascending: true }),
+          supabaseClient
+            .from('nutrition_meal_checkins')
+            .select('meal_id')
+            .eq('student_id', uid)
+            .eq('checkin_date', todayISO),
+        ]);
+
+        const mealList = meals ?? [];
+        const checkedMealIds = new Set(checkins?.map((c) => c.meal_id) || []);
+        const nextMeal = mealList.find((m) => !checkedMealIds.has(m.id));
+
+        setPlanoNutricao({
+          nome: plan.name,
+          refeicoesConcluidas: checkedMealIds.size,
+          totalRefeicoes: mealList.length,
+          proximaRefeicao: nextMeal
+            ? {
+                nome: nextMeal.title,
+                horario: nextMeal.time_suggestion
+                  ? String(nextMeal.time_suggestion).slice(0, 5)
+                  : '',
+              }
+            : null,
+        });
+      } catch {
+        // sem plano digital
       }
+    })();
 
-      const { error } = await supabaseClient
-        .from('agenda_semanal')
-        .upsert(payload, { onConflict: 'aluno_id,dia_semana' });
+    // Fichas/PDFs — só usados ao editar agenda
+    void (async () => {
+      try {
+        const [{ data: fichasData }, { data: pdfsData }] = await Promise.all([
+          supabaseClient
+            .from('fichas_treino')
+            .select('id, nome_rotina')
+            .eq('aluno_id', uid)
+            .eq('ativo', true),
+          supabaseClient
+            .from('treinos_alunos')
+            .select('id, nome_arquivo')
+            .eq('aluno_id', uid),
+        ]);
 
-      if (error) throw error;
-
-      // Recarregar os dias da agenda semanal
-      await fetchWeeklyAgenda(userId, weekOffset);
-      
-      // Se alterou o dia de hoje, atualiza também o card principal
-      const todayJS = new Date().getDay();
-      if (dayOfWeek === todayJS) {
-        fetchDashboard();
+        const options: WorkoutOption[] = [];
+        fichasData?.forEach((f) =>
+          options.push({ id: f.id, name: f.nome_rotina, type: 'ficha' }),
+        );
+        pdfsData?.forEach((p) =>
+          options.push({ id: p.id, name: p.nome_arquivo, type: 'pdf' }),
+        );
+        setAvailableWorkouts(options);
+      } catch (err) {
+        console.warn('[Dashboard] Erro ao buscar treinos para configuração:', err);
       }
+    })();
 
-      setEditingDay(null);
-    } catch (err) {
-      console.error('[Dashboard] Erro ao salvar agenda semanal:', err);
-    } finally {
-      setSavingConfig(false);
+    if (!coachIdForExtras) return;
+
+    void (async () => {
+      try {
+        const { count: fbCount } = await supabaseClient
+          .from('feedbacks_treinos')
+          .select('id', { count: 'exact', head: true })
+          .eq('aluno_id', uid);
+        setCoachPendings((prev) => ({ ...prev, feedbacks: fbCount ?? 0 }));
+      } catch (err) {
+        console.warn('[Dashboard] Erro ao buscar feedbacks pendentes:', err);
+      }
+    })();
+
+    if (coachExtrasEnabled) {
+      void (async () => {
+        try {
+          const { data: parceirosData } = await supabaseClient
+            .from('parceiros')
+            .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
+            .eq('coach_id', coachIdForExtras)
+            .order('nome_marca', { ascending: true });
+          setParceiros(parceirosData || []);
+        } catch {
+          setParceiros([]);
+        }
+      })();
+    } else {
+      setParceiros([]);
     }
   };
 
@@ -279,262 +405,267 @@ export default function AlunoDashboardPage() {
     try {
       const session = await getSafeSession();
       const user = session?.user;
-      if (!user) { router.push("/login"); return; }
+      if (!user) {
+        router.push('/login');
+        return;
+      }
 
       const uid = user.id;
       setUserId(uid);
 
-      // Perfil
       const { data: profile } = await supabaseClient
-        .from("profiles")
-        .select("full_name, avatar_url, role, first_access_completed, date_of_birth, coach_id, must_change_password")
-        .eq("id", uid)
+        .from('profiles')
+        .select(
+          'full_name, avatar_url, role, first_access_completed, date_of_birth, coach_id, must_change_password',
+        )
+        .eq('id', uid)
         .single();
 
       if (profile?.coach_id) setCoachId(profile.coach_id);
 
-      if (profile?.role === "coach" || profile?.role === "super_admin") {
-        router.push("/admin/dashboard");
+      if (profile?.role === 'coach' || profile?.role === 'super_admin') {
+        router.push('/admin/dashboard');
         return;
       }
       if (profile?.must_change_password) {
-        router.push("/aluno/trocar-senha");
+        router.push('/aluno/trocar-senha');
         return;
       }
-      if (profile?.role === "aluno" && !profile?.first_access_completed) {
-        router.push("/aluno/onboarding");
+      if (profile?.role === 'aluno' && !profile?.first_access_completed) {
+        router.push('/aluno/onboarding');
         return;
       }
-      if (profile?.role === "aluno" && profile?.first_access_completed && !profile?.date_of_birth) {
+      if (
+        profile?.role === 'aluno' &&
+        profile?.first_access_completed &&
+        !profile?.date_of_birth
+      ) {
         setIncompleteData(true);
       }
 
-      setUserName(profile?.full_name || user.email?.split("@")[0] || "Aluno");
+      setUserName(profile?.full_name || user.email?.split('@')[0] || 'Aluno');
       setUserAvatar(getPublicStorageUrl('avatars', profile?.avatar_url ?? null));
 
-      // KPIs via RPC — fallback gracioso
-      try {
-        const { data: kpiData } = await supabaseClient
-          .rpc('get_kpis_aluno', { p_aluno_id: uid });
-        if (kpiData) setKpis(kpiData as KpisAluno);
-      } catch {
-        const [{ data: medida }, { count: treinos }] = await Promise.all([
-          supabaseClient
-            .from("medidas_aluno")
-            .select("peso")
-            .eq("aluno_id", uid)
-            .order("data_medicao", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabaseClient
-            .from("historico_treinos")
-            .select("*", { count: "exact", head: true })
-            .eq("aluno_id", uid),
-        ]);
-        setKpis({
-          volume_semana_kg: 0,
-          volume_delta_pct: null,
-          peso_atual_kg: medida?.peso ?? null,
-          peso_delta_kg: null,
-          treinos_mes: treinos ?? 0,
-          treinos_delta: 0,
-          streak_atual: 0,
-        });
-      }
+      // First paint IMEDIATO — não espera KPIs / agenda / nutrição
+      setLoading(false);
 
-      // Check-in de hoje
       const today = getTodayBrazil();
-      const { data: checkinHoje } = await supabaseClient
-        .from('treinos_manuais')
-        .select('id, pontos_earn')
-        .eq('aluno_id', uid)
-        .eq('data_treino', today)
-        .eq('concluido', true)
-        .limit(1);
-      if (checkinHoje && checkinHoje.length > 0) {
-        setCheckinFeito(true);
-        setCheckinPontos(checkinHoje[0].pontos_earn || 20);
-      }
+      const coachIdValue = profile?.coach_id ?? null;
 
-      // ── Coach info ────────────────────────────────────────────────────────
-      let coachActiveForExtras = true;
-      if (profile?.coach_id) {
-        try {
-          const { data: coachData } = await supabaseClient
-            .from('profiles')
-            .select('full_name, avatar_url')
-            .eq('id', profile.coach_id)
-            .maybeSingle();
-
-          if (coachData) {
-            setCoachInfo({
-              nome: coachData.full_name?.split(' ').slice(0, 2).join(' ') || 'Seu Coach',
-              avatar: getPublicStorageUrl('avatars', coachData.avatar_url),
-            });
-          }
-        } catch (err) {
-          console.log('[Dashboard] Erro ao buscar coach:', err);
-        }
-
-        // Disponibilidade de extras (WhatsApp/parceiros) via API — service role
-        try {
-          const session = await getSafeSession();
-          const token = session?.access_token;
-          if (token) {
-            const res = await fetch(
-              `/api/aluno/coach-whatsapp?coachId=${profile.coach_id}`,
-              { headers: { Authorization: `Bearer ${token}` } },
-            );
-            coachActiveForExtras = res.ok;
-          }
-        } catch {
-          // ignora — assume disponível
-        }
-
-        setCoachContactAvailable(coachActiveForExtras);
-
-        try {
-          const { count: fbCount } = await supabaseClient
-            .from('feedbacks_treinos')
-            .select('id', { count: 'exact', head: true })
-            .eq('aluno_id', uid);
-
-          setCoachPendings(prev => ({ ...prev, feedbacks: fbCount ?? 0 }));
-        } catch (err) {
-          console.warn('[Dashboard] Erro ao buscar feedbacks pendentes:', err);
-        }
-
-        if (coachActiveForExtras) {
-          const { data: parceirosData } = await supabaseClient
-            .from('parceiros')
-            .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
-            .eq('coach_id', profile.coach_id)
-            .order('nome_marca', { ascending: true });
-          setParceiros(parceirosData || []);
-        } else {
-          setParceiros([]);
-        }
-      }
-
-      // ── Treino de hoje ────────────────────────────────────────────────────
-      const dayOfWeek = new Date().getDay();
-
-      try {
-        const { data: agendaHoje } = await supabaseClient
-          .from('agenda_semanal')
-          .select('ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina, configuracao)')
-          .eq('aluno_id', uid)
-          .eq('dia_semana', dayOfWeek)
-          .maybeSingle();
-
-        if (!agendaHoje) {
-          setTreinoHoje({ status: 'sem-plano' });
-        } else if (agendaHoje.is_off) {
-          setTreinoHoje({ status: 'off' });
-        } else if (checkinHoje && checkinHoje.length > 0) {
-          setTreinoHoje({ status: 'concluido' });
-        } else if (agendaHoje.ficha_id) {
-          const config = (agendaHoje as any).fichas_treino?.configuracao as any;
-          const exercicios: any[] = config?.exercicios || [];
-          const numEx = exercicios.length;
-          setTreinoHoje({
-            status: 'pendente',
-            nome: (agendaHoje as any).fichas_treino?.nome_rotina,
-            fichaId: agendaHoje.ficha_id,
-            qtdExercicios: numEx,
-          });
-        } else if (agendaHoje.treino_pdf_id) {
-          setTreinoHoje({ status: 'pendente', nome: 'Treino PDF' });
-        } else {
-          setTreinoHoje({ status: 'pendente' });
-        }
-      } catch (err) {
-        console.error('[Dashboard] Erro ao buscar treino de hoje:', err);
-        setTreinoHoje({ status: 'sem-plano' });
-      }
-
-      // ── Nutrição (plano ativo simplificado) ──────────────────────────────
-      const todayISO = new Date().toISOString().slice(0, 10);
-      try {
-        const resPlan = await fetch('/api/aluno/plano-alimentar/digital', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        const resPlanData = await resPlan.json();
-        const digitalPlanData = resPlanData?.plan;
-
-        if (digitalPlanData) {
-          const meals = digitalPlanData.days?.[0]?.meals || [];
-          const totalMeals = meals.length;
-          
-          const { data: checkins } = await supabaseClient
-            .from('nutrition_meal_checkins')
-            .select('meal_id')
-            .eq('student_id', uid)
-            .eq('checkin_date', todayISO);
-
-          const checkedMealIds = new Set(checkins?.map(c => c.meal_id) || []);
-          
-          // Encontrar próxima refeição pendente
-          const nextMeal = meals.find((m: any) => !checkedMealIds.has(m.id));
-
-          setPlanoNutricao({
-            nome: digitalPlanData.name,
-            refeicoesConcluidas: checkedMealIds.size,
-            totalRefeicoes: totalMeals,
-            proximaRefeicao: nextMeal ? {
-              nome: nextMeal.title,
-              horario: nextMeal.time_suggestion ? nextMeal.time_suggestion.slice(0, 5) : ''
-            } : null
-          });
-        }
-      } catch {
-        // sem plano digital — não exibe card
-      }
-
-      // ── Água ─────────────────────────────────────────────────────────────
-      try {
-        const { data: aguaData } = await supabaseClient
+      // ── Dados principais em paralelo (sem duplicar agenda do dia) ─────────
+      const [kpiResult, coachResult, aguaResult, weekDays] = await Promise.all([
+        supabaseClient.rpc('get_kpis_aluno', { p_aluno_id: uid }).then(
+          (r) => r,
+          () => ({ data: null, error: true }),
+        ),
+        coachIdValue
+          ? supabaseClient
+              .from('profiles')
+              .select('full_name, avatar_url, subscription_active, account_type, role')
+              .eq('id', coachIdValue)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabaseClient
           .from('registros_agua')
           .select('id, copos, ml_por_copo')
           .eq('aluno_id', uid)
           .eq('data_registro', today)
-          .maybeSingle();
+          .maybeSingle(),
+        fetchWeeklyAgenda(uid, 0),
+      ]);
 
-        if (aguaData) {
-          setAgua({ id: aguaData.id, copos: aguaData.copos, ml_por_copo: aguaData.ml_por_copo });
+      if (kpiResult.data) {
+        setKpis(kpiResult.data as KpisAluno);
+      } else {
+        try {
+          const [{ data: medida }, { count: treinos }] = await Promise.all([
+            supabaseClient
+              .from('medidas_aluno')
+              .select('peso')
+              .eq('aluno_id', uid)
+              .order('data_medicao', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+            supabaseClient
+              .from('historico_treinos')
+              .select('*', { count: 'exact', head: true })
+              .eq('aluno_id', uid),
+          ]);
+          setKpis({
+            volume_semana_kg: 0,
+            volume_delta_pct: null,
+            peso_atual_kg: medida?.peso ?? null,
+            peso_delta_kg: null,
+            treinos_mes: treinos ?? 0,
+            treinos_delta: 0,
+            streak_atual: 0,
+          });
+        } catch {
+          /* ignore */
         }
-      } catch (err) {
-        console.warn('[Dashboard] Erro ao buscar agua:', err);
       }
 
-      // ── Carregar fichas e PDFs disponíveis para agenda ──────────────────
-      try {
-        const { data: fichasData } = await supabaseClient
-          .from('fichas_treino')
-          .select('id, nome_rotina')
-          .eq('aluno_id', uid)
-          .eq('ativo', true);
-
-        const { data: pdfsData } = await supabaseClient
-          .from('treinos_alunos')
-          .select('id, nome_arquivo')
-          .eq('aluno_id', uid);
-
-        const options: WorkoutOption[] = [];
-        if (fichasData) {
-          fichasData.forEach(f => options.push({ id: f.id, name: f.nome_rotina, type: 'ficha' }));
-        }
-        if (pdfsData) {
-          pdfsData.forEach(p => options.push({ id: p.id, name: p.nome_arquivo, type: 'pdf' }));
-        }
-        setAvailableWorkouts(options);
-      } catch (err) {
-        console.warn('[Dashboard] Erro ao buscar treinos para configuração:', err);
+      let coachExtrasEnabled = true;
+      if (coachResult.data) {
+        const coachData = coachResult.data as {
+          full_name?: string | null;
+          avatar_url?: string | null;
+          subscription_active?: boolean | null;
+          account_type?: string | null;
+          role?: string | null;
+        };
+        setCoachInfo({
+          nome: coachData.full_name?.split(' ').slice(0, 2).join(' ') || 'Seu Coach',
+          avatar: getPublicStorageUrl('avatars', coachData.avatar_url ?? null),
+        });
+        coachExtrasEnabled =
+          coachData.role === 'super_admin' ||
+          hasActiveAccess({
+            subscription_active: coachData.subscription_active,
+            account_type: coachData.account_type,
+          });
+        setCoachContactAvailable(coachExtrasEnabled);
       }
+
+      // Treino de hoje derivado da agenda semanal (já carregada)
+      const hoje = weekDays.find((d) => d.isHoje) ?? weekDays.find((d) => d.data === today);
+      if (!hoje || (!hoje.temTreino && !hoje.isOff)) {
+        setTreinoHoje({ status: 'sem-plano' });
+      } else if (hoje.isOff) {
+        setTreinoHoje({ status: 'off' });
+      } else if (hoje.treinoConcluido) {
+        setTreinoHoje({
+          status: 'concluido',
+          nome: hoje.nomeRotina,
+          fichaId: hoje.fichaId,
+        });
+      } else if (hoje.fichaId) {
+        setTreinoHoje({
+          status: 'pendente',
+          nome: hoje.nomeRotina,
+          fichaId: hoje.fichaId,
+        });
+      } else if (hoje.treinoPdfId) {
+        setTreinoHoje({ status: 'pendente', nome: 'Treino PDF' });
+      } else {
+        setTreinoHoje({ status: 'pendente', nome: hoje.nomeRotina });
+      }
+
+      if (aguaResult.data) {
+        setAgua({
+          id: aguaResult.data.id,
+          copos: aguaResult.data.copos,
+          ml_por_copo: aguaResult.data.ml_por_copo,
+        });
+      }
+
+      loadSecondaryDashboardData(uid, coachIdValue, coachExtrasEnabled);
     } catch (err) {
-      console.error("[Dashboard] Erro:", err);
-    } finally {
+      console.error('[Dashboard] Erro:', err);
       setLoading(false);
+    }
+  };
+
+  const handleSaveDayConfig = async (dayOfWeek: number, option: WorkoutOption | 'rest') => {
+    if (!userId) return;
+
+    const targetDate =
+      selectedDia?.data ??
+      diasSemana.find((d) => new Date(`${d.data}T12:00:00`).getDay() === dayOfWeek)?.data;
+
+    const useDateOverride = weekOffset !== 0;
+    if (useDateOverride && !targetDate) return;
+
+    setSavingConfig(true);
+    try {
+      const workoutFields: Record<string, unknown> = {
+        is_off: option === 'rest',
+        ficha_id: null,
+        treino_pdf_id: null,
+      };
+
+      if (option !== 'rest') {
+        if (option.type === 'ficha') {
+          workoutFields.ficha_id = option.id;
+        } else if (option.type === 'pdf') {
+          workoutFields.treino_pdf_id = option.id;
+        }
+      }
+
+      if (useDateOverride) {
+        const { error } = await supabaseClient
+          .from('agenda_diaria')
+          .upsert(
+            {
+              aluno_id: userId,
+              data: targetDate,
+              ...workoutFields,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'aluno_id,data' },
+          );
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseClient
+          .from('agenda_semanal')
+          .upsert(
+            {
+              aluno_id: userId,
+              dia_semana: dayOfWeek,
+              ...workoutFields,
+            },
+            { onConflict: 'aluno_id,dia_semana' },
+          );
+        if (error) throw error;
+      }
+
+      await fetchWeeklyAgenda(userId, weekOffset);
+
+      const todayJS = new Date().getDay();
+      if (!useDateOverride && dayOfWeek === todayJS) {
+        void fetchDashboard();
+      }
+
+      setEditingDay(null);
+    } catch (err) {
+      console.error('[Dashboard] Erro ao salvar agenda:', err);
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleConfirmarStatus = async (dia: DiaSemana, novoStatus: 'done' | 'missed') => {
+    if (!userId) return;
+    try {
+      await updateTreinoStatus({
+        alunoId: userId,
+        coachId,
+        data: dia.data,
+        novoStatus,
+      });
+
+      const concluido = novoStatus === 'done';
+      setDiasSemana((prev) =>
+        prev.map((d) => (d.data === dia.data ? { ...d, treinoConcluido: concluido } : d)),
+      );
+      setSelectedDia((prev) =>
+        prev?.data === dia.data ? { ...prev, treinoConcluido: concluido } : prev,
+      );
+
+      const todayStr = getTodayBrazil();
+      if (dia.data === todayStr) {
+        setCheckinFeito(concluido);
+        if (concluido) {
+          setTreinoHoje((prev) => (prev ? { ...prev, status: 'concluido' } : prev));
+        } else {
+          setTreinoHoje((prev) =>
+            prev?.status === 'concluido' ? { ...prev, status: 'pendente' } : prev,
+          );
+        }
+      }
+      setEditingDay(null);
+    } catch (err) {
+      console.error('[Dashboard] Erro ao atualizar status do treino:', err);
     }
   };
 
@@ -589,7 +720,7 @@ export default function AlunoDashboardPage() {
 
   return (
     <div className="dashboard-aluno min-h-screen scroll-content overflow-y-auto">
-      <div className="mx-auto flex max-w-md flex-col gap-3 pb-6">
+      <div className="mx-auto flex max-w-md flex-col gap-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
 
         <div className="relative">
           <HeroHeader
@@ -657,6 +788,33 @@ export default function AlunoDashboardPage() {
           onWeekChange={(delta) => setWeekOffset((w) => w + delta)}
           onSelectDia={setSelectedDia}
           onEditDay={setEditingDay}
+          editModeExternal={calendarEditMode}
+          onEditModeChange={setCalendarEditMode}
+        />
+
+        <DayConfigPicker
+          open={editingDay !== null}
+          jsDay={editingDay ?? 0}
+          dia={selectedDia}
+          today={today}
+          workouts={availableWorkouts}
+          saving={savingConfig}
+          onClose={() => setEditingDay(null)}
+          onSelectRest={() => {
+            if (editingDay === null) return;
+            void handleSaveDayConfig(editingDay, 'rest');
+          }}
+          onSelectWorkout={(option) => {
+            if (editingDay === null) return;
+            void handleSaveDayConfig(editingDay, option);
+          }}
+          onSelectStatus={
+            selectedDia
+              ? (status) => {
+                  void handleConfirmarStatus(selectedDia, status);
+                }
+              : undefined
+          }
         />
 
         <StreakRow
@@ -698,81 +856,6 @@ export default function AlunoDashboardPage() {
           <QuickActions />
         </div>
       </div>
-
-      {/* ── DayConfigModal: Editar Treino/Descanso do Dia da Semana ── */}
-      {editingDay !== null && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm p-0 md:p-4" onClick={() => setEditingDay(null)}>
-          <div
-            className="relative bg-[#0A0A0A] w-full md:max-w-md rounded-t-2xl md:rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[80vh] md:max-h-[90vh]"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#111111]">
-              <div>
-                <p className="text-[10px] text-text-muted uppercase tracking-wider">Configurar Dia</p>
-                <h2 className="text-base font-bold text-white mt-0.5">
-                  {['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'][editingDay]}
-                </h2>
-              </div>
-              <button onClick={() => setEditingDay(null)} className="p-1.5 hover:bg-white/5 rounded-lg text-text-secondary transition-colors cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Options List */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#0A0A0A]">
-              {/* Opção Descanso */}
-              <button
-                onClick={() => handleSaveDayConfig(editingDay, 'rest')}
-                disabled={savingConfig}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-white/5 hover:border-brand bg-[#121212]/80 hover:bg-[#121212] text-left transition-all cursor-pointer"
-              >
-                <div>
-                  <p className="text-xs font-semibold text-white uppercase tracking-tight">Descanso (Day Off)</p>
-                  <p className="text-[10px] text-text-muted mt-0.5">Sem treino programado</p>
-                </div>
-                {savingConfig ? (
-                  <div className="w-3.5 h-3.5 border-2 border-brand/20 border-t-brand rounded-full animate-spin" />
-                ) : (
-                  <ArrowRight className="w-3.5 h-3.5 text-text-muted" />
-                )}
-              </button>
-
-              {/* Fichas */}
-              {availableWorkouts.filter(w => w.type === 'ficha').map(w => (
-                <button
-                  key={w.id}
-                  onClick={() => handleSaveDayConfig(editingDay, w)}
-                  disabled={savingConfig}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-white/5 hover:border-brand bg-[#121212]/80 hover:bg-[#121212] text-left transition-all cursor-pointer"
-                >
-                  <div>
-                    <p className="text-xs font-semibold text-white uppercase tracking-tight">{w.name}</p>
-                    <p className="text-[10px] text-text-muted mt-0.5">Ficha digital de treino</p>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-text-muted" />
-                </button>
-              ))}
-
-              {/* PDFs */}
-              {availableWorkouts.filter(w => w.type === 'pdf').map(w => (
-                <button
-                  key={w.id}
-                  onClick={() => handleSaveDayConfig(editingDay, w)}
-                  disabled={savingConfig}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-white/5 hover:border-brand bg-[#121212]/80 hover:bg-[#121212] text-left transition-all cursor-pointer"
-                >
-                  <div>
-                    <p className="text-xs font-semibold text-white uppercase tracking-tight">{w.name}</p>
-                    <p className="text-[10px] text-text-muted mt-0.5">Protocolo em PDF</p>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-text-muted" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

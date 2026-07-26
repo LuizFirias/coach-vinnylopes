@@ -67,7 +67,7 @@ export function MuscleGroupSetsTable({
                 {row.name}
               </span>
             </div>
-            <span className={cn("font-semibold text-text-primary tabular-nums", isDesktop ? "text-sm" : "text-[13px]")}>
+            <span className={cn("font-semibold text-text-primary tabular-nums lining-nums", isDesktop ? "text-sm" : "text-[13px]")}>
               {row.sets}
             </span>
           </div>
@@ -92,7 +92,7 @@ export function MuscleGroupSetsTable({
         <span className={cn("font-semibold text-text-primary", isDesktop ? "text-sm" : "text-xs")}>
           Total
         </span>
-        <span className={cn("font-bold text-text-primary tabular-nums", isDesktop ? "text-sm" : "text-xs")}>
+        <span className={cn("font-bold text-text-primary tabular-nums lining-nums", isDesktop ? "text-sm" : "text-xs")}>
           {total}
         </span>
       </div>

@@ -138,7 +138,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Card de boas-vindas */}
-        <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-6 text-center flex flex-col items-center gap-4">
+        <div className="bg-surface-1 border border-card shadow-elev-1 rounded-2xl p-6 text-center flex flex-col items-center gap-4">
           <div className="w-14 h-14 bg-brand-subtle border border-brand-border rounded-2xl flex items-center justify-center">
             <Calendar className="w-7 h-7 text-brand" />
           </div>
@@ -156,7 +156,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Formulário */}
-        <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-6">
+        <div className="bg-surface-1 border border-card shadow-elev-1 rounded-2xl p-6">
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-2xl text-xs flex items-center gap-2">
@@ -176,7 +176,7 @@ export default function OnboardingPage() {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="João Silva Santos"
                 disabled={loading}
-                className="w-full min-w-0 h-14 bg-surface-0 border border-border-subtle text-text-primary px-4 rounded-2xl text-base placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                className="w-full min-w-0 h-14 bg-surface-0 border border-input text-text-primary px-4 rounded-2xl text-base placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
               />
               <p className="text-2xs text-text-disabled ml-1">Visível para você e no ranking</p>
             </div>
@@ -191,7 +191,7 @@ export default function OnboardingPage() {
                 value={dateOfBirth}
                 onChange={(e) => setDateOfBirth(e.target.value)}
                 disabled={loading}
-                className="w-full min-w-0 h-14 bg-surface-0 border border-border-subtle text-text-primary px-4 rounded-2xl text-base focus:outline-none focus:border-brand/40 transition-colors [color-scheme:dark]"
+                className="w-full min-w-0 h-14 bg-surface-0 border border-input text-text-primary px-4 rounded-2xl text-base focus:outline-none focus:border-brand/40 transition-colors [color-scheme:dark]"
               />
               <p className="text-2xs text-text-disabled ml-1">Necessário para cálculos de planejamento</p>
             </div>

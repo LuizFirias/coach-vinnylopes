@@ -1,3 +1,7 @@
+'use client';
+
+import { useState } from 'react';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn } from '@/lib/utils/cn';
 
 export interface HistoryEntry {
@@ -22,6 +26,7 @@ export function MeasurementHistoryList({
   showAll = false,
   onDelete,
 }: MeasurementHistoryListProps) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const visible = showAll ? entries : entries.slice(0, 5);
 
   if (entries.length === 0) return null;
@@ -36,6 +41,7 @@ export function MeasurementHistoryList({
           <button
             type="button"
             onClick={onSeeAll}
+            style={{ touchAction: 'manipulation' }}
             className="text-[11px] font-medium text-brand"
           >
             Ver tudo
@@ -51,7 +57,7 @@ export function MeasurementHistoryList({
             index < visible.length - 1 && 'border-b border-[#1e1e1e]',
           )}
         >
-          <p className="text-[15px] font-semibold text-text-primary">
+          <p className="text-[15px] font-semibold text-text-primary tabular-nums lining-nums">
             {entry.value.toFixed(1)} {entry.unit}
           </p>
 
@@ -60,8 +66,10 @@ export function MeasurementHistoryList({
             {onDelete && (
               <button
                 type="button"
-                onClick={() => onDelete(entry.id)}
-                className="mt-1 text-xs font-medium text-[#e05555] hover:opacity-80"
+                onClick={() => setConfirmDeleteId(entry.id)}
+                className="mt-1 text-[11px] font-semibold transition-opacity hover:opacity-70"
+                style={{ color: '#e05555', touchAction: 'manipulation' }}
+                aria-label={`Excluir registro de ${entry.dateShort ?? entry.date}`}
               >
                 Excluir
               </button>
@@ -69,6 +77,21 @@ export function MeasurementHistoryList({
           </div>
         </div>
       ))}
+
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Excluir registro"
+        description="Este registro será removido permanentemente do histórico."
+        confirmLabel="Excluir"
+        confirmVariant="danger"
+        onConfirm={() => {
+          if (confirmDeleteId) {
+            onDelete?.(confirmDeleteId);
+          }
+          setConfirmDeleteId(null);
+        }}
+        onClose={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

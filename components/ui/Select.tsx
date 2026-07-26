@@ -67,11 +67,11 @@ export function Select({
           onClick={() => !disabled && setOpen((v) => !v)}
           className={cn(
             "w-full h-10 px-3 flex items-center justify-between gap-2.5",
-            "bg-surface-2 border border-border-subtle rounded-md text-xs transition-all",
+            "bg-surface-2 border border-input rounded-md text-xs transition-all",
             "focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
             open
               ? "border-brand/40 text-text-primary"
-              : "border-border-subtle text-text-primary hover:border-border-default"
+              : "border-input text-text-primary hover:border-border-default"
           )}
         >
           <span className={cn(!selected && "text-text-disabled")}>

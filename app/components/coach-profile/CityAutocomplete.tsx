@@ -46,7 +46,7 @@ export function CityAutocomplete({
           autoComplete="off"
         />
         {open && suggestions.length > 0 && (
-          <ul className="absolute z-20 mt-1 w-full rounded-lg border border-border-subtle bg-surface-1 shadow-lg overflow-hidden">
+          <ul className="absolute z-20 mt-1 w-full rounded-lg border border-card bg-surface-1 shadow-lg overflow-hidden">
             {suggestions.map((s) => (
               <li key={`${s.city}-${s.state}`}>
                 <button
@@ -77,7 +77,7 @@ export function CityAutocomplete({
           onChange={(e) => onStateChange(e.target.value)}
           className={cn(
             "h-10 w-full rounded-md px-2 text-xs",
-            "bg-surface-2 border border-border-subtle text-text-primary",
+            "bg-surface-2 border border-input text-text-primary",
             "focus:outline-none focus:border-brand/40",
           )}
         >

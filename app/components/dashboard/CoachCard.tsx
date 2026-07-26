@@ -19,7 +19,7 @@ export function CoachCard({
   feedbacksPendentes = 0,
 }: CoachCardProps) {
   return (
-    <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 shadow-elev-1">
+    <div className="bg-surface-1 border border-card rounded-2xl p-4 shadow-elev-1">
       <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">
         Seu coach
       </p>
@@ -31,7 +31,7 @@ export function CoachCard({
             alt={coachNome}
             width={48}
             height={48}
-            className="w-12 h-12 rounded-full object-cover border border-border-subtle"
+            className="w-12 h-12 rounded-full object-cover border border-card"
           />
         ) : (
           <div className="w-12 h-12 rounded-full bg-brand-subtle border border-brand-border flex items-center justify-center text-brand font-bold">
@@ -49,7 +49,7 @@ export function CoachCard({
           href="/aluno/mensagens"
           className={cn(
             'flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all',
-            'bg-surface-2 border-border-subtle hover:border-brand/30',
+            'bg-surface-2 border-card hover:border-brand/30',
           )}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -71,7 +71,7 @@ export function CoachCard({
           href="/aluno/feedbacks"
           className={cn(
             'flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all',
-            'bg-surface-2 border-border-subtle hover:border-brand/30',
+            'bg-surface-2 border-card hover:border-brand/30',
           )}
         >
           <div className="flex items-center gap-2 min-w-0">

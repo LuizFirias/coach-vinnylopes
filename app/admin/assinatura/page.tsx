@@ -252,7 +252,7 @@ function OrderSummary({
   priceDisplay: string;
 }) {
   return (
-    <div className="border-t border-[#1a1a1a] py-4">
+    <div className="border-t border-divider py-4">
       <div className="flex justify-between text-[12px] py-1">
         <span className="text-[#7a8aab]">Plano</span>
         <span className="text-white font-medium">{planLabel}</span>
@@ -749,7 +749,7 @@ export default function AssinaturaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
         <DumbbellLoader />
       </div>
     );
@@ -821,7 +821,7 @@ export default function AssinaturaPage() {
     displayStatus === "cancelled";
 
   const planTabs = data && (
-    <div className="flex flex-wrap gap-0 border-b border-[#1a1a1a]">
+    <div className="flex flex-wrap gap-0 border-b border-divider">
       {data.plans.map((plan) => {
         const isSelected = selectedTier === plan.tier;
         const isTest = plan.tier === "test" || plan.accent === "danger";
@@ -926,7 +926,7 @@ export default function AssinaturaPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] pb-24 lg:pl-28">
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
       <ScreenHeader
         title="Assinatura"
         subtitle={data?.siteUrl?.replace(/^https?:\/\//, "") || "auronfit.com.br"}
@@ -974,7 +974,7 @@ export default function AssinaturaPage() {
         )}
 
         {/* ── Status line ── */}
-        <section className="py-8 border-b border-[#1a1a1a]">
+        <section className="py-8 border-b border-divider">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-wider text-[#7a8aab] mb-2">
@@ -1072,7 +1072,7 @@ export default function AssinaturaPage() {
         />
 
         {displayStatus === "canceling" && accessEndDate && (
-          <section className="py-5 border-b border-[#1a1a1a]">
+          <section className="py-5 border-b border-divider">
             <AlertLine borderColor="#7a8aab">
               Renovação cancelada. Seu acesso continua até{" "}
               <span className="text-white font-medium">{accessEndDate}</span>
@@ -1083,7 +1083,7 @@ export default function AssinaturaPage() {
         )}
 
         {displayStatus === "past_due" && accessEndDate && (
-          <section className="py-5 border-b border-[#1a1a1a]">
+          <section className="py-5 border-b border-divider">
             <AlertLine borderColor="#f59e0b">
               Cobrança recusada. Atualize seu cartão ou aguarde a retentativa.
               <br />
@@ -1094,7 +1094,7 @@ export default function AssinaturaPage() {
         )}
 
         {(displayStatus === "expired" || displayStatus === "cancelled") && needsCheckout && (
-          <section className="py-5 border-b border-[#1a1a1a]">
+          <section className="py-5 border-b border-divider">
             <AlertLine borderColor="#e05555">
               <span className="text-[#e05555] font-medium">Seu acesso foi pausado.</span>
               <br />
@@ -1106,7 +1106,7 @@ export default function AssinaturaPage() {
         )}
 
         {needsCheckout && data!.plans.length > 0 && (
-          <section className="pt-8 pb-12 border-b border-[#1a1a1a]">
+          <section className="pt-8 pb-12 border-b border-divider">
             {!data?.publicKey && (
               <div className="mb-6">
                 <AlertLine borderColor="#f59e0b">
@@ -1174,7 +1174,7 @@ export default function AssinaturaPage() {
                 )}
 
                 {checkoutSelection && data?.publicKey && (
-                  <div className="mt-8 border-t border-[#1a1a1a] pt-6">
+                  <div className="mt-8 border-t border-divider pt-6">
                     {selectedPlan && (
                       <div className="mb-6 sm:hidden">
                         <p className="text-[11px] font-medium uppercase tracking-wider text-[#7a8aab] mb-2">
@@ -1200,7 +1200,7 @@ export default function AssinaturaPage() {
           !data?.isActive &&
           !data?.isSuperAdmin &&
           subscription?.status === "pending" && (
-            <section className="py-8 border-b border-[#1a1a1a]">
+            <section className="py-8 border-b border-divider">
               <p className="text-xs text-[#7a8aab] mb-4">
                 Assinatura pendente de confirmação. Aguarde alguns instantes.
               </p>

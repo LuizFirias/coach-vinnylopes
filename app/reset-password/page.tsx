@@ -146,7 +146,7 @@ function ResetPasswordForm() {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="w-20 h-20 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center mb-6 shadow-elev-1"
+            className="w-20 h-20 bg-surface-2 border border-card rounded-2xl flex items-center justify-center mb-6 shadow-elev-1"
           >
             <ShieldCheck className="text-brand w-10 h-10" />
           </motion.div>
@@ -157,7 +157,7 @@ function ResetPasswordForm() {
         </div>
 
         {/* Card */}
-        <div className="w-full bg-surface-1/80 backdrop-blur-xl border border-border-subtle shadow-elev-2 p-8 rounded-[32px] relative overflow-hidden">
+        <div className="w-full bg-surface-1/80 backdrop-blur-xl border border-card shadow-elev-2 p-8 rounded-[32px] relative overflow-hidden">
 
           <AnimatePresence mode="wait">
             {success ? (
@@ -224,7 +224,7 @@ function ResetPasswordForm() {
                       onChange={e => { setPassword(e.target.value); setError(null); }}
                       placeholder="Mínimo 8 caracteres"
                       required
-                      className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 pr-14 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                      className="w-full h-14 bg-surface-0 border border-input text-text-primary px-5 pr-14 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
                     />
                     <button
                       type="button"
@@ -247,7 +247,7 @@ function ResetPasswordForm() {
                     onChange={e => { setConfirm(e.target.value); setError(null); }}
                     placeholder="Repita a senha"
                     required
-                    className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                    className="w-full h-14 bg-surface-0 border border-input text-text-primary px-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
                   />
                 </div>
 

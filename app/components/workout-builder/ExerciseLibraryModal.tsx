@@ -61,8 +61,8 @@ export function ExerciseLibraryModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-[#0d0d0d]/80 backdrop-blur-sm">
-      <div className="bg-[#141414] border border-[#222222] shadow-2xl w-full max-w-xl rounded-xl overflow-hidden flex flex-col max-h-[80vh]">
-        <div className="p-4 border-b border-[#222222] flex items-center justify-between">
+      <div className="bg-[#141414] border border-card shadow-2xl w-full max-w-xl rounded-xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="p-4 border-b border-divider flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-white">Biblioteca</h3>
             <p className="text-[10px] text-[#7a8aab]">
@@ -97,7 +97,7 @@ export function ExerciseLibraryModal({
               placeholder="Filtrar por nome ou grupo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 pl-9 pr-4 bg-[#1e1e1e] border border-[#282828] rounded-lg text-xs text-white placeholder:text-[#555555] focus:outline-none focus:border-[#2b7fff]/40"
+              className="w-full h-10 pl-9 pr-4 bg-[#1e1e1e] border border-input rounded-lg text-xs text-white placeholder:text-[#555555] focus:outline-none focus:border-[#2b7fff]/40"
               autoFocus
             />
           </div>
@@ -116,7 +116,7 @@ export function ExerciseLibraryModal({
                   "w-full flex items-center justify-between p-3 rounded-lg border text-left",
                   isSelected
                     ? "border-[#2b7fff] bg-[#2b7fff]/5"
-                    : "border-[#222222] bg-[#1e1e1e]",
+                    : "border-card bg-[#1e1e1e]",
                 )}
               >
                 <div>
@@ -150,7 +150,7 @@ export function ExerciseLibraryModal({
           )}
         </div>
 
-        <div className="p-4 border-t border-[#222222] flex justify-end gap-2">
+        <div className="p-4 border-t border-divider flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}

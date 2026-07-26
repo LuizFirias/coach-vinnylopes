@@ -54,12 +54,7 @@ export function MealCard({
   const canExpand = showExpandControl && (foods.length > 0 || !!notes);
 
   return (
-    <article
-      className={cn(
-        "border border-border-subtle rounded-xl overflow-hidden transition-colors",
-        isDone ? "bg-[#0f1a0f]" : "bg-surface-1"
-      )}
-    >
+    <article className="rounded-xl overflow-hidden transition-colors border-0 bg-[#111827]">
       <button
         type="button"
         onClick={() => canExpand && onToggleExpand()}
@@ -105,7 +100,7 @@ export function MealCard({
 
         <div className="flex items-center gap-2 shrink-0">
           {calories != null && (
-            <p className="text-[13px] font-medium tabular-nums text-text-secondary">
+            <p className="text-[13px] font-medium tabular-nums lining-nums text-text-secondary">
               {Math.round(calories)} kcal
             </p>
           )}
@@ -122,7 +117,7 @@ export function MealCard({
       </button>
 
       {isExpanded && (foods.length > 0 || notes) && (
-        <div className="px-4 pb-4 border-t border-border-subtle/60">
+        <div className="px-4 pb-4 border-t border-divider/60">
           {foods.length > 0 && (
             <div className="mt-2">
               {foods.map((food, idx) => (
@@ -139,7 +134,7 @@ export function MealCard({
                       <summary className="text-[10px] font-semibold text-brand cursor-pointer select-none">
                         Opções de substituição
                       </summary>
-                      <div className="flex flex-col gap-1 mt-1 pl-2 border-l border-border-subtle">
+                      <div className="flex flex-col gap-1 mt-1 pl-2 border-l border-divider">
                         {food.substitutions.map((sub, subIdx) => {
                           const qty = formatFoodQuantityDisplay(
                             sub.quantityGrams,
@@ -152,7 +147,7 @@ export function MealCard({
                               className="text-[10px] text-text-secondary flex justify-between gap-2"
                             >
                               <span>• {sub.name}</span>
-                              <span className="font-semibold tabular-nums text-right">
+                              <span className="font-semibold tabular-nums lining-nums text-right">
                                 {qty.primary}
                                 {qty.secondary ? (
                                   <span className="text-text-muted font-normal"> · {qty.secondary}</span>
@@ -192,7 +187,7 @@ export function MealCard({
               type="button"
               onClick={onToggleDone}
               disabled={isToggling}
-              className="mt-3 w-full min-h-[44px] rounded-[10px] border border-border-subtle bg-surface-2 text-xs font-semibold text-text-secondary flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-3 w-full min-h-[44px] rounded-[10px] border-0 bg-surface-2 text-xs font-semibold text-text-secondary flex items-center justify-center gap-2 disabled:opacity-50"
             >
               Desmarcar refeição
             </button>

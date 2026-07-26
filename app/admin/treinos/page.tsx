@@ -407,7 +407,7 @@ export default function TreinosPage() {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
 
         {/* ── Page Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4 border-b border-border-subtle">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4 border-b border-divider">
           <div>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary font-display">
               Gestão de Treinos
@@ -457,7 +457,7 @@ export default function TreinosPage() {
 
         {alunos.length === 0 ? (
           /* Empty State - No students registered yet */
-          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
+          <div className="bg-surface-1 border border-card rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
             <Barbell size={44} className="text-brand/40 mx-auto mb-4" />
             <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno vinculado ainda</h3>
             <p className="text-text-secondary text-xs mb-6">
@@ -479,12 +479,12 @@ export default function TreinosPage() {
                 { label: "Alunos Atendidos", value: alunosAtendidos, dotColor: "bg-success" },
                 { label: "Execuções (30d)", value: treinosExecutados, dotColor: "bg-warning" },
               ].map(({ label, value, dotColor }) => (
-                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-border-subtle shadow-sm flex flex-col justify-center h-20">
+                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-card shadow-sm flex flex-col justify-center h-20">
                   <div className="flex items-center gap-1.5 leading-none">
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
                     <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
                   </div>
-                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums leading-none">{value}</span>
+                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums lining-nums leading-none">{value}</span>
                 </div>
               ))}
             </div>
@@ -494,8 +494,8 @@ export default function TreinosPage() {
 
               {/* Inline PDF Upload Form */}
               {showPdfUpload && (
-                <Card className="rounded-xl border border-border-subtle p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
+                <Card className="rounded-xl border border-card p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-divider">
                     <div className="flex items-center gap-2">
                       <FileArrowUp size={16} className="text-brand" />
                       <h4 className="font-bold text-text-primary text-xs uppercase tracking-wider">Protocolar PDF</h4>
@@ -555,7 +555,7 @@ export default function TreinosPage() {
               )}
 
               {/* Search & Filters */}
-              <div className="bg-surface-1 border border-border-subtle rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                   <div className="relative w-full sm:max-w-xs">
                     <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                     <input
@@ -563,12 +563,12 @@ export default function TreinosPage() {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Buscar por rotina ou aluno..."
-                      className="w-full pl-9 pr-4 h-7.5 bg-surface-2 border border-border-subtle rounded-md text-2xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
+                      className="w-full pl-9 pr-4 h-7.5 bg-surface-2 border border-input rounded-md text-2xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
                     />
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 bg-surface-2 border border-border-subtle rounded-lg p-1">
+                    <div className="flex items-center gap-1.5 bg-surface-2 border border-card rounded-lg p-1">
                       {(['todas', 'ativas', 'inativas'] as const).map((status) => (
                         <button
                           key={status}
@@ -587,7 +587,7 @@ export default function TreinosPage() {
 
                     <button
                       onClick={handleResetFilters}
-                      className="p-2 bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-lg transition-colors"
+                      className="p-2 bg-surface-2 hover:bg-surface-3 border border-card text-text-secondary hover:text-text-primary rounded-lg transition-colors"
                       title="Resetar busca"
                     >
                       <ArrowCounterClockwise size={13} />
@@ -596,8 +596,8 @@ export default function TreinosPage() {
                 </div>
 
               {/* Table / Mobile cards */}
-              <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-border-subtle bg-surface-2/40">
+              <div className="bg-surface-1 border border-card rounded-xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-divider bg-surface-2/40">
                   <h3 className="text-xs font-bold text-text-primary">Fichas e Protocolos</h3>
                   <p className="text-[10px] text-text-tertiary">Grade completa de planejamentos cadastrados</p>
                 </div>
@@ -654,7 +654,7 @@ export default function TreinosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
           <div className="bg-surface-1 border border-border-default rounded-3xl w-full max-w-lg overflow-hidden shadow-elev-3 flex flex-col max-h-[85vh]">
             {/* Modal Header */}
-            <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-surface-2/40">
+            <div className="p-5 border-b border-divider flex justify-between items-center bg-surface-2/40">
               <div>
                 <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/10 px-2 py-0.5 rounded border border-brand/20">Ficha Digital</span>
                 <h3 className="text-sm font-bold text-text-primary mt-2 uppercase">{selectedRoutineForPreview.nome_rotina}</h3>
@@ -671,7 +671,7 @@ export default function TreinosPage() {
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
               {previewLoading ? (
                 <div className="flex justify-center py-8">
-                  <DumbbellLoader text="Carregando exercícios..." />
+                  <DumbbellLoader text="Carregando exercícios..." variant="inline" />
                 </div>
               ) : (() => {
                 const exercises = selectedRoutineForPreview.configuracao?.exercicios || [];
@@ -679,7 +679,7 @@ export default function TreinosPage() {
                   return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;
                 }
                 return exercises.map((ex: any, idx: number) => (
-                  <div key={idx} className="p-4 bg-surface-2 border border-border-subtle rounded-xl space-y-2">
+                  <div key={idx} className="p-4 bg-surface-2 border border-card rounded-xl space-y-2">
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="text-xs font-bold text-text-primary">{idx + 1}. {ex.nome}</h4>
                       {ex.descanso && (
@@ -693,7 +693,7 @@ export default function TreinosPage() {
                     )}
                     
                     {/* Series List */}
-                    <div className="pt-2 border-t border-border-subtle/40 space-y-1.5">
+                    <div className="pt-2 border-t border-divider/40 space-y-1.5">
                       {ex.series?.map((s: any, sIdx: number) => (
                         <div key={sIdx} className="flex items-center gap-3 text-[11px] text-text-secondary font-medium">
                           <span className="w-5 h-5 rounded bg-brand/10 text-brand text-[9px] font-bold flex items-center justify-center">
@@ -718,7 +718,7 @@ export default function TreinosPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end">
+            <div className="p-4 border-t border-divider bg-surface-2/40 flex justify-end">
               <button
                 onClick={() => setSelectedRoutineForPreview(null)}
                 className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"

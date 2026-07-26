@@ -3,7 +3,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
-import { invalidateAdminGuardCache } from '@/lib/auth/adminGuardCache';
+import { invalidateAdminGuardCache, peekAdminGuardCache } from '@/lib/auth/adminGuardCache';
+import {
+  getBootstrapProfile,
+  invalidateBootstrapProfile,
+  peekBootstrapProfile,
+} from '@/lib/auth/bootstrapProfile';
 import { invalidateSubscriptionStatusCache } from '@/lib/subscriptions/statusClientCache';
 
 interface AuthContextType {
@@ -68,19 +73,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const promise = (async () => {
       try {
-        const { data, error } = await supabaseClient
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
-
-        if (error || !data?.role) {
-          if (error) console.error('[AuthProvider] Erro ao buscar role:', error);
-          return null;
+        const boot = peekBootstrapProfile();
+        if (boot?.userId === userId && boot.role) {
+          roleCacheRef.current = { userId, role: boot.role };
+          return boot.role;
         }
 
-        roleCacheRef.current = { userId, role: data.role };
-        return data.role;
+        const guard = peekAdminGuardCache();
+        if (guard?.userId === userId && guard.role) {
+          roleCacheRef.current = { userId, role: guard.role };
+          return guard.role;
+        }
+
+        const bootFetched = await getBootstrapProfile();
+        if (bootFetched?.userId === userId && bootFetched.role) {
+          roleCacheRef.current = { userId, role: bootFetched.role };
+          return bootFetched.role;
+        }
+
+        return null;
       } catch (err) {
         console.error('[AuthProvider] Exceção ao buscar role:', err);
         return null;
@@ -185,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem('user_role');
           localStorage.removeItem('user_id');
           invalidateAdminGuardCache();
+          invalidateBootstrapProfile();
           invalidateSubscriptionStatusCache();
           setLoading(false);
           return;

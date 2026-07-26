@@ -26,7 +26,7 @@ export function HydrationCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35, type: 'spring', stiffness: 260, damping: 24 }}
-      className="dashboard-card flex items-center justify-between rounded-2xl border p-4"
+      className="dashboard-card flex items-center justify-between rounded-2xl border-0 p-4"
     >
       <div className="flex items-center gap-2">
         <Drop className="h-4 w-4" weight="fill" style={{ color: '#4880D8' }} />
@@ -34,7 +34,7 @@ export function HydrationCard({
           <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#4880D8' }}>
             Hidratação
           </p>
-          <p className="mt-0.5 text-xs font-bold dashboard-text">
+          <p className="mt-0.5 text-xs font-bold dashboard-text tabular-nums lining-nums">
             {copos * mlPorCopo}ml / {metaCopos * mlPorCopo}ml
           </p>
         </div>
@@ -46,11 +46,11 @@ export function HydrationCard({
           id="btn-dashboard-remover-copo"
           onClick={onRemove}
           disabled={saving || copos === 0}
-          className="dashboard-card flex h-8 w-8 items-center justify-center rounded-lg border disabled:opacity-30"
+          className="dashboard-card flex h-8 w-8 items-center justify-center rounded-lg border-0 disabled:opacity-30"
         >
           <Minus className="h-3.5 w-3.5 dashboard-text-muted" />
         </button>
-        <span className="min-w-[20px] text-center font-mono text-sm font-bold dashboard-text">
+        <span className="min-w-[20px] text-center font-mono text-sm font-bold tabular-nums lining-nums dashboard-text">
           {copos}
         </span>
         <button

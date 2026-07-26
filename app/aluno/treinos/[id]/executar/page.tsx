@@ -183,7 +183,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
   return (
     <div
       className={cn(
-        'grid items-center border-t border-border-subtle/30',
+        'grid items-center border-t border-divider/30',
         isDesktop ? 'py-2.5 min-h-10 [@media(hover:hover)]:hover:bg-[#1a1a1a]' : 'py-2.5'
       )}
       style={{ gridTemplateColumns: gridCols }}
@@ -200,7 +200,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
       {showAnteriorCol && (
         <div className="min-w-0 pl-2">
           <p className={cn(
-            'text-[11px] font-mono tabular-nums truncate',
+            'text-[11px] font-mono tabular-nums lining-nums truncate',
             serie.completado ? 'text-text-disabled line-through' : 'text-text-muted'
           )}>
             {serie.anterior || '—'}
@@ -214,10 +214,10 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
           inputMode="decimal"
           value={serie.peso_atual || ''}
           onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          disabled={!treinoIniciado || serie.completado}
+          disabled={!treinoIniciado}
           placeholder="0"
           className={cn(
-            'w-full h-7 rounded-md text-right text-[13px] font-semibold font-mono tabular-nums',
+            'w-full h-7 rounded-md text-right text-[13px] font-semibold font-mono tabular-nums lining-nums',
             'bg-transparent border-b border-brand/60',
             'text-text-primary focus:border-brand focus:outline-none',
             'disabled:opacity-50 px-1'
@@ -227,7 +227,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
 
       <div className="flex justify-center">
         <span className={cn(
-          'text-[13px] font-semibold font-mono tabular-nums',
+          'text-[13px] font-semibold font-mono tabular-nums lining-nums',
           serie.completado ? 'text-success' : 'text-text-primary'
         )}>{serie.reps}</span>
       </div>
@@ -285,7 +285,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
     )}>
       <div className="flex items-start gap-3 pb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-[15px] font-semibold text-text-primary leading-snug">
+          <h3 className="text-[15px] font-normal text-text-primary leading-snug">
             {toTitleCase(exercicio.nome)}
           </h3>
           <div className="flex items-center gap-1.5 mt-1.5 min-h-[44px]">
@@ -313,13 +313,13 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
       </div>
 
       {exercicio.observacoes && (
-        <div className="mb-3 px-2.5 py-2 bg-surface-2 border border-border-subtle rounded-lg">
+        <div className="mb-3 px-2.5 py-2 bg-surface-2 border border-card rounded-lg">
           <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-1">Observações</p>
           <p className="text-[11px] text-text-secondary leading-relaxed">{exercicio.observacoes}</p>
         </div>
       )}
 
-      <div className="border-t border-border-subtle/50 pt-2">
+      <div className="border-t border-divider/50 pt-2">
         <div className="grid items-center py-2 mb-0.5" style={{ gridTemplateColumns: gridCols }}>
           <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">Set</span>
           {showAnteriorCol && (
@@ -1263,7 +1263,7 @@ export default function ExecucaoTreinoPage() {
           </Link>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-text-primary truncate">{nomeRotina}</h1>
+            <h1 className="text-base font-bold uppercase tracking-wide text-text-primary truncate">{nomeRotina}</h1>
             {treinoIniciado ? (
               <p className="text-[11px] text-text-muted mt-0.5">{setsCompletos}/{totalSets} sets</p>
             ) : (
@@ -1277,13 +1277,13 @@ export default function ExecucaoTreinoPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowConfirmAbandon(true)}
-                className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-destructive transition-colors shrink-0"
+                className="w-8 h-8 rounded-lg bg-surface-2 border border-card flex items-center justify-center text-text-secondary hover:text-destructive transition-colors shrink-0"
                 title="Descartar treino"
               >
                 <X className="w-4 h-4" />
               </button>
               <div className="text-right">
-                <p className="font-mono tabular-nums text-sm font-bold text-brand leading-none">{formatDuration(elapsed)}</p>
+                <p className="font-mono tabular-nums lining-nums text-sm font-bold text-brand leading-none">{formatDuration(elapsed)}</p>
                 <p className="text-2xs text-text-muted">{formatVolume(volume)}</p>
               </div>
               <button
@@ -1304,7 +1304,7 @@ export default function ExecucaoTreinoPage() {
           {/* Coluna esquerda — contexto + iniciar (desktop, pré-execução) */}
           {!treinoIniciado && (
             <aside className="hidden lg:block lg:sticky lg:top-6">
-              <div className="bg-surface-1 border border-border-subtle rounded-[14px] p-6">
+              <div className="bg-surface-1 border border-card rounded-[14px] p-6">
                 <Link
                   href="/aluno/treinos"
                   className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors mb-4"
@@ -1312,7 +1312,7 @@ export default function ExecucaoTreinoPage() {
                   <ArrowLeft size={16} />
                   Minhas Rotinas
                 </Link>
-                <h1 className="text-xl font-bold text-text-primary">{nomeRotina}</h1>
+                <h1 className="text-xl font-bold uppercase tracking-wide text-text-primary">{nomeRotina}</h1>
                 <p className="text-[13px] text-text-muted mt-1">
                   {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
                 </p>
@@ -1414,11 +1414,11 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── Rest Timer: bottom bar (só quando o modal de exercício está fechado) ── */}
       {restActive && modalBlockIdx === null && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-1 border-t border-border-subtle shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-1 border-t border-divider shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
           <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center gap-2">
             <button
               onClick={() => restAddSecs(-15)}
-              className="w-12 h-10 bg-surface-2 border border-border-subtle rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0"
+              className="w-12 h-10 bg-surface-2 border border-card rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0"
             >
               −15
             </button>
@@ -1432,7 +1432,7 @@ export default function ExecucaoTreinoPage() {
                   Pronto! →
                 </button>
               ) : (
-                <p className="font-mono text-3xl font-bold text-text-primary tabular-nums">
+                <p className="font-mono text-3xl font-bold text-text-primary tabular-nums lining-nums tracking-display">
                   {Math.floor(restRemaining / 60).toString().padStart(2, '0')}:{(restRemaining % 60).toString().padStart(2, '0')}
                 </p>
               )}
@@ -1440,7 +1440,7 @@ export default function ExecucaoTreinoPage() {
 
             <button
               onClick={() => restAddSecs(15)}
-              className="w-12 h-10 bg-surface-2 border border-border-subtle rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0"
+              className="w-12 h-10 bg-surface-2 border border-card rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0"
             >
               +15
             </button>
@@ -1458,7 +1458,7 @@ export default function ExecucaoTreinoPage() {
       {/* ── Modal de Termômetro de Treino (Feedback) ── */}
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/70 backdrop-blur-sm">
-          <div className="w-full bg-surface-1 border-t border-border-subtle rounded-t-2xl p-5 pb-safe-bottom" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+          <div className="w-full bg-surface-1 border-t border-divider rounded-t-2xl p-5 pb-safe-bottom" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
             {/* Aviso se treino incompleto */}
             {setsCompletos < totalSets && (
               <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-warning-subtle border border-warning-border rounded-lg">
@@ -1488,7 +1488,7 @@ export default function ExecucaoTreinoPage() {
                       'flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border text-center transition-all',
                       feedbackSatisfacao === label
                         ? color
-                        : 'bg-surface-2 border-border-subtle text-text-muted'
+                        : 'bg-surface-2 border-card text-text-muted'
                     )}
                   >
                     <span className="text-lg leading-none">{emoji}</span>
@@ -1555,7 +1555,7 @@ export default function ExecucaoTreinoPage() {
               </button>
               <button
                 onClick={() => setShowFeedbackModal(false)}
-                className="w-full h-10 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
+                className="w-full h-10 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
               >
                 Continuar Treinando
               </button>
@@ -1567,7 +1567,7 @@ export default function ExecucaoTreinoPage() {
       {/* ── Modal de confirmação para descartar ── */}
       {showConfirmAbandon && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-1 border border-border-subtle shadow-elev-2 rounded-2xl p-6">
+          <div className="w-full max-w-sm bg-surface-1 border border-card shadow-elev-2 rounded-2xl p-6">
             <div className="w-14 h-14 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto mb-4">
               <X className="w-7 h-7 text-destructive" />
             </div>
@@ -1584,7 +1584,7 @@ export default function ExecucaoTreinoPage() {
               </button>
               <button
                 onClick={() => setShowConfirmAbandon(false)}
-                className="w-full h-11 bg-surface-3 border border-border-subtle text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
+                className="w-full h-11 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs font-semibold hover:text-text-primary transition-colors"
               >
                 Cancelar
               </button>
@@ -1612,7 +1612,7 @@ export default function ExecucaoTreinoPage() {
           )}
 
           {bisetTransitionName && (
-            <div className="absolute inset-0 z-[55] flex flex-col items-center justify-center bg-[#0d0d0d] animate-in fade-in duration-300">
+            <div className="absolute inset-0 z-[55] flex flex-col items-center justify-center bg-surface-0 animate-in fade-in duration-300">
               <p className="text-brand text-2xl font-bold">↓</p>
               <p className="text-xl font-bold text-text-primary mt-1">{bisetTransitionName}</p>
               <p className="text-xs text-[#7a8aab] mt-1">agora</p>
@@ -1646,7 +1646,7 @@ export default function ExecucaoTreinoPage() {
               </h2>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-xs text-text-muted tabular-nums">
+              <p className="text-xs text-text-muted tabular-nums lining-nums">
                 Ex. {(modalBlockIdx ?? 0) + 1}/{blockCount}
                 {modalIsBiSet
                   ? ` · Rodada ${modalRodadaIdx + 1}/${modalTotalRodadas} · A→B`
@@ -1680,7 +1680,7 @@ export default function ExecucaoTreinoPage() {
               <div className="px-4 mt-4 mb-4">
                 <button
                   onClick={() => setDemoImg(modalEx.gif_url!)}
-                  className="w-full h-11 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center gap-2 text-sm font-medium text-text-secondary hover:text-brand hover:border-brand transition-colors"
+                  className="w-full h-11 rounded-lg bg-surface-1 border border-card flex items-center justify-center gap-2 text-sm font-medium text-text-secondary hover:text-brand hover:border-brand transition-colors"
                 >
                   <Play className="w-4 h-4" fill="currentColor" />
                   Ver demonstração
@@ -1694,7 +1694,7 @@ export default function ExecucaoTreinoPage() {
                 <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-1">
                   Repetições
                 </span>
-                <span className="text-[28px] lg:text-4xl font-extrabold tabular-nums text-text-primary leading-none">
+                <span className="text-[28px] lg:text-4xl font-extrabold tabular-nums lining-nums tracking-display text-text-primary leading-none">
                   {modalSerie.reps}
                 </span>
               </div>
@@ -1705,7 +1705,7 @@ export default function ExecucaoTreinoPage() {
                 </span>
                 <span
                   className={cn(
-                    "text-center leading-tight tabular-nums",
+                    "text-center leading-tight tabular-nums lining-nums",
                     modalSerie.anterior
                       ? "text-sm lg:text-base font-bold text-text-primary"
                       : "text-[28px] lg:text-4xl font-extrabold text-text-muted"
@@ -1781,7 +1781,7 @@ export default function ExecucaoTreinoPage() {
                   <Minus size={18} weight="bold" />
                 </button>
 
-                <div className="flex-1 h-14 bg-surface-2 border border-[#282828] rounded-[10px] flex items-center justify-center">
+                <div className="flex-1 h-14 bg-surface-2 border border-input rounded-[10px] flex items-center justify-center">
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1795,7 +1795,7 @@ export default function ExecucaoTreinoPage() {
                       }
                     }}
                     placeholder="0"
-                    className="w-full bg-transparent border-0 text-center text-[28px] font-bold tabular-nums text-text-primary focus:outline-none"
+                    className="w-full bg-transparent border-0 text-center text-[28px] font-bold tabular-nums lining-nums tracking-display text-text-primary focus:outline-none"
                   />
                 </div>
 
@@ -1824,7 +1824,7 @@ export default function ExecucaoTreinoPage() {
                       setModalCarga(newVal);
                       setModalCargaStr(String(newVal));
                     }}
-                    className="min-h-11 rounded-lg bg-[#141414] border border-[#222222] text-[13px] font-medium tabular-nums text-text-primary active:opacity-80 transition-colors [@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-[#333333]"
+                    className="min-h-11 rounded-lg bg-[#141414] border border-card text-[13px] font-medium tabular-nums lining-nums text-text-primary active:opacity-80 transition-colors [@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-card-hover"
                   >
                     {inc}
                   </button>
@@ -1860,21 +1860,38 @@ export default function ExecucaoTreinoPage() {
                         const bSerie = modalBlock.exercicioB.series[rodadaIdx];
                         if (!aSerie || !bSerie) return null;
                         const rows = [
-                          { label: 'A', nome: modalBlock.exercicioA.nome, s: aSerie, color: 'text-brand' },
-                          { label: 'B', nome: modalBlock.exercicioB.nome, s: bSerie, color: 'text-[#7a8aab]' },
+                          { label: 'A', nome: modalBlock.exercicioA.nome, exId: modalBlock.exercicioA.id, s: aSerie, color: 'text-brand' },
+                          { label: 'B', nome: modalBlock.exercicioB.nome, exId: modalBlock.exercicioB.id, s: bSerie, color: 'text-[#7a8aab]' },
                         ];
                         return (
                           <div key={rodadaIdx} className={rodadaIdx > 0 ? 'pt-3 border-t border-dashed border-[#1e1e1e]' : ''}>
                             <p className="text-[10px] font-semibold uppercase text-text-disabled mb-2">Rodada {rodadaIdx + 1}</p>
-                            {rows.map(({ label, nome, s, color }) => (
-                              <div key={label} className="flex items-center justify-between py-1 text-xs">
-                                <span className="text-text-secondary truncate flex-1">{nome}</span>
-                                <span className="text-text-muted mx-2">{s.anterior || '—'}</span>
-                                <span className="font-bold tabular-nums">{s.peso_atual ? `${s.peso_atual}kg` : '—'}</span>
-                                <span className="text-accent mx-2 tabular-nums">{s.reps}</span>
-                                <span className={cn('text-[10px]', color)}>({label})</span>
-                              </div>
-                            ))}
+                            {rows.map(({ label, nome, exId, s, color }) => {
+                              const isAtualRow =
+                                rodadaIdx === modalRodadaIdx &&
+                                ((label === 'A' && bisetFase === 'a') || (label === 'B' && bisetFase !== 'a'));
+                              return (
+                                <div key={label} className="flex items-center justify-between py-1 text-xs">
+                                  <span className="text-text-secondary truncate flex-1">{nome}</span>
+                                  <span className="text-text-muted mx-2">{s.anterior || '—'}</span>
+                                  {isAtualRow ? (
+                                    <span className="font-bold tabular-nums lining-nums">{modalCarga ? `${modalCarga}kg` : '—'}</span>
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      inputMode="decimal"
+                                      value={s.peso_atual || ''}
+                                      onChange={(e) => handlePesoChange(exId, s.ordem, parseFloat(e.target.value) || 0)}
+                                      placeholder="—"
+                                      aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
+                                      className="w-14 h-7 bg-transparent border-b border-brand/40 px-1 text-right font-bold tabular-nums lining-nums text-text-primary focus:border-brand focus:outline-none"
+                                    />
+                                  )}
+                                  <span className="text-accent mx-2 tabular-nums lining-nums">{s.reps}</span>
+                                  <span className={cn('text-[10px]', color)}>({label})</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })}
@@ -1895,7 +1912,7 @@ export default function ExecucaoTreinoPage() {
                       <div
                         key={s.ordem}
                         className={cn(
-                          'grid items-center py-2 border-b border-border-subtle/30 last:border-0 px-3',
+                          'grid items-center py-2 border-b border-divider/30 last:border-0 px-3',
                           s.completado ? 'bg-success/5' : isAtual ? 'bg-brand/5' : ''
                         )} style={{ gridTemplateColumns: GRID_COLS_HISTORICO }}
                       >
@@ -1908,10 +1925,22 @@ export default function ExecucaoTreinoPage() {
                           </span>
                         </div>
                         <span className="text-[11px] font-mono text-text-muted truncate pl-2">{s.anterior || '—'}</span>
-                        <span className="text-[15px] font-bold font-mono tabular-nums text-text-primary text-right">
-                          {isAtual ? (modalCarga ? `${modalCarga}kg` : '—') : (s.peso_atual ? `${s.peso_atual}kg` : '—')}
-                        </span>
-                        <span className="text-[13px] font-semibold font-mono tabular-nums text-accent text-center">{s.reps}</span>
+                        {isAtual ? (
+                          <span className="text-[15px] font-bold font-mono tabular-nums lining-nums text-text-primary text-right">
+                            {modalCarga ? `${modalCarga}kg` : '—'}
+                          </span>
+                        ) : (
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={s.peso_atual || ''}
+                            onChange={(e) => handlePesoChange(modalEx.id, s.ordem, parseFloat(e.target.value) || 0)}
+                            placeholder="—"
+                            aria-label={`Editar peso da série ${idx + 1}`}
+                            className="w-full h-8 bg-transparent border-b border-brand/40 px-1 text-right text-[15px] font-bold font-mono tabular-nums lining-nums text-text-primary focus:border-brand focus:outline-none"
+                          />
+                        )}
+                        <span className="text-[13px] font-semibold font-mono tabular-nums lining-nums text-accent text-center">{s.reps}</span>
                         <span className="text-[11px] font-medium text-text-secondary text-center">{duasLetrasTenica(s.tecnica) || '—'}</span>
                         <span className="text-[11px] font-medium text-accent text-center">{abreviarTecnica(s.tecnica_extra) || '—'}</span>
                       </div>
@@ -1929,7 +1958,7 @@ export default function ExecucaoTreinoPage() {
                 exercicioNome={modalEx.nome}
               />
             ) : !modalEx.gif_url ? (
-              <div className="mx-4 mt-4 rounded-[14px] border border-border-subtle bg-surface-1 px-4 py-6 text-center">
+              <div className="mx-4 mt-4 rounded-[14px] border border-card bg-surface-1 px-4 py-6 text-center">
                 <Video className="mx-auto mb-2 h-8 w-8 text-text-disabled opacity-40" />
                 <p className="text-xs font-medium text-text-tertiary">Sem demonstração disponível</p>
                 <p className="mt-0.5 text-[11px] text-text-disabled">

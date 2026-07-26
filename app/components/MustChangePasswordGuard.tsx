@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabaseClient } from '@/lib/supabaseClient';
+import {
+  getBootstrapProfile,
+  peekBootstrapProfile,
+} from '@/lib/auth/bootstrapProfile';
 import { getPasswordChangePath, getPostLoginPath } from '@/lib/auth/getPostLoginPath';
-import { getCachedAdminGuardProfile } from '@/lib/auth/adminGuardCache';
-import DumbbellLoader from '@/app/components/DumbbellLoader';
 
 interface MustChangePasswordGuardProps {
   children: React.ReactNode;
@@ -15,38 +16,17 @@ interface MustChangePasswordGuardProps {
 export default function MustChangePasswordGuard({ children, area }: MustChangePasswordGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [ready, setReady] = useState(false);
-
   const changePasswordPath = area === 'aluno' ? '/aluno/trocar-senha' : '/admin/trocar-senha';
   const isChangePasswordPage = pathname === changePasswordPath;
+
+  const [ready, setReady] = useState(() => peekBootstrapProfile() !== null);
 
   useEffect(() => {
     let cancelled = false;
 
     const check = async () => {
       try {
-        const cached = await getCachedAdminGuardProfile(async () => {
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          const user = session?.user;
-          if (!user) return null;
-
-          const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('role, must_change_password, first_access_completed, subscription_active, account_type')
-            .eq('id', user.id)
-            .single();
-
-          if (!profile) return null;
-
-          return {
-            userId: user.id,
-            role: profile.role ?? null,
-            must_change_password: profile.must_change_password ?? null,
-            first_access_completed: profile.first_access_completed ?? null,
-            subscription_active: profile.subscription_active ?? null,
-            account_type: profile.account_type ?? null,
-          };
-        });
+        const cached = await getBootstrapProfile();
 
         if (!cached) {
           router.replace('/login');
@@ -80,16 +60,16 @@ export default function MustChangePasswordGuard({ children, area }: MustChangePa
       }
     };
 
-    // Se já temos cache quente, não mostra loader full-screen
     void check();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [router, pathname, isChangePasswordPage]);
 
   if (!ready) {
+    // Splash HTML global já cobre o first paint — evita segundo loader pesado
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <DumbbellLoader text="Carregando..." />
-      </div>
+      <div className="min-h-screen bg-surface-0" aria-busy="true" />
     );
   }
 

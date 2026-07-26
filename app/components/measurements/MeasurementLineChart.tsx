@@ -67,8 +67,8 @@ export function MeasurementLineChart({
     <div
       className={
         solidBackground
-          ? 'rounded-[10px] border border-[#222222] p-3'
-          : 'rounded-[10px] border mobile-stat-nav-card p-3'
+          ? 'rounded-[10px] border-0 p-3'
+          : 'rounded-[10px] border-0 mobile-stat-nav-card p-3'
       }
     >
       <div

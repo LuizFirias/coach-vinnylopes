@@ -57,10 +57,10 @@ export function TechniquePickerModal({
       aria-label={title}
     >
       <div
-        className="w-full max-w-sm bg-surface-1 border border-border-subtle rounded-2xl shadow-elev-3 overflow-hidden animate-slide-up max-h-[min(85vh,640px)] flex flex-col"
+        className="w-full max-w-sm bg-surface-1 border border-card rounded-2xl shadow-elev-3 overflow-hidden animate-slide-up max-h-[min(85vh,640px)] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-divider shrink-0">
           <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
           <button
             type="button"
@@ -104,7 +104,7 @@ export function TechniquePickerModal({
         </div>
 
         {item?.description && (
-          <div className="shrink-0 border-t border-border-subtle px-4 py-3 space-y-2 bg-surface-2/40">
+          <div className="shrink-0 border-t border-divider px-4 py-3 space-y-2 bg-surface-2/40">
             <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
             {item.coachTip && (
               <div className="flex gap-1.5 items-start rounded-lg bg-brand-subtle border border-brand-border px-2.5 py-2">
@@ -115,7 +115,7 @@ export function TechniquePickerModal({
           </div>
         )}
 
-        <div className="shrink-0 p-3 border-t border-border-subtle">
+        <div className="shrink-0 p-3 border-t border-divider">
           <button
             type="button"
             onClick={onClose}

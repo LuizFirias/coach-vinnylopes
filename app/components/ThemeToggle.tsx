@@ -44,7 +44,7 @@ export default function ThemeToggle({ variant = 'default', className }: ThemeTog
       onClick={toggleTheme}
       className={cn(
         'relative flex h-8 w-14 items-center rounded-full border p-0.5 transition-colors',
-        'border-border-subtle bg-surface-2 hover:bg-surface-3',
+        'border-card bg-surface-2 hover:bg-surface-3',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
         className,
       )}

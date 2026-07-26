@@ -52,8 +52,8 @@ interface Exercicio {
 
 const EQUIPAMENTOS = ["Nenhum", "Banda de Resistência", "Banda de Suspensão", "Barra", "Disco de Peso", "Haltere", "Kettlebell", "Máquina", "Outro"];
 
-const inputCls = "w-full bg-surface-2 border border-border-subtle text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors h-10";
-const selectCls = "w-full bg-surface-2 border border-border-subtle text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 transition-colors appearance-none h-10";
+const inputCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors h-10";
+const selectCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 transition-colors appearance-none h-10";
 
 function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
   const base = { ordem: 1, tecnica: "", tecnica_extra: "", peso_sugerido: null as number | null };
@@ -668,7 +668,7 @@ export default function NovaFichaCoachPage() {
             <button
               type="button"
               onClick={() => setModalExercicio(true)}
-              className="inline-flex items-center gap-1.5 px-3 h-8 bg-surface-1 border border-border-subtle text-text-secondary rounded-lg text-xs font-semibold hover:text-brand hover:border-brand/30"
+              className="inline-flex items-center gap-1.5 px-3 h-8 bg-surface-1 border border-card text-text-secondary rounded-lg text-xs font-semibold hover:text-brand hover:border-brand/30"
             >
               <Plus size={14} weight="bold" /> Adicionar exercício
             </button>
@@ -676,7 +676,7 @@ export default function NovaFichaCoachPage() {
         </div>
 
         {exerciciosFicha.length === 0 ? (
-          <div className="bg-surface-1 border border-dashed border-border-subtle rounded-xl p-10 flex flex-col items-center text-center">
+          <div className="bg-surface-1 border border-dashed border-card rounded-xl p-10 flex flex-col items-center text-center">
             <Barbell size={40} className="text-text-disabled mb-3" />
             <h3 className="text-sm font-semibold text-text-primary mb-1">Nenhum exercício na ficha</h3>
             <p className="text-xs text-text-tertiary mb-5">Adicione exercícios da biblioteca para montar o treino.</p>
@@ -747,8 +747,8 @@ export default function NovaFichaCoachPage() {
       {/* Modal biblioteca */}
       {modalExercicio && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-surface-0/80 backdrop-blur-sm">
-          <div className="bg-surface-1 border border-border-subtle shadow-2xl w-full max-w-xl rounded-xl overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-4 border-b border-border-subtle flex items-center justify-between">
+          <div className="bg-surface-1 border border-card shadow-2xl w-full max-w-xl rounded-xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="p-4 border-b border-divider flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Biblioteca</h3>
                 <p className="text-[10px] text-text-tertiary">Selecione exercícios para adicionar</p>
@@ -774,7 +774,7 @@ export default function NovaFichaCoachPage() {
                   placeholder="Filtrar por nome ou grupo..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-10 pl-9 pr-4 bg-surface-2 border border-border-subtle rounded-lg text-xs"
+                  className="w-full h-10 pl-9 pr-4 bg-surface-2 border border-card rounded-lg text-xs"
                 />
               </div>
             </div>
@@ -788,7 +788,7 @@ export default function NovaFichaCoachPage() {
                     onClick={() => toggleSelectExercise(ex.id)}
                     className={cn(
                       "w-full flex items-center justify-between p-3 rounded-lg border text-left",
-                      isSelected ? "border-brand bg-brand/5" : "border-border-subtle bg-surface-2"
+                      isSelected ? "border-brand bg-brand/5" : "border-card bg-surface-2"
                     )}
                   >
                     <div>
@@ -804,7 +804,7 @@ export default function NovaFichaCoachPage() {
                 );
               })}
             </div>
-            <div className="p-4 border-t border-border-subtle flex justify-end gap-2">
+            <div className="p-4 border-t border-divider flex justify-end gap-2">
               <button type="button" onClick={() => { setSelectedExerciseIds(new Set()); setModalExercicio(false); }} className="px-4 py-2 text-xs font-semibold rounded-lg bg-surface-3">
                 Cancelar
               </button>
@@ -824,8 +824,8 @@ export default function NovaFichaCoachPage() {
       {/* Modal novo exercício */}
       {modalNovoExercicio && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-surface-0/80 backdrop-blur-sm">
-          <div className="bg-surface-1 border border-border-subtle w-full max-w-lg rounded-xl max-h-[85vh] flex flex-col">
-            <div className="p-4 border-b border-border-subtle flex justify-between items-center">
+          <div className="bg-surface-1 border border-card w-full max-w-lg rounded-xl max-h-[85vh] flex flex-col">
+            <div className="p-4 border-b border-divider flex justify-between items-center">
               <h3 className="text-sm font-bold">Criar exercício</h3>
               <button type="button" onClick={() => { setModalNovoExercicio(false); setErroValidacao(null); }}>
                 <X size={16} />

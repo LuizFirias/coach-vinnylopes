@@ -42,7 +42,7 @@ export function WorkoutPrescriptionSummary({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-1 px-3.5 py-2.5",
+        "flex items-center gap-3 rounded-xl border border-card bg-surface-1 px-3.5 py-2.5",
         isMobile ? "text-[11px]" : "text-xs",
         className
       )}

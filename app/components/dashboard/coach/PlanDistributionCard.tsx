@@ -28,7 +28,7 @@ export function PlanDistributionCard({
   return (
     <div
       className={cn(
-        "bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm",
+        "bg-surface-1 border border-card rounded-xl p-4 shadow-sm",
         className
       )}
     >

@@ -49,7 +49,7 @@ export function RestBadge({ descanso, onChange, compact = false, label = "Descan
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 bg-surface-1 border border-border-subtle rounded-lg shadow-elev-2 p-2 min-w-[140px]">
+        <div className="absolute right-0 top-full mt-1 z-20 bg-surface-1 border border-card rounded-lg shadow-elev-2 p-2 min-w-[140px]">
           <p className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary px-1 mb-1.5">
             {label}
           </p>

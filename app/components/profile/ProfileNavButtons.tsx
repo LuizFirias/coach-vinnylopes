@@ -18,9 +18,9 @@ function ProfileNavLink({ href, label, icon: Icon, className }: NavItem) {
       href={href}
       className={cn(
         "nav-button group flex items-center gap-3 min-h-12 lg:min-h-14",
-        "bg-surface-1 border border-border-subtle rounded-xl px-4 py-3.5",
+        "bg-surface-1 border border-card rounded-xl px-4 py-3.5",
         "transition-colors active:bg-surface-2 cursor-pointer",
-        "[@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-[#333333]",
+        "[@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-card-hover",
         className
       )}
     >

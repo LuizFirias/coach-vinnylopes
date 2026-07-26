@@ -25,7 +25,7 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
   return (
     <div
       className={cn(
-        "bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm self-start h-auto",
+        "bg-surface-1 border border-card rounded-xl p-4 shadow-sm self-start h-auto",
         className
       )}
     >
@@ -44,7 +44,7 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
           {actions.map((action) => (
             <div
               key={action.id}
-              className="p-3 bg-surface-2 border border-border-subtle hover:border-border-strong rounded-lg flex items-start justify-between gap-3 transition-all min-h-[56px]"
+              className="p-3 bg-surface-2 border border-card hover:border-card-hover rounded-lg flex items-start justify-between gap-3 transition-all min-h-[56px]"
             >
               <div className="flex items-start gap-2.5 min-w-0">
                 <div

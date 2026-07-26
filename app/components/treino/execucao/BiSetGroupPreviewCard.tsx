@@ -77,7 +77,7 @@ function HalfPreview({
           </div>
         )}
       </div>
-      <div className="border-t border-border-subtle/50 pt-2">
+      <div className="border-t border-divider/50 pt-2">
         <div className="grid items-center py-2 mb-0.5" style={{ gridTemplateColumns: gridCols }}>
           <span className="text-[10px] font-semibold uppercase text-text-muted text-center">Set</span>
           {showAnteriorCol && <span className="text-[10px] font-semibold uppercase text-text-muted pl-2">Ant.</span>}
@@ -90,7 +90,7 @@ function HalfPreview({
         {series.map((serie, idx) => (
           <div
             key={serie.ordem}
-            className="grid items-center py-2 border-b border-border-subtle/30 last:border-0"
+            className="grid items-center py-2 border-b border-divider/30 last:border-0"
             style={{ gridTemplateColumns: gridCols }}
           >
             <span className="text-center text-xs font-bold text-text-muted">{idx + 1}</span>
@@ -99,10 +99,10 @@ function HalfPreview({
               type="number"
               value={serie.peso_atual || ""}
               onChange={(e) => onPesoChange(serie.ordem, parseFloat(e.target.value) || 0)}
-              className="text-right text-sm font-bold bg-transparent border-none focus:outline-none tabular-nums"
+              className="text-right text-sm font-bold bg-transparent border-none focus:outline-none tabular-nums lining-nums"
               disabled={!treinoIniciado}
             />
-            <span className="text-center text-sm font-semibold text-accent tabular-nums">{serie.reps}</span>
+            <span className="text-center text-sm font-semibold text-accent tabular-nums lining-nums">{serie.reps}</span>
             <span className="text-center text-[11px] text-text-secondary">{duasLetrasTenica(serie.tecnica) || "—"}</span>
             <span className="text-center text-[11px] text-accent">{serie.tecnica_extra || "—"}</span>
             <button
@@ -111,7 +111,7 @@ function HalfPreview({
               disabled={!treinoIniciado}
               className={cn(
                 "mx-auto w-7 h-7 rounded-md border flex items-center justify-center transition-colors",
-                serie.completado ? "bg-success border-success text-white" : "border-border-subtle bg-surface-2"
+                serie.completado ? "bg-success border-success text-white" : "border-card bg-surface-2"
               )}
             >
               {serie.completado && <Check size={14} weight="bold" />}
@@ -183,7 +183,7 @@ export function BiSetGroupPreviewCard({
         onVideoOpen={onVideoOpen}
       />
 
-      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border-subtle/50">
+      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-divider/50">
         <Clock size={12} className="text-brand shrink-0" />
         <p className="text-xs text-brand font-medium">
           Descanso após o par: {formatRestTime(block.descanso)}

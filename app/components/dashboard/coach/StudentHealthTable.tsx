@@ -60,7 +60,7 @@ export function StudentHealthTable({
   const rows = students.slice(0, limit);
 
   return (
-    <div className="bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm">
+    <div className="bg-surface-1 border border-card rounded-xl p-4 shadow-sm">
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
           <h3 className="text-sm font-semibold text-text-primary">Saúde dos alunos</h3>
@@ -80,7 +80,7 @@ export function StudentHealthTable({
         <div className="overflow-x-auto scrollbar-hide">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-border-subtle">
+              <tr className="border-b border-divider">
                 {["Nome", "Status", "Plano", "Último treino", "Expiração", "Ações"].map((h) => (
                   <th
                     key={h}
@@ -99,7 +99,7 @@ export function StudentHealthTable({
                 return (
                   <tr
                     key={aluno.id}
-                    className="border-b border-border-subtle/50 last:border-b-0 hover:bg-surface-2/40 transition-colors"
+                    className="border-b border-divider/50 last:border-b-0 hover:bg-surface-2/40 transition-colors"
                   >
                     <td className="py-2.5 text-xs font-bold text-text-primary max-w-[160px] truncate">
                       {aluno.coaching_reference || aluno.full_name || "Aluno"}

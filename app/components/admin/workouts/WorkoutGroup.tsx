@@ -35,7 +35,7 @@ export function WorkoutGroupBlock({ group, onView, onEdit, onDelete }: WorkoutGr
   return (
     <>
       <tr className="bg-surface-0">
-        <td colSpan={7} className="p-0 border-b border-border-subtle">
+        <td colSpan={7} className="p-0 border-b border-divider">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}

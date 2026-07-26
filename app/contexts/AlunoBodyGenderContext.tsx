@@ -6,26 +6,53 @@ import { profileSexoToBodyGender, type BodyGender } from '@/lib/utils/bodyGender
 
 const AlunoBodyGenderContext = createContext<BodyGender>('male');
 
-export function AlunoBodyGenderProvider({ children }: { children: React.ReactNode }) {
-  const [gender, setGender] = useState<BodyGender>('male');
+type SexoCache = { userId: string; gender: BodyGender; at: number };
+const TTL_MS = 90_000;
+let sexoCache: SexoCache | null = null;
+let sexoInflight: Promise<BodyGender> | null = null;
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      if (!authData.user) return;
+async function loadBodyGender(): Promise<BodyGender> {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const user = session?.user;
+  if (!user) return 'male';
 
+  if (sexoCache && sexoCache.userId === user.id && Date.now() - sexoCache.at < TTL_MS) {
+    return sexoCache.gender;
+  }
+  if (sexoInflight) return sexoInflight;
+
+  sexoInflight = (async () => {
+    try {
       const { data } = await supabaseClient
         .from('profiles')
         .select('sexo')
-        .eq('id', authData.user.id)
+        .eq('id', user.id)
         .single();
 
-      if (data?.sexo) {
-        setGender(profileSexoToBodyGender(data.sexo));
-      }
-    };
+      const gender = data?.sexo ? profileSexoToBodyGender(data.sexo) : 'male';
+      sexoCache = { userId: user.id, gender, at: Date.now() };
+      return gender;
+    } finally {
+      sexoInflight = null;
+    }
+  })();
 
-    load();
+  return sexoInflight;
+}
+
+export function AlunoBodyGenderProvider({ children }: { children: React.ReactNode }) {
+  const [gender, setGender] = useState<BodyGender>(
+    () => sexoCache?.gender ?? 'male',
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadBodyGender().then((g) => {
+      if (!cancelled) setGender(g);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

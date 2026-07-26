@@ -283,9 +283,9 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
   };
 
   const statusColors: Record<string, string> = {
-    draft: 'bg-surface-2 border-border-subtle text-text-secondary',
+    draft: 'bg-surface-2 border-card text-text-secondary',
     active: 'bg-success/15 border-success/30 text-success',
-    archived: 'bg-surface-3 border-border-subtle text-text-disabled',
+    archived: 'bg-surface-3 border-card text-text-disabled',
     paused: 'bg-warning/15 border-warning/30 text-warning'
   };
 
@@ -294,11 +294,11 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto px-4">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-6 border-b border-border-subtle/50 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-6 border-b border-divider/50 mb-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/admin/nutricao')}
-              className="w-8 h-8 rounded-md bg-surface-2 border border-border-subtle hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-md bg-surface-2 border border-card hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
             >
               <ArrowLeft size={16} />
             </button>
@@ -325,14 +325,14 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
               <Button
                 variant="secondary"
                 onClick={() => setShowTemplateModal(true)}
-                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-border-subtle hover:border-brand/40 w-full sm:w-auto justify-center"
+                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-card hover:border-brand/40 w-full sm:w-auto justify-center"
               >
                 Salvar Template
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => setShowDuplicateModal(true)}
-                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-border-subtle hover:border-brand/40 w-full sm:w-auto justify-center"
+                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-card hover:border-brand/40 w-full sm:w-auto justify-center"
               >
                 Duplicar Plano
               </Button>
@@ -353,8 +353,8 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
           <div className="lg:col-span-8 flex flex-col gap-6">
             
             {/* CARD 1: Info Card */}
-            <Card className="rounded-xl border border-border-subtle p-4 md:p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle/60 pb-2 flex items-center gap-2">
+            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-4">
+              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2 flex items-center gap-2">
                 <BookmarkSimple size={14} className="text-brand" />
                 Dados do Plano
               </h2>
@@ -393,7 +393,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
 
             {/* CARD 2: Refeições */}
             <div className="flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle/50 pb-2 flex items-center gap-2">
+              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/50 pb-2 flex items-center gap-2">
                 <Note size={14} className="text-brand" />
                 Refeições Planejadas
               </h2>
@@ -404,15 +404,15 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                 plan.days[0].meals.map((meal: any, mealIdx: number) => {
                   const mMacros = getMealMacros(meal);
                   return (
-                    <Card key={mealIdx} className="rounded-xl border border-border-subtle/80 shadow-sm p-4 md:p-5 flex flex-col gap-3 bg-surface-1">
+                    <Card key={mealIdx} className="rounded-xl border border-card/80 shadow-sm p-4 md:p-5 flex flex-col gap-3 bg-surface-1">
                       
                       {/* Meal Title Header */}
-                      <div className="flex items-start justify-between gap-3 border-b border-border-subtle/40 pb-2">
+                      <div className="flex items-start justify-between gap-3 border-b border-divider/40 pb-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
                           <span className="text-xs font-extrabold text-text-primary truncate">{meal.title}</span>
                           {meal.time_suggestion && (
-                            <span className="bg-surface-2 border border-border-subtle text-[9px] px-1 rounded font-mono text-text-secondary shrink-0">
+                            <span className="bg-surface-2 border border-card text-[9px] px-1 rounded font-mono text-text-secondary shrink-0">
                               {meal.time_suggestion.slice(0, 5)}
                             </span>
                           )}
@@ -462,7 +462,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
 
                                 {/* Substitutes */}
                                 {item.substitutions && item.substitutions.length > 0 && (
-                                  <div className="border-t border-border-subtle/30 pt-1.5 mt-1 pl-3">
+                                  <div className="border-t border-divider/30 pt-1.5 mt-1 pl-3">
                                     <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-wider block mb-1">Substitutos autorizados:</span>
                                     <div className="flex flex-col gap-1">
                                       {item.substitutions.map((sub: any, subIdx: number) => {
@@ -485,7 +485,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                       </div>
 
                       {meal.notes && (
-                        <p className="text-[9px] text-text-tertiary italic border-t border-border-subtle/30 pt-2 mt-1">
+                        <p className="text-[9px] text-text-tertiary italic border-t border-divider/30 pt-2 mt-1">
                           Nota: {meal.notes}
                         </p>
                       )}
@@ -500,8 +500,8 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
           <div className="lg:col-span-4 lg:sticky lg:top-6 flex flex-col gap-6">
             
             {/* Macros summary card */}
-            <Card className="rounded-xl border border-border-subtle p-4 md:p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle/60 pb-2">
+            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-4">
+              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2">
                 Resumo do Planejado
               </h2>
 
@@ -570,7 +570,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
         {/* Modals */}
         {showDuplicateModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface-1 border border-border-subtle rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
+            <div className="bg-surface-1 border border-card rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Duplicar Plano Alimentar</h3>
                 <p className="text-2xs text-text-tertiary">Copie esta rotina para outro aluno para economizar tempo</p>
@@ -628,7 +628,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
 
         {showTemplateModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface-1 border border-border-subtle rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
+            <div className="bg-surface-1 border border-card rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Salvar como Template</h3>
                 <p className="text-2xs text-text-tertiary">Salve as refeições e alimentos atuais como um modelo reutilizável</p>

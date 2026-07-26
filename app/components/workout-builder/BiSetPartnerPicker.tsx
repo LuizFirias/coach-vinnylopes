@@ -41,7 +41,7 @@ export function BiSetPartnerPicker({ catalog, excludeIds = [], onSelect }: BiSet
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar exercício..."
-          className="w-full h-10 pl-9 pr-3 bg-[#1e1e1e] border border-[#282828] rounded-lg text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+          className="w-full h-10 pl-9 pr-3 bg-[#1e1e1e] border border-input rounded-lg text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
         />
       </div>
       <div className="divide-y divide-[#1e1e1e]">

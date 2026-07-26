@@ -17,7 +17,7 @@ interface MobileListRowProps {
  */
 export function MobileListRow({ name, badge, topRight, meta }: MobileListRowProps) {
   return (
-    <div className="flex items-start justify-between gap-3 py-3 border-b border-border-subtle/50 last:border-b-0">
+    <div className="flex items-start justify-between gap-3 py-3 border-b border-divider/50 last:border-b-0">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0">
           <p className="font-semibold text-sm text-text-primary truncate">{name}</p>

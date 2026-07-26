@@ -168,9 +168,9 @@ export default function AlunoTreinosPage() {
                       if (pdf.aluno_id !== userId) return;
                       setSelectedPdf(pdf);
                     }}
-                    className="w-full text-left bg-surface-1 border border-border-subtle p-3.5 rounded-xl transition-colors active:bg-surface-2 flex items-center gap-3 group [@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-[#333333] min-h-16"
+                    className="w-full text-left border-0 bg-[var(--dash-card,#111827)] p-3.5 rounded-xl transition-colors active:bg-[#1a2332] flex items-center gap-3 group [@media(hover:hover)]:hover:bg-[#1a2332] min-h-16"
                   >
-                    <div className="w-10 h-10 rounded-[10px] bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary shrink-0">
+                    <div className="w-10 h-10 rounded-[10px] bg-surface-2 border border-card flex items-center justify-center text-text-secondary shrink-0">
                       <FileText size={18} />
                     </div>
                     <div className="flex-1 min-w-0">

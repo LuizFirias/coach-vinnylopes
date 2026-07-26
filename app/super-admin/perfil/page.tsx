@@ -188,7 +188,7 @@ export default function SuperAdminPerfilPage() {
         <Card className="rounded-2xl shadow-elev-1">
           <div className="flex flex-col items-center gap-4 py-2">
             <div className="relative">
-              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-surface-3 border border-border-default relative">
+              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-surface-3 border border-card relative">
                 {avatarUrl ? (
                   <Image
                     src={getPublicStorageUrl("avatars", avatarUrl) || ""}
@@ -274,7 +274,7 @@ export default function SuperAdminPerfilPage() {
         </Card>
 
         <Card className="rounded-2xl shadow-elev-1">
-          <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2 mb-4">
+          <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider pb-2 mb-4">
             Sessão
           </h3>
           <button

@@ -66,10 +66,10 @@ export function WorkoutDayDetail({
           className="bg-surface-1 rounded-xl px-4 py-3.5"
         >
           <div className="flex items-start justify-between gap-3">
-            <p className="text-[15px] font-semibold text-text-primary leading-snug">
+            <p className="text-[15px] font-semibold uppercase tracking-wide text-text-primary leading-snug">
               {workout.nome_rotina}
             </p>
-            <p className="text-[13px] text-text-secondary shrink-0 tabular-nums">
+            <p className="text-[13px] text-text-secondary shrink-0 tabular-nums lining-nums">
               {estimateDuration(workout.totalSets)}
             </p>
           </div>
@@ -90,7 +90,7 @@ export function WorkoutDayDetail({
                 <p className="text-[13px] font-medium text-text-primary leading-snug min-w-0">
                   {ex.nome}
                 </p>
-                <p className="text-[13px] text-text-secondary shrink-0 tabular-nums">
+                <p className="text-[13px] text-text-secondary shrink-0 tabular-nums lining-nums">
                   {ex.completedSets || ex.sets}{" "}
                   {(ex.completedSets || ex.sets) === 1 ? "série" : "séries"}
                 </p>
@@ -102,7 +102,7 @@ export function WorkoutDayDetail({
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
               Volume total
             </p>
-            <p className="text-[13px] font-semibold text-text-primary tabular-nums">
+            <p className="text-[13px] font-semibold text-text-primary tabular-nums lining-nums">
               {workout.volumeTotal > 0
                 ? `${workout.volumeTotal.toLocaleString("pt-BR")} kg`
                 : "0 kg"}

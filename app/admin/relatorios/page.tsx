@@ -283,7 +283,7 @@ export default function RelatoriosPage() {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
 
         {/* Header */}
-        <div className="mb-6 py-4 border-b border-border-subtle">
+        <div className="mb-6 py-4 border-b border-divider">
           <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight font-display">
             Relatórios
           </h1>
@@ -298,7 +298,7 @@ export default function RelatoriosPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <DumbbellLoader />
+            <DumbbellLoader variant="inline" />
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -312,7 +312,7 @@ export default function RelatoriosPage() {
               ].map(item => (
                 <div
                   key={item.label}
-                  className="bg-surface-1 border border-border-subtle shadow-sm rounded-lg p-4 h-20 flex flex-col justify-center"
+                  className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 h-20 flex flex-col justify-center"
                 >
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">{item.label}</p>
                   <p className={cn('text-xl font-bold mt-0.5', item.color)}>{item.value}</p>
@@ -323,13 +323,13 @@ export default function RelatoriosPage() {
             {/* Revenue + Distribution */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Receita Total */}
-              <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-lg p-4 md:p-5 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+              <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">Receita Total Bruta</p>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-sm font-sans font-semibold text-text-secondary">R$</span>
-                    <span className="text-2xl font-bold tracking-tight text-text-primary font-mono tabular-nums leading-none">
+                    <span className="text-2xl font-bold tracking-tight text-text-primary font-mono tabular-nums lining-nums leading-none">
                       {receitaTotal !== null ? receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
                     </span>
                   </div>
@@ -350,7 +350,7 @@ export default function RelatoriosPage() {
               </div>
 
               {/* Distribuição por plano */}
-              <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl p-4 md:p-5 flex flex-col justify-between">
+              <div className="bg-surface-1 border border-card shadow-sm rounded-xl p-4 md:p-5 flex flex-col justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-3">Distribuição por Plano</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -358,7 +358,7 @@ export default function RelatoriosPage() {
                     { label: 'Trimestral', count: alunosPorPlano.trimestral || 0, color: 'bg-brand/60' },
                     { label: 'Semestral', count: alunosPorPlano.semestral || 0, color: 'bg-brand/30' },
                   ].map((item) => (
-                    <div key={item.label} className="flex flex-col justify-between p-2 bg-surface-2 border border-border-subtle rounded-lg">
+                    <div key={item.label} className="flex flex-col justify-between p-2 bg-surface-2 border border-card rounded-lg">
                       <div className="flex items-center gap-1.5">
                         <span className={cn('w-2 h-2 rounded-full shrink-0', item.color)} />
                         <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary truncate">{item.label}</span>
@@ -373,7 +373,7 @@ export default function RelatoriosPage() {
             </div>
 
             {/* Receita mensal — passado + projeção */}
-            <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-lg p-4 md:p-5">
+            <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5">
               <div className="flex items-start justify-between mb-2 gap-4">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Projeção & Receita por Mês</p>
@@ -428,7 +428,7 @@ export default function RelatoriosPage() {
 
             {/* Charts por tipo de plano */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
+              <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Faturamento Atual por Tipo de Plano (R$)</p>
                 <div className="flex-1 w-full mt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -455,7 +455,7 @@ export default function RelatoriosPage() {
                 </div>
               </div>
 
-              <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
+              <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Adesão por Categoria</p>
                 <div className="flex-1 w-full mt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -476,7 +476,7 @@ export default function RelatoriosPage() {
             </div>
 
             {/* Financial summary */}
-            <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-lg p-4 md:p-5">
+            <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-4">Resumo Financeiro Estratégico</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-3">
@@ -487,23 +487,23 @@ export default function RelatoriosPage() {
                       { label: 'Planos Trimestrais', val: receitaPorPlano.trimestral || 0 },
                       { label: 'Planos Semestrais', val: receitaPorPlano.semestral || 0 },
                     ].map(item => (
-                      <div key={item.label} className="flex justify-between items-center p-2.5 bg-surface-2 border border-border-subtle rounded-lg">
+                      <div key={item.label} className="flex justify-between items-center p-2.5 bg-surface-2 border border-card rounded-lg">
                         <span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide">{item.label}</span>
-                        <span className="text-xs font-bold text-text-primary font-mono tabular-nums">{fmt(item.val)}</span>
+                        <span className="text-xs font-bold text-text-primary font-mono tabular-nums lining-nums">{fmt(item.val)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary pl-2 border-l-2 border-border-subtle leading-none">Previsão de Fluxo</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary pl-2 border-l-2 border-card leading-none">Previsão de Fluxo</p>
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center p-2.5 bg-brand-subtle/40 border border-brand-border/20 rounded-lg">
                       <span className="text-[10px] font-bold text-brand uppercase tracking-wide">Recorrência Mensal</span>
-                      <span className="text-sm font-bold text-brand font-mono tabular-nums">{fmt(receitaMensal ?? 0)}</span>
+                      <span className="text-sm font-bold text-brand font-mono tabular-nums lining-nums">{fmt(receitaMensal ?? 0)}</span>
                     </div>
-                    <div className="flex justify-between items-center p-2.5 bg-surface-2 border border-border-subtle rounded-lg">
+                    <div className="flex justify-between items-center p-2.5 bg-surface-2 border border-card rounded-lg">
                       <span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide">Receita LTV (Planos Longos)</span>
-                      <span className="text-xs font-bold text-text-primary font-mono tabular-nums">{fmt(receitaMulti ?? 0)}</span>
+                      <span className="text-xs font-bold text-text-primary font-mono tabular-nums lining-nums">{fmt(receitaMulti ?? 0)}</span>
                     </div>
                   </div>
                 </div>
@@ -511,22 +511,22 @@ export default function RelatoriosPage() {
             </div>
 
             {/* Nutrition summary */}
-            <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-lg p-4 md:p-5">
+            <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-4">Acompanhamento Nutricional</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-3 bg-surface-2 border border-border-subtle rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Adesão Alimentar Média</span>
                   <span className="text-base font-bold text-success font-mono mt-1">{adesaoAlimentarMedia}%</span>
                 </div>
-                <div className="p-3 bg-surface-2 border border-border-subtle rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Planos Digitais Ativos</span>
                   <span className="text-base font-bold text-text-primary font-mono mt-1">{planoDigitalAtivos}</span>
                 </div>
-                <div className="p-3 bg-surface-2 border border-border-subtle rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Alunos Sem Plano</span>
                   <span className="text-base font-bold text-warning font-mono mt-1">{alunosSemPlano}</span>
                 </div>
-                <div className="p-3 bg-surface-2 border border-border-subtle rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Check-ins no Mês</span>
                   <span className="text-base font-bold text-brand font-mono mt-1">{checkinsNoPeriodo}</span>
                 </div>

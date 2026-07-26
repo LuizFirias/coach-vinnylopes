@@ -20,7 +20,7 @@ export function PreviousSetIndicator({ anterior }: PreviousSetIndicatorProps) {
           Primeira vez · comece leve, foque na técnica
         </p>
       ) : (
-        <p className="text-base font-mono tabular-nums font-medium text-text-primary">
+        <p className="text-base font-mono tabular-nums lining-nums font-medium text-text-primary">
           {formatWeight(anterior.peso)} × {anterior.reps}
         </p>
       )}

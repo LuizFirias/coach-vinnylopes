@@ -25,7 +25,7 @@ export function HydrationSection({
   const dropSize = isDesktop ? 28 : 18;
 
   return (
-    <section className="bg-surface-1 border border-border-subtle rounded-xl p-4 overflow-hidden">
+    <section className="bg-[#111827] border-0 rounded-xl p-4 overflow-hidden">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-1.5 min-w-0">
           <Drop size={12} weight="fill" className="text-brand shrink-0" />
@@ -33,7 +33,7 @@ export function HydrationSection({
             Hidratação
           </p>
         </div>
-        <p className="text-xs text-text-secondary tabular-nums shrink-0">
+        <p className="text-xs text-text-secondary tabular-nums lining-nums shrink-0">
           {mlCurrent}ml / {mlTarget}ml
         </p>
       </div>

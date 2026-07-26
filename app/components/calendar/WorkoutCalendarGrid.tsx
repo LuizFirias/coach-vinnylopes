@@ -65,7 +65,7 @@ export function WorkoutCalendarGrid({
           <button
             type="button"
             onClick={onPrevMonth}
-            className="w-8 h-8 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-surface-1 border border-card flex items-center justify-center text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
             aria-label="Mês anterior"
           >
             <CaretLeft size={16} />
@@ -73,7 +73,7 @@ export function WorkoutCalendarGrid({
           <button
             type="button"
             onClick={onNextMonth}
-            className="w-8 h-8 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-surface-1 border border-card flex items-center justify-center text-text-secondary hover:text-text-primary active:scale-95 transition-all cursor-pointer"
             aria-label="Próximo mês"
           >
             <CaretRight size={16} />
@@ -81,7 +81,7 @@ export function WorkoutCalendarGrid({
         </div>
       </div>
 
-      <div className="bg-surface-1 border border-border-subtle rounded-xl p-3 lg:p-4">
+      <div className="bg-surface-1 border border-card rounded-xl p-3 lg:p-4">
         <div className="grid grid-cols-7 text-center gap-0.5 mb-1">
           {WEEK_DAYS.map((day) => (
             <span

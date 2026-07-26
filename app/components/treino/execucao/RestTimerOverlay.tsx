@@ -122,7 +122,7 @@ export function RestTimerOverlay({
               haptic("light");
               onAddSeconds(-30);
             }}
-            className="min-h-11 px-4 rounded-lg bg-surface-1 border border-border-subtle text-xs font-semibold text-text-primary [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors"
+            className="min-h-11 px-4 rounded-lg bg-surface-1 border border-card text-xs font-semibold text-text-primary [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors"
           >
             −30s
           </button>
@@ -142,7 +142,7 @@ export function RestTimerOverlay({
               haptic("light");
               onAddSeconds(30);
             }}
-            className="min-h-11 px-4 rounded-lg bg-surface-1 border border-border-subtle text-xs font-semibold text-text-primary [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors"
+            className="min-h-11 px-4 rounded-lg bg-surface-1 border border-card text-xs font-semibold text-text-primary [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors"
           >
             +30s
           </button>

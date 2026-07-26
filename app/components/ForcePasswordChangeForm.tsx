@@ -96,7 +96,7 @@ export default function ForcePasswordChangeForm({ redirectPath }: ForcePasswordC
           </p>
         </div>
 
-        <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-6">
+        <div className="bg-surface-1 border border-card shadow-elev-1 rounded-2xl p-6">
           {message && (
             <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-medium mb-4 ${
               message.type === 'success'
@@ -122,7 +122,7 @@ export default function ForcePasswordChangeForm({ redirectPath }: ForcePasswordC
                   onChange={(e) => { setNewPassword(e.target.value); setMessage(null); }}
                   placeholder="Crie uma senha forte"
                   autoFocus
-                  className="w-full h-12 bg-surface-0 border border-border-subtle text-text-primary px-4 pr-12 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                  className="w-full h-12 bg-surface-0 border border-input text-text-primary px-4 pr-12 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
                 />
                 <button
                   type="button"
@@ -135,7 +135,7 @@ export default function ForcePasswordChangeForm({ redirectPath }: ForcePasswordC
             </div>
 
             {newPassword.length > 0 && (
-              <div className="bg-surface-0 border border-border-subtle rounded-xl p-4 space-y-2">
+              <div className="bg-surface-0 border border-card rounded-xl p-4 space-y-2">
                 <p className="text-2xs font-bold uppercase tracking-caps text-brand mb-2">Requisitos de segurança</p>
                 {[
                   [req.minLength, 'Mínimo 8 caracteres'],
@@ -167,7 +167,7 @@ export default function ForcePasswordChangeForm({ redirectPath }: ForcePasswordC
                   className={`w-full h-12 bg-surface-0 border text-text-primary px-4 pr-20 rounded-xl text-sm placeholder:text-text-disabled focus:outline-none transition-colors ${
                     confirmPassword.length > 0
                       ? match ? 'border-success/40 focus:border-success/60' : 'border-danger/40 focus:border-danger/60'
-                      : 'border-border-subtle focus:border-brand/40'
+                      : 'border-card focus:border-brand/40'
                   }`}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">

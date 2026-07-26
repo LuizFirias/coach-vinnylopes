@@ -137,7 +137,6 @@ export function MeasurementsView({
       >
         <div className={cn(isDesktop && 'sticky top-24')}>
           <MeasurementCurrentCard
-            label={`${metric.label} atual`}
             value={currentValue}
             unit={metric.unit}
             lastUpdated={lastUpdated}

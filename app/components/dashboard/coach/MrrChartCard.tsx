@@ -39,7 +39,7 @@ function ActiveBar(props: any) {
 export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardProps) {
   return (
     <div
-      className={`bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm ${className ?? ""}`}
+      className={`bg-surface-1 border border-card rounded-xl p-4 shadow-sm ${className ?? ""}`}
     >
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
@@ -47,7 +47,7 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
           <p className="text-[11px] text-text-secondary mt-0.5">Realizado + projeção</p>
         </div>
         <div className="text-right">
-          <p className="text-2xl md:text-[24px] font-bold text-text-primary font-mono tabular-nums leading-none">
+          <p className="text-2xl md:text-[24px] font-bold text-text-primary font-mono tabular-nums lining-nums tracking-headline leading-none">
             {formatCurrency(currentMrr)}
           </p>
           <p className="text-[10px] text-success mt-1">MRR atual</p>

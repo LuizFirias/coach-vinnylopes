@@ -40,7 +40,7 @@ export function StatsWeekCalendar({
         >
           <CaretLeft size={20} />
         </button>
-        <span className="text-[13px] font-semibold text-text-primary tabular-nums text-center">
+        <span className="text-[13px] font-semibold text-text-primary tabular-nums lining-nums text-center">
           {weekDays[0].getDate()}–{weekDays[6].getDate()} {monthShort}
           {weekOffset === 0 && (
             <span className="text-[11px] font-normal text-text-muted"> · esta semana</span>
@@ -70,7 +70,7 @@ export function StatsWeekCalendar({
               </span>
               <div
                 className={cn(
-                  "w-[34px] h-[34px] rounded-full flex items-center justify-center text-[13px] font-semibold tabular-nums transition-colors",
+                  "w-[34px] h-[34px] rounded-full flex items-center justify-center text-[13px] font-semibold tabular-nums lining-nums transition-colors",
                   hasWorkout
                     ? "bg-brand text-white"
                     : isToday

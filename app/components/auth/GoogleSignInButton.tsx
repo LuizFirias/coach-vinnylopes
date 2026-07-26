@@ -47,7 +47,7 @@ export function GoogleSignInButton({
       onClick={onClick}
       className={cn(
         "w-full h-11 flex items-center justify-center gap-2.5 rounded-lg",
-        "border border-border-subtle bg-surface-0 text-text-primary",
+        "border border-card bg-surface-0 text-text-primary",
         "text-xs font-semibold transition-all",
         "hover:bg-surface-2 active:scale-[0.98]",
         "disabled:opacity-50 disabled:cursor-not-allowed",

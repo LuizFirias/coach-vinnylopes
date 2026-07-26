@@ -33,6 +33,7 @@ import {
   Handshake,
   ArrowRight,
   FilePdf,
+  HeartStraight,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -42,6 +43,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
 import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
+import { CoachCardioTab } from '@/app/components/admin/cardio/CoachCardioTab';
 import { MeasurementsView } from '@/app/components/measurements/MeasurementsView';
 import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
 import type { MedicaoRecord } from '@/lib/measurements/types';
@@ -228,7 +230,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [latestDigitalPlan, setLatestDigitalPlan] = useState<any | null>(null);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
+  const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'cardio' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
   const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
   const [treinoPdfOpen, setTreinoPdfOpen] = useState(false);
   const [nutritionPdfOpen, setNutritionPdfOpen] = useState(false);
@@ -243,7 +245,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     if (typeof window === "undefined") return;
     const tab = new URLSearchParams(window.location.search).get("tab");
-    const abasPermitidas = ["visao-geral", "treinos", "nutricao", "evolucao", "financeiro", "fotos", "observacoes"];
+    const abasPermitidas = ["visao-geral", "treinos", "cardio", "nutricao", "evolucao", "financeiro", "fotos", "observacoes"];
     if (tab && abasPermitidas.includes(tab)) {
       setActiveTab(tab as typeof activeTab);
     }
@@ -1145,7 +1147,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/admin/alunos')}
-            className="w-9 h-9 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors shrink-0"
+            className="w-9 h-9 rounded-xl bg-surface-2 border border-card flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -1223,7 +1225,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
       {/* ── Profile Base Card ── */}
       {profile && (
-        <Card className="rounded-2xl border border-border-subtle p-6 bg-surface-1 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <Card className="rounded-2xl border border-card p-6 bg-surface-1 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-transparent pointer-events-none" />
           
           <div className="relative flex items-center gap-5">
@@ -1290,15 +1292,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
       {/* ── Hero unificado (métricas neutras; cor só em exceção) ── */}
       <div
-        className="rounded-xl border border-[#222222] bg-[#141414] px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-6"
+        className="rounded-xl border border-card bg-[#141414] px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-6"
       >
         <div className="flex items-center gap-3 min-w-0">
           {avatarUrl ? (
-            <div className="w-11 h-11 rounded-xl overflow-hidden border border-[#222222] shrink-0">
+            <div className="w-11 h-11 rounded-xl overflow-hidden border border-card shrink-0">
               <img src={avatarUrl} alt={profileName} className="w-full h-full object-cover" />
             </div>
           ) : (
-            <div className="w-11 h-11 rounded-xl bg-[#1e1e1e] border border-[#222222] flex items-center justify-center font-bold text-sm text-white shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-[#1e1e1e] border border-card flex items-center justify-center font-bold text-sm text-white shrink-0">
               {profileName[0]?.toUpperCase() || "?"}
             </div>
           )}
@@ -1358,7 +1360,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Pontos</p>
-            <p className="text-base font-semibold text-white mt-0.5 tabular-nums">
+            <p className="text-base font-semibold text-white mt-0.5 tabular-nums lining-nums">
               {pontosTotais}
               <span className="text-[11px] ml-1 font-medium text-[#7a8aab]">pts</span>
             </p>
@@ -1367,10 +1369,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* ── Tab Navigation ── */}
-      <div className="flex items-center gap-1 bg-surface-1 border border-border-subtle p-1 rounded-xl overflow-x-auto scrollbar-none shadow-sm">
+      <div className="flex items-center gap-1 bg-surface-1 border border-card p-1 rounded-xl overflow-x-auto scrollbar-none shadow-sm">
         {([
           { key: 'visao-geral', label: 'Visão Geral', icon: User },
           { key: 'treinos', label: 'Treinos', icon: Barbell },
+          { key: 'cardio', label: 'Cardio', icon: HeartStraight },
           { key: 'nutricao', label: 'Nutrição', icon: AppleLogo },
           { key: 'evolucao', label: 'Evolução', icon: Ruler },
           { key: 'financeiro', label: 'Financeiro', icon: CreditCard },
@@ -1407,7 +1410,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <div className="lg:col-span-8 flex flex-col gap-6">
               
               {/* Prioridades / Pendências do Aluno */}
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm">
                 <h3 className="text-sm font-bold text-text-primary mb-1">Ações prioritárias deste atleta</h3>
                 <p className="text-2xs text-text-tertiary mb-5">Pendências operacionais identificadas pelo sistema</p>
 
@@ -1418,7 +1421,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
                   ) : (
                     studentPriorities.map((item) => (
-                      <div key={item.id} className="p-3.5 bg-surface-2 border border-border-subtle rounded-xl flex items-center justify-between gap-4">
+                      <div key={item.id} className="p-3.5 bg-surface-2 border border-card rounded-xl flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
                           <div className={cn(
                             "w-2 h-2 rounded-full",
@@ -1441,7 +1444,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {/* Estatísticas Avançadas do Aluno */}
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-6">
+              <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm flex flex-col gap-6">
                 <div>
                   <h3 className="text-sm font-bold text-text-primary">Métricas de Treino & Fisiologia</h3>
                   <p className="text-2xs text-text-tertiary">Análise de intensidade muscular e volume dos últimos 30 dias</p>
@@ -1460,7 +1463,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         ].map((stat) => {
                           const Icon = stat.icon;
                           return (
-                            <div key={stat.label} className="bg-[#141414] border border-[#222222] rounded-xl p-4 flex flex-col justify-between">
+                            <div key={stat.label} className="bg-[#141414] border border-card rounded-xl p-4 flex flex-col justify-between">
                               <div className="flex items-center gap-1.5">
                                 <Icon className="w-3.5 h-3.5 text-[#7a8aab]" />
                                 <span className="text-[10px] font-semibold text-[#7a8aab] uppercase tracking-wider">{stat.label}</span>
@@ -1475,7 +1478,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     {/* Coluna 2: Muscle Body Chart (Heatmap) (Desktop span 6, Mobile span 12) */}
                     <div className="md:col-span-6 flex flex-col gap-3 justify-center">
                       <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Mapa de Calor Muscular (Semana)</p>
-                      <div className="flex justify-around items-center bg-surface-2 border border-border-subtle/50 py-3 px-2 rounded-xl h-full min-h-[320px]">
+                      <div className="flex justify-around items-center bg-surface-2 border border-card/50 py-3 px-2 rounded-xl h-full min-h-[320px]">
                         <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
                           <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" gender={alunoBodyGender} />
                         </div>
@@ -1488,7 +1491,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     {/* Radar Chart (Distribuição Muscular) (Desktop span 12, Mobile span 12) */}
                     <div className="md:col-span-12 flex flex-col gap-3">
                       <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Distribuição Muscular (Radar - 30d)</p>
-                      <div className="w-full h-56 bg-surface-2 border border-border-subtle/50 rounded-xl p-2 flex items-center justify-center">
+                      <div className="w-full h-56 bg-surface-2 border border-card/50 rounded-xl p-2 flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData30}>
                             <PolarGrid stroke="var(--color-border-subtle)" />
@@ -1501,7 +1504,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-[#222222] bg-[#141414] p-4">
+                  <div className="rounded-xl border border-card bg-[#141414] p-4">
                     <p className="text-xs text-[#555555]">
                       Sem treinos concluídos ainda — os dados aparecem aqui após o primeiro treino registrado.
                     </p>
@@ -1510,7 +1513,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {/* Notas Rápidas */}
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-sm font-bold text-text-primary">Orientações do Especialista</h3>
@@ -1520,7 +1523,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     Editar
                   </button>
                 </div>
-                <div className="p-4 bg-surface-2 rounded-xl border border-border-subtle min-h-24">
+                <div className="p-4 bg-surface-2 rounded-xl border border-card min-h-24">
                   {profile?.orientacoes ? (
                     <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{profile.orientacoes}</p>
                   ) : (
@@ -1535,7 +1538,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <div className="lg:col-span-4 flex flex-col gap-6">
               
               {/* Informações de Cadastro */}
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm">
                 <h3 className="text-sm font-bold text-text-primary mb-4">Detalhes do Vínculo</h3>
                 <div className="flex flex-col gap-3 text-xs">
                   <div className="flex items-center justify-between">
@@ -1556,15 +1559,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[#7a8aab] font-medium">Total de Pontos</span>
-                    <span className="font-bold text-white tabular-nums">{pontosTotais} pts</span>
+                    <span className="font-bold text-white tabular-nums lining-nums">{pontosTotais} pts</span>
                   </div>
                 </div>
               </div>
 
               {/* Treino Ativo Card — resumo mínimo (link para Kanban/ficha) */}
-              <div className="bg-[#141414] border border-[#222222] rounded-2xl p-5 flex flex-col gap-4">
+              <div className="bg-[#141414] border border-card rounded-2xl p-5 flex flex-col gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 bg-[#1e1e1e] border border-[#222222] rounded-xl flex items-center justify-center shrink-0 text-[#7a8aab]">
+                  <div className="w-10 h-10 bg-[#1e1e1e] border border-card rounded-xl flex items-center justify-center shrink-0 text-[#7a8aab]">
                     <Barbell size={20} />
                   </div>
                   <div className="min-w-0">
@@ -1592,7 +1595,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         ),
                       )
                     }
-                    className="w-full text-center text-[11px] font-semibold text-[#2b7fff] hover:opacity-80 py-2 border border-[#222222] rounded-lg"
+                    className="w-full text-center text-[11px] font-semibold text-[#2b7fff] hover:opacity-80 py-2 border border-card rounded-lg"
                   >
                     Ver ficha completa
                   </button>
@@ -1618,7 +1621,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <div className="flex flex-col gap-4">
             
             {/* Kanban de Fichas Digitais */}
-            <div className="w-full bg-[#141414] border border-[#222222] rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0">
+            <div className="w-full bg-[#141414] border border-card rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0">
               <div>
                 <h3 className="text-sm font-bold text-white">Fichas Digitais</h3>
                 <p className="text-[10px] text-[#7a8aab] mt-0.5">
@@ -1643,7 +1646,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             {/* Upload de PDF individual — compacto por padrão */}
             <form
               onSubmit={handleUploadPdf}
-              className="bg-[#141414] border border-[#222222] rounded-xl"
+              className="bg-[#141414] border border-card rounded-xl"
             >
               <div className="min-h-14 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <button
@@ -1667,7 +1670,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   <button
                     type="button"
                     onClick={() => setTreinoPdfOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#282828] bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-card bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors"
                   >
                     <UploadSimple size={12} />
                     Enviar PDF
@@ -1685,7 +1688,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {treinoPdfOpen && (
-                <div className="border-t border-[#222222] px-4 py-3 flex flex-col gap-3">
+                <div className="border-t border-divider px-4 py-3 flex flex-col gap-3">
                   <div className="relative">
                     <input
                       type="file"
@@ -1695,7 +1698,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     />
                     <div className={cn(
                       "flex items-center justify-center gap-2 min-h-20 rounded-lg border border-dashed transition-all",
-                      pdfFile ? "border-[#2b7fff]/50 bg-[#2b7fff]/5" : "border-[#282828] bg-[#1e1e1e] hover:border-[#2b7fff]/40"
+                      pdfFile ? "border-[#2b7fff]/50 bg-[#2b7fff]/5" : "border-card bg-[#1e1e1e] hover:border-[#2b7fff]/40"
                     )}>
                       <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-[#2b7fff]" : "text-[#7a8aab]")} />
                       <span className={cn("text-xs text-center px-4 truncate max-w-full", pdfFile ? "text-white font-medium" : "text-[#7a8aab]")}>
@@ -1709,7 +1712,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       <h4 className="text-[10px] font-semibold uppercase text-[#7a8aab] tracking-wider">Histórico de PDFs</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {treinosPdf.map((t) => (
-                          <div key={t.id} className="flex items-center justify-between p-2 rounded-lg bg-[#1e1e1e] border border-[#222222]">
+                          <div key={t.id} className="flex items-center justify-between p-2 rounded-lg bg-[#1e1e1e] border border-card">
                             <div className="flex items-center gap-2 min-w-0">
                               <FileText className="w-3.5 h-3.5 text-[#7a8aab] shrink-0" />
                               <span className="text-xs text-[#7a8aab] truncate font-medium">{t.nome_arquivo}</span>
@@ -1739,7 +1742,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <div className="w-full flex flex-col gap-4">
             
             {/* Seção 1: Plano Digital Ativo */}
-            <div className="bg-[#141414] border border-[#222222] rounded-xl p-5 flex flex-col gap-5">
+            <div className="bg-[#141414] border border-card rounded-xl p-5 flex flex-col gap-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-bold text-white">Acompanhamento Alimentar Digital</h3>
@@ -1758,7 +1761,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <div className="flex flex-col gap-4">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                     {/* Resumo: plano + macros + KPIs */}
-                    <div className="p-4 bg-[#1e1e1e] border border-[#222222] rounded-xl flex flex-col gap-4">
+                    <div className="p-4 bg-[#1e1e1e] border border-card rounded-xl flex flex-col gap-4">
                       <div className="flex justify-between items-start gap-3">
                         <div className="min-w-0">
                           <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#39c75a]">
@@ -1771,12 +1774,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         
                         <div className="flex gap-2 shrink-0">
                           <Link href={`/admin/nutricao/planos/${digitalPlan.id}`}>
-                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-[#282828]">
+                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-card">
                               Ver Plano
                             </Button>
                           </Link>
                           <Link href={`/admin/nutricao/planos/${digitalPlan.id}/editar`}>
-                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-[#282828]">
+                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border border-card">
                               Editar
                             </Button>
                           </Link>
@@ -1784,7 +1787,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       </div>
 
                       {digitalPlan.calories_target && (
-                        <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-[#222222] py-2.5">
+                        <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-divider py-2.5">
                           <div className="flex flex-col">
                             <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Calorias</span>
                             <span className="text-white font-bold">{digitalPlan.calories_target} kcal</span>
@@ -1846,7 +1849,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
 
                     {/* Card: Adesão nos últimos 7 dias */}
-                    <div className="p-4 bg-[#141414] border border-[#222222] rounded-xl flex flex-col gap-3 min-h-[180px]">
+                    <div className="p-4 bg-[#141414] border border-card rounded-xl flex flex-col gap-3 min-h-[180px]">
                       <div>
                         <h4 className="text-[13px] font-semibold text-white">Adesão nos últimos 7 dias</h4>
                         <p className="text-[10px] text-[#7a8aab] mt-0.5">Série diária — mesmo cálculo dos KPIs</p>
@@ -1891,11 +1894,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         substituted: 'bg-brand/10 text-brand border-brand/20',
                         partial: 'bg-warning/10 text-warning border-warning/20',
                         skipped: 'bg-danger/10 text-danger border-danger/20',
-                        pending: 'bg-[#1e1e1e] text-[#7a8aab] border-[#222222]'
+                        pending: 'bg-[#1e1e1e] text-[#7a8aab] border-card'
                       };
 
                       return (
-                        <div key={meal.id} className="p-3 bg-[#1e1e1e] border border-[#222222] rounded-lg flex items-center justify-between gap-4">
+                        <div key={meal.id} className="p-3 bg-[#1e1e1e] border border-card rounded-lg flex items-center justify-between gap-4">
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-white leading-tight truncate">{meal.title}</p>
                             {meal.time_suggestion && (
@@ -1917,14 +1920,14 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-[#555555] p-4 rounded-xl border border-[#222222]">
+                <p className="text-xs text-[#555555] p-4 rounded-xl border border-card">
                   Sem plano alimentar digital ativo — os dados de adesão aparecem aqui após a prescrição.
                 </p>
               )}
             </div>
 
             {/* Seção 2: PDF compacto / colapsável */}
-            <div className="bg-[#141414] border border-[#222222] rounded-xl">
+            <div className="bg-[#141414] border border-card rounded-xl">
               <div className="min-h-14 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   type="button"
@@ -1946,7 +1949,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <button
                   type="button"
                   onClick={() => setUploadNutritionOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#282828] bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-card bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors shrink-0"
                 >
                   <UploadSimple size={12} />
                   Enviar PDF
@@ -1954,11 +1957,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {nutritionPdfOpen && (
-                <div className="border-t border-[#222222] px-4 py-3">
+                <div className="border-t border-divider px-4 py-3">
                   {planosAlimentares.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {planosAlimentares.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-[#1e1e1e] border border-[#222222]">
+                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-[#1e1e1e] border border-card">
                           <div className="min-w-0">
                             <p className="text-xs text-white truncate font-medium">{p.nome_arquivo}</p>
                             <span className="text-[10px] text-[#7a8aab] font-mono">
@@ -2006,7 +2009,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               
               {/* Gráfico de Evolução de Medidas */}
               <div
-                className="rounded-2xl border border-border-subtle p-4 md:p-6 shadow-sm"
+                className="rounded-2xl border border-card p-4 md:p-6 shadow-sm"
                 style={{ backgroundColor: '#0d0d0d' }}
               >
                 <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -2033,7 +2036,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {/* Tabela de Medidas Corporais */}
-              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-sm font-bold text-text-primary">Evolução de Medidas</h3>
@@ -2046,7 +2049,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-xs min-w-[600px]">
                       <thead>
-                        <tr className="border-b border-border-subtle">
+                        <tr className="border-b border-divider">
                           <th className="pb-3 text-left font-semibold text-text-tertiary uppercase">Data</th>
                           <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Peso</th>
                           <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Gordura</th>
@@ -2060,7 +2063,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       </thead>
                       <tbody>
                         {medidas.map((m: any) => (
-                          <tr key={m.id} className="border-b border-border-subtle hover:bg-surface-2/40 transition-colors">
+                          <tr key={m.id} className="border-b border-divider hover:bg-surface-2/40 transition-colors">
                             <td className="py-3 font-semibold text-text-primary">{new Date(m.data_medicao).toLocaleDateString("pt-BR")}</td>
                             <td className="py-3 text-center text-brand font-bold">{m.peso?.toFixed(1) || "—"} kg</td>
                             <td className="py-3 text-center text-text-primary font-medium">{m.gordura_corporal ? `${m.gordura_corporal.toFixed(1)}%` : "—"}</td>
@@ -2086,7 +2089,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* Coluna Direita: Cargas de Treinos */}
-            <div className="lg:col-span-4 bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-4">
+            <div className="lg:col-span-4 bg-surface-1 border border-card rounded-2xl p-6 shadow-sm flex flex-col gap-4">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Evolução de Cargas</h3>
                 <p className="text-2xs text-text-tertiary">Maiores cargas registradas por exercício</p>
@@ -2103,8 +2106,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 return (
                   <div className="max-h-[360px] overflow-y-auto pr-1 flex flex-col gap-3 scrollbar-thin">
                     {Array.from(sessoesPorData.entries()).map(([dia, sessao]) => (
-                      <div key={dia} className="rounded-xl bg-surface-2 border border-border-subtle overflow-hidden">
-                        <div className="px-3 py-1.5 bg-surface-3 border-b border-border-subtle flex items-center justify-between text-[9px] uppercase tracking-wider font-bold text-text-tertiary">
+                      <div key={dia} className="rounded-xl bg-surface-2 border border-card overflow-hidden">
+                        <div className="px-3 py-1.5 bg-surface-3 border-b border-divider flex items-center justify-between text-[9px] uppercase tracking-wider font-bold text-text-tertiary">
                           <span>{dia}</span>
                           <span className="truncate max-w-[120px]">{sessao[0]?.dados_sessao?.nome_rotina || "Treino"}</span>
                         </div>
@@ -2128,7 +2131,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   </div>
                 );
               })() : (
-                <div className="py-12 text-center bg-surface-2 border border-dashed border-border-subtle rounded-xl flex flex-col items-center justify-center gap-2">
+                <div className="py-12 text-center bg-surface-2 border border-dashed border-card rounded-xl flex flex-col items-center justify-center gap-2">
                   <ChartLineUp size={24} className="text-text-disabled" />
                   <span className="text-xs text-text-tertiary">Nenhum treino concluído ainda.</span>
                 </div>
@@ -2143,13 +2146,13 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-4xl mx-auto w-full">
             
             {/* Detalhes do Plano */}
-            <div className="lg:col-span-6 bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm flex flex-col gap-5">
+            <div className="lg:col-span-6 bg-surface-1 border border-card rounded-2xl p-6 shadow-sm flex flex-col gap-5">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Vigência do Acesso</h3>
                 <p className="text-2xs text-text-tertiary">Dados do contrato do atleta</p>
               </div>
 
-              <div className="flex flex-col gap-3.5 text-xs bg-surface-2 p-4 rounded-xl border border-border-subtle">
+              <div className="flex flex-col gap-3.5 text-xs bg-surface-2 p-4 rounded-xl border border-card">
                 <div className="flex items-center justify-between">
                   <span className="text-text-secondary font-medium">Situação de Cobrança</span>
                   <span className={cn(
@@ -2195,7 +2198,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               
               {/* Form de Edição Inline */}
               {editingProfile && (
-                <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm animate-fade-in">
+                <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm animate-fade-in">
                   <h3 className="text-sm font-bold text-text-primary mb-4">Atualizar Plano Financeiro</h3>
                   <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -2258,7 +2261,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
         {/* ── FOTOS TAB ── */}
         {activeTab === 'fotos' && (
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm">
+          <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Galeria de Evolução</h3>
@@ -2270,15 +2273,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             {fotos.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {fotos.map((f) => (
-                  <div key={f.id} className="group bg-surface-2 rounded-xl border border-border-subtle overflow-hidden relative shadow hover:shadow-md transition-all">
+                  <div key={f.id} className="group bg-surface-2 rounded-xl border border-card overflow-hidden relative shadow hover:shadow-md transition-all">
                     <div className="aspect-3/4 bg-surface-3 overflow-hidden relative">
                       <img src={f.url_foto} alt={f.posicao} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                       <div className="absolute inset-0 bg-gradient-to-t from-surface-0/60 to-transparent pointer-events-none" />
-                      <span className="absolute top-2 right-2 bg-surface-0/80 text-[10px] font-bold text-text-secondary uppercase px-2 py-0.5 rounded-full border border-border-subtle">
+                      <span className="absolute top-2 right-2 bg-surface-0/80 text-[10px] font-bold text-text-secondary uppercase px-2 py-0.5 rounded-full border border-card">
                         {f.posicao}
                       </span>
                     </div>
-                    <div className="p-3 bg-surface-2 flex items-center justify-between gap-2 border-t border-border-subtle/50">
+                    <div className="p-3 bg-surface-2 flex items-center justify-between gap-2 border-t border-divider/50">
                       <span className="text-[10px] font-semibold text-text-tertiary">
                         {new Date(f.data_upload).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
                       </span>
@@ -2290,7 +2293,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             ) : (
-              <div className="py-16 text-center flex flex-col items-center justify-center gap-3 bg-surface-2 border border-dashed border-border-subtle rounded-xl max-w-lg mx-auto">
+              <div className="py-16 text-center flex flex-col items-center justify-center gap-3 bg-surface-2 border border-dashed border-card rounded-xl max-w-lg mx-auto">
                 <ImageIcon size={36} className="text-text-disabled" />
                 <p className="text-xs text-text-tertiary">Nenhuma captura de evolução física enviada.</p>
                 <span className="text-[10px] text-text-disabled">O atleta pode carregar fotos da evolução no portal de aluno.</span>
@@ -2299,9 +2302,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
+        {/* ── CARDIO TAB ── */}
+        {activeTab === 'cardio' && <CoachCardioTab alunoId={id} />}
+
         {/* ── OBSERVAÇÕES TAB ── */}
         {activeTab === 'observacoes' && (
-          <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-sm max-w-3xl mx-auto w-full flex flex-col gap-4">
+          <div className="bg-surface-1 border border-card rounded-2xl p-6 shadow-sm max-w-3xl mx-auto w-full flex flex-col gap-4">
             <div>
               <h3 className="text-sm font-bold text-text-primary">Orientações do Coach</h3>
               <p className="text-2xs text-text-tertiary">Notas clínicas, anamnese, restrições e dados internos</p>
@@ -2318,7 +2324,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             />
 
             {profile?.orientacoes !== notasOriginais && (
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle/50">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-divider/50">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -2417,7 +2423,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setClonandoFicha(null)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-text-secondary bg-surface-3 border border-border-subtle hover:bg-surface-2 transition-colors"
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-text-secondary bg-surface-3 border border-card hover:bg-surface-2 transition-colors"
               >
                 Cancelar
               </button>
@@ -2441,7 +2447,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
             <div className="bg-surface-1 border border-border-default rounded-3xl w-full max-w-lg overflow-hidden shadow-elev-3 flex flex-col max-h-[85vh]">
               {/* Modal Header */}
-              <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-surface-2/40">
+              <div className="p-5 border-b border-divider flex justify-between items-center bg-surface-2/40">
                 <div>
                   <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/10 px-2 py-0.5 rounded border border-brand/20">Ficha Digital</span>
                   <h3 className="text-sm font-bold text-text-primary mt-2 uppercase">{selectedRoutineForPreview.nome_rotina || selectedRoutineForPreview.nome}</h3>
@@ -2462,7 +2468,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;
                   }
                   return exercises.map((ex: any, idx: number) => (
-                    <div key={idx} className="p-4 bg-surface-2 border border-border-subtle rounded-xl space-y-2">
+                    <div key={idx} className="p-4 bg-surface-2 border border-card rounded-xl space-y-2">
                       <div className="flex justify-between items-start gap-2">
                         <h4 className="text-xs font-bold text-text-primary">{idx + 1}. {ex.nome}</h4>
                         {ex.descanso && (
@@ -2476,7 +2482,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       )}
                       
                       {/* Series List */}
-                      <div className="pt-2 border-t border-border-subtle/40 space-y-1.5">
+                      <div className="pt-2 border-t border-divider/40 space-y-1.5">
                         {ex.series?.map((s: any, sIdx: number) => (
                           <div key={sIdx} className="flex items-center gap-3 text-[11px] text-text-secondary font-medium">
                             <span className="w-5 h-5 rounded bg-brand/10 text-brand text-[9px] font-bold flex items-center justify-center">
@@ -2501,7 +2507,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 border-t border-border-subtle bg-surface-2/40 flex justify-end">
+              <div className="p-4 border-t border-divider bg-surface-2/40 flex justify-end">
                 <button
                   onClick={() => setSelectedRoutineForPreview(null)}
                   className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"

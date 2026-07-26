@@ -212,26 +212,26 @@ export function CompletionShareScreen({
         <div className="flex flex-col items-center pb-6 pt-12">
           <Trophy className="mb-3 h-10 w-10 text-success" weight="duotone" />
           <h1 className="text-xl font-bold text-text-primary">Treino concluído!</h1>
-          <p className="mt-1 font-mono text-xs tabular-nums text-text-muted">
+          <p className="mt-1 font-mono text-xs tabular-nums lining-nums text-text-muted">
             {volume.toLocaleString('pt-BR')} kg · {durationFormatted} · {sets} séries
           </p>
         </div>
 
         <div className="mb-5 grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-border-subtle bg-surface-1 p-3">
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-card bg-surface-1 p-3">
             <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Duração</span>
-            <span className="font-mono text-lg font-bold tabular-nums text-text-primary">{durationFormatted}</span>
+            <span className="font-mono text-lg font-bold tabular-nums lining-nums text-text-primary">{durationFormatted}</span>
           </div>
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-border-subtle bg-surface-1 p-3">
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-card bg-surface-1 p-3">
             <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Volume</span>
-            <span className="font-mono text-lg font-bold tabular-nums text-text-primary">
+            <span className="font-mono text-lg font-bold tabular-nums lining-nums text-text-primary">
               {volume.toLocaleString('pt-BR')}
               <span className="ml-0.5 text-xs font-normal text-text-muted">kg</span>
             </span>
           </div>
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-border-subtle bg-surface-1 p-3">
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-card bg-surface-1 p-3">
             <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Séries</span>
-            <span className="font-mono text-lg font-bold tabular-nums text-text-primary">{sets}</span>
+            <span className="font-mono text-lg font-bold tabular-nums lining-nums text-text-primary">{sets}</span>
           </div>
         </div>
 
@@ -243,7 +243,7 @@ export function CompletionShareScreen({
             value={feedbackNota}
             onChange={(e) => setFeedbackNota(e.target.value.slice(0, 300))}
             placeholder="Deixe uma nota sobre essa sessão..."
-            className="max-h-[140px] min-h-[80px] w-full resize-none rounded-lg border border-border-subtle bg-surface-1 p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+            className="max-h-[140px] min-h-[80px] w-full resize-none rounded-lg border border-input bg-surface-1 p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             maxLength={300}
           />
         </div>
@@ -289,7 +289,7 @@ export function CompletionShareScreen({
               'flex-1 rounded-lg border py-2 text-xs font-semibold transition-colors',
               temaAtivo === tema
                 ? 'border-brand bg-brand/10 text-brand'
-                : 'border-border-subtle bg-surface-1 text-text-secondary hover:text-text-primary',
+                : 'border-card bg-surface-1 text-text-secondary hover:text-text-primary',
             )}
           >
             {SHARE_THEME_LABELS[tema]}
@@ -369,7 +369,7 @@ export function CompletionShareScreen({
         <button
           onClick={() => saveToGallery(cardAtivo)}
           disabled={exporting}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-1 text-sm font-medium text-text-primary transition-colors hover:bg-surface-2 disabled:opacity-50"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-card bg-surface-1 text-sm font-medium text-text-primary transition-colors hover:bg-surface-2 disabled:opacity-50"
         >
           {supportsGallerySave ? (
             <>

@@ -27,9 +27,9 @@ interface WorkoutBuilderHeaderProps {
 }
 
 const selectCls =
-  "w-full bg-surface-2 border border-border-subtle text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 h-9";
+  "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 h-9";
 const inputCls =
-  "w-full bg-surface-2 border border-border-subtle text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 h-9";
+  "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 h-9";
 
 export function WorkoutBuilderHeader({
   isMobile,
@@ -52,12 +52,12 @@ export function WorkoutBuilderHeader({
 
   if (isMobile) {
     return (
-      <div className="sticky top-0 z-20 bg-surface-0 border-b border-border-subtle px-4 py-3 flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-20 bg-surface-0 border-b border-divider px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <button
             type="button"
             onClick={onBack}
-            className="w-9 h-9 shrink-0 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center text-text-tertiary"
+            className="w-9 h-9 shrink-0 rounded-lg bg-surface-1 border border-card flex items-center justify-center text-text-tertiary"
           >
             <ArrowLeft size={16} />
           </button>
@@ -71,7 +71,7 @@ export function WorkoutBuilderHeader({
         <button
           type="button"
           onClick={onOpenSettings}
-          className="w-9 h-9 shrink-0 rounded-lg border border-border-subtle flex items-center justify-center text-text-secondary"
+          className="w-9 h-9 shrink-0 rounded-lg border border-card flex items-center justify-center text-text-secondary"
         >
           <Gear size={18} />
         </button>
@@ -80,13 +80,13 @@ export function WorkoutBuilderHeader({
   }
 
   return (
-    <div className="sticky top-0 z-20 bg-surface-0 border-b border-border-subtle px-4 md:px-0 py-3 mb-4">
+    <div className="sticky top-0 z-20 bg-surface-0 border-b border-divider px-4 md:px-0 py-3 mb-4">
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
             onClick={onBack}
-            className="w-9 h-9 rounded-lg bg-surface-1 border border-border-subtle flex items-center justify-center text-text-tertiary hover:text-brand transition-colors"
+            className="w-9 h-9 rounded-lg bg-surface-1 border border-card flex items-center justify-center text-text-tertiary hover:text-brand transition-colors"
           >
             <ArrowLeft size={16} />
           </button>
@@ -121,7 +121,7 @@ export function WorkoutBuilderHeader({
               type="button"
               onClick={onExportPdf}
               disabled={exporting || !canSave}
-              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-1 border border-border-subtle text-text-secondary rounded-lg text-xs font-semibold hover:text-brand disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-1 border border-card text-text-secondary rounded-lg text-xs font-semibold hover:text-brand disabled:opacity-50"
             >
               {exporting ? <CircleNotch size={14} className="animate-spin" /> : <FileArrowDown size={14} />}
               PDF

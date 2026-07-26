@@ -16,7 +16,7 @@ interface SetRowProps {
 }
 
 const cellInputCls =
-  "w-full h-8 bg-transparent border-0 text-center text-sm font-medium text-text-primary placeholder:text-text-disabled focus:outline-none focus:text-brand tabular-nums";
+  "w-full h-8 bg-transparent border-0 text-center text-sm font-medium text-text-primary placeholder:text-text-disabled focus:outline-none focus:text-brand tabular-nums lining-nums";
 
 function gridTemplate(colunas: ColunaSerie[], showPeso: boolean): string {
   const metricCols = colunas.map(() => "minmax(0,1fr)").join(" ");
@@ -38,10 +38,10 @@ export function SetRow({
 
   return (
     <div
-      className="grid gap-1 items-center py-1 border-b border-border-subtle/30 last:border-0"
+      className="grid gap-1 items-center py-1 border-b border-divider/30 last:border-0"
       style={{ gridTemplateColumns: gridTemplate(colunas, showPeso) }}
     >
-      <div className="flex items-center justify-center text-xs font-bold text-text-muted tabular-nums">
+      <div className="flex items-center justify-center text-xs font-bold text-text-muted tabular-nums lining-nums">
         {serie.ordem ?? serieIndex + 1}
       </div>
 
@@ -125,7 +125,7 @@ export function SetsTableHeader({
 }) {
   return (
     <div
-      className="grid gap-1 px-0 pb-1 border-b border-border-subtle/60"
+      className="grid gap-1 px-0 pb-1 border-b border-divider/60"
       style={{ gridTemplateColumns: gridTemplate(colunas, showPeso) }}
     >
       <span className="text-[10px] font-semibold text-text-muted uppercase text-center">#</span>

@@ -581,7 +581,7 @@ export default function AdminDashboard() {
         />
 
         {totalAlunos === 0 ? (
-          <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">
+          <div className="bg-surface-1 border border-card rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">
             <Users size={44} className="text-brand/40 mx-auto mb-4" />
             <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
             <p className="text-text-secondary text-xs mb-6">

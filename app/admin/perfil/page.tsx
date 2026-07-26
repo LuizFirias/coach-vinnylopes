@@ -57,6 +57,7 @@ import { AvailabilityToggle } from "@/app/components/coach-profile/AvailabilityT
 import { PhotoGalleryUploader } from "@/app/components/coach-profile/PhotoGalleryUploader";
 import { PublicProfilePreviewCard } from "@/app/components/coach-profile/PublicProfilePreviewCard";
 import { CityAutocomplete } from "@/app/components/coach-profile/CityAutocomplete";
+import { AvatarCropModal } from "@/app/components/profile/AvatarCropModal";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 
 function SettingsRow({
@@ -75,7 +76,7 @@ function SettingsRow({
   danger?: boolean;
 }) {
   const className = cn(
-    "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-border-subtle last:border-b-0 touch-manipulation",
+    "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-divider last:border-b-0 touch-manipulation",
     danger ? "text-danger hover:text-danger/80" : "hover:bg-surface-2/60",
   );
 
@@ -131,8 +132,8 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 overflow-hidden shadow-sm">
-      <div className="px-4 py-2.5 border-b border-border-subtle bg-surface-2/50">
+    <div className="rounded-xl border border-card bg-surface-1 overflow-hidden shadow-sm">
+      <div className="px-4 py-2.5 border-b border-divider bg-surface-2/50">
         <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-tertiary">
           {title}
         </span>
@@ -151,9 +152,9 @@ export default function CoachPerfilPage() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [storedAvatarPath, setStoredAvatarPath] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -176,10 +177,8 @@ export default function CoachPerfilPage() {
   );
 
   const isDirty = useMemo(
-    () =>
-      snapshot(fullName, storedAvatarPath, publicForm) !== baselineRef.current ||
-      Boolean(avatarFile),
-    [fullName, storedAvatarPath, publicForm, avatarFile, snapshot],
+    () => snapshot(fullName, storedAvatarPath, publicForm) !== baselineRef.current,
+    [fullName, storedAvatarPath, publicForm, snapshot],
   );
 
   useEffect(() => {
@@ -241,7 +240,6 @@ export default function CoachPerfilPage() {
       setEmail(session.user.email || profileData?.email || "");
       setAvatarUrl(avatarPath);
       setStoredAvatarPath(avatarPath);
-      setAvatarFile(null);
       setPublicForm(form);
       baselineRef.current = snapshot(name, avatarPath, form);
 
@@ -303,11 +301,71 @@ export default function CoachPerfilPage() {
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    setAvatarFile(file);
+    if (!file.type.startsWith("image/")) {
+      setError("Selecione uma imagem válida");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Imagem muito grande. Máximo 8MB");
+      return;
+    }
+    setError(null);
     const reader = new FileReader();
-    reader.onloadend = () => setAvatarUrl(reader.result as string);
+    reader.onloadend = () => setCropSrc(reader.result as string);
+    reader.onerror = () => setError("Não foi possível ler a imagem");
     reader.readAsDataURL(file);
+  };
+
+  const closeCropModal = () => {
+    if (uploadingAvatar) return;
+    setCropSrc(null);
+  };
+
+  const handleAvatarCropConfirm = async (blob: Blob) => {
+    if (!profileId) return;
+    setUploadingAvatar(true);
+    setError(null);
+    try {
+      if (storedAvatarPath) {
+        try {
+          const oldPath = extractStoragePath("avatars", storedAvatarPath);
+          if (oldPath) {
+            await supabaseClient.storage.from("avatars").remove([oldPath]);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const fileName = `avatar_${profileId}_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabaseClient.storage
+        .from("avatars")
+        .upload(fileName, blob, {
+          contentType: "image/jpeg",
+          cacheControl: "3600",
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabaseClient
+        .from("profiles")
+        .update({ avatar_url: fileName })
+        .eq("id", profileId);
+      if (updateError) throw updateError;
+
+      setStoredAvatarPath(fileName);
+      setAvatarUrl(fileName);
+      setCropSrc(null);
+      baselineRef.current = snapshot(fullName.trim(), fileName, publicForm);
+      setSuccess("Foto atualizada");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro no upload da foto";
+      setError(message);
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -371,37 +429,11 @@ export default function CoachPerfilPage() {
     setSuccess(null);
 
     try {
-      let uploadedAvatarUrl = storedAvatarPath;
-
-      if (avatarFile) {
-        setUploadingAvatar(true);
-        const fileExt = avatarFile.name.split(".").pop();
-        const fileName = `avatar_${profileId}_${Date.now()}.${fileExt}`;
-
-        if (storedAvatarPath) {
-          try {
-            const oldPath = extractStoragePath("avatars", storedAvatarPath);
-            if (oldPath) {
-              await supabaseClient.storage.from("avatars").remove([oldPath]);
-            }
-          } catch {
-            // ignore
-          }
-        }
-
-        const { error: uploadError } = await supabaseClient.storage
-          .from("avatars")
-          .upload(fileName, avatarFile, { cacheControl: "3600", upsert: false });
-        if (uploadError) throw uploadError;
-        uploadedAvatarUrl = fileName;
-        setUploadingAvatar(false);
-      }
-
       const { error: updateError } = await supabaseClient
         .from("profiles")
         .update({
           full_name: fullName.trim(),
-          avatar_url: uploadedAvatarUrl,
+          avatar_url: storedAvatarPath,
         })
         .eq("id", profileId);
       if (updateError) throw updateError;
@@ -417,16 +449,12 @@ export default function CoachPerfilPage() {
         throw publicError;
       }
 
-      setStoredAvatarPath(uploadedAvatarUrl);
-      setAvatarUrl(uploadedAvatarUrl);
-      setAvatarFile(null);
-      baselineRef.current = snapshot(fullName.trim(), uploadedAvatarUrl, publicForm);
+      baselineRef.current = snapshot(fullName.trim(), storedAvatarPath, publicForm);
       setSuccess("Perfil atualizado com sucesso!");
     } catch (err: any) {
       setError(err.message || "Erro ao salvar perfil");
     } finally {
       setSaving(false);
-      setUploadingAvatar(false);
     }
   };
 
@@ -494,7 +522,7 @@ export default function CoachPerfilPage() {
 
     return (
       <div className="min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
-        <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-border-subtle">
+        <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-divider">
           <div className="px-4 max-w-2xl mx-auto pt-4 pb-3 flex items-center gap-3">
             <button
               type="button"
@@ -512,7 +540,7 @@ export default function CoachPerfilPage() {
 
         <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4 pt-4">
           <SettingsSection title="Assinatura">
-            <div className="px-4 py-3 border-b border-border-subtle">
+            <div className="px-4 py-3 border-b border-divider">
               <SubscriptionBadge
                 planName={planName}
                 status={subscriptionStatus}
@@ -557,7 +585,7 @@ export default function CoachPerfilPage() {
 
   return (
     <div className="min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
-      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-border-subtle">
+      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-divider">
         <ScreenHeader
           title="Perfil"
           subtitle="Seu perfil profissional no Auron"
@@ -606,14 +634,16 @@ export default function CoachPerfilPage() {
               className="flex flex-col gap-5"
             >
               {/* Identidade */}
-              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-4">
+              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Identidade
                 </h3>
                 <div className="flex items-center gap-4">
                   <div className="relative shrink-0">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-3 border border-border-default flex items-center justify-center">
-                      {avatarUrl ? (
+                    <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-3 border border-border-default flex items-center justify-center">
+                      {uploadingAvatar ? (
+                        <CircleNotch size={22} className="animate-spin text-brand" />
+                      ) : avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={
@@ -635,6 +665,7 @@ export default function CoachPerfilPage() {
                         "absolute -bottom-1 -right-1 w-7 h-7 rounded-lg cursor-pointer",
                         "bg-brand hover:bg-brand/90 active:scale-95 transition-all",
                         "flex items-center justify-center text-text-on-brand",
+                        uploadingAvatar && "pointer-events-none opacity-50",
                       )}
                     >
                       <Camera className="w-3.5 h-3.5" />
@@ -642,6 +673,7 @@ export default function CoachPerfilPage() {
                         type="file"
                         className="hidden"
                         accept="image/*"
+                        disabled={uploadingAvatar}
                         onChange={handleAvatarChange}
                       />
                     </label>
@@ -669,7 +701,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Profissional */}
-              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-4">
+              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Perfil profissional
                 </h3>
@@ -696,7 +728,7 @@ export default function CoachPerfilPage() {
                     rows={4}
                     onChange={(e) => patchPublic("bio", e.target.value)}
                     placeholder="Conte sua abordagem, experiência e para quem você trabalha…"
-                    className="w-full rounded-md px-3 py-2.5 text-xs bg-surface-2 border border-border-subtle text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 resize-y min-h-[96px]"
+                    className="w-full rounded-md px-3 py-2.5 text-xs bg-surface-2 border border-input text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 resize-y min-h-[96px]"
                   />
                   <p className="text-xs text-text-tertiary">
                     {publicForm.bio.length}/500
@@ -737,12 +769,12 @@ export default function CoachPerfilPage() {
                         }
                       }}
                       placeholder="Ex: Pós em Fisiologia — USP"
-                      className="flex-1 h-10 rounded-md px-3 text-xs bg-surface-2 border border-border-subtle text-text-primary"
+                      className="flex-1 h-10 rounded-md px-3 text-xs bg-surface-2 border border-card text-text-primary"
                     />
                     <button
                       type="button"
                       onClick={addCertification}
-                      className="h-10 w-10 rounded-lg border border-border-subtle text-brand flex items-center justify-center touch-manipulation"
+                      className="h-10 w-10 rounded-lg border border-card text-brand flex items-center justify-center touch-manipulation"
                       aria-label="Adicionar"
                     >
                       <Plus size={16} weight="bold" />
@@ -753,7 +785,7 @@ export default function CoachPerfilPage() {
                       {publicForm.certifications.map((c, i) => (
                         <li
                           key={`${c}-${i}`}
-                          className="flex items-center gap-2 text-xs text-text-primary bg-surface-2 border border-border-subtle rounded-lg px-3 py-2"
+                          className="flex items-center gap-2 text-xs text-text-primary bg-surface-2 border border-card rounded-lg px-3 py-2"
                         >
                           <span className="flex-1 min-w-0">{c}</span>
                           <button
@@ -777,7 +809,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Especialidades */}
-              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Especialidades
                 </h3>
@@ -788,7 +820,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Atendimento */}
-              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-4">
+              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Atendimento
                 </h3>
@@ -806,7 +838,7 @@ export default function CoachPerfilPage() {
                           "min-h-11 px-3 rounded-lg text-xs font-semibold border touch-manipulation",
                           publicForm.modality === m.value
                             ? "bg-brand/15 text-brand border-brand/40"
-                            : "bg-surface-2 text-text-secondary border-border-subtle",
+                            : "bg-surface-2 text-text-secondary border-card",
                         )}
                       >
                         {m.label}
@@ -831,7 +863,7 @@ export default function CoachPerfilPage() {
                     id="price"
                     value={publicForm.priceDisplay}
                     onChange={(e) => patchPublic("priceDisplay", e.target.value)}
-                    className="h-10 w-full rounded-md px-3 text-xs bg-surface-2 border border-border-subtle text-text-primary"
+                    className="h-10 w-full rounded-md px-3 text-xs bg-surface-2 border border-card text-text-primary"
                   >
                     <option value="">Não exibir</option>
                     {PRICE_PRESETS.map((p) => (
@@ -844,11 +876,11 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Galeria */}
-              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Galeria e capa
                 </h3>
-                <div className="rounded-lg border border-border-subtle bg-surface-2 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
+                <div className="rounded-lg border border-card bg-surface-2 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
                   <p className="font-semibold text-text-primary mb-0.5">
                     Capa sugerida: {COACH_COVER_SPECS.displayLabel} ({COACH_COVER_SPECS.ratioLabel})
                   </p>
@@ -868,7 +900,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Redes */}
-              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Redes
                 </h3>
@@ -892,7 +924,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Mercado */}
-              <Card className="rounded-xl border border-border-subtle/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Mercado
                 </h3>
@@ -923,7 +955,7 @@ export default function CoachPerfilPage() {
       <div
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 lg:hidden",
-          "border-t border-border-subtle bg-surface-0/95 backdrop-blur-md",
+          "border-t border-divider bg-surface-0/95 backdrop-blur-md",
           "px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
         )}
       >
@@ -945,6 +977,14 @@ export default function CoachPerfilPage() {
       <ChangePasswordModal
         isOpen={changePasswordModalOpen}
         onClose={() => setChangePasswordModalOpen(false)}
+      />
+
+      <AvatarCropModal
+        open={Boolean(cropSrc)}
+        imageSrc={cropSrc || ""}
+        confirming={uploadingAvatar}
+        onCancel={closeCropModal}
+        onConfirm={handleAvatarCropConfirm}
       />
     </div>
   );

@@ -27,7 +27,7 @@ export function RecentActivityFeed({
 
   return (
     <div
-      className={`bg-surface-1 border border-border-subtle rounded-xl p-4 shadow-sm ${className ?? ""}`}
+      className={`bg-surface-1 border border-card rounded-xl p-4 shadow-sm ${className ?? ""}`}
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
@@ -53,10 +53,10 @@ export function RecentActivityFeed({
             <Link
               key={`${group.studentId}-${i}`}
               href={group.link}
-              className="group flex items-start justify-between gap-3 border-b border-border-subtle/50 py-3 last:border-b-0 -mx-2 px-2 rounded-lg hover:bg-surface-2/60 active:bg-surface-2 transition-colors min-h-[44px]"
+              className="group flex items-start justify-between gap-3 border-b border-divider/50 py-3 last:border-b-0 -mx-2 px-2 rounded-lg hover:bg-surface-2/60 active:bg-surface-2 transition-colors min-h-[44px]"
             >
               <div className="flex gap-3 min-w-0 items-start">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-border-subtle bg-surface-2 text-text-secondary">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-card bg-surface-2 text-text-secondary">
                   <ActivityIcon type={group.events[0]?.type ?? "workout_completed"} />
                 </div>
                 <div className="flex flex-col min-w-0">

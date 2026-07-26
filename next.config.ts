@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+function supabaseHostname(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const supabaseHost = supabaseHostname();
+
 const nextConfig: NextConfig = {
   // Permite acesso ao dev server pelo celular na rede local (Next 16 bloqueia origens não listadas).
   // Inclua host com porta quando o IP mudar: http://SEU_IP:3000
@@ -41,12 +53,31 @@ const nextConfig: NextConfig = {
   ],
   images: {
     remotePatterns: [
+      // Projeto legado (fallback)
       {
-        protocol: 'https',
-        hostname: 'ulyssryxgkvdkbgvfgpz.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**',
+        protocol: "https",
+        hostname: "ulyssryxgkvdkbgvfgpz.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
       },
+      // Projeto atual
+      {
+        protocol: "https",
+        hostname: "mdgzctjpamtcmyxefkrk.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
+      // Qualquer host do NEXT_PUBLIC_SUPABASE_URL (dev/prod)
+      ...(supabaseHost
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: supabaseHost,
+              port: "",
+              pathname: "/storage/v1/object/public/**",
+            },
+          ]
+        : []),
     ],
   },
 };

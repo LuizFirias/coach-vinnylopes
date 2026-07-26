@@ -11,18 +11,23 @@ interface PeriodSelectorProps {
 
 export function PeriodSelector({ selected, onChange, className }: PeriodSelectorProps) {
   return (
-    <div className={cn('flex items-center gap-1 shrink-0', className)}>
-      {PERIODS.map((p) => (
+    <div className={cn('flex items-center shrink-0', className)}>
+      {PERIODS.map((p, i) => (
         <button
           key={p}
           type="button"
           onClick={() => onChange(p)}
+          style={{ touchAction: 'manipulation' }}
           className={cn(
-            'rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
+            'text-[12px] font-semibold transition-colors px-2.5',
+            i > 0 && 'border-l border-[#282828]',
+            i === 0 && 'pl-0',
             selected === p
-              ? 'bg-brand font-semibold text-white'
-              : 'bg-transparent text-text-muted [@media(hover:hover)]:hover:text-text-secondary',
+              ? 'text-brand'
+              : 'text-text-disabled [@media(hover:hover)]:hover:text-text-tertiary',
           )}
+          aria-pressed={selected === p}
+          aria-label={`Período de ${p}`}
         >
           {p}
         </button>

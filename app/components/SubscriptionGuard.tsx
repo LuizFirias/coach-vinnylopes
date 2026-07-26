@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from"react";
 import { supabaseClient } from"@/lib/supabaseClient";
 import Link from"next/link";
+import DumbbellLoader from "@/app/components/DumbbellLoader";
 
 interface Props {
   children: React.ReactNode;
@@ -103,7 +104,7 @@ export default function SubscriptionGuard({ children }: Props) {
   if (loading) {
     return (
       <div className="min-h-50 flex items-center justify-center">
-        <div className="text-gray-400">Carregando...</div>
+        <DumbbellLoader variant="inline" />
       </div>
     );
   }
@@ -113,7 +114,7 @@ export default function SubscriptionGuard({ children }: Props) {
   // Blocked view
   return (
     <div className="w-full flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full bg-surface-1 border border-border-subtle p-8 rounded-2xl text-center shadow-elev-1">
+      <div className="max-w-md w-full bg-surface-1 border border-card p-8 rounded-2xl text-center shadow-elev-1">
         <h3 className="text-lg font-semibold text-text-primary mb-3">Sua assinatura precisa de renovação</h3>
         <p className="text-xs text-text-secondary mb-6 leading-relaxed">
           Sua assinatura precisa de renovação para liberar este conteúdo. Fale com seu personal/coach para renovar seu acesso.

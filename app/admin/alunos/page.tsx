@@ -231,10 +231,10 @@ export default function AdminAlunosPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <DumbbellLoader text="Sincronizando base de alunos..." />
+            <DumbbellLoader text="Sincronizando base de alunos..." variant="inline" />
           </div>
         ) : rows.length === 0 ? (
-          <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-surface-1 border border-card rounded-xl overflow-hidden shadow-sm">
             <StudentsEmptyState
               variant="no-students"
               onAddStudent={() => router.push("/admin/alunos/novo")}
@@ -252,18 +252,18 @@ export default function AdminAlunosPage() {
                 { label: "Vencendo em breve", value: alertasVencendoEmBreve, dotColor: "bg-danger" },
                 { label: "Inativos", value: inativosCount, dotColor: "bg-text-disabled" },
               ].map(({ label, value, dotColor }) => (
-                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-border-subtle shadow-sm flex flex-col justify-center h-20">
+                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-card shadow-sm flex flex-col justify-center h-20">
                   <div className="flex items-center gap-1.5 leading-none">
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
                     <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
                   </div>
-                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums leading-none">{value}</span>
+                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums lining-nums leading-none">{value}</span>
                 </div>
               ))}
             </div>
 
             {/* ── Filters and Search Line ── */}
-            <div className="bg-surface-1 border border-border-subtle rounded-lg p-2.5 flex flex-col lg:flex-row items-center justify-between gap-3 shadow-sm">
+            <div className="bg-surface-1 border border-card rounded-lg p-2.5 flex flex-col lg:flex-row items-center justify-between gap-3 shadow-sm">
               <div className="relative w-full lg:max-w-[280px]">
                 <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                 <input
@@ -271,13 +271,13 @@ export default function AdminAlunosPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Localizar por nome ou e-mail..."
-                  className="w-full pl-9 pr-4 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
+                  className="w-full pl-9 pr-4 h-8.5 bg-surface-2 border border-input rounded-md text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
                 />
               </div>
 
               <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto lg:justify-end">
                 {/* Status Filter — segmented control (largura igual no mobile) */}
-                <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 bg-surface-2 border border-border-subtle rounded-md p-1 h-8.5">
+                <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 bg-surface-2 border border-card rounded-md p-1 h-8.5">
                   {(['todos', 'ativos', 'pendentes', 'inativos'] as const).map((status) => (
                     <button
                       key={status}
@@ -285,7 +285,7 @@ export default function AdminAlunosPage() {
                       className={cn(
                         "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all h-6.5 flex items-center justify-center",
                         statusFilter === status
-                          ? "bg-surface-0 border border-border-subtle/50 text-text-primary shadow-sm"
+                          ? "bg-surface-0 border border-card/50 text-text-primary shadow-sm"
                           : "text-text-secondary hover:text-text-primary"
                       )}
                     >
@@ -300,7 +300,7 @@ export default function AdminAlunosPage() {
                   <select
                     value={planoFilter}
                     onChange={(e) => setPlanoFilter(e.target.value as any)}
-                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-input rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
                   >
                     <option value="todos">Todos os planos</option>
                     <option value="mensal">Mensal</option>
@@ -313,7 +313,7 @@ export default function AdminAlunosPage() {
                   <select
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value as any)}
-                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-border-subtle rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-input rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
                   >
                     <option value="atividade">Última atividade</option>
                     <option value="recentes">Mais recentes</option>
@@ -324,7 +324,7 @@ export default function AdminAlunosPage() {
                   {/* Reset filters */}
                   <button
                     onClick={handleResetFilters}
-                    className="w-8.5 h-8.5 shrink-0 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-border-subtle text-text-secondary hover:text-text-primary rounded-md transition-colors"
+                    className="w-8.5 h-8.5 shrink-0 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-card text-text-secondary hover:text-text-primary rounded-md transition-colors"
                     title="Limpar filtros"
                   >
                     <ArrowCounterClockwise size={13} />
@@ -336,7 +336,7 @@ export default function AdminAlunosPage() {
             {/* ── Table / Grid of Athletes ── */}
             {processedRows.length === 0 ? (
               /* No results from search / filter */
-              <div className="bg-surface-1 border border-border-subtle rounded-xl p-12 text-center max-w-md mx-auto shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-xl p-12 text-center max-w-md mx-auto shadow-sm">
                 <WarningCircle size={36} className="text-warning/60 mx-auto mb-3" />
                 <h3 className="text-sm font-bold text-text-primary mb-1">Nenhum aluno encontrado</h3>
                 <p className="text-text-secondary text-xs mb-5">
@@ -352,7 +352,7 @@ export default function AdminAlunosPage() {
                 </div>
               </div>
             ) : isMobile ? (
-              <div className="bg-surface-1 border border-border-subtle rounded-xl p-3 shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-xl p-3 shadow-sm">
                 {processedRows.map((row) => {
                   const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
                   const isAtivo = row.status_pagamento === "pago";
@@ -369,7 +369,7 @@ export default function AdminAlunosPage() {
                         <span className={cn(
                           "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border",
                           isArquivado
-                            ? "bg-surface-3 text-text-disabled border-border-subtle"
+                            ? "bg-surface-3 text-text-disabled border-card"
                             : isActive
                               ? "bg-success-subtle text-success border-success/15"
                               : "bg-danger-subtle text-danger border-danger/15"
@@ -412,11 +412,11 @@ export default function AdminAlunosPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-surface-1 border border-border-subtle rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-surface-1 border border-card rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto scrollbar-hide">
                   <table className="w-full border-collapse text-left">
                     <thead>
-                      <tr className="border-b border-border-subtle bg-surface-2/40">
+                      <tr className="border-b border-divider bg-surface-2/40">
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Status</th>
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Plano</th>
@@ -442,7 +442,7 @@ export default function AdminAlunosPage() {
                             key={row.id}
                             onClick={() => router.push(`/admin/aluno/${row.id}`)}
                             className={cn(
-                              "border-b border-border-subtle/50 last:border-b-0 cursor-pointer transition-colors hover:bg-surface-2/40",
+                              "border-b border-divider/50 last:border-b-0 cursor-pointer transition-colors hover:bg-surface-2/40",
                               isArquivado && "opacity-60",
                               alerta === 'vencido' && "bg-danger/5 hover:bg-danger/10"
                             )}
@@ -476,7 +476,7 @@ export default function AdminAlunosPage() {
                               <span className={cn(
                                 "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                                 isArquivado
-                                  ? "bg-surface-3 text-text-disabled border-border-subtle"
+                                  ? "bg-surface-3 text-text-disabled border-card"
                                   : isActive
                                     ? "bg-success-subtle text-success border-success/15"
                                     : "bg-danger-subtle text-danger border-danger/15"
@@ -533,7 +533,7 @@ export default function AdminAlunosPage() {
                                   <span>{timeAgo(row.ultimo_checkin)}</span>
                                 </div>
                               ) : (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-2 border border-border-subtle text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-2 border border-card text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
                                   Sem registros
                                 </span>
                               )}

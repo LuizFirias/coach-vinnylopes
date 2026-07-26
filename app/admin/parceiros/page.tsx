@@ -30,8 +30,8 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-const inputCls = "w-full h-10 bg-surface-0 border border-border-subtle text-text-primary px-3 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors";
-const textareaCls = "w-full bg-surface-0 border border-border-subtle text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors resize-none";
+const inputCls = "w-full h-10 bg-surface-0 border border-input text-text-primary px-3 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors";
+const textareaCls = "w-full bg-surface-0 border border-input text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors resize-none";
 
 // ─── Modal component ──────────────────────────────────────────────────────────
 
@@ -71,9 +71,9 @@ function ParceiroModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-surface-1 border border-border-subtle rounded-xl shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-lg bg-surface-1 border border-card rounded-xl shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
         {/* Modal header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-divider flex-shrink-0">
           <div>
             <h2 className="text-sm font-bold text-text-primary">{title}</h2>
             <p className="text-xs text-text-tertiary">{subtitle}</p>
@@ -149,7 +149,7 @@ function ParceiroModal({
 
             <FormField label={multipleImages ? "Imagens (máx 5)" : "Nova Imagem (opcional)"}>
               <div className="space-y-2">
-                <div className="relative flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-border-subtle rounded-lg bg-surface-2/50 hover:bg-brand/5 hover:border-brand/30 transition-all cursor-pointer group">
+                <div className="relative flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-input rounded-lg bg-surface-2/50 hover:bg-brand/5 hover:border-brand/30 transition-all cursor-pointer group">
                   <input
                     type="file"
                     accept="image/*"
@@ -161,7 +161,7 @@ function ParceiroModal({
                   <p className="text-xs text-text-tertiary">Clique para selecionar</p>
                 </div>
 
-                <div className="flex items-start gap-1 p-1.5 bg-surface-2 border border-border-subtle rounded-md">
+                <div className="flex items-start gap-1 p-1.5 bg-surface-2 border border-card rounded-md">
                   <WarningCircle className="w-3 h-3 text-brand flex-shrink-0 mt-0.5" />
                   <p className="text-[9px] text-text-tertiary leading-tight">
                     Recomendado: proporção 16:9 ou 4:3.
@@ -171,7 +171,7 @@ function ParceiroModal({
                 {imagePreviews.length > 0 && (
                   <div className="flex gap-1.5 overflow-x-auto pb-1">
                     {imagePreviews.map((src, i) => (
-                      <div key={i} className="shrink-0 w-12 h-12 rounded-lg border border-border-subtle overflow-hidden bg-surface-2">
+                      <div key={i} className="shrink-0 w-12 h-12 rounded-lg border border-card overflow-hidden bg-surface-2">
                         <img src={src} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     ))}
@@ -183,11 +183,11 @@ function ParceiroModal({
         </div>
 
         {/* Modal footer */}
-        <div className="flex gap-2.5 px-5 py-3.5 border-t border-border-subtle flex-shrink-0">
+        <div className="flex gap-2.5 px-5 py-3.5 border-t border-divider flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-9 bg-surface-3 border border-border-subtle text-text-secondary rounded-lg text-xs font-semibold hover:text-text-primary transition-colors"
+            className="flex-1 h-9 bg-surface-3 border border-card text-text-secondary rounded-lg text-xs font-semibold hover:text-text-primary transition-colors"
           >
             {cancelLabel}
           </button>
@@ -370,7 +370,7 @@ export default function ParceirosAdminPage() {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
 
         {/* Header */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-b border-border-subtle">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-b border-divider">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight font-display">
               Parceiros
@@ -395,11 +395,11 @@ export default function ParceirosAdminPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <DumbbellLoader text="Carregando rede..." />
+            <DumbbellLoader text="Carregando rede..." variant="inline" />
           </div>
         ) : parceiros.length === 0 ? (
-          <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-xl py-10 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
-            <div className="w-10 h-10 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled mb-3.5">
+          <div className="bg-surface-1 border border-card shadow-sm rounded-xl py-10 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="w-10 h-10 rounded-lg bg-surface-2 border border-card flex items-center justify-center text-text-disabled mb-3.5">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <h2 className="text-xs font-semibold text-text-secondary mb-4">Nenhum parceiro cadastrado</h2>
@@ -414,10 +414,10 @@ export default function ParceirosAdminPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {parceiros.map((parceiro) => (
-              <div key={parceiro.id} className="bg-surface-1 border border-border-subtle hover:border-brand/35 rounded-xl p-4 flex flex-col justify-between shadow-sm transition-all">
+              <div key={parceiro.id} className="bg-surface-1 border border-card hover:border-brand/35 rounded-xl p-4 flex flex-col justify-between shadow-sm transition-all">
                 <div>
                   {/* Logo */}
-                  <div className="w-11 h-11 bg-surface-2 border border-border-subtle rounded-lg overflow-hidden flex items-center justify-center mb-3">
+                  <div className="w-11 h-11 bg-surface-2 border border-card rounded-lg overflow-hidden flex items-center justify-center mb-3">
                     {parceiro.logo_url ? (
                       <img
                         src={getPublicStorageUrl('parceiros-logos', parceiro.logo_url) || ''}
@@ -433,7 +433,7 @@ export default function ParceirosAdminPage() {
                   <p className="text-2xs text-text-secondary leading-normal mb-3.5 line-clamp-2 min-h-[2.25rem]">{parceiro.descricao}</p>
                 </div>
 
-                <div className="flex flex-col gap-2 pt-3 border-t border-border-subtle/50">
+                <div className="flex flex-col gap-2 pt-3 border-t border-divider/50">
                   <div className="flex items-center justify-between px-2.5 py-1.5 bg-brand-subtle/40 border border-brand-border/20 rounded-lg">
                     <span className="text-[9px] font-bold uppercase tracking-wider text-brand">Cupom</span>
                     <span className="text-brand font-mono text-xs font-bold tracking-wide">{parceiro.cupom}</span>
@@ -443,7 +443,7 @@ export default function ParceirosAdminPage() {
                     href={parceiro.link_desconto}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 h-8 text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-2 border border-border-subtle hover:border-brand/30 hover:text-brand rounded-lg transition-colors"
+                    className="flex items-center justify-center gap-1.5 h-8 text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-2 border border-card hover:border-brand/30 hover:text-brand rounded-lg transition-colors"
                   >
                     <ArrowSquareOut className="w-3 h-3" />
                     Acessar Loja

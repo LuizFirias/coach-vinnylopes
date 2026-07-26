@@ -111,7 +111,7 @@ export function BiSetGroupCard({
         )}
       >
         {/* Exercício A */}
-        <div className="px-3.5 py-2.5 border-b border-border-subtle/50">
+        <div className="px-3.5 py-2.5 border-b border-divider/50">
           <div className="flex items-center justify-between gap-1.5 mb-2">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <button
@@ -159,7 +159,7 @@ export function BiSetGroupCard({
                 <DotsThree size={16} weight="bold" />
               </button>
               {menuAOpen && (
-                <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border border-border-subtle rounded-lg shadow-elev-2 py-1">
+                <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border border-card rounded-lg shadow-elev-2 py-1">
                   <button
                     type="button"
                     onClick={() => { setShowUndoModal(true); setMenuAOpen(false); }}
@@ -197,7 +197,7 @@ export function BiSetGroupCard({
               value={halfA.observacoes}
               onChange={(e) => onUpdateHalf("a", { observacoes: e.target.value })}
               placeholder="Observação para o aluno (A)..."
-              className="w-full mt-2 px-0 py-2 bg-transparent border-b border-border-subtle text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
+              className="w-full mt-2 px-0 py-2 bg-transparent border-b border-divider text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
               rows={2}
             />
           )}
@@ -213,7 +213,7 @@ export function BiSetGroupCard({
             />
           </div>
         ) : (
-          <div className="mx-3.5 mb-3.5 mt-1 rounded-[10px] bg-[#0f0f0f] border border-[#222222] p-3">
+          <div className="mx-3.5 mb-3.5 mt-1 rounded-[10px] bg-[#0f0f0f] border border-card p-3">
             <div className="flex items-center justify-between gap-1.5 mb-2">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <ArrowDown size={14} className="text-brand shrink-0" />
@@ -249,7 +249,7 @@ export function BiSetGroupCard({
                   <DotsThree size={16} weight="bold" />
                 </button>
                 {menuBOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border border-border-subtle rounded-lg shadow-elev-2 py-1">
+                  <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border border-card rounded-lg shadow-elev-2 py-1">
                     <button
                       type="button"
                       onClick={() => { onSwapPartner(); setMenuBOpen(false); }}
@@ -274,7 +274,7 @@ export function BiSetGroupCard({
                 value={halfB!.observacoes}
                 onChange={(e) => onUpdateHalf("b", { observacoes: e.target.value })}
                 placeholder="Observação para o aluno (B)..."
-                className="w-full mt-2 px-0 py-2 bg-transparent border-b border-border-subtle text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
+                className="w-full mt-2 px-0 py-2 bg-transparent border-b border-divider text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
                 rows={2}
               />
             )}
@@ -307,7 +307,7 @@ export function BiSetGroupCard({
 
       {showUndoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-1 border border-border-subtle rounded-xl p-5">
+          <div className="w-full max-w-sm bg-surface-1 border border-card rounded-xl p-5">
             <h3 className="text-sm font-bold text-text-primary mb-2">Desfazer Bi-Set?</h3>
             <p className="text-xs text-text-secondary mb-4 leading-relaxed">
               Os exercícios voltarão a ser independentes. Nenhum exercício será deletado.

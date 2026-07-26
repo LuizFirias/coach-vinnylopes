@@ -102,12 +102,12 @@ export default function ActiveWorkoutBanner() {
           <p className="text-[10px] font-semibold text-white/70 uppercase tracking-widest leading-none mb-0.5">
             Treino em andamento
           </p>
-          <p className="text-sm font-bold text-white truncate leading-tight">{active.nomeRotina}</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-white truncate leading-tight">{active.nomeRotina}</p>
         </div>
 
         {/* Time + arrow */}
         <div className="relative flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-sm font-mono font-bold text-white tabular-nums">{formatDuration(elapsed)}</span>
+          <span className="text-sm font-mono font-bold text-white tabular-nums lining-nums">{formatDuration(elapsed)}</span>
           <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
             <CaretRight className="w-4 h-4 text-white" />
           </div>

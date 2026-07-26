@@ -145,14 +145,14 @@ export default function RankingPage() {
             {minha != null && (
               <div className="flex items-center gap-1 px-2.5 py-1 bg-brand/10 border border-brand/20 rounded-md">
                 <Lightning size={12} weight="fill" className="text-brand" />
-                <span className="text-xs font-bold text-brand font-mono tabular-nums">{pontos} pts</span>
+                <span className="text-xs font-bold text-brand font-mono tabular-nums lining-nums">{pontos} pts</span>
               </div>
             )}
           </div>
         </div>
 
         {/* ── Filtro de Período ── */}
-        <div className="flex border-b border-border-subtle">
+        <div className="flex border-b border-divider">
           {[
             { key: 'total', label: 'Total' },
             { key: 'mes_atual', label: 'Este mês' },
@@ -175,8 +175,8 @@ export default function RankingPage() {
 
         {/* ── Estado SOLO ── */}
         {isSolo && (
-          <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-5 text-center">
-            <p className="text-4xl font-bold text-text-primary">{pontos}</p>
+          <div className="bg-surface-1 border border-card shadow-elev-1 rounded-2xl p-5 text-center">
+            <p className="text-4xl font-bold text-text-primary tabular-nums lining-nums tracking-display">{pontos}</p>
             <p className="text-xs text-text-tertiary mt-1">pontos totais</p>
           </div>
         )}
@@ -186,7 +186,7 @@ export default function RankingPage() {
           <>
             {/* Sua posição */}
             {minha && posicao !== null && (
-              <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 flex items-center gap-4">
+              <div className="bg-surface-1 border border-card shadow-elev-1 rounded-2xl p-4 flex items-center gap-4">
                 <div className={cn(
                   'w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-lg',
                   posicao === 1 ? 'bg-brand text-text-on-brand' : 'bg-surface-3 text-text-primary'
@@ -213,8 +213,8 @@ export default function RankingPage() {
             )}
 
             {/* Leaderboard */}
-            <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl overflow-hidden mb-4">
-              <div className="px-4 py-2.5 bg-surface-2 border-b border-border-subtle">
+            <div className="bg-surface-1 border border-card shadow-elev-1 rounded-2xl overflow-hidden mb-4">
+              <div className="px-4 py-2.5 bg-surface-2 border-b border-divider">
                 <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Classificação</span>
               </div>
               <div>
@@ -222,7 +222,7 @@ export default function RankingPage() {
                   const isMe = entry.aluno_id === userId;
                   return (
                     <div key={entry.aluno_id} className={cn(
-                      'flex items-center gap-3 px-4 py-3 border-b border-border-subtle last:border-b-0',
+                      'flex items-center gap-3 px-4 py-3 border-b border-divider last:border-b-0',
                       isMe && 'bg-brand/8 border-l-2 border-l-brand'
                     )}>
                       {/* Posição */}
@@ -234,7 +234,7 @@ export default function RankingPage() {
                       </span>
 
                       {/* Avatar */}
-                      <div className="w-8 h-8 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <div className="w-8 h-8 rounded-full bg-surface-3 border border-card flex items-center justify-center flex-shrink-0 overflow-hidden">
                         {entry.avatar_url
                           ? <img src={entry.avatar_url} alt={entry.coaching_reference ?? entry.full_name ?? ''} className="w-full h-full object-cover" />
                           : <span className="text-xs font-semibold text-text-secondary">{getInitials(entry.coaching_reference ?? entry.full_name)}</span>}
@@ -266,11 +266,11 @@ export default function RankingPage() {
         )}
 
         {/* ── Como ganhar pontos (sempre visível) ── */}
-        <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4">
+        <div className="bg-surface-1 border border-card rounded-2xl p-4">
           <span className="block text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Como ganhar pontos</span>
           <div>
             {COMO_GANHAR.map(item => (
-              <div key={item.label} className="flex items-center justify-between py-2 border-b border-border-subtle last:border-b-0">
+              <div key={item.label} className="flex items-center justify-between py-2 border-b border-divider last:border-b-0">
                 <span className="text-sm text-text-primary">{item.label}</span>
                 <span className="text-sm font-bold text-brand">{item.pts}</span>
               </div>

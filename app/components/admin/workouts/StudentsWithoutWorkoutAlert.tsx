@@ -25,7 +25,7 @@ export function StudentsWithoutWorkoutAlert({
         {students.map((aluno) => (
           <div
             key={aluno.id}
-            className="flex items-center justify-between gap-3 py-2 border-t border-border-subtle first:border-t-0"
+            className="flex items-center justify-between gap-3 py-2 border-t border-divider first:border-t-0"
           >
             <p className="text-xs text-text-primary truncate">
               {aluno.coaching_reference || aluno.full_name || "Atleta"}

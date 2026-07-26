@@ -24,9 +24,9 @@ export function NextActionCard({
 
   if (status === 'sem-plano') {
     return (
-      <div className="bg-surface-1 border border-dashed border-border-subtle rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm">
+      <div className="bg-surface-1 border border-dashed border-card rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-surface-2 border border-card flex items-center justify-center text-text-disabled flex-shrink-0">
             <Barbell className="w-4 h-4" />
           </div>
           <div className="min-w-0">
@@ -49,7 +49,7 @@ export function NextActionCard({
 
   if (status === 'off') {
     return (
-      <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 shadow-elev-1 flex flex-col gap-4">
+      <div className="bg-surface-1 border border-card rounded-2xl p-5 shadow-elev-1 flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-info-subtle border border-info/30 flex items-center justify-center text-info flex-shrink-0">
             <Moon className="w-5 h-5" />
@@ -59,17 +59,17 @@ export function NextActionCard({
             <p className="text-xs text-text-secondary">Recuperação ativa · foco no sono, alimentação e hidratação.</p>
           </div>
         </div>
-        <div className="flex gap-2 border-t border-border-subtle/50 pt-3">
+        <div className="flex gap-2 border-t border-divider/50 pt-3">
           <Link
             href="/aluno/treinos"
-            className="flex-1 h-9 bg-surface-2 border border-border-subtle text-[11px] font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+            className="flex-1 h-9 bg-surface-2 border border-card text-[11px] font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
           >
             <Barbell className="w-3.5 h-3.5" />
             Ver próximos treinos
           </Link>
           <Link
             href="/aluno/medidas"
-            className="flex-1 h-9 bg-surface-2 border border-border-subtle text-[11px] font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+            className="flex-1 h-9 bg-surface-2 border border-card text-[11px] font-semibold text-text-secondary hover:text-text-primary rounded-xl flex items-center justify-center gap-1.5 transition-colors"
           >
             <Ruler className="w-3.5 h-3.5" />
             Ver evolução
@@ -122,7 +122,7 @@ export function NextActionCard({
         </div>
       </div>
 
-      <div className="flex gap-2 border-t border-border-subtle/50 pt-3 relative">
+      <div className="flex gap-2 border-t border-divider/50 pt-3 relative">
         <Link
           href={fichaId ? `/aluno/treinos/${fichaId}/executar` : '/aluno/treinos'}
           className="flex-1 h-10 bg-brand text-text-on-brand text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-glow-brand hover:opacity-90 active:scale-95 transition-all"

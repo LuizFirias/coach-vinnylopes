@@ -67,7 +67,7 @@ export function RestTimer({ durationSeconds, onComplete, onSkip, nextSetInfo }: 
               strokeLinecap="round" />
           </svg>
           <div className="text-center">
-            <p className="font-mono tabular-nums font-semibold text-5xl text-brand tracking-tight">
+            <p className="font-mono tabular-nums lining-nums font-semibold text-5xl text-brand tracking-tight">
               0:00
             </p>
             <p className="text-xs text-text-tertiary mt-1">pronto!</p>
@@ -111,7 +111,7 @@ export function RestTimer({ durationSeconds, onComplete, onSkip, nextSetInfo }: 
           />
         </svg>
         <div className="text-center">
-          <p className="font-mono tabular-nums font-semibold text-5xl text-text-primary tracking-tight">
+          <p className="font-mono tabular-nums lining-nums font-semibold text-5xl text-text-primary tracking-tight">
             {formatDuration(remaining)}
           </p>
           <p className="text-xs text-text-tertiary mt-1">

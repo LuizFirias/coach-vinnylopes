@@ -2,7 +2,6 @@
 
 import { CircleNotch, Plus, Warning } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
-import { cn } from '@/lib/utils/cn';
 
 interface MeasurementInputCardProps {
   unit: string;
@@ -49,7 +48,7 @@ export function MeasurementInputCard({
       </p>
 
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-11 flex-1 items-center justify-between rounded-[10px] border border-[#282828] bg-[var(--mobile-secondary-bg)] px-4">
+        <div className="flex h-11 flex-1 items-center justify-between rounded-[10px] border-0 bg-[var(--mobile-secondary-bg)] px-4">
           <input
             type="number"
             step="0.1"
@@ -58,7 +57,7 @@ export function MeasurementInputCard({
             onChange={(e) => setRaw(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             placeholder={placeholder}
-            className="flex-1 bg-transparent text-[22px] font-bold text-text-primary outline-none"
+            className="flex-1 min-w-0 bg-transparent text-[22px] font-bold text-text-primary border-0 outline-none shadow-none ring-0 focus:outline-none focus:shadow-none focus:ring-0 focus-visible:!outline-none focus-visible:!shadow-none focus-visible:!border-transparent"
             disabled={submitting}
           />
           <span className="text-sm text-text-secondary">{unit}</span>
@@ -94,7 +93,7 @@ export function MeasurementInputCard({
           type="date"
           value={date}
           onChange={(e) => onDateChange(e.target.value)}
-          className="bg-transparent text-[11px] text-text-secondary outline-none"
+          className="bg-transparent text-[11px] text-text-secondary border-0 outline-none shadow-none ring-0 focus:outline-none focus:shadow-none focus:ring-0 focus-visible:!outline-none focus-visible:!shadow-none focus-visible:!border-transparent"
         />
       </div>
     </div>

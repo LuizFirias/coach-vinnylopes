@@ -178,8 +178,8 @@ export default function SuperAdminConvitesPage() {
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
-        <Card className="lg:col-span-2 rounded-xl border border-border-subtle/80 p-4 md:p-5 shadow-sm h-fit">
-          <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-border-subtle pb-2 mb-4">
+        <Card className="lg:col-span-2 rounded-xl border border-card p-4 md:p-5 shadow-sm h-fit">
+          <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider pb-2 mb-4">
             Novo convite
           </h2>
 
@@ -217,7 +217,7 @@ export default function SuperAdminConvitesPage() {
               ) : (
                 <div className="flex flex-col gap-1.5 justify-end">
                   <span className="text-xs font-medium text-text-secondary">Limite de alunos</span>
-                  <p className="h-10 flex items-center px-3 rounded-md bg-surface-2 border border-border-subtle text-xs text-text-tertiary">
+                  <p className="h-10 flex items-center px-3 rounded-md bg-surface-2 border border-input text-xs text-text-tertiary">
                     Ilimitado
                   </p>
                 </div>
@@ -251,7 +251,7 @@ export default function SuperAdminConvitesPage() {
             )}
 
             {lastCreated && (
-              <div className="rounded-lg bg-surface-2 border border-border-subtle p-3 space-y-2">
+              <div className="rounded-lg bg-surface-2 border border-card p-3 space-y-2">
                 <p className="text-xs font-semibold text-text-primary">Link gerado</p>
                 <p className="text-xs text-brand font-mono break-all">{lastCreated.code}</p>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -284,8 +284,8 @@ export default function SuperAdminConvitesPage() {
           </form>
         </Card>
 
-        <Card className="lg:col-span-3 rounded-xl border border-border-subtle/80 p-0 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 md:px-5 border-b border-border-subtle flex items-center justify-between gap-3">
+        <Card className="lg:col-span-3 rounded-xl border border-card p-0 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 md:px-5 border-b border-divider flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-text-primary">Convites recentes</h2>
               <p className="text-xs text-text-tertiary mt-0.5">{invites.length} no histórico</p>
@@ -297,7 +297,7 @@ export default function SuperAdminConvitesPage() {
               Nenhum convite criado ainda.
             </p>
           ) : (
-            <div className="divide-y divide-border-subtle/70 max-h-[min(70vh,640px)] overflow-y-auto">
+            <div className="divide-y divide-divider/70 max-h-[min(70vh,640px)] overflow-y-auto">
               {invites.map((invite) => (
                 <div
                   key={invite.id}

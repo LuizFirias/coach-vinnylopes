@@ -54,11 +54,11 @@ export function ExerciseCard({
   return (
     <div
       className={cn(
-        "bg-surface-1 border border-border-subtle shadow-sm rounded-xl overflow-hidden transition-opacity",
+        "bg-surface-1 border border-card shadow-sm rounded-xl overflow-hidden transition-opacity",
         isDragging && "opacity-95 border-brand/50"
       )}
     >
-      <div className="flex items-center justify-between gap-1.5 px-3 py-2 bg-surface-2/40 border-b border-border-subtle">
+      <div className="flex items-center justify-between gap-1.5 px-3 py-2 bg-surface-2/40 border-b border-divider">
         <div className="flex items-center gap-1 min-w-0 flex-1">
           <button
             type="button"
@@ -108,7 +108,7 @@ export function ExerciseCard({
             <DotsThree size={16} weight="bold" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-surface-1 border border-border-subtle rounded-lg shadow-elev-2 py-1">
+            <div className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-surface-1 border border-card rounded-lg shadow-elev-2 py-1">
               <button
                 type="button"
                 onClick={() => { setShowObservation(true); setMenuOpen(false); }}
@@ -167,7 +167,7 @@ export function ExerciseCard({
               value={exercicio.observacoes}
               onChange={(e) => onUpdate(exIndex, { observacoes: e.target.value })}
               placeholder="Observação para o aluno..."
-              className="w-full mt-2 px-0 py-2 bg-transparent border-b border-border-subtle text-xs text-text-secondary focus:outline-none focus:border-brand/40 resize-none min-h-[52px]"
+              className="w-full mt-2 px-0 py-2 bg-transparent border-b border-divider text-xs text-text-secondary focus:outline-none focus:border-brand/40 resize-none min-h-[52px]"
               rows={2}
             />
           )}

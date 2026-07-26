@@ -162,7 +162,7 @@ export default function AddManualWorkoutModal({
     <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl border border-iron-gold/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/40">
+        <div className="flex items-center justify-between p-6 border-b border-card bg-black/40">
           <h2 className="text-lg text-white uppercase tracking-tight">
             Novo Treino
           </h2>

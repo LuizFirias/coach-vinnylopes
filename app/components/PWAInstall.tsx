@@ -67,7 +67,7 @@ export default function PWAInstall() {
           </div>
         </div>
 
-        <div className="space-y-4 bg-black/40 rounded-2xl p-4 border border-white/5">
+        <div className="space-y-4 bg-black/40 rounded-2xl p-4 border border-card">
           {platform === 'ios' ? (
             <div className="space-y-3">
               <div className="flex items-start gap-3 text-[11px] text-slate-300">

@@ -6,7 +6,6 @@ import { splitValueParts } from '@/lib/measurements/helpers';
 import { cn } from '@/lib/utils/cn';
 
 interface MeasurementCurrentCardProps {
-  label: string;
   value: number | null;
   unit: string;
   lastUpdated: string | null;
@@ -20,7 +19,6 @@ interface MeasurementCurrentCardProps {
 }
 
 export function MeasurementCurrentCard({
-  label,
   value,
   unit,
   lastUpdated,
@@ -37,38 +35,46 @@ export function MeasurementCurrentCard({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">
-            {label}
-          </p>
-          <PeriodSelector selected={period} onChange={onPeriodChange} />
-        </div>
-
-        {parts ? (
-          <div className="flex items-baseline">
-            <span
-              className={cn(
-                'font-black tracking-[-2px] text-text-primary leading-none',
-                isDesktop ? 'text-[80px]' : 'text-[64px]',
-              )}
-            >
-              {parts.whole}
-              <span className={cn('font-black', isDesktop ? 'text-[52px]' : 'text-[40px]')}>
+        <div className="mb-1 flex items-end justify-between gap-3">
+          {parts ? (
+            <div className="flex items-end gap-1 min-w-0">
+              <span
+                className={cn(
+                  'font-black leading-none tabular-nums lining-nums text-text-primary',
+                  isDesktop ? 'text-[80px]' : 'text-[64px]',
+                )}
+                style={{ letterSpacing: 'var(--tracking-display, -0.03em)' }}
+              >
+                {parts.whole}
+              </span>
+              <span
+                className={cn(
+                  'font-bold tabular-nums lining-nums text-text-primary mb-2',
+                  isDesktop ? 'text-[36px]' : 'text-[28px]',
+                )}
+                style={{ letterSpacing: 'var(--tracking-headline, -0.02em)' }}
+              >
                 .{parts.decimal}
               </span>
-            </span>
-            <span
-              className={cn(
-                'ml-1.5 self-end font-bold text-brand',
-                isDesktop ? 'text-4xl mb-2' : 'text-[28px] mb-1',
-              )}
-            >
-              {unit}
-            </span>
-          </div>
-        ) : (
-          <p className="text-[32px] font-black text-text-muted">—</p>
-        )}
+              <span
+                className={cn(
+                  'font-bold text-brand mb-2.5 ml-1',
+                  isDesktop ? 'text-[28px]' : 'text-[22px]',
+                )}
+              >
+                {unit}
+              </span>
+            </div>
+          ) : (
+            <p className="text-[32px] font-black text-text-muted">—</p>
+          )}
+
+          <PeriodSelector
+            selected={period}
+            onChange={onPeriodChange}
+            className="mb-3"
+          />
+        </div>
 
         {lastUpdated && (
           <p className="mt-1 text-[11px] text-text-muted">{lastUpdated}</p>

@@ -19,7 +19,7 @@ export function WorkoutsTable({ plans, onView, onEdit, onDelete }: WorkoutsTable
     <div className="overflow-x-auto scrollbar-hide">
       <table className="w-full border-collapse text-left text-xs">
         <thead>
-          <tr className="border-b border-border-subtle bg-surface-2/10">
+          <tr className="border-b border-divider bg-surface-2/10">
             <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
             <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Rotina</th>
             <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Exercícios</th>

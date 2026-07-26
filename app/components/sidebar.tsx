@@ -22,6 +22,7 @@ import {
   X,
   Users,
   SquaresFour,
+  HeartStraight,
   ShieldWarning,
   Gear,
   AppleLogo,
@@ -49,6 +50,7 @@ type MenuGroup = {
 const alunoMenuItems: MenuItem[] = [
   { id: 'dashboard', name: 'Dashboard', href: '/aluno/dashboard', icon: SquaresFour },
   { id: 'treinos', name: 'Treinos', href: '/aluno/treinos', icon: Barbell },
+  { id: 'cardio', name: 'Cardio', href: '/aluno/cardio', icon: HeartStraight },
   { id: 'plano-alimentar', name: 'Plano Alimentar', href: '/aluno/plano-alimentar', icon: ForkKnife },
   { id: 'medidas', name: 'Medidas', href: '/aluno/medidas', icon: Ruler },
   { id: 'fotos', name: 'Fotos', href: '/aluno/fotos', icon: Camera },
@@ -220,7 +222,7 @@ export default function Sidebar() {
           onClick={opts.onNavigate}
         >
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border ${
-            isActive ? 'bg-brand/20 border-brand/30' : 'bg-surface-2 border-border-subtle'
+            isActive ? 'bg-brand/20 border-brand/30' : 'bg-surface-2 border-card'
           }`}>
             <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
           </div>
@@ -252,7 +254,7 @@ export default function Sidebar() {
         )}
 
         {!isExpanded && (
-          <div className="absolute left-full ml-4 px-2 py-1 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] tracking-wider rounded border border-border-subtle pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100 shadow-xl">
+          <div className="absolute left-full ml-4 px-2 py-1 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] tracking-wider rounded border border-card pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100 shadow-xl">
             {m.name}
           </div>
         )}
@@ -265,7 +267,7 @@ export default function Sidebar() {
       {/* Sidebar for Desktop */}
       <aside
         style={{ width: isExpanded ? '240px' : '80px' }}
-        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r border-border-subtle flex-col py-3 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300 overflow-hidden"
+        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r border-divider flex-col py-3 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300 overflow-hidden"
       >
         <div className="flex flex-col items-center gap-2 mb-3 px-2 relative shrink-0">
           <Link href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
@@ -284,7 +286,7 @@ export default function Sidebar() {
           <button
             onClick={toggleSidebar}
             className={cn(
-              "w-6 h-6 rounded-md border border-border-subtle bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
+              "w-6 h-6 rounded-md border border-card bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
               isExpanded ? "absolute right-1 top-1/2 -translate-y-1/2" : "mt-0.5"
             )}
             title={isExpanded ? "Recolher menu" : "Expandir menu"}
@@ -343,7 +345,7 @@ export default function Sidebar() {
           <div
             className={cn(
               "pt-2.5 pb-1 flex flex-col gap-1.5",
-              !showPlanIndicator && "border-t border-border-subtle"
+              !showPlanIndicator && "border-t border-divider"
             )}
           >
             {isExpanded && user && (
@@ -394,7 +396,7 @@ export default function Sidebar() {
       </div>
 
       {/* Drawer Menu - Mobile Only */}
-      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
+      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-divider ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         <div className="p-6 pb-4 flex items-center justify-between">
           <div className="w-[66px] h-[66px] rounded-lg flex items-center justify-center overflow-hidden">
             <Image
@@ -416,8 +418,8 @@ export default function Sidebar() {
         </div>
 
         <div className="px-5 mt-3 mb-6">
-           <div className="p-4 bg-surface-1 rounded-lg border border-border-subtle flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center border border-border-subtle">
+           <div className="p-4 bg-surface-1 rounded-lg border border-card flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center border border-card">
                  <User size={15} className="text-brand" />
               </div>
               <div className="flex flex-col">

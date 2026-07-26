@@ -23,7 +23,7 @@ export function AvailabilityToggle({
         "flex items-start gap-3 rounded-xl border p-4",
         emphasized
           ? "border-brand/35 bg-brand/5"
-          : "border-border-subtle bg-surface-1",
+          : "border-card bg-surface-1",
       )}
     >
       <div className="flex-1 min-w-0">

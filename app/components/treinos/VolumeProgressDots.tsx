@@ -20,7 +20,7 @@ export function VolumeProgressDots({ sessionsCompleted, className }: VolumeProgr
             Volume
           </span>
         </div>
-        <span className="text-[11px] text-text-muted shrink-0 tabular-nums">
+        <span className="text-[11px] text-text-muted shrink-0 tabular-nums lining-nums">
           {sessionsCompleted === 1
             ? "1 sessão completada"
             : `${sessionsCompleted} sessões completadas`}

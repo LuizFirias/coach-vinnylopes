@@ -23,13 +23,13 @@ export function StatsInlineKpis({
         className
       )}
     >
-      <div className="pr-4 border-r border-[#222222]">
+      <div className="pr-4 border-r border-divider">
         <p className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted mb-1">
           Treinos
         </p>
         <p
           className={cn(
-            "font-bold text-text-primary tabular-nums",
+            "font-bold text-text-primary tabular-nums lining-nums",
             isDesktop ? "text-[28px]" : "text-2xl"
           )}
         >
@@ -42,7 +42,7 @@ export function StatsInlineKpis({
         </p>
         <p
           className={cn(
-            "font-bold tabular-nums",
+            "font-bold tabular-nums lining-nums",
             durationLabel === "—" ? "text-text-muted" : "text-text-primary",
             isDesktop ? "text-[28px]" : "text-2xl"
           )}
