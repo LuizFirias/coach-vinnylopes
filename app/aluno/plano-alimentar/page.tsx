@@ -9,7 +9,7 @@ import PDFViewer from '@/app/components/PDFViewer';
 import { ForkKnife, FileText, FilePdf } from '@phosphor-icons/react';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { getTodayBrazil } from '@/lib/dateUtils';
-import { loadStudentNutritionPageData } from '@/lib/nutrition/plans';
+import { loadStudentNutritionPageData, attachMealSubstitutions } from '@/lib/nutrition/plans';
 import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHeader';
 import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
 import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
@@ -192,6 +192,11 @@ export default function PlanoAlimentarPage() {
             setExpandedMeals({ [day1.meals[0].id]: true });
           }
         }
+
+        // Substituições fora do caminho crítico (evita timeout do embed profundo)
+        void attachMealSubstitutions(digitalPlanData, supabaseClient).then((enriched) => {
+          if (enriched !== digitalPlanData) setDigitalPlan(enriched);
+        });
       }
 
       if (plansPDFData && plansPDFData.length > 0) {

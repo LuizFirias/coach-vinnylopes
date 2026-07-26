@@ -125,23 +125,40 @@ export async function calculatePlanMacros(planId: string, dayIndex: number = 1):
   return sumMacros(mealMacros);
 }
 
-const MEAL_ITEM_SELECT =
-  '*, food:nutrition_foods(*, portions:nutrition_food_portions(*)), substitutions:nutrition_substitutions(*, food:nutrition_foods(*, portions:nutrition_food_portions(*)))';
+/** Campos mínimos do alimento para macros + exibição de porção */
+const FOOD_EMBED =
+  'id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, portions:nutrition_food_portions(label, grams)';
+
+/** Itens sem substituições — query leve e estável */
+const MEAL_ITEM_SELECT = `id, meal_id, food_id, quantity_grams, portion_label, notes, sort_order, food:nutrition_foods(${FOOD_EMBED})`;
 
 /**
- * Monta a árvore dia → refeições → itens (+ substituições) com poucas queries em lote.
- * Substitui o antigo N+1 sequencial (dezenas de round-trips).
+ * Substituições: a FK é substitute_food_id (não food_id).
+ * Sem o !hint o PostgREST gera join inválido/lento → statement timeout.
+ */
+const SUB_SELECT = `id, meal_item_id, quantity_grams, portion_label, notes, food:nutrition_foods!substitute_food_id(${FOOD_EMBED})`;
+
+type HydrateOptions = {
+  /** Default true. Na tela do aluno pode adiar para first paint. */
+  includeSubstitutions?: boolean;
+};
+
+/**
+ * Monta a árvore dia → refeições → itens (+ substituições opcionais) em lote.
+ * Nunca usa embed profundo de substitutions (timeout no PostgREST).
  */
 async function hydratePlanDays(
   days: Array<Record<string, unknown> & { id: string }>,
   client = supabaseClient,
+  options: HydrateOptions = {},
 ): Promise<any[]> {
+  const includeSubstitutions = options.includeSubstitutions !== false;
   if (!days.length) return [];
 
   const dayIds = days.map((d) => d.id);
   const { data: meals } = await client
     .from('nutrition_meals')
-    .select('*')
+    .select('id, plan_day_id, title, time_suggestion, notes, sort_order, meal_type')
     .in('plan_day_id', dayIds)
     .order('sort_order', { ascending: true });
 
@@ -150,44 +167,43 @@ async function hydratePlanDays(
 
   let items: any[] = [];
   if (mealIds.length) {
-    // Preferência: embed de substituições numa única query
-    const nested = await client
+    const { data: itemRows, error: itemsError } = await client
       .from('nutrition_meal_items')
       .select(MEAL_ITEM_SELECT)
       .in('meal_id', mealIds)
       .order('sort_order', { ascending: true });
 
-    if (!nested.error && nested.data) {
-      items = nested.data;
-    } else {
-      // Fallback: 2 queries em lote se o embed falhar (FK ambígua etc.)
-      const { data: baseItems } = await client
-        .from('nutrition_meal_items')
-        .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
-        .in('meal_id', mealIds)
-        .order('sort_order', { ascending: true });
+    if (itemsError) {
+      console.error('[hydratePlanDays] Erro ao carregar itens:', itemsError);
+    }
 
-      const itemList = baseItems ?? [];
+    const itemList = itemRows ?? [];
+
+    if (includeSubstitutions && itemList.length) {
       const itemIds = itemList.map((i) => i.id as string);
-      let subs: any[] = [];
-      if (itemIds.length) {
-        const { data: subRows } = await client
-          .from('nutrition_substitutions')
-          .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
-          .in('meal_item_id', itemIds);
-        subs = subRows ?? [];
+      const { data: subRows, error: subsError } = await client
+        .from('nutrition_substitutions')
+        .select(SUB_SELECT)
+        .in('meal_item_id', itemIds);
+
+      if (subsError) {
+        console.warn('[hydratePlanDays] Substituições omitidas:', subsError.message);
+        items = itemList.map((item) => ({ ...item, substitutions: [] }));
+      } else {
+        const subsByItem = new Map<string, any[]>();
+        for (const sub of subRows ?? []) {
+          const key = sub.meal_item_id as string;
+          const bucket = subsByItem.get(key) ?? [];
+          bucket.push(sub);
+          subsByItem.set(key, bucket);
+        }
+        items = itemList.map((item) => ({
+          ...item,
+          substitutions: subsByItem.get(item.id as string) ?? [],
+        }));
       }
-      const subsByItem = new Map<string, any[]>();
-      for (const sub of subs) {
-        const key = sub.meal_item_id as string;
-        const bucket = subsByItem.get(key) ?? [];
-        bucket.push(sub);
-        subsByItem.set(key, bucket);
-      }
-      items = itemList.map((item) => ({
-        ...item,
-        substitutions: subsByItem.get(item.id as string) ?? [],
-      }));
+    } else {
+      items = itemList.map((item) => ({ ...item, substitutions: item.substitutions ?? [] }));
     }
   }
 
@@ -217,6 +233,55 @@ async function hydratePlanDays(
 }
 
 /**
+ * Enriquece um plano já hidratado com substituições (após first paint).
+ */
+export async function attachMealSubstitutions(
+  plan: any,
+  client = supabaseClient,
+): Promise<any> {
+  const day = plan?.days?.[0];
+  const meals = day?.meals ?? [];
+  const items = meals.flatMap((m: any) => m.items ?? []);
+  const itemIds = items.map((i: any) => i.id).filter(Boolean) as string[];
+  if (!itemIds.length) return plan;
+
+  const { data: subRows, error } = await client
+    .from('nutrition_substitutions')
+    .select(SUB_SELECT)
+    .in('meal_item_id', itemIds);
+
+  if (error || !subRows?.length) {
+    if (error) console.warn('[attachMealSubstitutions]', error.message);
+    return plan;
+  }
+
+  const subsByItem = new Map<string, any[]>();
+  for (const sub of subRows) {
+    const key = sub.meal_item_id as string;
+    const bucket = subsByItem.get(key) ?? [];
+    bucket.push(sub);
+    subsByItem.set(key, bucket);
+  }
+
+  return {
+    ...plan,
+    days: plan.days.map((d: any, idx: number) => {
+      if (idx !== 0) return d;
+      return {
+        ...d,
+        meals: (d.meals ?? []).map((meal: any) => ({
+          ...meal,
+          items: (meal.items ?? []).map((item: any) => ({
+            ...item,
+            substitutions: subsByItem.get(item.id) ?? [],
+          })),
+        })),
+      };
+    }),
+  };
+}
+
+/**
  * Retorna os detalhes completos de um plano alimentar, incluindo dias, refeições e itens.
  * ~3–4 round-trips em lote (antes: N+1 por refeição/item).
  */
@@ -237,13 +302,17 @@ export async function getFullPlanDetails(planId: string, client = supabaseClient
 
   if (daysError || !days?.length) return { ...plan, days: [] };
 
-  const daysWithDetails = await hydratePlanDays(days as Array<Record<string, unknown> & { id: string }>, client);
+  const daysWithDetails = await hydratePlanDays(
+    days as Array<Record<string, unknown> & { id: string }>,
+    client,
+    { includeSubstitutions: true },
+  );
   return { ...plan, days: daysWithDetails };
 }
 
 /**
  * Bundle da tela do aluno: plano ativo (só dia 1) + PDFs + água + check-ins — em paralelo.
- * Evita a API /digital e o hop auth.getUser do servidor.
+ * Itens sem substituições no caminho crítico; use attachMealSubstitutions depois.
  */
 export async function loadStudentNutritionPageData(
   studentId: string,
@@ -289,7 +358,7 @@ export async function loadStudentNutritionPageData(
   if (planMeta?.id) {
     const { data: day } = await client
       .from('nutrition_plan_days')
-      .select('*')
+      .select('id, plan_id, day_index, label, notes')
       .eq('plan_id', planMeta.id)
       .eq('day_index', 1)
       .maybeSingle();
@@ -298,6 +367,7 @@ export async function loadStudentNutritionPageData(
       const [hydrated] = await hydratePlanDays(
         [day as Record<string, unknown> & { id: string }],
         client,
+        { includeSubstitutions: false },
       );
       digitalPlan = { ...planMeta, days: [hydrated] };
     } else {
@@ -312,3 +382,4 @@ export async function loadStudentNutritionPageData(
     checkins: checkinsRes.data ?? [],
   };
 }
+
