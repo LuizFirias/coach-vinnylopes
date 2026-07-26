@@ -32,7 +32,7 @@ type Swatch = { name: string; token: string; value: string; note?: string };
 
 const SURFACES: Swatch[] = [
   { name: 'Surface 0', token: '--surface-0', value: '#080c14', note: 'Page bg — navy' },
-  { name: 'Surface 1', token: '--surface-1', value: '#141414', note: 'Card' },
+  { name: 'Surface 1', token: '--surface-1', value: '#111827', note: 'Card' },
   { name: 'Surface 2', token: '--surface-2', value: '#1e1e1e', note: 'Elevated / Input' },
   { name: 'Surface 3', token: '--surface-3', value: '#222222', note: 'Overlay / Divisor' },
   { name: 'Surface 4', token: '--surface-4', value: '#282828', note: 'Borda input' },

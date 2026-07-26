@@ -106,7 +106,7 @@ export function BiSetGroupCard({
     <>
       <div
         className={cn(
-          "bg-[#141414] border border-brand rounded-[14px] overflow-hidden transition-opacity",
+          "bg-[#111827] border border-brand rounded-[14px] overflow-hidden transition-opacity",
           isDragging && "opacity-95 shadow-elev-3"
         )}
       >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { extractStoragePath } from '@/lib/storageUrls';
@@ -9,6 +9,7 @@ import PDFViewer from '@/app/components/PDFViewer';
 import { ForkKnife, FileText, FilePdf } from '@phosphor-icons/react';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { getTodayBrazil } from '@/lib/dateUtils';
+import { loadStudentNutritionPageData } from '@/lib/nutrition/plans';
 import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHeader';
 import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
 import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
@@ -127,6 +128,7 @@ export default function PlanoAlimentarPage() {
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [loadedDate, setLoadedDate] = useState<string>('');
   const [isDesktop, setIsDesktop] = useState(false);
+  const didFetchRef = useRef(false);
 
   useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
@@ -168,50 +170,19 @@ export default function PlanoAlimentarPage() {
       const today = getTodayISO();
       setLoadedDate(today);
 
-      // 1. Buscar plano digital, planos em PDF e registro de água em paralelo
-      const [resPlan, resPDFs, resAgua] = await Promise.all([
-        fetch('/api/aluno/plano-alimentar/digital', {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        }),
-        supabaseClient
-          .from('plano_alimentar_pdf')
-          .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
-          .eq('aluno_id', uid)
-          .order('criado_em', { ascending: false }),
-        supabaseClient
-          .from('registros_agua')
-          .select('id, copos, ml_por_copo')
-          .eq('aluno_id', uid)
-          .eq('data_registro', today)
-          .maybeSingle()
-      ]);
-
-      const resPlanData = await resPlan.json();
-      const digitalPlanData = resPlanData?.plan;
-      const { data: plansPDFData } = resPDFs;
-      const { data: aguaData } = resAgua;
+      // Bundle direto no Supabase — sem API /digital (N+1 no servidor)
+      const { digitalPlan: digitalPlanData, plansPDF: plansPDFData, agua: aguaData, checkins } =
+        await loadStudentNutritionPageData(uid, today, supabaseClient);
 
       if (digitalPlanData) {
         setDigitalPlan(digitalPlanData);
 
-        // Carregar check-ins do dia para esse plano digital
-        const { data: checkins } = await supabaseClient
-          .from('nutrition_meal_checkins')
-          .select('meal_id, status')
-          .eq('student_id', uid)
-          .eq('checkin_date', today);
-
         const checkinsMap: Record<string, string> = {};
-        if (checkins) {
-          checkins.forEach(c => {
-            checkinsMap[c.meal_id] = c.status;
-          });
-        }
+        checkins.forEach((c) => {
+          checkinsMap[c.meal_id] = c.status;
+        });
         setDigitalCheckins(checkinsMap);
 
-        // Auto-expandir primeira refeição que não foi feita
         const day1 = digitalPlanData.days?.[0];
         if (day1 && day1.meals && day1.meals.length > 0) {
           const firstPending = day1.meals.find((m: any) => !checkinsMap[m.id]);
@@ -225,11 +196,9 @@ export default function PlanoAlimentarPage() {
 
       if (plansPDFData && plansPDFData.length > 0) {
         if (!digitalPlanData) {
-          // Se não houver plano digital ativo, o PDF mais recente vira o principal
           setPlanoPDF(plansPDFData[0]);
           setHistoricoPDFs(plansPDFData.slice(1));
 
-          // Carregar refeições legadas do PDF principal
           const { data: refeicaoData } = await supabaseClient
             .from('refeicoes_plano')
             .select('id, plano_id, nome, horario_sugerido, ordem, ingredientes, observacoes')
@@ -250,7 +219,6 @@ export default function PlanoAlimentarPage() {
             setLegacyConsumidos(new Set((consumos || []).map((c: any) => c.refeicao_id)));
           }
         } else {
-          // Se houver plano digital, todos os PDFs viram histórico
           setHistoricoPDFs(plansPDFData);
         }
       }
@@ -279,7 +247,9 @@ export default function PlanoAlimentarPage() {
   }, [loadedDate, fetchData]);
 
   useEffect(() => {
-    fetchData();
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
+    void fetchData();
   }, [fetchData]);
 
   useEffect(() => {

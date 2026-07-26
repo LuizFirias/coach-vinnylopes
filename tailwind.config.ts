@@ -14,7 +14,7 @@ const config: Config = {
       colors: {
         surface: {
           0: '#0d0d0d',   // page bg
-          1: '#141414',   // card
+          1: '#111827',   // card — alinhado ao dash do aluno
           2: '#1e1e1e',   // elevated / input
           3: '#222222',   // overlay / divisor
           4: '#282828',   // borda input

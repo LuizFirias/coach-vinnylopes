@@ -1292,7 +1292,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
       {/* ── Hero unificado (métricas neutras; cor só em exceção) ── */}
       <div
-        className="rounded-xl border border-card bg-[#141414] px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-6"
+        className="rounded-xl border border-card bg-[#111827] px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-6"
       >
         <div className="flex items-center gap-3 min-w-0">
           {avatarUrl ? (
@@ -1463,7 +1463,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         ].map((stat) => {
                           const Icon = stat.icon;
                           return (
-                            <div key={stat.label} className="bg-[#141414] border border-card rounded-xl p-4 flex flex-col justify-between">
+                            <div key={stat.label} className="bg-[#111827] border border-card rounded-xl p-4 flex flex-col justify-between">
                               <div className="flex items-center gap-1.5">
                                 <Icon className="w-3.5 h-3.5 text-[#7a8aab]" />
                                 <span className="text-[10px] font-semibold text-[#7a8aab] uppercase tracking-wider">{stat.label}</span>
@@ -1504,7 +1504,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-card bg-[#141414] p-4">
+                  <div className="rounded-xl border border-card bg-[#111827] p-4">
                     <p className="text-xs text-[#555555]">
                       Sem treinos concluídos ainda — os dados aparecem aqui após o primeiro treino registrado.
                     </p>
@@ -1565,7 +1565,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
 
               {/* Treino Ativo Card — resumo mínimo (link para Kanban/ficha) */}
-              <div className="bg-[#141414] border border-card rounded-2xl p-5 flex flex-col gap-4">
+              <div className="bg-[#111827] border border-card rounded-2xl p-5 flex flex-col gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 bg-[#1e1e1e] border border-card rounded-xl flex items-center justify-center shrink-0 text-[#7a8aab]">
                     <Barbell size={20} />
@@ -1621,7 +1621,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <div className="flex flex-col gap-4">
             
             {/* Kanban de Fichas Digitais */}
-            <div className="w-full bg-[#141414] border border-card rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0">
+            <div className="w-full bg-[#111827] border border-card rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0">
               <div>
                 <h3 className="text-sm font-bold text-white">Fichas Digitais</h3>
                 <p className="text-[10px] text-[#7a8aab] mt-0.5">
@@ -1646,7 +1646,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             {/* Upload de PDF individual — compacto por padrão */}
             <form
               onSubmit={handleUploadPdf}
-              className="bg-[#141414] border border-card rounded-xl"
+              className="bg-[#111827] border border-card rounded-xl"
             >
               <div className="min-h-14 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <button
@@ -1742,7 +1742,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           <div className="w-full flex flex-col gap-4">
             
             {/* Seção 1: Plano Digital Ativo */}
-            <div className="bg-[#141414] border border-card rounded-xl p-5 flex flex-col gap-5">
+            <div className="bg-[#111827] border border-card rounded-xl p-5 flex flex-col gap-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-bold text-white">Acompanhamento Alimentar Digital</h3>
@@ -1849,7 +1849,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     </div>
 
                     {/* Card: Adesão nos últimos 7 dias */}
-                    <div className="p-4 bg-[#141414] border border-card rounded-xl flex flex-col gap-3 min-h-[180px]">
+                    <div className="p-4 bg-[#111827] border border-card rounded-xl flex flex-col gap-3 min-h-[180px]">
                       <div>
                         <h4 className="text-[13px] font-semibold text-white">Adesão nos últimos 7 dias</h4>
                         <p className="text-[10px] text-[#7a8aab] mt-0.5">Série diária — mesmo cálculo dos KPIs</p>
@@ -1927,7 +1927,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* Seção 2: PDF compacto / colapsável */}
-            <div className="bg-[#141414] border border-card rounded-xl">
+            <div className="bg-[#111827] border border-card rounded-xl">
               <div className="min-h-14 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <button
                   type="button"

@@ -228,11 +228,6 @@ function LoginForm() {
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => { setEmail(e.target.value); setError(null); };
   const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(null); };
 
-  // Validador de E-mail
-  const isValidEmail = (val: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-  };
-
   // Medidor de Força da Senha
   const getPasswordStrength = (pass: string) => {
     let score = 0;
@@ -494,8 +489,8 @@ function LoginForm() {
           )}
         </div>
 
-        {/* Form Card */}
-        <div className="relative z-20 w-full max-w-[380px] bg-surface-1 lg:bg-transparent border border-border-subtle lg:border-none shadow-sm lg:shadow-none p-6 md:p-7 lg:p-0 rounded-xl">
+        {/* Form — sem card cinza; campos soltos no fundo da página */}
+        <div className="relative z-20 w-full max-w-[380px] px-6 md:px-7 lg:px-0">
           {mode === "login" && (
             <div
               role="tablist"
@@ -653,7 +648,7 @@ function LoginForm() {
                   <div className="flex-1 h-px bg-border-subtle" />
                 </div>
 
-                {/* Email Input com validação inline */}
+                {/* Email — validação inline só no cadastro */}
                 <div className="space-y-2">
                   <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block ml-0.5">
                     E-mail de acesso
@@ -668,24 +663,6 @@ function LoginForm() {
                     required
                     className="w-full h-11 bg-surface-0 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
                   />
-                  {email && (
-                    <div className={cn(
-                       "flex items-center gap-1.5 mt-1.5 text-xs font-medium transition-colors",
-                       isValidEmail(email) ? "text-success" : "text-danger"
-                    )}>
-                      {isValidEmail(email) ? (
-                        <>
-                          <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
-                          <span>E-mail em formato válido</span>
-                        </>
-                      ) : (
-                        <>
-                          <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
-                          <span>Formato de e-mail inválido</span>
-                        </>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Senha Input com medidor de força e Caps Lock */}

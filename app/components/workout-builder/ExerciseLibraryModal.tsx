@@ -61,7 +61,7 @@ export function ExerciseLibraryModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-[#0d0d0d]/80 backdrop-blur-sm">
-      <div className="bg-[#141414] border border-card shadow-2xl w-full max-w-xl rounded-xl overflow-hidden flex flex-col max-h-[80vh]">
+      <div className="bg-[#111827] border border-card shadow-2xl w-full max-w-xl rounded-xl overflow-hidden flex flex-col max-h-[80vh]">
         <div className="p-4 border-b border-divider flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-white">Biblioteca</h3>

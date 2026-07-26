@@ -400,7 +400,7 @@ export function KanbanWorkoutBuilderSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0d0d0d]/90 backdrop-blur-sm">
-      <div className="flex-1 flex flex-col min-h-0 max-w-[min(960px,96vw)] w-full mx-auto my-3 md:my-6 rounded-xl border border-card bg-[#141414] overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 max-w-[min(960px,96vw)] w-full mx-auto my-3 md:my-6 rounded-xl border border-card bg-[#111827] overflow-hidden">
         <div className="shrink-0 px-4 py-3 border-b border-divider flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab] mb-1">

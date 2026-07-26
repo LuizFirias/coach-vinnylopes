@@ -179,7 +179,7 @@ export function FichasKanban({
           <div
             key={ficha.id}
             className={cn(
-              "flex flex-col rounded-xl border bg-[#141414] transition-colors",
+              "flex flex-col rounded-xl border bg-[#111827] transition-colors",
               isColOver ? "border-[#2b7fff]/50" : "border-card",
               dragColId === ficha.id && "opacity-60",
             )}

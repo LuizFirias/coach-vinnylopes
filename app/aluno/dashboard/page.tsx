@@ -274,18 +274,25 @@ export default function AlunoDashboardPage() {
     coachIdForExtras: string | null,
     coachExtrasEnabled: boolean,
   ) => {
-    // Nutrição leve — sem getFullPlanDetails / API N+1
+    // Nutrição leve — plan + checkins em paralelo; depois dia/refeições
     void (async () => {
       try {
         const todayISO = getTodayBrazil();
-        const { data: plan } = await supabaseClient
-          .from('nutrition_plans')
-          .select('id, name')
-          .eq('student_id', uid)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const [{ data: plan }, { data: checkins }] = await Promise.all([
+          supabaseClient
+            .from('nutrition_plans')
+            .select('id, name')
+            .eq('student_id', uid)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabaseClient
+            .from('nutrition_meal_checkins')
+            .select('meal_id')
+            .eq('student_id', uid)
+            .eq('checkin_date', todayISO),
+        ]);
 
         if (!plan) return;
 
@@ -306,18 +313,11 @@ export default function AlunoDashboardPage() {
           return;
         }
 
-        const [{ data: meals }, { data: checkins }] = await Promise.all([
-          supabaseClient
-            .from('nutrition_meals')
-            .select('id, title, time_suggestion')
-            .eq('plan_day_id', day.id)
-            .order('sort_order', { ascending: true }),
-          supabaseClient
-            .from('nutrition_meal_checkins')
-            .select('meal_id')
-            .eq('student_id', uid)
-            .eq('checkin_date', todayISO),
-        ]);
+        const { data: meals } = await supabaseClient
+          .from('nutrition_meals')
+          .select('id, title, time_suggestion')
+          .eq('plan_day_id', day.id)
+          .order('sort_order', { ascending: true });
 
         const mealList = meals ?? [];
         const checkedMealIds = new Set(checkins?.map((c) => c.meal_id) || []);

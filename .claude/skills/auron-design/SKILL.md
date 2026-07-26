@@ -23,7 +23,7 @@ sessões de refatoração do AURON (julho 2026).
 ### Paleta
 ```
 Background page:     #080c14   (navy azulado — dashboard; NÃO preto puro #000)
-Background card:     #141414
+Background card:     #111827
 Background input:    #1e1e1e
 Borda input:         #282828   (1px)
 

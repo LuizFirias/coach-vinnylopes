@@ -55,7 +55,7 @@ export function BiSetPartnerPicker({ catalog, excludeIds = [], onSelect }: BiSet
               onClick={() => onSelect(ex)}
               className={cn(
                 "w-full min-h-11 flex items-center justify-between gap-2 py-2 text-left",
-                "hover:bg-[#141414] transition-colors rounded-md px-1"
+                "hover:bg-[#111827] transition-colors rounded-md px-1"
               )}
             >
               <div className="min-w-0">

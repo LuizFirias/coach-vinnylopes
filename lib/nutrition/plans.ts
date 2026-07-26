@@ -125,76 +125,190 @@ export async function calculatePlanMacros(planId: string, dayIndex: number = 1):
   return sumMacros(mealMacros);
 }
 
+const MEAL_ITEM_SELECT =
+  '*, food:nutrition_foods(*, portions:nutrition_food_portions(*)), substitutions:nutrition_substitutions(*, food:nutrition_foods(*, portions:nutrition_food_portions(*)))';
+
+/**
+ * Monta a árvore dia → refeições → itens (+ substituições) com poucas queries em lote.
+ * Substitui o antigo N+1 sequencial (dezenas de round-trips).
+ */
+async function hydratePlanDays(
+  days: Array<Record<string, unknown> & { id: string }>,
+  client = supabaseClient,
+): Promise<any[]> {
+  if (!days.length) return [];
+
+  const dayIds = days.map((d) => d.id);
+  const { data: meals } = await client
+    .from('nutrition_meals')
+    .select('*')
+    .in('plan_day_id', dayIds)
+    .order('sort_order', { ascending: true });
+
+  const mealList = meals ?? [];
+  const mealIds = mealList.map((m) => m.id as string);
+
+  let items: any[] = [];
+  if (mealIds.length) {
+    // Preferência: embed de substituições numa única query
+    const nested = await client
+      .from('nutrition_meal_items')
+      .select(MEAL_ITEM_SELECT)
+      .in('meal_id', mealIds)
+      .order('sort_order', { ascending: true });
+
+    if (!nested.error && nested.data) {
+      items = nested.data;
+    } else {
+      // Fallback: 2 queries em lote se o embed falhar (FK ambígua etc.)
+      const { data: baseItems } = await client
+        .from('nutrition_meal_items')
+        .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
+        .in('meal_id', mealIds)
+        .order('sort_order', { ascending: true });
+
+      const itemList = baseItems ?? [];
+      const itemIds = itemList.map((i) => i.id as string);
+      let subs: any[] = [];
+      if (itemIds.length) {
+        const { data: subRows } = await client
+          .from('nutrition_substitutions')
+          .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
+          .in('meal_item_id', itemIds);
+        subs = subRows ?? [];
+      }
+      const subsByItem = new Map<string, any[]>();
+      for (const sub of subs) {
+        const key = sub.meal_item_id as string;
+        const bucket = subsByItem.get(key) ?? [];
+        bucket.push(sub);
+        subsByItem.set(key, bucket);
+      }
+      items = itemList.map((item) => ({
+        ...item,
+        substitutions: subsByItem.get(item.id as string) ?? [],
+      }));
+    }
+  }
+
+  const itemsByMeal = new Map<string, any[]>();
+  for (const item of items) {
+    const key = item.meal_id as string;
+    const bucket = itemsByMeal.get(key) ?? [];
+    bucket.push(item);
+    itemsByMeal.set(key, bucket);
+  }
+
+  const mealsByDay = new Map<string, any[]>();
+  for (const meal of mealList) {
+    const key = meal.plan_day_id as string;
+    const bucket = mealsByDay.get(key) ?? [];
+    bucket.push({
+      ...meal,
+      items: itemsByMeal.get(meal.id as string) ?? [],
+    });
+    mealsByDay.set(key, bucket);
+  }
+
+  return days.map((day) => ({
+    ...day,
+    meals: mealsByDay.get(day.id) ?? [],
+  }));
+}
+
 /**
  * Retorna os detalhes completos de um plano alimentar, incluindo dias, refeições e itens.
+ * ~3–4 round-trips em lote (antes: N+1 por refeição/item).
  */
 export async function getFullPlanDetails(planId: string, client = supabaseClient): Promise<any> {
-  const { data: plan, error: planError } = await client
-    .from('nutrition_plans')
-    .select('*')
-    .eq('id', planId)
-    .single();
+  const [{ data: plan, error: planError }, { data: days, error: daysError }] = await Promise.all([
+    client.from('nutrition_plans').select('*').eq('id', planId).single(),
+    client
+      .from('nutrition_plan_days')
+      .select('*')
+      .eq('plan_id', planId)
+      .order('day_index', { ascending: true }),
+  ]);
 
   if (planError || !plan) {
     console.error(`[getFullPlanDetails] Erro ao carregar plano ${planId}:`, planError);
     return null;
   }
 
-  const { data: days, error: daysError } = await client
-    .from('nutrition_plan_days')
-    .select('*')
-    .eq('plan_id', planId)
-    .order('day_index', { ascending: true });
+  if (daysError || !days?.length) return { ...plan, days: [] };
 
-  if (daysError || !days) return { ...plan, days: [] };
+  const daysWithDetails = await hydratePlanDays(days as Array<Record<string, unknown> & { id: string }>, client);
+  return { ...plan, days: daysWithDetails };
+}
 
-  const daysWithDetails = [];
-  for (const day of days) {
-    const { data: meals, error: mealsError } = await client
-      .from('nutrition_meals')
+/**
+ * Bundle da tela do aluno: plano ativo (só dia 1) + PDFs + água + check-ins — em paralelo.
+ * Evita a API /digital e o hop auth.getUser do servidor.
+ */
+export async function loadStudentNutritionPageData(
+  studentId: string,
+  todayISO: string,
+  client = supabaseClient,
+): Promise<{
+  digitalPlan: any | null;
+  plansPDF: any[];
+  agua: { id: string; copos: number; ml_por_copo: number } | null;
+  checkins: Array<{ meal_id: string; status: string }>;
+}> {
+  const [planRes, pdfRes, aguaRes, checkinsRes] = await Promise.all([
+    client
+      .from('nutrition_plans')
+      .select(
+        'id, name, goal, notes, orientacoes_gerais, calories_target, protein_target, carbs_target, fat_target, status',
+      )
+      .eq('student_id', studentId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    client
+      .from('plano_alimentar_pdf')
+      .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
+      .eq('aluno_id', studentId)
+      .order('criado_em', { ascending: false }),
+    client
+      .from('registros_agua')
+      .select('id, copos, ml_por_copo')
+      .eq('aluno_id', studentId)
+      .eq('data_registro', todayISO)
+      .maybeSingle(),
+    client
+      .from('nutrition_meal_checkins')
+      .select('meal_id, status')
+      .eq('student_id', studentId)
+      .eq('checkin_date', todayISO),
+  ]);
+
+  let digitalPlan: any | null = null;
+  const planMeta = planRes.data;
+  if (planMeta?.id) {
+    const { data: day } = await client
+      .from('nutrition_plan_days')
       .select('*')
-      .eq('plan_day_id', day.id)
-      .order('sort_order', { ascending: true });
+      .eq('plan_id', planMeta.id)
+      .eq('day_index', 1)
+      .maybeSingle();
 
-    const mealsWithDetails = [];
-    if (meals) {
-      for (const meal of meals) {
-        const { data: items, error: itemsError } = await client
-          .from('nutrition_meal_items')
-          .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
-          .eq('meal_id', meal.id)
-          .order('sort_order', { ascending: true });
-
-        const itemsWithSubstitutions = [];
-        if (items) {
-          for (const item of items) {
-            const { data: subs } = await client
-              .from('nutrition_substitutions')
-              .select('*, food:nutrition_foods(*, portions:nutrition_food_portions(*))')
-              .eq('meal_item_id', item.id);
-            
-            itemsWithSubstitutions.push({
-              ...item,
-              substitutions: subs || []
-            });
-          }
-        }
-
-        mealsWithDetails.push({
-          ...meal,
-          items: itemsWithSubstitutions
-        });
-      }
+    if (day) {
+      const [hydrated] = await hydratePlanDays(
+        [day as Record<string, unknown> & { id: string }],
+        client,
+      );
+      digitalPlan = { ...planMeta, days: [hydrated] };
+    } else {
+      digitalPlan = { ...planMeta, days: [] };
     }
-
-    daysWithDetails.push({
-      ...day,
-      meals: mealsWithDetails
-    });
   }
 
   return {
-    ...plan,
-    days: daysWithDetails
+    digitalPlan,
+    plansPDF: pdfRes.data ?? [],
+    agua: aguaRes.data ?? null,
+    checkins: checkinsRes.data ?? [],
   };
 }

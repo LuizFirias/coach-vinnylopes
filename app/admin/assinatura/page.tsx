@@ -283,7 +283,7 @@ const BRICK_VISUAL = {
       baseColor: "#2b7fff",
       buttonTextColor: "#ffffff",
       formBackgroundColor: "transparent",
-      inputBackgroundColor: "#141414",
+      inputBackgroundColor: "#111827",
       textPrimaryColor: "#ffffff",
       textSecondaryColor: "#7a8aab",
       outlinePrimaryColor: "#2b7fff",
@@ -897,7 +897,7 @@ export default function AssinaturaPage() {
       {selectedPlan.features.map((feature) => (
         <li
           key={feature}
-          className="flex items-center gap-2 py-2.5 border-b border-[#141414] text-xs text-[#7a8aab] last:border-0"
+          className="flex items-center gap-2 py-2.5 border-b border-[#111827] text-xs text-[#7a8aab] last:border-0"
         >
           <Check className="w-3.5 h-3.5 text-[#39c75a] shrink-0" weight="bold" />
           {feature}
