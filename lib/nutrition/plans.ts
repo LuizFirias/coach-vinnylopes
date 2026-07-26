@@ -203,7 +203,7 @@ async function hydratePlanDays(
         }));
       }
     } else {
-      items = itemList.map((item) => ({ ...item, substitutions: item.substitutions ?? [] }));
+      items = itemList.map((item) => ({ ...item, substitutions: [] as any[] }));
     }
   }
 
