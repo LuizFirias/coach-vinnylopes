@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightni
 import { RestTimerOverlay } from '@/app/components/treino/execucao/RestTimerOverlay';
 import { VolumeProgressDots } from '@/app/components/treinos/VolumeProgressDots';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
 import { CompletionShareScreen } from '@/app/components/workout/share/CompletionShareScreen';
 import { resolveCoachShareHandle } from '@/lib/utils/workoutShare';
 import { YouTubePlayer } from '@/app/components/YouTubePlayer';
@@ -444,18 +445,32 @@ export default function ExecucaoTreinoPage() {
   const loadFicha = async () => {
     setLoading(true);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const uid = authData?.user?.id;
+      const session = await getSafeSession();
+      const uid = session?.user?.id;
       if (!uid) { router.push('/login'); return; }
       setUserId(uid);
 
-      const { data: fichaData, error: fichaError } = await supabaseClient
-        .from('fichas_treino')
-        .select('nome_rotina, configuracao')
-        .eq('id', fichaId)
-        .eq('aluno_id', uid)
-        .eq('ativo', true)
-        .single();
+      // Ficha + histórico da ficha em paralelo (histórico só depende de fichaId/uid).
+      // Importante: data_conclusao DESC — ASC + limit cortava as sessões mais recentes.
+      const [
+        { data: fichaData, error: fichaError },
+        { data: historicoData },
+      ] = await Promise.all([
+        supabaseClient
+          .from('fichas_treino')
+          .select('nome_rotina, configuracao')
+          .eq('id', fichaId)
+          .eq('aluno_id', uid)
+          .eq('ativo', true)
+          .single(),
+        supabaseClient
+          .from('historico_treinos')
+          .select('data_conclusao, dados_sessao, exercicio_id')
+          .eq('ficha_id', fichaId)
+          .eq('aluno_id', uid)
+          .order('data_conclusao', { ascending: false })
+          .limit(200),
+      ]);
 
       if (fichaError || !fichaData) { router.push('/aluno/treinos'); return; }
 
@@ -464,37 +479,15 @@ export default function ExecucaoTreinoPage() {
       setNomeRotina(fichaData.nome_rotina);
 
       const exercicioIds = collectBibliotecaIds(exerciciosConfig);
-      let gruposMusculares: Record<string, string> = {};
-      let gifsExercicios: Record<string, string> = {};
-      let videosBiblioteca: Record<string, string> = {};
-      if (exercicioIds.length > 0) {
-        const { data: bibData } = await supabaseClient
-          .from('exercicios_biblioteca')
-          .select('id, grupo_muscular, gif_url, video_url')
-          .in('id', exercicioIds);
 
-        gruposMusculares = Object.fromEntries(
-          (bibData || []).map(ex => [ex.id, ex.grupo_muscular || ''])
-        );
-        gifsExercicios = Object.fromEntries(
-          (bibData || []).map(ex => [ex.id, ex.gif_url || ''])
-        );
-        videosBiblioteca = Object.fromEntries(
-          (bibData || []).map(ex => [ex.id, ex.video_url || ''])
-        );
-      }
-
-      // Histórico da ficha (volume) + última sessão por exercício (cargas "Anterior").
-      // Importante: data_conclusao DESC — ASC + limit cortava as sessões mais recentes.
-      const historicoFichaQuery = supabaseClient
-        .from('historico_treinos')
-        .select('data_conclusao, dados_sessao, exercicio_id')
-        .eq('ficha_id', fichaId)
-        .eq('aluno_id', uid)
-        .order('data_conclusao', { ascending: false })
-        .limit(200);
-
-      const historicoExercicioQuery =
+      // Biblioteca + última sessão por exercício (cargas "Anterior") em paralelo
+      const [{ data: bibData }, { data: historicoPorExercicio }] = await Promise.all([
+        exercicioIds.length > 0
+          ? supabaseClient
+              .from('exercicios_biblioteca')
+              .select('id, grupo_muscular, gif_url, video_url')
+              .in('id', exercicioIds)
+          : Promise.resolve({ data: null as null }),
         exercicioIds.length > 0
           ? supabaseClient
               .from('historico_treinos')
@@ -503,12 +496,18 @@ export default function ExecucaoTreinoPage() {
               .in('exercicio_id', exercicioIds)
               .order('data_conclusao', { ascending: false })
               .limit(Math.max(exercicioIds.length * 10, 50))
-          : Promise.resolve({ data: null as null });
-
-      const [{ data: historicoData }, { data: historicoPorExercicio }] = await Promise.all([
-        historicoFichaQuery,
-        historicoExercicioQuery,
+          : Promise.resolve({ data: null as null }),
       ]);
+
+      const gruposMusculares: Record<string, string> = Object.fromEntries(
+        (bibData || []).map(ex => [ex.id, ex.grupo_muscular || ''])
+      );
+      const gifsExercicios: Record<string, string> = Object.fromEntries(
+        (bibData || []).map(ex => [ex.id, ex.gif_url || ''])
+      );
+      const videosBiblioteca: Record<string, string> = Object.fromEntries(
+        (bibData || []).map(ex => [ex.id, ex.video_url || ''])
+      );
 
       // Montar gráfico de volume: agrupar por dia (ordem cronológica)
       const volumePorDia: Record<string, number> = {};
@@ -622,15 +621,18 @@ export default function ExecucaoTreinoPage() {
         setBlocks(blocksState);
       }
 
-      // Buscar coach do aluno para obter username
+      // Username do coach só aparece na tela de compartilhamento pós-treino —
+      // busca em background, sem segurar o loader
       if (uid) {
-        const { data: coachData } = await supabaseClient
-          .from('coach_alunos')
-          .select('coach_id')
-          .eq('aluno_id', uid)
-          .single();
+        void (async () => {
+          const { data: coachData } = await supabaseClient
+            .from('coach_alunos')
+            .select('coach_id')
+            .eq('aluno_id', uid)
+            .single();
 
-        if (coachData?.coach_id) {
+          if (!coachData?.coach_id) return;
+
           const [{ data: publicProfile }, { data: profileData }] = await Promise.all([
             supabaseClient
               .from('coach_public_profiles')
@@ -650,7 +652,7 @@ export default function ExecucaoTreinoPage() {
               profileData?.full_name,
             ),
           );
-        }
+        })().catch(() => undefined);
       }
     } finally {
       setLoading(false);

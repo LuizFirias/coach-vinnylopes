@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getSafeSession } from "@/lib/authErrorHandler";
 import {
   Clock, Check, Video, ArrowLeft, X, Play, Trophy,
   Barbell, WarningCircle, FileArrowDown, CircleNotch, Lightning,
@@ -174,8 +175,8 @@ function FichaContent() {
     if (!fichaId) { setLoading(false); return; }
 
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const userId = authData?.user?.id;
+      const session = await getSafeSession();
+      const userId = session?.user?.id;
       if (!userId) { router.push("/login"); return; }
 
       const { data: fichaData, error: fichaError } = await supabaseClient

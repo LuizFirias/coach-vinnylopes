@@ -11,6 +11,11 @@ export type BootstrapProfile = {
   first_access_completed: boolean | null;
   subscription_active: boolean | null;
   account_type: string | null;
+  status_pagamento: string | null;
+  data_expiracao: string | null;
+  arquivado: boolean | null;
+  coach_id: string | null;
+  sexo: string | null;
 };
 
 type CacheEntry = BootstrapProfile & { fetchedAt: number };
@@ -49,7 +54,7 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
       const { data: profile, error } = await supabaseClient
         .from('profiles')
         .select(
-          'role, must_change_password, first_access_completed, subscription_active, account_type',
+          'role, must_change_password, first_access_completed, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo',
         )
         .eq('id', user.id)
         .single();
@@ -66,6 +71,11 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
         first_access_completed: profile.first_access_completed ?? null,
         subscription_active: profile.subscription_active ?? null,
         account_type: profile.account_type ?? null,
+        status_pagamento: profile.status_pagamento ?? null,
+        data_expiracao: profile.data_expiracao ?? null,
+        arquivado: profile.arquivado ?? null,
+        coach_id: profile.coach_id ?? null,
+        sexo: profile.sexo ?? null,
         fetchedAt: Date.now(),
       };
       cache = entry;

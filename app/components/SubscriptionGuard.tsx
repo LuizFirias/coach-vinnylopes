@@ -1,107 +1,113 @@
 "use client";
 
-import React, { useEffect, useState } from"react";
-import { supabaseClient } from"@/lib/supabaseClient";
-import Link from"next/link";
+import React, { useEffect, useState } from "react";
+import { supabaseClient } from "@/lib/supabaseClient";
+import {
+  getBootstrapProfile,
+  peekBootstrapProfile,
+  type BootstrapProfile,
+} from "@/lib/auth/bootstrapProfile";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 
 interface Props {
   children: React.ReactNode;
 }
 
+type Verdict = { allowed: boolean; status: string | null; coachId: string | null };
+
+function evaluate(profile: BootstrapProfile | null): Verdict {
+  if (!profile) return { allowed: false, status: null, coachId: null };
+  if (profile.arquivado) return { allowed: false, status: "arquivado", coachId: profile.coach_id };
+
+  const exp = profile.data_expiracao ? new Date(profile.data_expiracao) : null;
+  const now = new Date();
+  if (exp && exp >= now && profile.status_pagamento === "pago") {
+    return { allowed: true, status: "pago", coachId: profile.coach_id };
+  }
+  return {
+    allowed: false,
+    status: exp && exp < now ? "atrasado" : profile.status_pagamento ?? null,
+    coachId: profile.coach_id,
+  };
+}
+
 export default function SubscriptionGuard({ children }: Props) {
-  const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  // Cache compartilhado (bootstrapProfile): navegações subsequentes renderizam sem loader
+  const [verdict, setVerdict] = useState<Verdict | null>(() => {
+    const cached = peekBootstrapProfile();
+    return cached ? evaluate(cached) : null;
+  });
   const [coachWhatsapp, setCoachWhatsapp] = useState<string | null>("556781232717");
 
   useEffect(() => {
+    let cancelled = false;
+
     const check = async () => {
-      setLoading(true);
       try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (!user) {
-          setAllowed(false);
-          setStatus(null);
-          setLoading(false);
-          return;
+        const profile = await getBootstrapProfile();
+        const result = evaluate(profile);
+        if (cancelled) return;
+        setVerdict(result);
+
+        // Marca atrasado em background — não bloqueia a renderização
+        if (
+          profile &&
+          result.status === "atrasado" &&
+          profile.status_pagamento !== "atrasado"
+        ) {
+          void supabaseClient
+            .from("profiles")
+            .update({ status_pagamento: "atrasado" })
+            .eq("id", profile.userId)
+            .then(() => undefined, () => undefined);
         }
-
-        const { data: profile, error } = await supabaseClient
-          .from("profiles")
-          .select("status_pagamento, data_expiracao, arquivado, coach_id")
-          .eq("id", user.id)
-          .single();
-
-        if (error || !profile) {
-          setAllowed(false);
-          setStatus(null);
-        } else if (profile.arquivado) {
-          // Se estiver arquivado, ignore o resto e bloqueie
-          setAllowed(false);
-          setStatus("arquivado");
-        } else {
-          // Fetch coach whatsapp if coach_id is present
-          if (profile.coach_id) {
-            try {
-              const { data: sessionData } = await supabaseClient.auth.getSession();
-              const accessToken = sessionData?.session?.access_token;
-              const headers: HeadersInit = accessToken
-                ? { Authorization: `Bearer ${accessToken}` }
-                : {};
-              const res = await fetch(`/api/aluno/coach-whatsapp?coachId=${profile.coach_id}`, {
-                headers,
-              });
-              if (!res.ok) {
-                setCoachWhatsapp(null);
-              } else {
-                const data = await res.json();
-                if (data?.whatsapp) {
-                  setCoachWhatsapp(data.whatsapp);
-                }
-              }
-            } catch (e) {
-              console.warn("Erro ao buscar whatsapp do coach:", e);
-            }
-          }
-
-          const exp = profile.data_expiracao ? new Date(profile.data_expiracao) : null;
-          const now = new Date();
-          if (exp && exp >= now && profile.status_pagamento === 'pago') {
-            // active
-            const diff = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            setDaysLeft(diff);
-            setAllowed(true);
-            setStatus('pago');
-          } else {
-            // expired or not paid
-            if (exp && exp < now) {
-              // auto mark as atrasado
-              await supabaseClient.from('profiles').update({ status_pagamento: 'atrasado' }).eq('id', user.id);
-              setStatus('atrasado');
-            } else {
-              setStatus(profile.status_pagamento ?? null);
-            }
-            setAllowed(false);
-            setDaysLeft(exp ? Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null);
-          }
-        }
-      } catch (err) {
-        setAllowed(false);
-        setStatus(null);
-      } finally {
-        setLoading(false);
+      } catch {
+        if (!cancelled) setVerdict({ allowed: false, status: null, coachId: null });
       }
     };
 
-    check();
+    void check();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  // WhatsApp do coach só é necessário na tela de bloqueio — busca fora do caminho crítico
+  useEffect(() => {
+    if (!verdict || verdict.allowed || !verdict.coachId) return;
+    let cancelled = false;
+
+    const fetchWhatsapp = async () => {
+      try {
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        const headers: HeadersInit = accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : {};
+        const res = await fetch(`/api/aluno/coach-whatsapp?coachId=${verdict.coachId}`, {
+          headers,
+        });
+        if (cancelled) return;
+        if (!res.ok) {
+          setCoachWhatsapp(null);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled && data?.whatsapp) setCoachWhatsapp(data.whatsapp);
+      } catch (e) {
+        console.warn("Erro ao buscar whatsapp do coach:", e);
+      }
+    };
+
+    void fetchWhatsapp();
+    return () => {
+      cancelled = true;
+    };
+  }, [verdict]);
 
   const waMessage = encodeURIComponent("Olá, preciso renovar minha assinatura no Auronfit.");
 
-  if (loading) {
+  if (!verdict) {
     return (
       <div className="min-h-50 flex items-center justify-center">
         <DumbbellLoader variant="inline" />
@@ -109,7 +115,7 @@ export default function SubscriptionGuard({ children }: Props) {
     );
   }
 
-  if (allowed) return <>{children}</>;
+  if (verdict.allowed) return <>{children}</>;
 
   // Blocked view
   return (

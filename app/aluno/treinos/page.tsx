@@ -37,7 +37,19 @@ export default function AlunoTreinosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<TreinoPDF | null>(null);
+  const [openingPdfId, setOpeningPdfId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+
+  const openPdf = async (pdf: TreinoPDF) => {
+    if (pdf.aluno_id !== userId || openingPdfId) return;
+    setOpeningPdfId(pdf.id);
+    try {
+      const signed = await getSignedStorageUrl('treinos-pdf', pdf.url_pdf, 3600);
+      setSelectedPdf({ ...pdf, url_pdf: signed || pdf.url_pdf });
+    } finally {
+      setOpeningPdfId(null);
+    }
+  };
 
   useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
@@ -56,28 +68,24 @@ export default function AlunoTreinosPage() {
 
         const uid = user.id;
 
-        const { data: fichasData } = await supabaseClient
-          .from('fichas_treino')
-          .select('id, nome_rotina, criado_em, configuracao')
-          .eq('aluno_id', uid)
-          .eq('ativo', true)
-          .order('criado_em', { ascending: false });
-
-        const { data: pdfsData } = await supabaseClient
-          .from('treinos_alunos')
-          .select('id, aluno_id, url_pdf, nome_arquivo, data_upload')
-          .eq('aluno_id', uid)
-          .order('data_upload', { ascending: false });
+        const [{ data: fichasData }, { data: pdfsData }] = await Promise.all([
+          supabaseClient
+            .from('fichas_treino')
+            .select('id, nome_rotina, criado_em, configuracao')
+            .eq('aluno_id', uid)
+            .eq('ativo', true)
+            .order('criado_em', { ascending: false }),
+          supabaseClient
+            .from('treinos_alunos')
+            .select('id, aluno_id, url_pdf, nome_arquivo, data_upload')
+            .eq('aluno_id', uid)
+            .order('data_upload', { ascending: false }),
+        ]);
 
         setUserId(uid);
         setFichas(fichasData || []);
-
-        const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: TreinoPDF) => {
-          const signed = await getSignedStorageUrl('treinos-pdf', pdf.url_pdf, 3600);
-          return { ...pdf, url_pdf: signed || pdf.url_pdf };
-        }));
-
-        setTreinosPdf(pdfsComLinks);
+        // URL assinada só quando o aluno abre o PDF — evita 1 request por PDF no boot
+        setTreinosPdf(pdfsData || []);
       } catch {
         setError('Erro ao conectar com o servidor');
       } finally {
@@ -164,10 +172,7 @@ export default function AlunoTreinosPage() {
                 {treinosPdf.map(pdf => (
                   <button
                     key={pdf.id}
-                    onClick={() => {
-                      if (pdf.aluno_id !== userId) return;
-                      setSelectedPdf(pdf);
-                    }}
+                    onClick={() => void openPdf(pdf)}
                     className="w-full text-left border-0 bg-[var(--dash-card,#111827)] p-3.5 rounded-xl transition-colors active:bg-[#1a2332] flex items-center gap-3 group [@media(hover:hover)]:hover:bg-[#1a2332] min-h-16"
                   >
                     <div className="w-10 h-10 rounded-[10px] bg-surface-2 border border-card flex items-center justify-center text-text-secondary shrink-0">

@@ -311,6 +311,65 @@ export async function getFullPlanDetails(planId: string, client = supabaseClient
 }
 
 /**
+ * Embed raso plano → dia 1 → refeições → itens → alimento (SEM substituições —
+ * essas sim derrubavam o PostgREST; ver attachMealSubstitutions).
+ * Colapsa 4 round-trips sequenciais em 1.
+ */
+const STUDENT_PLAN_DEEP_SELECT = `id, name, goal, notes, orientacoes_gerais, calories_target, protein_target, carbs_target, fat_target, status, days:nutrition_plan_days(id, plan_id, day_index, label, notes, meals:nutrition_meals(id, plan_day_id, title, time_suggestion, notes, sort_order, meal_type, items:nutrition_meal_items(id, meal_id, food_id, quantity_grams, portion_label, notes, sort_order, food:nutrition_foods(${FOOD_EMBED}))))`;
+
+function normalizeDeepPlan(plan: any): any {
+  const days = ((plan.days ?? []) as any[])
+    .slice()
+    .sort((a, b) => (a.day_index ?? 0) - (b.day_index ?? 0))
+    .map((day) => ({
+      ...day,
+      meals: ((day.meals ?? []) as any[])
+        .slice()
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((meal) => ({
+          ...meal,
+          items: ((meal.items ?? []) as any[])
+            .slice()
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+            .map((item) => ({ ...item, substitutions: [] as any[] })),
+        })),
+    }));
+  return { ...plan, days };
+}
+
+/** Fallback (caminho antigo em etapas) caso o embed falhe no PostgREST. */
+async function loadActivePlanStepwise(studentId: string, client = supabaseClient): Promise<any | null> {
+  const { data: planMeta } = await client
+    .from('nutrition_plans')
+    .select(
+      'id, name, goal, notes, orientacoes_gerais, calories_target, protein_target, carbs_target, fat_target, status',
+    )
+    .eq('student_id', studentId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!planMeta?.id) return null;
+
+  const { data: day } = await client
+    .from('nutrition_plan_days')
+    .select('id, plan_id, day_index, label, notes')
+    .eq('plan_id', planMeta.id)
+    .eq('day_index', 1)
+    .maybeSingle();
+
+  if (!day) return { ...planMeta, days: [] };
+
+  const [hydrated] = await hydratePlanDays(
+    [day as Record<string, unknown> & { id: string }],
+    client,
+    { includeSubstitutions: false },
+  );
+  return { ...planMeta, days: [hydrated] };
+}
+
+/**
  * Bundle da tela do aluno: plano ativo (só dia 1) + PDFs + água + check-ins — em paralelo.
  * Itens sem substituições no caminho crítico; use attachMealSubstitutions depois.
  */
@@ -327,11 +386,10 @@ export async function loadStudentNutritionPageData(
   const [planRes, pdfRes, aguaRes, checkinsRes] = await Promise.all([
     client
       .from('nutrition_plans')
-      .select(
-        'id, name, goal, notes, orientacoes_gerais, calories_target, protein_target, carbs_target, fat_target, status',
-      )
+      .select(STUDENT_PLAN_DEEP_SELECT)
       .eq('student_id', studentId)
       .eq('status', 'active')
+      .eq('days.day_index', 1)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -354,25 +412,11 @@ export async function loadStudentNutritionPageData(
   ]);
 
   let digitalPlan: any | null = null;
-  const planMeta = planRes.data;
-  if (planMeta?.id) {
-    const { data: day } = await client
-      .from('nutrition_plan_days')
-      .select('id, plan_id, day_index, label, notes')
-      .eq('plan_id', planMeta.id)
-      .eq('day_index', 1)
-      .maybeSingle();
-
-    if (day) {
-      const [hydrated] = await hydratePlanDays(
-        [day as Record<string, unknown> & { id: string }],
-        client,
-        { includeSubstitutions: false },
-      );
-      digitalPlan = { ...planMeta, days: [hydrated] };
-    } else {
-      digitalPlan = { ...planMeta, days: [] };
-    }
+  if (planRes.error) {
+    console.warn('[loadStudentNutritionPageData] Embed falhou, usando fallback:', planRes.error.message);
+    digitalPlan = await loadActivePlanStepwise(studentId, client);
+  } else if (planRes.data) {
+    digitalPlan = normalizeDeepPlan(planRes.data);
   }
 
   return {

@@ -204,25 +204,22 @@ export default function PlanoAlimentarPage() {
           setPlanoPDF(plansPDFData[0]);
           setHistoricoPDFs(plansPDFData.slice(1));
 
-          const { data: refeicaoData } = await supabaseClient
-            .from('refeicoes_plano')
-            .select('id, plano_id, nome, horario_sugerido, ordem, ingredientes, observacoes')
-            .eq('plano_id', plansPDFData[0].id)
-            .order('ordem', { ascending: true });
-
-          setLegacyRefeicoes(refeicaoData || []);
-
-          if (refeicaoData && refeicaoData.length > 0) {
-            const ids = refeicaoData.map((r: any) => r.id);
-            const { data: consumos } = await supabaseClient
+          // Em paralelo: consumos do dia sem .in() — ids extras são ignorados pelo Set.has
+          const [{ data: refeicaoData }, { data: consumos }] = await Promise.all([
+            supabaseClient
+              .from('refeicoes_plano')
+              .select('id, plano_id, nome, horario_sugerido, ordem, ingredientes, observacoes')
+              .eq('plano_id', plansPDFData[0].id)
+              .order('ordem', { ascending: true }),
+            supabaseClient
               .from('consumos_refeicao')
               .select('refeicao_id')
               .eq('aluno_id', uid)
-              .eq('data_consumo', today)
-              .in('refeicao_id', ids);
+              .eq('data_consumo', today),
+          ]);
 
-            setLegacyConsumidos(new Set((consumos || []).map((c: any) => c.refeicao_id)));
-          }
+          setLegacyRefeicoes(refeicaoData || []);
+          setLegacyConsumidos(new Set((consumos || []).map((c: any) => c.refeicao_id)));
         } else {
           setHistoricoPDFs(plansPDFData);
         }
