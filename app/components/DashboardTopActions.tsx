@@ -10,6 +10,8 @@ type DashboardTopActionsProps = {
   notificationButtonId?: string;
   className?: string;
   variant?: 'default' | 'hero';
+  /** Compacto: botões w-8 h-8 e ícones 16 (header do coach). */
+  compact?: boolean;
 };
 
 export default function DashboardTopActions({
@@ -18,8 +20,11 @@ export default function DashboardTopActions({
   notificationButtonId = 'btn-notificacoes-dashboard',
   className,
   variant = 'default',
+  compact = false,
 }: DashboardTopActionsProps) {
   const isHero = variant === 'hero';
+  const btnSize = compact ? 'h-8 w-8 rounded-[10px]' : 'h-9 w-9 rounded-lg';
+  const iconSize = compact ? 16 : 18;
 
   return (
     <div className={cn('flex shrink-0 items-center gap-2 lg:hidden', className)}>
@@ -27,25 +32,36 @@ export default function DashboardTopActions({
         id={notificationButtonId}
         type="button"
         onClick={onNotificationsClick}
+        style={{ touchAction: 'manipulation' }}
         className={cn(
-          'relative flex h-9 w-9 items-center justify-center rounded-lg',
+          'relative flex items-center justify-center',
+          btnSize,
           isHero
             ? 'dashboard-hero-chip'
-            : 'mobile-icon-btn border',
+            : compact
+              ? 'bg-transparent text-text-tertiary hover:text-text-primary transition-colors'
+              : 'mobile-icon-btn border',
         )}
         aria-label="Notificações"
       >
-        <Bell className="h-4 w-4 currentColor" />
+        <Bell size={iconSize} className="currentColor" />
         {showNotificationBadge && (
           <span
             className={cn(
               'absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 bg-brand',
-              isHero ? 'border-[#0f1f3d]' : 'mobile-badge-ring',
+              isHero ? 'border-[#0f1f3d]' : compact ? 'border-surface-0' : 'mobile-badge-ring',
             )}
           />
         )}
       </button>
-      <ThemeToggle variant={variant} />
+      <ThemeToggle
+        variant={isHero || compact ? 'hero' : 'default'}
+        iconSize={iconSize}
+        className={cn(
+          compact &&
+            'h-8 w-8 rounded-[10px] bg-transparent text-text-tertiary hover:text-text-primary',
+        )}
+      />
     </div>
   );
 }

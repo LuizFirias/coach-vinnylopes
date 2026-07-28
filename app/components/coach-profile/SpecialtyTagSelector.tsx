@@ -31,8 +31,8 @@ export function SpecialtyTagSelector({ value, onChange }: Props) {
             className={cn(
               "min-h-11 px-3 rounded text-[11px] font-medium tracking-wide transition-colors touch-manipulation",
               active
-                ? "bg-brand/15 text-brand border border-brand/40"
-                : "bg-surface-2 text-text-secondary border border-card hover:border-card-hover",
+                ? "bg-brand/15 text-brand"
+                : "bg-surface-2 text-text-secondary hover:bg-surface-3",
             )}
           >
             {tag}

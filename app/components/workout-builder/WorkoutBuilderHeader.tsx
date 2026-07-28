@@ -57,7 +57,7 @@ export function WorkoutBuilderHeader({
           <button
             type="button"
             onClick={onBack}
-            className="w-9 h-9 shrink-0 rounded-lg bg-surface-1 border border-card flex items-center justify-center text-text-tertiary"
+            className="w-9 h-9 shrink-0 rounded-lg bg-surface-1 border-0 flex items-center justify-center text-text-tertiary"
           >
             <ArrowLeft size={16} />
           </button>
@@ -71,7 +71,7 @@ export function WorkoutBuilderHeader({
         <button
           type="button"
           onClick={onOpenSettings}
-          className="w-9 h-9 shrink-0 rounded-lg border border-card flex items-center justify-center text-text-secondary"
+          className="w-9 h-9 shrink-0 rounded-lg border-0 flex items-center justify-center text-text-secondary"
         >
           <Gear size={18} />
         </button>
@@ -86,7 +86,7 @@ export function WorkoutBuilderHeader({
           <button
             type="button"
             onClick={onBack}
-            className="w-9 h-9 rounded-lg bg-surface-1 border border-card flex items-center justify-center text-text-tertiary hover:text-brand transition-colors"
+            className="w-9 h-9 rounded-lg bg-surface-1 border-0 flex items-center justify-center text-text-tertiary hover:text-brand transition-colors"
           >
             <ArrowLeft size={16} />
           </button>
@@ -121,7 +121,7 @@ export function WorkoutBuilderHeader({
               type="button"
               onClick={onExportPdf}
               disabled={exporting || !canSave}
-              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-1 border border-card text-text-secondary rounded-lg text-xs font-semibold hover:text-brand disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-1 border-0 text-text-secondary rounded-lg text-xs font-semibold hover:text-brand disabled:opacity-50"
             >
               {exporting ? <CircleNotch size={14} className="animate-spin" /> : <FileArrowDown size={14} />}
               PDF

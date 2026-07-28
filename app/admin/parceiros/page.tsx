@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
 import { getPublicStorageUrl } from '@/lib/storageUrls';
 import {
   Plus, Tag, ArrowSquareOut, Image, X, WarningCircle, ShoppingBag, PencilSimple, Trash, CircleNotch,
@@ -71,7 +72,7 @@ function ParceiroModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-surface-1 border border-card rounded-xl shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-lg bg-surface-1 border-0 rounded-xl shadow-lg overflow-hidden max-h-[90vh] flex flex-col">
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-divider flex-shrink-0">
           <div>
@@ -161,7 +162,7 @@ function ParceiroModal({
                   <p className="text-xs text-text-tertiary">Clique para selecionar</p>
                 </div>
 
-                <div className="flex items-start gap-1 p-1.5 bg-surface-2 border border-card rounded-md">
+                <div className="flex items-start gap-1 p-1.5 bg-surface-2 border-0 rounded-md">
                   <WarningCircle className="w-3 h-3 text-brand flex-shrink-0 mt-0.5" />
                   <p className="text-[9px] text-text-tertiary leading-tight">
                     Recomendado: proporção 16:9 ou 4:3.
@@ -171,7 +172,7 @@ function ParceiroModal({
                 {imagePreviews.length > 0 && (
                   <div className="flex gap-1.5 overflow-x-auto pb-1">
                     {imagePreviews.map((src, i) => (
-                      <div key={i} className="shrink-0 w-12 h-12 rounded-lg border border-card overflow-hidden bg-surface-2">
+                      <div key={i} className="shrink-0 w-12 h-12 rounded-lg border-0 overflow-hidden bg-surface-2">
                         <img src={src} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     ))}
@@ -187,7 +188,7 @@ function ParceiroModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-9 bg-surface-3 border border-card text-text-secondary rounded-lg text-xs font-semibold hover:text-text-primary transition-colors"
+            className="flex-1 h-9 bg-surface-3 border-0 text-text-secondary rounded-lg text-xs font-semibold hover:text-text-primary transition-colors"
           >
             {cancelLabel}
           </button>
@@ -233,8 +234,7 @@ export default function ParceirosAdminPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const currentCoachId = authData?.user?.id || null;
+      const currentCoachId = (await getSafeSession())?.user?.id || null;
       setCoachId(currentCoachId);
       if (currentCoachId) fetchParceiros(currentCoachId);
     };
@@ -398,8 +398,8 @@ export default function ParceirosAdminPage() {
             <DumbbellLoader text="Carregando rede..." variant="inline" />
           </div>
         ) : parceiros.length === 0 ? (
-          <div className="bg-surface-1 border border-card shadow-sm rounded-xl py-10 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
-            <div className="w-10 h-10 rounded-lg bg-surface-2 border border-card flex items-center justify-center text-text-disabled mb-3.5">
+          <div className="bg-surface-1 border-0 shadow-sm rounded-xl py-10 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="w-10 h-10 rounded-lg bg-surface-2 border-0 flex items-center justify-center text-text-disabled mb-3.5">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <h2 className="text-xs font-semibold text-text-secondary mb-4">Nenhum parceiro cadastrado</h2>
@@ -414,10 +414,10 @@ export default function ParceirosAdminPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {parceiros.map((parceiro) => (
-              <div key={parceiro.id} className="bg-surface-1 border border-card hover:border-brand/35 rounded-xl p-4 flex flex-col justify-between shadow-sm transition-all">
+              <div key={parceiro.id} className="bg-surface-1 border-0 hover:border-brand/35 rounded-xl p-4 flex flex-col justify-between shadow-sm transition-all">
                 <div>
                   {/* Logo */}
-                  <div className="w-11 h-11 bg-surface-2 border border-card rounded-lg overflow-hidden flex items-center justify-center mb-3">
+                  <div className="w-11 h-11 bg-surface-2 border-0 rounded-lg overflow-hidden flex items-center justify-center mb-3">
                     {parceiro.logo_url ? (
                       <img
                         src={getPublicStorageUrl('parceiros-logos', parceiro.logo_url) || ''}
@@ -443,7 +443,7 @@ export default function ParceirosAdminPage() {
                     href={parceiro.link_desconto}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 h-8 text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-2 border border-card hover:border-brand/30 hover:text-brand rounded-lg transition-colors"
+                    className="flex items-center justify-center gap-1.5 h-8 text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-2 border-0 hover:border-brand/30 hover:text-brand rounded-lg transition-colors"
                   >
                     <ArrowSquareOut className="w-3 h-3" />
                     Acessar Loja

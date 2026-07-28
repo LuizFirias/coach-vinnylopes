@@ -849,7 +849,7 @@ export default function AssinaturaPage() {
   );
 
   const periodControl = selectedPlan && (
-    <div className="flex mt-6 border border-[#1c1c1c]">
+    <div className="flex mt-6 rounded-lg overflow-hidden bg-surface-1">
       {selectedPlan.billingOptions.map((opt, idx) => {
         const active = selectedPeriod === opt.period;
         const months = getBillingMonths(opt.period);
@@ -864,7 +864,7 @@ export default function AssinaturaPage() {
             onClick={() => setSelectedPeriod(opt.period)}
             className={cn(
               "flex-1 py-2.5 px-2 text-center transition-colors relative",
-              idx > 0 && "border-l border-[#1c1c1c]",
+              idx > 0 && "border-l border-divider",
               active
                 ? "bg-[#111111] text-white z-1 ring-1 ring-[#2b7fff] ring-inset"
                 : "bg-transparent text-[#7a8aab] hover:text-white",

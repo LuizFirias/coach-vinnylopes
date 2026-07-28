@@ -7,9 +7,15 @@ import { useTheme } from './ThemeProvider';
 type ThemeToggleProps = {
   variant?: 'default' | 'hero';
   className?: string;
+  /** Tamanho do ícone no variant hero (default 18). */
+  iconSize?: number;
 };
 
-export default function ThemeToggle({ variant = 'default', className }: ThemeToggleProps) {
+export default function ThemeToggle({
+  variant = 'default',
+  className,
+  iconSize = 18,
+}: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -27,9 +33,9 @@ export default function ThemeToggle({ variant = 'default', className }: ThemeTog
         )}
       >
         {isDark ? (
-          <Moon size={18} weight="regular" className="currentColor" />
+          <Moon size={iconSize} weight="regular" className="currentColor" />
         ) : (
-          <Sun size={18} weight="fill" className="text-amber-500" />
+          <Sun size={iconSize} weight="fill" className="text-amber-500" />
         )}
       </button>
     );

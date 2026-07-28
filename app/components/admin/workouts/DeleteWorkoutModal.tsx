@@ -12,7 +12,7 @@ interface DeleteWorkoutModalProps {
 export function DeleteWorkoutModal({ plan, loading, onConfirm, onCancel }: DeleteWorkoutModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
-      <div className="bg-surface-1 border border-border-default rounded-2xl w-full max-w-md overflow-hidden shadow-elev-3 p-5">
+      <div className="bg-surface-1 border-0 rounded-2xl w-full max-w-md overflow-hidden shadow-elev-3 p-5">
         <h3 className="text-sm font-bold text-text-primary mb-2">Excluir ficha</h3>
         <p className="text-xs text-text-secondary leading-relaxed mb-5">
           Tem certeza que deseja excluir a ficha &quot;{plan.nome_rotina}&quot; de {plan.aluno_nome}?

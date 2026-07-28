@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
 import { getPublicStorageUrl } from '@/lib/storageUrls';
 import { Trophy, Star, Clock, User, WarningCircle, Lightning } from '@phosphor-icons/react';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
@@ -31,8 +32,7 @@ export default function AdminRankingPage() {
       setLoading(true);
       setError(null);
 
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = (await getSafeSession())?.user?.id;
       if (!coachId) { setError('Sessão inválida'); return; }
 
       const { data: links, error: linksError } = await supabaseClient
@@ -154,7 +154,7 @@ export default function AdminRankingPage() {
           </div>
 
           {/* Filtro de Período */}
-          <div className="flex gap-1 p-0.5 bg-surface-2 border border-card rounded-lg sm:w-80 w-full shrink-0 h-9.5 items-center">
+          <div className="flex gap-1 p-0.5 bg-surface-2 border-0 rounded-lg sm:w-80 w-full shrink-0 h-9.5 items-center">
             {[
               { key: 'total', label: 'Total' },
               { key: 'mes_atual', label: 'Este mês' },
@@ -166,7 +166,7 @@ export default function AdminRankingPage() {
                 className={cn(
                   'flex-1 py-1 px-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-8.5',
                   periodo === key
-                    ? 'bg-surface-0 border border-card/50 text-text-primary shadow-sm'
+                    ? 'bg-surface-0 border-0 text-text-primary shadow-sm'
                     : 'text-text-secondary hover:text-text-primary'
                 )}
               >
@@ -188,15 +188,15 @@ export default function AdminRankingPage() {
             <DumbbellLoader text="Calculando posições..." variant="inline" />
           </div>
         ) : entries.length === 0 ? (
-          <div className="bg-surface-1 border border-card shadow-sm rounded-xl py-12 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
-            <div className="w-10 h-10 rounded-lg bg-surface-2 border border-card flex items-center justify-center text-text-disabled mb-4">
+          <div className="bg-surface-1 border-0 shadow-sm rounded-xl py-12 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="w-10 h-10 rounded-lg bg-surface-2 border-0 flex items-center justify-center text-text-disabled mb-4">
               <Star className="w-5 h-5" />
             </div>
             <h2 className="text-sm font-bold text-text-primary mb-1">Nenhum aluno listado</h2>
             <p className="text-xs text-text-tertiary max-w-xs leading-normal">O ranking será preenchido conforme os alunos concluírem treinos e acumularem pontos.</p>
           </div>
         ) : (
-          <div className="bg-surface-1 border border-card shadow-sm rounded-xl overflow-hidden">
+          <div className="bg-surface-1 border-0 shadow-sm rounded-xl overflow-hidden">
             <div className="hidden md:grid grid-cols-[60px_1fr_120px_120px] px-5 py-2.5 bg-surface-2 border-b border-divider">
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Posição</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Aluno</span>
@@ -224,7 +224,7 @@ export default function AdminRankingPage() {
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
                       <div className={cn(
                         'w-7 h-7 rounded-md flex items-center justify-center overflow-hidden border flex-shrink-0',
-                        isTop3 ? 'border-brand/30 bg-surface-2' : 'border-card bg-surface-2',
+                        isTop3 ? 'border-brand/30 bg-surface-2' : 'border-transparent bg-surface-2',
                       )}>
                         {avatarSrc ? (
                           <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
@@ -254,7 +254,7 @@ export default function AdminRankingPage() {
                         className={cn(
                           "text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded transition-colors",
                           entry.oculto_no_ranking
-                            ? "bg-surface-3 border border-card text-text-tertiary hover:bg-surface-4"
+                            ? "bg-surface-3 border-0 text-text-tertiary hover:bg-surface-4"
                             : "bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20"
                         )}
                       >

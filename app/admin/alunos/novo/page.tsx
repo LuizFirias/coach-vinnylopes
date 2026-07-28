@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 import { UserPlus, CheckCircle, ArrowLeft, X, WhatsappLogo } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -37,16 +38,13 @@ export default function NovoAlunoPage() {
   useEffect(() => {
     const checkRole = async () => {
       try {
-        const { data: authData, error: authError } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (authError || !user) { router.replace("/login"); return; }
+        // Bootstrap cacheado: userId + role sem getUser de rede nem query extra
+        const boot = await getBootstrapProfile();
+        if (!boot) { router.replace("/login"); return; }
 
-        const { data: profileData, error: profileError } = await supabaseClient
-          .from("profiles").select("role").eq("id", user.id).single();
-
-        if (profileError || (profileData?.role !== "coach" && profileData?.role !== "super_admin")) { 
-          router.replace("/aluno/dashboard"); 
-          return; 
+        if (boot.role !== "coach" && boot.role !== "super_admin") {
+          router.replace("/aluno/dashboard");
+          return;
         }
 
         setIsCoach(true);
@@ -154,7 +152,7 @@ export default function NovoAlunoPage() {
   if (!isCoach) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center p-6">
-        <div className="max-w-2xl w-full bg-surface-1 p-12 rounded-xl border border-card shadow-sm text-text-secondary text-center text-sm uppercase tracking-caps">
+        <div className="max-w-2xl w-full bg-surface-1 p-12 rounded-xl border-0 shadow-sm text-text-secondary text-center text-sm uppercase tracking-caps">
           Acesso restrito para coach.
         </div>
       </div>
@@ -183,7 +181,7 @@ export default function NovoAlunoPage() {
           </div>
         )}
 
-        <Card className="rounded-xl shadow-sm border border-card/80 p-6 md:p-8">
+        <Card className="rounded-xl shadow-sm border-0 p-6 md:p-8">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 relative">
@@ -316,7 +314,7 @@ export default function NovoAlunoPage() {
       {/* Success Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-surface-1 border border-card rounded-2xl w-full max-w-md p-6 md:p-8 space-y-6 shadow-2xl relative">
+          <div className="bg-surface-1 border-0 rounded-2xl w-full max-w-md p-6 md:p-8 space-y-6 shadow-2xl relative">
             <button 
               type="button" 
               onClick={() => { setShowModal(false); router.push("/admin/alunos"); }}
@@ -336,7 +334,7 @@ export default function NovoAlunoPage() {
             </div>
 
             {/* Magic Link Box */}
-            <div className="bg-surface-2 border border-card rounded-xl p-4 space-y-2">
+            <div className="bg-surface-1 border-0 rounded-xl p-4 space-y-2">
               <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary block">Link Único de Ativação</span>
               <div className="flex gap-2">
                 <input
@@ -374,7 +372,7 @@ export default function NovoAlunoPage() {
               <button
                 type="button"
                 onClick={() => { setShowModal(false); router.push("/admin/alunos"); }}
-                className="w-full h-11 bg-surface-3 hover:bg-surface-2 border border-card text-text-primary rounded-lg text-xs font-semibold transition-all"
+                className="w-full h-11 bg-surface-3 hover:bg-surface-2 border-0 text-text-primary rounded-lg text-xs font-semibold transition-all"
               >
                 Concluir e voltar à base
               </button>

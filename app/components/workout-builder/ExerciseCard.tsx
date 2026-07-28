@@ -54,7 +54,7 @@ export function ExerciseCard({
   return (
     <div
       className={cn(
-        "bg-surface-1 border border-card shadow-sm rounded-xl overflow-hidden transition-opacity",
+        "bg-surface-1 border-0 shadow-sm rounded-xl overflow-hidden transition-opacity",
         isDragging && "opacity-95 border-brand/50"
       )}
     >
@@ -108,7 +108,7 @@ export function ExerciseCard({
             <DotsThree size={16} weight="bold" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-surface-1 border border-card rounded-lg shadow-elev-2 py-1">
+            <div className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-surface-1 border-0 rounded-lg shadow-elev-2 py-1">
               <button
                 type="button"
                 onClick={() => { setShowObservation(true); setMenuOpen(false); }}

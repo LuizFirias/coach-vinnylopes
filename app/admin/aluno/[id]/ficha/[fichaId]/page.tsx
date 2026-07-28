@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getSafeSession } from "@/lib/authErrorHandler";
 import { ArrowLeft, FloppyDisk, Plus, X, FileArrowDown } from "@phosphor-icons/react";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Button } from "@/components/ui/Button";
@@ -409,8 +410,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         import("jspdf-autotable"),
       ]);
 
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = (await getSafeSession())?.user?.id;
       if (!coachId) throw new Error("Sessão inválida");
 
       const { data: alunoData } = await supabaseClient
@@ -584,7 +584,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        <div className="bg-surface-1 rounded-xl p-4 md:p-5 border border-card shadow-sm mb-4">
+        <div className="bg-surface-1 rounded-xl p-4 md:p-5 border-0 shadow-sm mb-4">
           <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-2 block">
             Nome da Ficha
           </label>
@@ -606,7 +606,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {items.length === 0 ? (
-          <div className="bg-surface-2 rounded-xl p-8 text-center border border-dashed border-card mb-4">
+          <div className="bg-surface-1 rounded-xl p-8 text-center border border-dashed border-divider mb-4">
             <p className="text-text-disabled text-xs font-semibold uppercase tracking-wider">
               Nenhum exercício nesta ficha
             </p>
@@ -676,7 +676,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
 
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-0/80 backdrop-blur-sm">
-            <div className="bg-surface-1 rounded-xl border border-border-default shadow-2xl max-w-xl w-full max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="bg-surface-1 rounded-xl border-0 shadow-2xl max-w-xl w-full max-h-[80vh] flex flex-col overflow-hidden">
               <div className="bg-surface-1 border-b border-divider p-4 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-text-primary">Adicionar Exercício</h2>
                 <button
@@ -741,7 +741,7 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
                             ✓
                           </span>
                         ) : (
-                          <span className="w-4 h-4 rounded-full border border-border-default flex items-center justify-center text-[10px] text-text-tertiary font-bold">
+                          <span className="w-4 h-4 rounded-full border-0 flex items-center justify-center text-[10px] text-text-tertiary font-bold">
                             +
                           </span>
                         )}

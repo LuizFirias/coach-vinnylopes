@@ -106,7 +106,7 @@ export function BiSetGroupCard({
     <>
       <div
         className={cn(
-          "bg-[#111827] border border-brand rounded-[14px] overflow-hidden transition-opacity",
+          "bg-surface-1 border border-brand rounded-[14px] overflow-hidden transition-opacity",
           isDragging && "opacity-95 shadow-elev-3"
         )}
       >
@@ -159,7 +159,7 @@ export function BiSetGroupCard({
                 <DotsThree size={16} weight="bold" />
               </button>
               {menuAOpen && (
-                <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border border-card rounded-lg shadow-elev-2 py-1">
+                <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border-0 rounded-lg shadow-elev-2 py-1">
                   <button
                     type="button"
                     onClick={() => { setShowUndoModal(true); setMenuAOpen(false); }}
@@ -213,7 +213,7 @@ export function BiSetGroupCard({
             />
           </div>
         ) : (
-          <div className="mx-3.5 mb-3.5 mt-1 rounded-[10px] bg-[#0f0f0f] border border-card p-3">
+          <div className="mx-3.5 mb-3.5 mt-1 rounded-[10px] bg-[#0f0f0f] border-0 p-3">
             <div className="flex items-center justify-between gap-1.5 mb-2">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <ArrowDown size={14} className="text-brand shrink-0" />
@@ -249,7 +249,7 @@ export function BiSetGroupCard({
                   <DotsThree size={16} weight="bold" />
                 </button>
                 {menuBOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border border-card rounded-lg shadow-elev-2 py-1">
+                  <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-surface-1 border-0 rounded-lg shadow-elev-2 py-1">
                     <button
                       type="button"
                       onClick={() => { onSwapPartner(); setMenuBOpen(false); }}
@@ -307,7 +307,7 @@ export function BiSetGroupCard({
 
       {showUndoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-1 border border-card rounded-xl p-5">
+          <div className="w-full max-w-sm bg-surface-1 border-0 rounded-xl p-5">
             <h3 className="text-sm font-bold text-text-primary mb-2">Desfazer Bi-Set?</h3>
             <p className="text-xs text-text-secondary mb-4 leading-relaxed">
               Os exercícios voltarão a ser independentes. Nenhum exercício será deletado.
@@ -323,7 +323,7 @@ export function BiSetGroupCard({
               <button
                 type="button"
                 onClick={() => { setShowUndoModal(false); onUndoBiSet(); }}
-                className="flex-1 h-10 rounded-lg bg-[#1e1e1e] border border-[#444444] text-xs font-semibold text-text-primary"
+                className="flex-1 h-10 rounded-lg bg-[#1e1e1e] border-0 text-xs font-semibold text-text-primary"
               >
                 Desfazer Bi-Set
               </button>

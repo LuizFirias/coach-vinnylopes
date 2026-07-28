@@ -441,7 +441,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         <div className="flex items-center gap-4 py-6 border-b border-divider/50 mb-6">
           <button
             onClick={() => router.push('/admin/nutricao')}
-            className="w-8 h-8 rounded-md bg-surface-2 border border-card hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-md bg-surface-2 border-0 hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
@@ -476,7 +476,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           <div className="lg:col-span-8 flex flex-col gap-6">
             
             {/* CARD 1: Dados Básicos */}
-            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-4">
+            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
               <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2 flex items-center gap-2">
                 <Sparkle size={14} className="text-brand" />
                 Dados do Plano
@@ -572,7 +572,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
             </Card>
 
             {/* CARD 2: Metas Nutricionais */}
-            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-4">
+            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
               <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2 flex items-center gap-2">
                 <Sparkle size={14} className="text-brand" />
                 Metas Nutricionais Diárias
@@ -638,7 +638,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                   <Button
                     onClick={handleCreateDefaultMeals}
                     variant="secondary"
-                    className="h-7 px-2.5 text-[10px] font-bold uppercase rounded-md cursor-pointer border border-card"
+                    className="h-7 px-2.5 text-[10px] font-bold uppercase rounded-md cursor-pointer border-0"
                   >
                     Gerar Refeições Padrão
                   </Button>
@@ -649,7 +649,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 const macros = getMealMacros(meal);
                 const aberta = mealsAbertas[mealIdx] ?? (mealIdx === 0);
                 return (
-                  <Card key={mealIdx} className={cn("rounded-xl border border-card/80 shadow-sm p-4 md:p-5 flex flex-col bg-surface-1", aberta ? "gap-4" : "gap-0")}>
+                  <Card key={mealIdx} className={cn("rounded-xl border-0 shadow-sm p-4 md:p-5 flex flex-col bg-surface-1", aberta ? "gap-4" : "gap-0")}>
                     
                     {/* Meal Header */}
                     <div className={cn("flex items-center justify-between gap-4", aberta && "border-b border-divider/40 pb-2")}>
@@ -680,7 +680,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                             updated[mealIdx].time_suggestion = e.target.value;
                             setMeals(updated);
                           }}
-                          className="bg-surface-2 border border-card text-[10px] px-1.5 py-0.5 rounded font-mono text-text-secondary shrink-0"
+                          className="bg-surface-2 border-0 text-[10px] px-1.5 py-0.5 rounded font-mono text-text-secondary shrink-0"
                         />
                         {!aberta && (meal.items?.length ?? 0) > 0 && (
                           <span className="text-[9px] text-text-tertiary shrink-0 whitespace-nowrap">
@@ -701,7 +701,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                         <button
                           type="button"
                           onClick={() => handleDuplicateMeal(mealIdx)}
-                          className="w-7 h-7 rounded-md bg-surface-2 hover:bg-surface-3 border border-card hover:border-brand/30 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                          className="w-7 h-7 rounded-md bg-surface-2 hover:bg-surface-3 border-0 hover:border-brand/30 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
                           title="Duplicar Refeição"
                         >
                           <Copy size={13} />
@@ -709,7 +709,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
                         <button
                           onClick={() => handleRemoveMeal(mealIdx)}
-                          className="w-7 h-7 rounded-md bg-surface-2 hover:bg-surface-3 border border-card hover:border-danger/30 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
+                          className="w-7 h-7 rounded-md bg-surface-2 hover:bg-surface-3 border-0 hover:border-danger/30 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
                           title="Remover Refeição"
                         >
                           <Trash size={13} />
@@ -722,7 +722,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     {/* Meal items (list) — Fase 8: linha de lista, sem card aninhado */}
                     <div className="flex flex-col divide-y divide-border-subtle/40">
                       {(meal.items || []).length === 0 ? (
-                        <p className="text-[10px] text-text-disabled text-center py-4 border border-dashed border-card rounded-lg">
+                        <p className="text-[10px] text-text-disabled text-center py-4 border border-dashed border-divider rounded-lg">
                           Nenhum alimento prescrito para esta refeição.
                         </p>
                       ) : (
@@ -823,7 +823,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
                                   <button
                                     onClick={() => handleRemoveFoodItem(mealIdx, itemIdx)}
-                                    className="w-6 h-6 rounded-md bg-surface-3 hover:bg-surface-2 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer border border-card/50"
+                                    className="w-6 h-6 rounded-md bg-surface-3 hover:bg-surface-2 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer border-0"
                                     title="Remover Alimento"
                                   >
                                     <Trash size={12} />
@@ -850,7 +850,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                     const subCalculated = calculateItemMacros(subFood, Number(sub.quantity_grams));
 
                                     return (
-                                      <div key={subIdx} className="bg-surface-3/60 border border-card/20 rounded px-2.5 py-1.5 flex items-center justify-between gap-4">
+                                      <div key={subIdx} className="bg-surface-3/60 border-0 rounded px-2.5 py-1.5 flex items-center justify-between gap-4">
                                         <div className="min-w-0">
                                           <p className="text-[10px] font-bold text-text-secondary truncate">{subFood.name}</p>
                                           <span className="text-[8px] font-mono text-text-disabled">
@@ -929,7 +929,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
                                           <button
                                             onClick={() => handleRemoveSubItem(mealIdx, itemIdx, subIdx)}
-                                            className="w-5 h-5 rounded bg-surface-2 hover:bg-surface-1 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer border border-card/20"
+                                            className="w-5 h-5 rounded bg-surface-2 hover:bg-surface-1 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer border-0"
                                             title="Remover substituto"
                                           >
                                             <Trash size={10} />
@@ -965,7 +965,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                       <Button
                         onClick={() => handleAddFoodToMeal(mealIdx)}
                         variant="secondary"
-                        className="h-7 px-3 text-[10px] font-bold uppercase rounded-md cursor-pointer border border-card shrink-0"
+                        className="h-7 px-3 text-[10px] font-bold uppercase rounded-md cursor-pointer border-0 shrink-0"
                         leftIcon={<Plus className="w-3 h-3" />}
                       >
                         Alimento
@@ -978,14 +978,14 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
               })}
 
               {/* Add Meal Select Bar — Fase 8: grid uniforme */}
-              <div className="flex flex-col gap-2 mt-4 bg-surface-1 p-3 rounded-lg border border-card">
+              <div className="flex flex-col gap-2 mt-4 bg-surface-1 p-3 rounded-lg border-0">
                 <span className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Adicionar Refeição:</span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {Object.entries(mealTypeLabels).map(([type, label]) => (
                     <button
                       key={type}
                       onClick={() => handleAddMeal(type as NutritionMealType)}
-                      className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded border border-card bg-surface-2 hover:bg-surface-3 text-text-secondary hover:text-brand transition-all cursor-pointer text-center"
+                      className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded border-0 bg-surface-2 hover:bg-surface-3 text-text-secondary hover:text-brand transition-all cursor-pointer text-center"
                     >
                       + {label}
                     </button>
@@ -999,7 +999,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           <div className="lg:col-span-4 lg:sticky lg:top-6 flex flex-col gap-6">
             
             {/* CARD Resumo Lateral */}
-            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-4">
+            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
               <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2">
                 Resumo do Planejado
               </h2>
@@ -1078,7 +1078,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
             </Card>
 
             {/* CARD Ações do Construtor */}
-            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-3">
+            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-3">
               <Button
                 onClick={() => handleSavePlan('active')}
                 variant="primary"
@@ -1097,7 +1097,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 loading={saving}
                 disabled={saving}
                 fullWidth
-                className="h-10 rounded-lg text-xs font-bold gap-1.5 cursor-pointer border border-card"
+                className="h-10 rounded-lg text-xs font-bold gap-1.5 cursor-pointer border-0"
                 leftIcon={<FloppyDisk className="w-4 h-4" />}
               >
                 Salvar Rascunho
@@ -1121,7 +1121,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
       {/* MODAL / DROPDOWN: Busca de Alimentos */}
       {searchOpen !== null && (
         <div className="fixed inset-0 bg-black/60 z-100 flex items-center justify-center p-4 backdrop-blur-xs">
-          <Card className="w-full max-w-md bg-surface-1 border border-card p-4 md:p-5 flex flex-col gap-4 max-h-[85vh]">
+          <Card className="w-full max-w-md bg-surface-1 border-0 p-4 md:p-5 flex flex-col gap-4 max-h-[85vh]">
             <div className="flex items-center justify-between border-b border-divider pb-2">
               <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                 {searchOpen.itemIndex !== undefined ? 'Adicionar Substituto' : 'Adicionar Alimento'}
@@ -1159,7 +1159,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                   }}
                   className={cn(
                     "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer",
-                    activeGroup === 'todos' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-card text-text-secondary hover:text-text-primary"
+                    activeGroup === 'todos' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-transparent text-text-secondary hover:text-text-primary"
                   )}
                 >
                   Todos
@@ -1174,7 +1174,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                   }}
                   className={cn(
                     "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1",
-                    activeGroup === 'macros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-card text-text-secondary hover:text-text-primary"
+                    activeGroup === 'macros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-transparent text-text-secondary hover:text-text-primary"
                   )}
                 >
                   Macros <span className="text-[8px] opacity-75">▼</span>
@@ -1189,7 +1189,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                   }}
                   className={cn(
                     "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1",
-                    activeGroup === 'outros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-card text-text-secondary hover:text-text-primary"
+                    activeGroup === 'outros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-transparent text-text-secondary hover:text-text-primary"
                   )}
                 >
                   Outros <span className="text-[8px] opacity-75">▼</span>
@@ -1210,7 +1210,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                       onClick={() => setCategoryFilter(sub.val)}
                       className={cn(
                         "h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer",
-                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-card text-text-secondary hover:text-text-primary"
+                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-transparent text-text-secondary hover:text-text-primary"
                       )}
                     >
                       {sub.label}
@@ -1234,7 +1234,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                       onClick={() => setCategoryFilter(sub.val)}
                       className={cn(
                         "h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer",
-                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-card text-text-secondary hover:text-text-primary"
+                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-transparent text-text-secondary hover:text-text-primary"
                       )}
                     >
                       {sub.label}
@@ -1274,7 +1274,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                           height: `${virtualItem.size - 8}px`,
                           transform: `translateY(${virtualItem.start}px)`,
                         }}
-                        className="p-3 bg-surface-2 border border-card/50 hover:border-brand/40 hover:bg-surface-3 rounded-lg flex items-center justify-between gap-4 cursor-pointer"
+                        className="p-3 bg-surface-2 border-0 hover:border-brand/40 hover:bg-surface-3 rounded-lg flex items-center justify-between gap-4 cursor-pointer"
                       >
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-text-primary leading-tight truncate">{food.name}</p>

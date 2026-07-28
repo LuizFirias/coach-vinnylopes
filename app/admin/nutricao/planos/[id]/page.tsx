@@ -283,9 +283,9 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
   };
 
   const statusColors: Record<string, string> = {
-    draft: 'bg-surface-2 border-card text-text-secondary',
+    draft: 'bg-surface-2 border-transparent text-text-secondary',
     active: 'bg-success/15 border-success/30 text-success',
-    archived: 'bg-surface-3 border-card text-text-disabled',
+    archived: 'bg-surface-3 border-transparent text-text-disabled',
     paused: 'bg-warning/15 border-warning/30 text-warning'
   };
 
@@ -298,7 +298,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/admin/nutricao')}
-              className="w-8 h-8 rounded-md bg-surface-2 border border-card hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-md bg-surface-2 border-0 hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
             >
               <ArrowLeft size={16} />
             </button>
@@ -325,14 +325,14 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
               <Button
                 variant="secondary"
                 onClick={() => setShowTemplateModal(true)}
-                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-card hover:border-brand/40 w-full sm:w-auto justify-center"
+                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border-0 hover:border-brand/40 w-full sm:w-auto justify-center"
               >
                 Salvar Template
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => setShowDuplicateModal(true)}
-                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border border-card hover:border-brand/40 w-full sm:w-auto justify-center"
+                className="h-9 px-2.5 sm:px-3 rounded-lg text-[11px] sm:text-xs font-bold gap-1.5 cursor-pointer border-0 hover:border-brand/40 w-full sm:w-auto justify-center"
               >
                 Duplicar Plano
               </Button>
@@ -353,7 +353,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
           <div className="lg:col-span-8 flex flex-col gap-6">
             
             {/* CARD 1: Info Card */}
-            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-4">
+            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
               <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2 flex items-center gap-2">
                 <BookmarkSimple size={14} className="text-brand" />
                 Dados do Plano
@@ -404,7 +404,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                 plan.days[0].meals.map((meal: any, mealIdx: number) => {
                   const mMacros = getMealMacros(meal);
                   return (
-                    <Card key={mealIdx} className="rounded-xl border border-card/80 shadow-sm p-4 md:p-5 flex flex-col gap-3 bg-surface-1">
+                    <Card key={mealIdx} className="rounded-xl border-0 shadow-sm p-4 md:p-5 flex flex-col gap-3 bg-surface-1">
                       
                       {/* Meal Title Header */}
                       <div className="flex items-start justify-between gap-3 border-b border-divider/40 pb-2">
@@ -412,7 +412,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                           <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />
                           <span className="text-xs font-extrabold text-text-primary truncate">{meal.title}</span>
                           {meal.time_suggestion && (
-                            <span className="bg-surface-2 border border-card text-[9px] px-1 rounded font-mono text-text-secondary shrink-0">
+                            <span className="bg-surface-2 border-0 text-[9px] px-1 rounded font-mono text-text-secondary shrink-0">
                               {meal.time_suggestion.slice(0, 5)}
                             </span>
                           )}
@@ -500,7 +500,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
           <div className="lg:col-span-4 lg:sticky lg:top-6 flex flex-col gap-6">
             
             {/* Macros summary card */}
-            <Card className="rounded-xl border border-card p-4 md:p-5 flex flex-col gap-4">
+            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
               <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2">
                 Resumo do Planejado
               </h2>
@@ -570,7 +570,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
         {/* Modals */}
         {showDuplicateModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface-1 border border-card rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
+            <div className="bg-surface-1 border-0 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Duplicar Plano Alimentar</h3>
                 <p className="text-2xs text-text-tertiary">Copie esta rotina para outro aluno para economizar tempo</p>
@@ -581,7 +581,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                 <select
                   value={targetStudentId}
                   onChange={(e) => setTargetStudentId(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-2 border border-border-default rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40"
+                  className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40"
                 >
                   <option value="">Selecione um aluno...</option>
                   {alunos.map((a) => (
@@ -599,7 +599,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                   value={newPlanName}
                   onChange={(e) => setNewPlanName(e.target.value)}
                   placeholder="Ex: Plano Alimentar - Cópia"
-                  className="w-full px-3 py-2 bg-surface-2 border border-border-default rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 font-medium"
+                  className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 font-medium"
                 />
               </div>
 
@@ -628,7 +628,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
 
         {showTemplateModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface-1 border border-card rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
+            <div className="bg-surface-1 border-0 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Salvar como Template</h3>
                 <p className="text-2xs text-text-tertiary">Salve as refeições e alimentos atuais como um modelo reutilizável</p>
@@ -641,7 +641,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value)}
                   placeholder="Ex: Template: Hipertrofia 2500 kcal"
-                  className="w-full px-3 py-2 bg-surface-2 border border-border-default rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 font-medium"
+                  className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 font-medium"
                 />
               </div>
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
 import { 
   FileArrowUp, CircleNotch, Trash, FileText, 
   FilePdf, Eye, MagnifyingGlass, User, Info, CheckCircle, PencilSimple, AppleLogo, Clock
@@ -154,68 +155,71 @@ export default function NutricaoPage() {
 
   const fetchPlansAndAlunos = useCallback(async () => {
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
-      if (!coachId) { 
-        setError('Sessão inválida. Faça login novamente.'); 
-        setFetchingData(false); 
-        return; 
+      const session = await getSafeSession();
+      const coachId = session?.user?.id;
+      if (!coachId) {
+        setError('Sessão inválida. Faça login novamente.');
+        setFetchingData(false);
+        return;
       }
 
-      // Fetch links for the coach's students
-      const { data: alunoLinks, error: linkError } = await supabaseClient
-        .from('coach_alunos')
-        .select('aluno_id')
-        .eq('coach_id', coachId);
+      // Estágio 1 em paralelo: vínculos + tudo que filtra por coach_id
+      const [
+        { data: alunoLinks, error: linkError },
+        { data: plansData, error: plansError },
+        { data: digitalPlansData, error: digitalPlansError },
+      ] = await Promise.all([
+        supabaseClient
+          .from('coach_alunos')
+          .select('aluno_id')
+          .eq('coach_id', coachId),
+        supabaseClient
+          .from('plano_alimentar_pdf')
+          .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
+          .eq('coach_id', coachId)
+          .order('criado_em', { ascending: false }),
+        supabaseClient
+          .from('nutrition_plans')
+          .select('id, student_id, name, goal, status, created_at, calories_target, days:nutrition_plan_days(meals:nutrition_meals(id))')
+          .eq('coach_id', coachId)
+          .order('created_at', { ascending: false }),
+      ]);
 
       if (linkError) throw linkError;
+      if (plansError) throw plansError;
+      if (digitalPlansError) throw digitalPlansError;
 
       const ids = alunoLinks?.map(link => link.aluno_id) || [];
-      if (ids.length === 0) { 
-        setAlunos([]); 
+      if (ids.length === 0) {
+        setAlunos([]);
         setPlanos([]);
         setStudentNutritionList([]);
-        setFetchingData(false); 
-        return; 
+        setFetchingData(false);
+        return;
       }
 
-      // Fetch students profiles
-      const { data: profilesData, error: profilesError } = await supabaseClient
-        .from('profiles')
-        .select('id, coaching_reference, email, full_name')
-        .in('id', ids)
-        .eq('arquivado', false)
-        .order('coaching_reference', { ascending: true });
+      // Estágio 2 em paralelo: perfis + check-ins dos alunos
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const [
+        { data: profilesData, error: profilesError },
+        { data: allCheckins },
+      ] = await Promise.all([
+        supabaseClient
+          .from('profiles')
+          .select('id, coaching_reference, email, full_name')
+          .in('id', ids)
+          .eq('arquivado', false)
+          .order('coaching_reference', { ascending: true }),
+        supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('*')
+          .in('student_id', ids)
+          .gte('checkin_date', sevenDaysAgo.toISOString().slice(0, 10)),
+      ]);
 
       if (profilesError) throw profilesError;
       setAlunos(profilesData || []);
-
-      // Fetch sent food plans (PDF)
-      const { data: plansData, error: plansError } = await supabaseClient
-        .from('plano_alimentar_pdf')
-        .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
-        .eq('coach_id', coachId)
-        .order('criado_em', { ascending: false });
-
-      if (plansError) throw plansError;
-
-      // Fetch digital plans
-      const { data: digitalPlansData, error: digitalPlansError } = await supabaseClient
-        .from('nutrition_plans')
-        .select('id, student_id, name, goal, status, created_at, calories_target, days:nutrition_plan_days(meals:nutrition_meals(id))')
-        .eq('coach_id', coachId)
-        .order('created_at', { ascending: false });
-
-      if (digitalPlansError) throw digitalPlansError;
-
-      // Fetch checkins for last 7 days for these students
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const { data: allCheckins } = await supabaseClient
-        .from('nutrition_meal_checkins')
-        .select('*')
-        .in('student_id', ids)
-        .gte('checkin_date', sevenDaysAgo.toISOString().slice(0, 10));
 
       const todayISO = new Date().toISOString().slice(0, 10);
 
@@ -488,14 +492,14 @@ export default function NutricaoPage() {
           <div className="flex flex-col gap-6">
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-brand" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Planos digitais ativos</span>
                   <Info size={11} className="text-text-disabled hover:text-brand transition-colors cursor-help shrink-0" />
                   
                   {/* Tooltip */}
-                  <div className="absolute bottom-full mb-2 left-0 w-56 bg-surface-1 border border-card p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
+                  <div className="absolute bottom-full mb-2 left-0 w-56 bg-surface-1 border-0 p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
                     <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
                       Quantidade de alunos que possuem um plano digital atualmente com o status <strong className="text-text-primary">Ativo</strong>.
                     </p>
@@ -507,14 +511,14 @@ export default function NutricaoPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Adesão Média</span>
                   <Info size={11} className="text-text-disabled hover:text-success transition-colors cursor-help shrink-0" />
                   
                   {/* Tooltip */}
-                  <div className="absolute bottom-full mb-2 left-0 w-56 bg-surface-1 border border-card p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
+                  <div className="absolute bottom-full mb-2 left-0 w-56 bg-surface-1 border-0 p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
                     <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
                       Média de check-ins marcados como <strong className="text-success">Feito</strong> nos últimos 7 dias pelos alunos que possuem plano digital ativo.
                     </p>
@@ -526,14 +530,14 @@ export default function NutricaoPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-warning" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Alunos sem plano</span>
                   <Info size={11} className="text-text-disabled hover:text-warning transition-colors cursor-help shrink-0" />
                   
                   {/* Tooltip */}
-                  <div className="absolute bottom-full mb-2 left-0 w-56 bg-surface-1 border border-card p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
+                  <div className="absolute bottom-full mb-2 left-0 w-56 bg-surface-1 border-0 p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
                     <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
                       Número de alunos ativos que não possuem nenhum plano digital prescrito (<strong className="text-text-primary">Ativo</strong> ou <strong className="text-text-primary">Rascunho</strong>).
                     </p>
@@ -545,14 +549,14 @@ export default function NutricaoPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-danger" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Baixa Adesão</span>
                   <Info size={11} className="text-text-disabled hover:text-danger transition-colors cursor-help shrink-0" />
                   
                   {/* Tooltip */}
-                  <div className="absolute bottom-full mb-2 right-0 lg:left-0 lg:right-auto w-56 bg-surface-1 border border-card p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
+                  <div className="absolute bottom-full mb-2 right-0 lg:left-0 lg:right-auto w-56 bg-surface-1 border-0 p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
                     <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
                       Alunos ativos cuja taxa de cumprimento alimentar média nos últimos 7 dias é inferior a <strong className="text-danger">70%</strong>.
                     </p>
@@ -580,7 +584,7 @@ export default function NutricaoPage() {
             )}
 
             {/* Acompanhamento Alimentar Table (Section 7) */}
-            <Card className="rounded-xl border border-card p-4 md:p-5">
+            <Card className="rounded-xl border-0 p-4 md:p-5">
               <div className="border-b border-divider/50 pb-2 mb-4">
                 <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
                   <AppleLogo size={14} className="text-brand" />
@@ -618,7 +622,7 @@ export default function NutricaoPage() {
                           'em-dia': 'bg-success/10 text-success border-success/20',
                           'atencao': 'bg-warning/10 text-warning border-warning/20',
                           'sem-checkin': 'bg-danger/10 text-danger border-danger/20',
-                          'sem-plano': 'bg-surface-3 text-text-tertiary border-card'
+                          'sem-plano': 'bg-surface-3 text-text-tertiary border-transparent'
                         };
 
                         return (
@@ -637,7 +641,7 @@ export default function NutricaoPage() {
                                </span>
                                
                                {/* Status Tooltip */}
-                               <div className="absolute bottom-full mb-1 right-0 w-56 bg-surface-1 border border-card p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
+                               <div className="absolute bottom-full mb-1 right-0 w-56 bg-surface-1 border-0 p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
                                  <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
                                    {student.status === 'em-dia' && (
                                      <>O aluno está com excelente cumprimento das refeições. Adesão superior a <strong className="text-success">80%</strong> nos últimos 7 dias.</>
@@ -657,13 +661,13 @@ export default function NutricaoPage() {
                             <td className="py-2.5 text-right">
                               {student.planId ? (
                                 <Link href={`/admin/nutricao/planos/${student.planId}`}>
-                                  <Button variant="secondary" size="sm" className="h-6.5 text-[9px] px-2 rounded-md border border-card cursor-pointer">
+                                  <Button variant="secondary" size="sm" className="h-6.5 text-[9px] px-2 rounded-md border-0 cursor-pointer">
                                     Ver Plano
                                   </Button>
                                 </Link>
                               ) : (
                                 <Link href={`/admin/nutricao/novo-plano`}>
-                                  <Button variant="secondary" size="sm" className="h-6.5 text-[9px] px-2 rounded-md border border-card cursor-pointer">
+                                  <Button variant="secondary" size="sm" className="h-6.5 text-[9px] px-2 rounded-md border-0 cursor-pointer">
                                     Criar
                                   </Button>
                                 </Link>
@@ -689,7 +693,7 @@ export default function NutricaoPage() {
                       'em-dia': 'bg-success/10 text-success border-success/20',
                       'atencao': 'bg-warning/10 text-warning border-warning/20',
                       'sem-checkin': 'bg-danger/10 text-danger border-danger/20',
-                      'sem-plano': 'bg-surface-3 text-text-tertiary border-card'
+                      'sem-plano': 'bg-surface-3 text-text-tertiary border-transparent'
                     };
                     const temPlano = student.planName !== 'Sem plano';
                     return (
@@ -739,7 +743,7 @@ export default function NutricaoPage() {
               
               {/* Left Column: Recent Plans list/table (8 cols) */}
               <div className="lg:col-span-8 flex flex-col gap-4">
-                <Card className="rounded-xl border border-card/80 shadow-sm p-4 md:p-5">
+                <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                       Histórico de Planos Enviados
@@ -760,12 +764,12 @@ export default function NutricaoPage() {
                   </div>
 
                   {/* Tabs filter */}
-                  <div className="flex gap-1 p-0.5 bg-surface-2 border border-card rounded-md h-8.5 w-max items-center mb-4">
+                  <div className="flex gap-1 p-0.5 bg-surface-2 border-0 rounded-md h-8.5 w-max items-center mb-4">
                     <button
                       onClick={() => setActiveTab('todos')}
                       className={cn(
                         'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'todos' ? 'bg-surface-0 border border-card/50 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        activeTab === 'todos' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
                       )}
                     >
                       Todos ({planos.filter(p => p.status !== 'template').length})
@@ -774,7 +778,7 @@ export default function NutricaoPage() {
                       onClick={() => setActiveTab('pdf')}
                       className={cn(
                         'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'pdf' ? 'bg-surface-0 border border-card/50 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        activeTab === 'pdf' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
                       )}
                     >
                       PDF ({planos.filter(p => p.tipo === 'pdf').length})
@@ -783,7 +787,7 @@ export default function NutricaoPage() {
                       onClick={() => setActiveTab('digital')}
                       className={cn(
                         'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'digital' ? 'bg-surface-0 border border-card/50 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        activeTab === 'digital' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
                       )}
                     >
                       Digital ({planos.filter(p => p.tipo === 'digital' && p.status !== 'template').length})
@@ -792,7 +796,7 @@ export default function NutricaoPage() {
                       onClick={() => setActiveTab('templates')}
                       className={cn(
                         'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'templates' ? 'bg-surface-0 border border-card/50 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        activeTab === 'templates' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
                       )}
                     >
                       Templates ({planos.filter(p => p.tipo === 'digital' && p.status === 'template').length})
@@ -801,7 +805,7 @@ export default function NutricaoPage() {
 
                   {/* Table / List */}
                   {filteredPlanos.length === 0 ? (
-                    <div className="text-center py-10 border border-dashed border-card rounded-md">
+                    <div className="text-center py-10 border border-dashed border-divider rounded-md">
                       <FileText size={24} className="text-text-disabled mx-auto mb-1.5" />
                       <p className="text-xs font-semibold text-text-secondary">
                         {searchQuery ? 'Nenhum plano corresponde' : 'Nenhum plano alimentar'}
@@ -842,7 +846,7 @@ export default function NutricaoPage() {
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-2">
-                                      <div className="w-7 h-7 rounded-md bg-surface-3 flex items-center justify-center border border-card text-text-secondary shrink-0">
+                                      <div className="w-7 h-7 rounded-md bg-surface-3 flex items-center justify-center border-0 text-text-secondary shrink-0">
                                         <User size={13} />
                                       </div>
                                       <div className="min-w-0">
@@ -900,7 +904,7 @@ export default function NutricaoPage() {
                                     {plan.tipo === 'pdf' ? (
                                       <button
                                         onClick={() => handlePreviewPlan(plan.url_pdf!)}
-                                        className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                                        className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
                                         title="Visualizar PDF"
                                       >
                                         <Eye size={13} />
@@ -909,7 +913,7 @@ export default function NutricaoPage() {
                                       <>
                                         <Link href={`/admin/nutricao/planos/${plan.id}`}>
                                           <button
-                                            className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                                            className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
                                             title="Visualizar Detalhes"
                                           >
                                             <Eye size={13} />
@@ -917,7 +921,7 @@ export default function NutricaoPage() {
                                         </Link>
                                         <Link href={`/admin/nutricao/planos/${plan.id}/editar`}>
                                           <button
-                                            className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+                                            className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
                                             title="Editar Plano"
                                           >
                                             <PencilSimple size={13} />
@@ -927,7 +931,7 @@ export default function NutricaoPage() {
                                     )}
                                     <button
                                       onClick={() => handleDeletePlan(plan.id, plan.url_pdf, plan.tipo)}
-                                      className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
+                                      className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
                                       title="Excluir Plano"
                                     >
                                       <Trash size={13} />
@@ -947,7 +951,7 @@ export default function NutricaoPage() {
               {/* Right Column: Actions & Upload Form (4 cols) */}
               <div className="lg:col-span-4 flex flex-col gap-6">
                 {/* Criar Plano Digital Card */}
-                <Card className="rounded-xl border border-card/80 shadow-sm p-4 md:p-5 flex flex-col gap-3">
+                <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5 flex flex-col gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
                       <AppleLogo size={18} />
@@ -965,7 +969,7 @@ export default function NutricaoPage() {
                 </Card>
 
                 {/* Enviar Plano Alimentar PDF */}
-                <Card className="rounded-xl border border-card/80 shadow-sm p-4 md:p-5">
+                <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5">
                   <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-4 border-b border-divider pb-2">
                     Enviar Plano Alimentar PDF
                   </h2>
@@ -994,7 +998,7 @@ export default function NutricaoPage() {
                         disabled={loading}
                         maxLength={200}
                         rows={2}
-                        className="w-full px-3 py-2 bg-surface-2 border border-border-default rounded-md text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-none disabled:opacity-50"
+                        className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-none disabled:opacity-50"
                       />
                       <p className="text-[9px] text-text-disabled text-right">{descricao.length}/200</p>
                     </div>
@@ -1049,7 +1053,7 @@ export default function NutricaoPage() {
       {/* Usar Template Modal Overlay */}
       {showUseTemplateModal && selectedTemplate && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface-1 border border-card rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
+          <div className="bg-surface-1 border-0 rounded-xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-scale-in">
             <div>
               <h3 className="text-sm font-bold text-text-primary">Prescrever a partir de Template</h3>
               <p className="text-2xs text-text-tertiary">Selecione o aluno e o nome do novo plano alimentar</p>
@@ -1060,7 +1064,7 @@ export default function NutricaoPage() {
               <select
                 value={useTemplateStudentId}
                 onChange={(e) => setUseTemplateStudentId(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-2 border border-border-default rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40"
+                className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40"
               >
                 <option value="">Selecione um aluno...</option>
                 {alunos.map((a) => (
@@ -1078,7 +1082,7 @@ export default function NutricaoPage() {
                 value={useTemplatePlanName}
                 onChange={(e) => setUseTemplatePlanName(e.target.value)}
                 placeholder="Ex: Dieta de Definição 2000 kcal"
-                className="w-full px-3 py-2 bg-surface-2 border border-border-default rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 font-medium"
+                className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs focus:outline-none focus:border-brand/40 font-medium"
               />
             </div>
 

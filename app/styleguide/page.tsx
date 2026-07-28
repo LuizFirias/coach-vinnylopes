@@ -10,10 +10,12 @@ import {
   Warning,
   X,
   Lightning,
+  MagnifyingGlass,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { GlassPanel, GLASS_VARIANT_META } from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils/cn';
 
 const SECTIONS = [
@@ -32,8 +34,8 @@ type Swatch = { name: string; token: string; value: string; note?: string };
 
 const SURFACES: Swatch[] = [
   { name: 'Surface 0', token: '--surface-0', value: '#080c14', note: 'Page bg — navy' },
-  { name: 'Surface 1', token: '--surface-1', value: '#111827', note: 'Card' },
-  { name: 'Surface 2', token: '--surface-2', value: '#1e1e1e', note: 'Elevated / Input' },
+  { name: 'Surface 1', token: '--surface-1', value: '#111827', note: 'Card padrão (coach + aluno)' },
+  { name: 'Surface 2', token: '--surface-2', value: '#1e1e1e', note: 'Input / elevação — NÃO card' },
   { name: 'Surface 3', token: '--surface-3', value: '#222222', note: 'Overlay / Divisor' },
   { name: 'Surface 4', token: '--surface-4', value: '#282828', note: 'Borda input' },
 ];
@@ -372,7 +374,7 @@ export default function StyleguidePage() {
               {RADII.map((r) => (
                 <div
                   key={r.token}
-                  className="border border-border-subtle bg-surface-2 p-4 flex flex-col items-center gap-3"
+                  className="border border-border-subtle bg-surface-1 p-4 flex flex-col items-center gap-3"
                   style={{
                     borderRadius: r.px >= 9999 ? 9999 : r.px,
                   }}
@@ -469,9 +471,13 @@ export default function StyleguidePage() {
               <Button size="sm">Primary sm</Button>
               <Button>Primary md</Button>
               <Button size="lg">Primary lg</Button>
+              <Button variant="primary-capsule" leftIcon={<Lightning size={18} weight="fill" />}>
+                Iniciar treino
+              </Button>
               <Button variant="secondary">Secondary</Button>
               <Button variant="ghost">Ghost</Button>
               <Button variant="danger">Danger</Button>
+              <Button variant="success">Success</Button>
               <Button loading>Loading</Button>
               <Button disabled>Disabled</Button>
             </div>
@@ -480,26 +486,115 @@ export default function StyleguidePage() {
               Inputs
             </p>
             <div className="grid sm:grid-cols-2 gap-4 mb-8 max-w-2xl">
-              <Input label="Nome" placeholder="Ex: Treino A" helperText="Helper text" />
+              <Input
+                label="Busca"
+                placeholder="Localizar..."
+                leftIcon={<MagnifyingGlass size={16} />}
+              />
+              <Input
+                label="Peso"
+                placeholder="83"
+                rightElement={<span className="text-[13px] font-medium text-text-tertiary">kg</span>}
+              />
               <Input label="Com erro" placeholder="Valor" error="Campo obrigatório" defaultValue="" />
+              <Input
+                label="Com helper"
+                placeholder="seu_usuario"
+                helperText="Aparece no rodapé das imagens"
+              />
             </div>
 
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
-              Cards
+              Cards — fill padrão #111827
+            </p>
+            <p className="text-[12px] text-text-secondary mb-3 max-w-2xl leading-relaxed">
+              Todo card de conteúdo (coach e aluno) usa{' '}
+              <code className="text-brand font-mono text-[11px]">bg-surface-1</code>
+              {' '}(= <code className="text-brand font-mono text-[11px]">#111827</code>
+              ). Contraste page↔card vem de surface-0 → surface-1. Não usar{' '}
+              <code className="font-mono text-[11px] text-danger">#141414</code>,{' '}
+              <code className="font-mono text-[11px] text-danger">#1e1e1e</code> nem{' '}
+              <code className="font-mono text-[11px] text-danger">bg-surface-2</code> como
+              fundo de card — surface-2 fica para inputs e elevação interna.
             </p>
             <div className="grid sm:grid-cols-3 gap-3 mb-8">
               <Card>
                 <p className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1">Default</p>
                 <p className="text-sm font-semibold">Card padrão</p>
+                <p className="text-[10px] font-mono text-text-disabled mt-2">bg-surface-1 · #111827</p>
               </Card>
               <Card variant="primary">
                 <p className="text-[10px] uppercase tracking-wider text-brand mb-1">Primary</p>
                 <p className="text-sm font-semibold">Com glow brand</p>
+                <p className="text-[10px] font-mono text-text-disabled mt-2">bg-surface-1 + border brand</p>
               </Card>
               <Card variant="interactive">
                 <p className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1">Interactive</p>
                 <p className="text-sm font-semibold">Hover / press</p>
+                <p className="text-[10px] font-mono text-text-disabled mt-2">bg-surface-1 → hover surface-2</p>
               </Card>
+            </div>
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
+              Glass panel — vidro espelhado
+            </p>
+            <p className="text-[12px] text-text-secondary mb-4 max-w-3xl leading-relaxed">
+              Painel translúcido com <code className="text-brand font-mono text-[11px]">backdrop-blur</code>,
+              brilho radial interno e borda clara. Usado em tooltips de KPI e sheet de ações prioritárias.
+              Opacidade do fill: <strong className="text-text-primary font-medium">55%</strong>.
+              Cada nível escurece a cor base em <strong className="text-text-primary font-medium">15%</strong>.
+              Componente: <code className="text-brand font-mono text-[11px]">GlassPanel</code>.
+            </p>
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-brand/80 mb-2">
+              Azul (brand)
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+              {GLASS_VARIANT_META.filter((v) => v.variant.startsWith('brand-')).map((item) => (
+                <GlassPanel key={item.variant} variant={item.variant} className="p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/75 mb-1">
+                    {item.label}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-white/92 mb-2">
+                    Explicação breve do conteúdo do painel.
+                  </p>
+                  <p className="text-[9px] font-mono text-white/50">{item.note}</p>
+                </GlassPanel>
+              ))}
+            </div>
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-success/80 mb-2">
+              Verde (success)
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+              {GLASS_VARIANT_META.filter((v) => v.variant.startsWith('success-')).map((item) => (
+                <GlassPanel key={item.variant} variant={item.variant} className="p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/75 mb-1">
+                    {item.label}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-white/92 mb-2">
+                    Confirmação ou status positivo.
+                  </p>
+                  <p className="text-[9px] font-mono text-white/50">{item.note}</p>
+                </GlassPanel>
+              ))}
+            </div>
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-warning/80 mb-2">
+              Amarelo (warning)
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
+              {GLASS_VARIANT_META.filter((v) => v.variant.startsWith('warning-')).map((item) => (
+                <GlassPanel key={item.variant} variant={item.variant} className="p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/75 mb-1">
+                    {item.label}
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-white/92 mb-2">
+                    Alerta ou atenção necessária.
+                  </p>
+                  <p className="text-[9px] font-mono text-white/50">{item.note}</p>
+                </GlassPanel>
+              ))}
             </div>
 
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
@@ -593,7 +688,8 @@ export default function StyleguidePage() {
                 {
                   ok: false,
                   title: 'Botão primário escuro',
-                  detail: 'Nunca #1e3a7a — use #2b7fff sólido (var(--brand-primary))',
+                  detail:
+                    'Nunca #1e3a7a nem bg-brand sólido — use bg-btn-primary (gradiente) + shadow-btn-glow',
                 },
                 {
                   ok: false,
@@ -658,6 +754,18 @@ export default function StyleguidePage() {
                   title: 'Border sólida em cards dark',
                   detail:
                     'Cards sem outline branco — transparent; separação só por surface',
+                },
+                {
+                  ok: true,
+                  title: 'Glass panel para overlays',
+                  detail:
+                    'Tooltips, sheets e modais contextuais: GlassPanel com blur + brilho interno — não usar em cards estáticos de lista',
+                },
+                {
+                  ok: false,
+                  title: 'Card com #141414, #1e1e1e ou surface-2',
+                  detail:
+                    'Cinza antigo / input como fundo de card — use surface-2 só em campos e chips internos',
                 },
               ].map((r) => (
                 <div

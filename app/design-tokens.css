@@ -110,6 +110,11 @@
 
   --focus-ring:       0 0 0 2px rgba(43, 127, 255, 0.50);
 
+  /* Botão primário — gradiente + glow */
+  --btn-primary-bg: linear-gradient(135deg, #60a5fa 0%, #2b7fff 55%, #1a6fee 100%);
+  --btn-primary-shadow: 0 4px 20px rgba(43, 127, 255, 0.45);
+  --btn-primary-shadow-hover: 0 6px 28px rgba(43, 127, 255, 0.60);
+
   /* ═══════════════════════════════════════════════════════════
      TYPOGRAPHY
      ═══════════════════════════════════════════════════════════ */
@@ -457,7 +462,8 @@ select {
 
 /* Botão primário */
 .btn-primary {
-  background: var(--brand-primary);
+  background: var(--btn-primary-bg);
+  box-shadow: var(--btn-primary-shadow);
   color: var(--text-on-brand);
   font-weight: var(--weight-semibold);
   font-size: var(--text-base);
@@ -470,12 +476,12 @@ select {
 }
 
 .btn-primary:hover {
-  background: var(--brand-hover);
-  box-shadow: var(--glow-brand);
+  box-shadow: var(--btn-primary-shadow-hover);
+  opacity: 0.9;
 }
 
 .btn-primary:active {
-  background: var(--brand-pressed);
+  opacity: 0.8;
   transform: scale(0.98);
 }
 

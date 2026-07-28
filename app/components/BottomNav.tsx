@@ -81,7 +81,8 @@ export default function BottomNav() {
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
           'overflow-visible',
-          'border-0',
+          'rounded-[28px] border border-white/10 bg-[#122648]/35 backdrop-blur-xl backdrop-saturate-125',
+          'shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           'h-13',
         )}
         style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
@@ -110,7 +111,7 @@ export default function BottomNav() {
               Z
             "
             fill="#122648"
-            fillOpacity="0.95"
+            fillOpacity="0.42"
           />
         </svg>
         <ul className="relative flex items-center justify-around h-full px-2 overflow-visible">
@@ -238,9 +239,9 @@ export default function BottomNav() {
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
           'rounded-[28px]',
-          'bg-[#122648]/95 backdrop-blur-xl backdrop-saturate-150',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.55)]',
-          'border-0',
+          'bg-[#122648]/35 backdrop-blur-xl backdrop-saturate-125',
+          'shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
+          'border border-white/10',
           'h-16',
         )}
         style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}

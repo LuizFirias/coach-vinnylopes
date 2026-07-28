@@ -254,7 +254,7 @@ export default function Sidebar() {
         )}
 
         {!isExpanded && (
-          <div className="absolute left-full ml-4 px-2 py-1 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] tracking-wider rounded border border-card pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100 shadow-xl">
+          <div className="absolute left-full ml-4 px-2 py-1 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] tracking-wider rounded border-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100 shadow-xl">
             {m.name}
           </div>
         )}
@@ -286,7 +286,7 @@ export default function Sidebar() {
           <button
             onClick={toggleSidebar}
             className={cn(
-              "w-6 h-6 rounded-md border border-card bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
+              "w-6 h-6 rounded-md border-0 bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
               isExpanded ? "absolute right-1 top-1/2 -translate-y-1/2" : "mt-0.5"
             )}
             title={isExpanded ? "Recolher menu" : "Expandir menu"}
@@ -418,8 +418,8 @@ export default function Sidebar() {
         </div>
 
         <div className="px-5 mt-3 mb-6">
-           <div className="p-4 bg-surface-1 rounded-lg border border-card flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center border border-card">
+           <div className="p-4 bg-surface-1 rounded-lg border-0 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center border-0">
                  <User size={15} className="text-brand" />
               </div>
               <div className="flex flex-col">

@@ -20,10 +20,8 @@ export function AvailabilityToggle({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 rounded-xl border p-4",
-        emphasized
-          ? "border-brand/35 bg-brand/5"
-          : "border-card bg-surface-1",
+        "flex items-start gap-3 rounded-xl p-4",
+        emphasized ? "bg-brand/5" : "bg-surface-2",
       )}
     >
       <div className="flex-1 min-w-0">
@@ -41,7 +39,7 @@ export function AvailabilityToggle({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative shrink-0 w-11 h-7 rounded-full transition-colors touch-manipulation",
-          checked ? "bg-brand" : "bg-surface-3 border border-border-default",
+          checked ? "bg-brand" : "bg-surface-3 border-0",
         )}
       >
         <span

@@ -57,7 +57,7 @@ export function TechniquePickerModal({
       aria-label={title}
     >
       <div
-        className="w-full max-w-sm bg-surface-1 border border-card rounded-2xl shadow-elev-3 overflow-hidden animate-slide-up max-h-[min(85vh,640px)] flex flex-col"
+        className="w-full max-w-sm bg-surface-1 border-0 rounded-2xl shadow-elev-3 overflow-hidden animate-slide-up max-h-[min(85vh,640px)] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-divider shrink-0">

@@ -29,7 +29,7 @@ export function BiSetPartnerPicker({ catalog, excludeIds = [], onSelect }: BiSet
     .slice(0, 6);
 
   return (
-    <div className="mt-2 rounded-[10px] border border-dashed border-brand bg-[#0d0d0d] p-3.5">
+    <div className="mt-2 rounded-[10px] border border-dashed border-brand bg-surface-1 p-3.5">
       <p className="text-xs font-semibold text-text-primary mb-2.5">+ Selecionar exercício B</p>
       <div className="relative mb-2">
         <MagnifyingGlass
@@ -55,7 +55,7 @@ export function BiSetPartnerPicker({ catalog, excludeIds = [], onSelect }: BiSet
               onClick={() => onSelect(ex)}
               className={cn(
                 "w-full min-h-11 flex items-center justify-between gap-2 py-2 text-left",
-                "hover:bg-[#111827] transition-colors rounded-md px-1"
+                "hover:bg-surface-1 transition-colors rounded-md px-1"
               )}
             >
               <div className="min-w-0">

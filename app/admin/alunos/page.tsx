@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getSafeSession } from "@/lib/authErrorHandler";
 import { useAuth } from "@/app/components/AuthProvider";
 import {
   MagnifyingGlass,
@@ -23,6 +24,7 @@ import { MobileListRow } from "@/app/components/MobileListRow";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 import { textIncludes } from "@/lib/utils/textNormalize";
+import { Input } from "@/components/ui/Input";
 
 interface ProfileRow {
   id: string;
@@ -94,26 +96,34 @@ export default function AdminAlunosPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const session = await getSafeSession();
+      const coachId = session?.user?.id;
       if (!coachId) { setError("Sessão inválida"); return; }
 
-      const { data: links } = await supabaseClient
-        .from("coach_alunos").select("aluno_id").eq("coach_id", coachId);
-
-      const ids = links?.map(l => l.aluno_id) ?? [];
-      if (ids.length === 0) { setRows([]); return; }
-
+      // Vínculo + perfil numa única query (embed) — antes eram 2 round-trips em série
       const { data, error: err } = await supabaseClient
-        .from("profiles")
-        .select("id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, arquivado")
-        .in("id", ids)
-        .order("arquivado", { ascending: true, nullsFirst: true })
-        .order("ultimo_checkin", { ascending: false, nullsFirst: false })
+        .from("coach_alunos")
+        .select("aluno:profiles!aluno_id(id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, arquivado)")
+        .eq("coach_id", coachId)
         .limit(200);
 
       if (err) throw err;
-      setRows((data as ProfileRow[]) ?? []);
+
+      const list = ((data ?? []) as unknown as Array<{ aluno: ProfileRow | null }>)
+        .map((r) => r.aluno)
+        .filter((p): p is ProfileRow => Boolean(p));
+
+      // Mesma ordenação da query antiga: arquivado asc (nulls first), ultimo_checkin desc (nulls last)
+      const rankArquivado = (v: boolean | null | undefined) => (v == null ? 0 : v ? 2 : 1);
+      list.sort((a, b) => {
+        const d = rankArquivado(a.arquivado) - rankArquivado(b.arquivado);
+        if (d !== 0) return d;
+        const ta = a.ultimo_checkin ? new Date(a.ultimo_checkin).getTime() : -Infinity;
+        const tb = b.ultimo_checkin ? new Date(b.ultimo_checkin).getTime() : -Infinity;
+        return tb - ta;
+      });
+
+      setRows(list);
     } catch (e: any) {
       setError(e?.message ?? "Erro ao carregar");
     } finally {
@@ -234,7 +244,7 @@ export default function AdminAlunosPage() {
             <DumbbellLoader text="Sincronizando base de alunos..." variant="inline" />
           </div>
         ) : rows.length === 0 ? (
-          <div className="bg-surface-1 border border-card rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
             <StudentsEmptyState
               variant="no-students"
               onAddStudent={() => router.push("/admin/alunos/novo")}
@@ -252,7 +262,7 @@ export default function AdminAlunosPage() {
                 { label: "Vencendo em breve", value: alertasVencendoEmBreve, dotColor: "bg-danger" },
                 { label: "Inativos", value: inativosCount, dotColor: "bg-text-disabled" },
               ].map(({ label, value, dotColor }) => (
-                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-card shadow-sm flex flex-col justify-center h-20">
+                <div key={label} className="bg-surface-1 rounded-lg p-4 border-0 shadow-sm flex flex-col justify-center h-20">
                   <div className="flex items-center gap-1.5 leading-none">
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
                     <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
@@ -263,21 +273,22 @@ export default function AdminAlunosPage() {
             </div>
 
             {/* ── Filters and Search Line ── */}
-            <div className="bg-surface-1 border border-card rounded-lg p-2.5 flex flex-col lg:flex-row items-center justify-between gap-3 shadow-sm">
-              <div className="relative w-full lg:max-w-[280px]">
-                <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                <input
-                  type="text"
+            <div className="bg-surface-1 border-0 rounded-lg p-2.5 flex flex-col lg:flex-row items-center justify-between gap-3 shadow-sm">
+              <div className="w-full lg:max-w-[280px]">
+                <Input
+                  type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Localizar por nome ou e-mail..."
-                  className="w-full pl-9 pr-4 h-8.5 bg-surface-2 border border-input rounded-md text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
+                  leftIcon={<MagnifyingGlass size={16} />}
+                  aria-label="Buscar alunos"
+                  className="h-11"
                 />
               </div>
 
               <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto lg:justify-end">
                 {/* Status Filter — segmented control (largura igual no mobile) */}
-                <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 bg-surface-2 border border-card rounded-md p-1 h-8.5">
+                <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 bg-surface-2 border-0 rounded-md p-1 h-8.5">
                   {(['todos', 'ativos', 'pendentes', 'inativos'] as const).map((status) => (
                     <button
                       key={status}
@@ -285,7 +296,7 @@ export default function AdminAlunosPage() {
                       className={cn(
                         "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all h-6.5 flex items-center justify-center",
                         statusFilter === status
-                          ? "bg-surface-0 border border-card/50 text-text-primary shadow-sm"
+                          ? "bg-surface-0 border-0 text-text-primary shadow-sm"
                           : "text-text-secondary hover:text-text-primary"
                       )}
                     >
@@ -300,9 +311,10 @@ export default function AdminAlunosPage() {
                   <select
                     value={planoFilter}
                     onChange={(e) => setPlanoFilter(e.target.value as any)}
-                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-input rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                    className="w-full min-w-0 h-11 rounded-[10px] border border-input bg-surface-2 px-3.5 pr-8 text-[16px] font-medium text-text-primary focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 appearance-none transition-all duration-150 cursor-pointer"
+                    style={{ touchAction: 'manipulation' }}
                   >
-                    <option value="todos">Todos os planos</option>
+                    <option value="todos">Planos</option>
                     <option value="mensal">Mensal</option>
                     <option value="trimestral">Trimestral</option>
                     <option value="semestral">Semestral</option>
@@ -313,7 +325,8 @@ export default function AdminAlunosPage() {
                   <select
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value as any)}
-                    className="w-full min-w-0 px-2.5 h-8.5 bg-surface-2 border border-input rounded-md text-xs text-text-secondary focus:outline-none focus:border-brand/40"
+                    className="w-full min-w-0 h-11 rounded-[10px] border border-input bg-surface-2 px-3.5 pr-8 text-[16px] font-medium text-text-primary focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30 appearance-none transition-all duration-150 cursor-pointer"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     <option value="atividade">Última atividade</option>
                     <option value="recentes">Mais recentes</option>
@@ -324,7 +337,7 @@ export default function AdminAlunosPage() {
                   {/* Reset filters */}
                   <button
                     onClick={handleResetFilters}
-                    className="w-8.5 h-8.5 shrink-0 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border border-card text-text-secondary hover:text-text-primary rounded-md transition-colors"
+                    className="w-8.5 h-8.5 shrink-0 flex items-center justify-center bg-surface-2 hover:bg-surface-3 border-0 text-text-secondary hover:text-text-primary rounded-md transition-colors"
                     title="Limpar filtros"
                   >
                     <ArrowCounterClockwise size={13} />
@@ -336,7 +349,7 @@ export default function AdminAlunosPage() {
             {/* ── Table / Grid of Athletes ── */}
             {processedRows.length === 0 ? (
               /* No results from search / filter */
-              <div className="bg-surface-1 border border-card rounded-xl p-12 text-center max-w-md mx-auto shadow-sm">
+              <div className="bg-surface-1 border-0 rounded-xl p-12 text-center max-w-md mx-auto shadow-sm">
                 <WarningCircle size={36} className="text-warning/60 mx-auto mb-3" />
                 <h3 className="text-sm font-bold text-text-primary mb-1">Nenhum aluno encontrado</h3>
                 <p className="text-text-secondary text-xs mb-5">
@@ -352,7 +365,7 @@ export default function AdminAlunosPage() {
                 </div>
               </div>
             ) : isMobile ? (
-              <div className="bg-surface-1 border border-card rounded-xl p-3 shadow-sm">
+              <div className="bg-surface-1 border-0 rounded-xl p-3 shadow-sm">
                 {processedRows.map((row) => {
                   const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
                   const isAtivo = row.status_pagamento === "pago";
@@ -369,7 +382,7 @@ export default function AdminAlunosPage() {
                         <span className={cn(
                           "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border",
                           isArquivado
-                            ? "bg-surface-3 text-text-disabled border-card"
+                            ? "bg-surface-3 text-text-disabled border-transparent"
                             : isActive
                               ? "bg-success-subtle text-success border-success/15"
                               : "bg-danger-subtle text-danger border-danger/15"
@@ -412,7 +425,7 @@ export default function AdminAlunosPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-surface-1 border border-card rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto scrollbar-hide">
                   <table className="w-full border-collapse text-left">
                     <thead>
@@ -476,7 +489,7 @@ export default function AdminAlunosPage() {
                               <span className={cn(
                                 "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                                 isArquivado
-                                  ? "bg-surface-3 text-text-disabled border-card"
+                                  ? "bg-surface-3 text-text-disabled border-transparent"
                                   : isActive
                                     ? "bg-success-subtle text-success border-success/15"
                                     : "bg-danger-subtle text-danger border-danger/15"
@@ -533,7 +546,7 @@ export default function AdminAlunosPage() {
                                   <span>{timeAgo(row.ultimo_checkin)}</span>
                                 </div>
                               ) : (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-2 border border-card text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-2 border-0 text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
                                   Sem registros
                                 </span>
                               )}

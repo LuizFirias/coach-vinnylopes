@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -95,6 +95,7 @@ export default function AdminDashboard() {
   const [coachAccountType, setCoachAccountType] = useState<string>("padrao");
   const [coachStudentLimit, setCoachStudentLimit] = useState<number | null>(null);
   const [linkedStudentCount, setLinkedStudentCount] = useState(0);
+  const [coachName, setCoachName] = useState("");
 
   const activeStudentsSubtitle = useMemo(() => {
     if (coachStudentLimit !== null) {
@@ -114,8 +115,8 @@ export default function AdminDashboard() {
       const coachId = session?.user?.id;
       if (!coachId) { setError("Sessão inválida"); setLoading(false); return; }
 
-      // Status + lista de alunos em paralelo (antes era sequencial)
-      const [statusResult, coachAlunosResult] = await Promise.all([
+      // Status + alunos + nome de exibição do perfil em paralelo
+      const [statusResult, coachAlunosResult, coachProfileResult] = await Promise.all([
         session.access_token
           ? fetchSubscriptionStatusCached(session.access_token)
           : Promise.resolve(null),
@@ -123,6 +124,11 @@ export default function AdminDashboard() {
           .from('coach_alunos')
           .select('aluno_id')
           .eq('coach_id', coachId),
+        supabaseClient
+          .from('profiles')
+          .select('full_name')
+          .eq('id', coachId)
+          .single(),
       ]);
 
       if (statusResult) {
@@ -130,6 +136,9 @@ export default function AdminDashboard() {
         setCoachStudentLimit(statusResult.studentLimit ?? null);
         setLinkedStudentCount(statusResult.activeStudentCount ?? 0);
       }
+
+      // Mesmo campo "Nome de exibição" de /admin/perfil (profiles.full_name)
+      setCoachName(coachProfileResult.data?.full_name?.trim() || "");
 
       if (coachAlunosResult.error) throw coachAlunosResult.error;
       
@@ -142,8 +151,15 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Profiles + planos de nutrição em paralelo
-      const [{ data: profiles, error: profilesError }, { data: activePlans }] = await Promise.all([
+      // Dates
+      const today = new Date();
+      const seteDiasAtras = new Date();
+      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+      const seteDiasAtrasIso = seteDiasAtras.toISOString();
+
+      // Profiles + planos de nutrição + check-ins em paralelo
+      // (check-ins por student_id em vez de plan_id — filtramos por plano ativo depois)
+      const [{ data: profiles, error: profilesError }, { data: activePlans }, { data: checkinsRaw }] = await Promise.all([
         supabaseClient
           .from('profiles')
           .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, created_at, valor_plano, arquivado')
@@ -164,29 +180,21 @@ export default function AdminDashboard() {
           `)
           .in('student_id', alunosIds)
           .eq('status', 'active'),
+        supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('plan_id, meal_id, status, checkin_date, student_id')
+          .in('student_id', alunosIds)
+          .gte('checkin_date', seteDiasAtrasIso.slice(0, 10)),
       ]);
 
       if (profilesError) throw profilesError;
-      
+
       const rows = (profiles as ProfileRow[]) || [];
       setTotalAlunos(rows.length);
       setSaudeAlunos(rows);
 
-      // Dates
-      const today = new Date();
-      const seteDiasAtras = new Date();
-      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-      const seteDiasAtrasIso = seteDiasAtras.toISOString();
-
-      // Fetch meal check-ins in the last 7 days
-      const activePlanIds = activePlans?.map(p => p.id) || [];
-      const { data: checkins7d } = activePlanIds.length > 0
-        ? await supabaseClient
-            .from('nutrition_meal_checkins')
-            .select('plan_id, meal_id, status, checkin_date, student_id')
-            .in('plan_id', activePlanIds)
-            .gte('checkin_date', seteDiasAtrasIso.slice(0, 10))
-        : { data: [] };
+      const activePlanIds = new Set(activePlans?.map(p => p.id) || []);
+      const checkins7d = (checkinsRaw || []).filter(c => activePlanIds.has(c.plan_id));
 
       // 3. Compute Financial and Operation Base Metrics
       let tempReceitaMes = 0; // Faturamento do mÃªs = regime de CAIXA (entrou neste mÃªs civil)
@@ -404,7 +412,7 @@ export default function AdminDashboard() {
           .gte('created_at', seteDiasAtrasIso),
         supabaseClient
           .from('historico_treinos')
-          .select('id, aluno_id, ficha_id, data_conclusao')
+          .select('id, aluno_id, ficha_id, data_conclusao, ficha:fichas_treino(nome_rotina)')
           .in('aluno_id', alunosIds)
           .order('data_conclusao', { ascending: false })
           .limit(30),
@@ -425,17 +433,11 @@ export default function AdminDashboard() {
 
       setCheckinsPendentes((photosCount || 0) + (medidasCount || 0) + (feedbacksCount || 0));
 
-      // Fetch related routine names to translate ficha_id
-      const fichaIds = (recentWorkouts || []).filter(w => w.ficha_id).map(w => w.ficha_id);
-      const { data: routineNames } = fichaIds.length > 0
-        ? await supabaseClient.from('fichas_treino').select('id, nome_rotina').in('id', fichaIds)
-        : { data: [] };
-
       const rawActivities: RawActivity[] = [];
 
       (recentWorkouts || []).forEach((w) => {
         const student = rows.find((r) => r.id === w.aluno_id);
-        const routine = (routineNames || []).find((f) => f.id === w.ficha_id);
+        const routine = (w as any).ficha as { nome_rotina?: string } | null;
         rawActivities.push({
           id: w.id,
           studentId: w.aluno_id,
@@ -574,6 +576,7 @@ export default function AdminDashboard() {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
         <DashboardHeader
           isMobile={isMobile}
+          userName={coachName}
           coachStudentLimit={coachStudentLimit}
           linkedStudentCount={linkedStudentCount}
           coachAccountType={coachAccountType}
@@ -581,7 +584,7 @@ export default function AdminDashboard() {
         />
 
         {totalAlunos === 0 ? (
-          <div className="bg-surface-1 border border-card rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">
+          <div className="bg-surface-1 border-0 rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">
             <Users size={44} className="text-brand/40 mx-auto mb-4" />
             <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
             <p className="text-text-secondary text-xs mb-6">
@@ -637,10 +640,8 @@ export default function AdminDashboard() {
                 className="lg:col-span-5"
               />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <PriorityActionsCard actions={prioridades} />
-              <RecentActivityFeed activities={groupedAtividades} />
-            </div>
+            <PriorityActionsCard actions={prioridades} />
+            <RecentActivityFeed activities={groupedAtividades} />
             <StudentHealthTable
               students={saudeAlunos}
               today={today}

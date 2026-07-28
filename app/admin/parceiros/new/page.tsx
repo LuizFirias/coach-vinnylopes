@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getSafeSession } from "@/lib/authErrorHandler";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Check, WarningCircle, ShoppingBag, Globe, Tag, Image } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
@@ -53,8 +54,7 @@ export default function NovoParceiroPage() {
 
     setLoading(true);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = (await getSafeSession())?.user?.id;
       if (!coachId) { setError("Sessão inválida. Faça login novamente."); setLoading(false); return; }
 
       const uploadedPaths: string[] = [];
@@ -89,7 +89,7 @@ export default function NovoParceiroPage() {
     }
   };
 
-  const fieldCls = "w-full px-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50";
+  const fieldCls = "w-full px-4 py-3 bg-surface-3 border-0 rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50";
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
@@ -144,7 +144,7 @@ export default function NovoParceiroPage() {
                 placeholder="Descreva as vantagens para os alunos..."
                 disabled={loading}
                 rows={3}
-                className="w-full px-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all resize-none disabled:opacity-50"
+                className="w-full px-4 py-3 bg-surface-3 border-0 rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all resize-none disabled:opacity-50"
                 required
               />
             </div>
@@ -160,7 +160,7 @@ export default function NovoParceiroPage() {
                     onChange={(e) => setCupom(e.target.value)}
                     placeholder="AURONFIT15"
                     disabled={loading}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50"
+                    className="w-full pl-10 pr-4 py-3 bg-surface-3 border-0 rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50"
                     required
                   />
                 </div>
@@ -175,7 +175,7 @@ export default function NovoParceiroPage() {
                     onChange={(e) => setLinkDesconto(e.target.value)}
                     placeholder="https://..."
                     disabled={loading}
-                    className="w-full pl-10 pr-4 py-3 bg-surface-3 border border-border-default rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50"
+                    className="w-full pl-10 pr-4 py-3 bg-surface-3 border-0 rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50"
                     required
                   />
                 </div>
@@ -187,7 +187,7 @@ export default function NovoParceiroPage() {
               <label className="text-2xs uppercase tracking-caps text-text-tertiary ml-1">Galeria de Imagens (máx 5)</label>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className="aspect-square rounded-xl overflow-hidden border border-border-default relative group/img">
+                  <div key={index} className="aspect-square rounded-xl overflow-hidden border-0 relative group/img">
                     <img src={preview} alt="Preview" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-surface-0/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
                       <Image className="text-text-primary w-5 h-5" />
@@ -195,7 +195,7 @@ export default function NovoParceiroPage() {
                   </div>
                 ))}
                 {imageFiles.length < 5 && (
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-card flex flex-col items-center justify-center cursor-pointer hover:border-danger/30 hover:bg-danger-subtle transition-all group/add">
+                  <label className="aspect-square rounded-xl border-2 border-dashed border-divider flex flex-col items-center justify-center cursor-pointer hover:border-danger/30 hover:bg-danger-subtle transition-all group/add">
                     <Plus size={20} className="text-text-disabled group-hover/add:text-danger transition-colors" />
                     <span className="text-2xs text-text-disabled mt-1">Adicionar</span>
                     <input type="file" multiple accept="image/*" onChange={handleImagesChange} className="hidden" disabled={loading} />

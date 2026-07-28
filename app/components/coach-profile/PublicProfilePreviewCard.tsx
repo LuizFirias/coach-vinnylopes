@@ -44,7 +44,7 @@ export function PublicProfilePreviewCard({
 
   if (compact) {
     return (
-      <div className="rounded-xl border border-card bg-surface-1 p-3 flex items-center gap-3">
+      <div className="rounded-xl border-0 bg-surface-1 p-3 flex items-center gap-3">
         <div className="w-12 h-12 rounded-lg overflow-hidden bg-surface-3 shrink-0 flex items-center justify-center">
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -75,7 +75,7 @@ export function PublicProfilePreviewCard({
   }
 
   return (
-    <div className="rounded-xl border border-card bg-surface-1 overflow-hidden shadow-sm">
+    <div className="rounded-xl border-0 bg-surface-1 overflow-hidden">
       <div className="relative h-36 bg-surface-3">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -134,7 +134,7 @@ export function PublicProfilePreviewCard({
             {form.specialties.slice(0, 5).map((tag) => (
               <span
                 key={tag}
-                className="text-[10px] font-medium px-2 py-0.5 rounded bg-surface-3 text-text-secondary border border-card"
+                className="text-[10px] font-medium px-2 py-0.5 rounded bg-surface-3 text-text-secondary border-0"
               >
                 {tag}
               </span>

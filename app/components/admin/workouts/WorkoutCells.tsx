@@ -20,7 +20,7 @@ export function WorkoutActions({ plan, onView, onEdit, onDelete }: WorkoutAction
           <button
             type="button"
             onClick={() => onView(plan)}
-            className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
             title="Ver ficha"
           >
             <Eye size={13} />
@@ -28,7 +28,7 @@ export function WorkoutActions({ plan, onView, onEdit, onDelete }: WorkoutAction
           <button
             type="button"
             onClick={() => onEdit(plan)}
-            className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
             title="Editar Ficha"
           >
             <PencilSimple size={13} />
@@ -39,7 +39,7 @@ export function WorkoutActions({ plan, onView, onEdit, onDelete }: WorkoutAction
           href={plan.pdf_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
+          className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
           title="Visualizar PDF"
         >
           <Eye size={13} />
@@ -48,7 +48,7 @@ export function WorkoutActions({ plan, onView, onEdit, onDelete }: WorkoutAction
       <button
         type="button"
         onClick={() => onDelete(plan)}
-        className="w-7 h-7 rounded-md bg-surface-2 border border-card text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
+        className="w-7 h-7 rounded-md bg-surface-2 border-0 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
         title="Excluir Planejamento"
       >
         <Trash size={13} />
@@ -64,7 +64,7 @@ export function WorkoutStatusBadge({ ativo }: { ativo: boolean }) {
         "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase",
         ativo
           ? "bg-success-subtle text-success border border-success/15"
-          : "bg-surface-3 text-text-disabled border border-card"
+          : "bg-surface-3 text-text-disabled border-0"
       )}
     >
       {ativo ? "Ativo" : "Inativo"}

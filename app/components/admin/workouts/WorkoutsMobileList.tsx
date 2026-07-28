@@ -41,7 +41,7 @@ function MobileWorkoutGroup({
   }
 
   return (
-    <div className="border border-card rounded-xl overflow-hidden">
+    <div className="border-0 rounded-xl overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}

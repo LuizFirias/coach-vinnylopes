@@ -70,6 +70,7 @@ const config: Config = {
         display: ['var(--font-display)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         accent: ['var(--font-accent)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         mono: ['var(--font-mono)', 'SF Mono', 'Menlo', 'monospace'],
+        kpi: ['var(--font-kpi)', 'DM Sans', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         '2xs':  ['11px', { lineHeight: '1.5'  }],
@@ -124,6 +125,11 @@ const config: Config = {
         'glow-success': '0 0 24px rgba(57, 199, 90, 0.24)',
         'pr-glow': '0 0 20px rgba(57, 199, 90, 0.32)',
         'focus-ring': '0 0 0 2px rgba(43, 127, 255, 0.50)',
+        'btn-glow': '0 4px 20px rgba(43, 127, 255, 0.45)',
+        'btn-glow-hover': '0 6px 28px rgba(43, 127, 255, 0.60)',
+      },
+      backgroundImage: {
+        'btn-primary': 'linear-gradient(135deg, #60a5fa 0%, #2b7fff 55%, #1a6fee 100%)',
       },
       transitionTimingFunction: {
         'out':     'cubic-bezier(0.16, 1, 0.3, 1)',

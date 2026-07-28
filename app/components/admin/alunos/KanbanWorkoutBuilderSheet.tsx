@@ -400,7 +400,7 @@ export function KanbanWorkoutBuilderSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0d0d0d]/90 backdrop-blur-sm">
-      <div className="flex-1 flex flex-col min-h-0 max-w-[min(960px,96vw)] w-full mx-auto my-3 md:my-6 rounded-xl border border-card bg-[#111827] overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 max-w-[min(960px,96vw)] w-full mx-auto my-3 md:my-6 rounded-xl border-0 bg-surface-1 overflow-hidden">
         <div className="shrink-0 px-4 py-3 border-b border-divider flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab] mb-1">
@@ -459,14 +459,14 @@ export function KanbanWorkoutBuilderSheet({
               type="button"
               onClick={() => setLibraryOpen(true)}
               disabled={loadingCatalog}
-              className="inline-flex items-center gap-1.5 px-3 h-8 border border-card bg-[#1e1e1e] text-[#7a8aab] rounded-lg text-xs font-semibold hover:text-[#2b7fff] hover:border-[#2b7fff]/40"
+              className="inline-flex items-center gap-1.5 px-3 h-8 border-0 bg-[#1e1e1e] text-[#7a8aab] rounded-lg text-xs font-semibold hover:text-[#2b7fff] hover:border-[#2b7fff]/40"
             >
               <Plus size={14} weight="bold" /> Adicionar exercício
             </button>
           </div>
 
           {items.length === 0 ? (
-            <div className="border border-dashed border-card rounded-xl p-8 flex flex-col items-center text-center">
+            <div className="border border-dashed border-divider rounded-xl p-8 flex flex-col items-center text-center">
               <Barbell size={28} className="text-[#555555] mb-2" />
               <p className="text-xs text-[#555555] mb-4">
                 Adicione exercícios e configure séries, técnicas e Bi-Sets aqui.

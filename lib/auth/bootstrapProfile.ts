@@ -6,6 +6,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 
 export type BootstrapProfile = {
   userId: string;
+  full_name: string | null;
   role: string | null;
   must_change_password: boolean | null;
   first_access_completed: boolean | null;
@@ -54,7 +55,7 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
       const { data: profile, error } = await supabaseClient
         .from('profiles')
         .select(
-          'role, must_change_password, first_access_completed, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo',
+          'full_name, role, must_change_password, first_access_completed, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo',
         )
         .eq('id', user.id)
         .single();
@@ -66,6 +67,7 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
 
       const entry: CacheEntry = {
         userId: user.id,
+        full_name: profile.full_name ?? null,
         role: profile.role ?? null,
         must_change_password: profile.must_change_password ?? null,
         first_access_completed: profile.first_access_completed ?? null,

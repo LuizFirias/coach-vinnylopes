@@ -157,7 +157,8 @@ Identificar e eliminar qualquer um deles:
 ```
 ❌ background: #1e3a7a (escuro, pouco contraste)
 
-✅ background: #2b7fff (azul sólido, sempre visível)
+✅ background: linear-gradient(135deg, #60a5fa 0%, #2b7fff 55%, #1a6fee 100%)
+   + box-shadow azul semântico (repouso/hover)
 ```
 
 ### ❌ Accordion "Adicionar mais detalhes" escondendo fluxo principal
@@ -193,13 +194,25 @@ Identificar e eliminar qualquer um deles:
 
 ### KPI Card (dashboard, listagens)
 ```
-- Background: --bg-card (#141414)
+- Background: --surface-1 (#111827)
 - Label: 9–11px uppercase / letter-spacing 1px / color --text-secondary
 - Dot colorido semântico (6px, border-radius 3px) antes do label
 - Valor: 28–48px / weight 700–900 / color --text-primary
 - Subtítulo: 11–12px / color --text-secondary
 - Alert state: border-color --border-danger quando valor > 0 e é negativo
 - 4 KPIs por tela máximo — acima disso agrupar ou mover para tela dedicada
+```
+
+### Botão primário
+```
+background: linear-gradient(135deg, #60a5fa 0%, #2b7fff 55%, #1a6fee 100%)
+box-shadow: 0 4px 20px rgba(43,127,255,0.45)          ← repouso
+box-shadow: 0 6px 28px rgba(43,127,255,0.60)          ← hover
+opacity: 0.90 hover / 0.80 active / scale(0.98) active
+
+NÃO usar bg-brand sólido (#2b7fff) no variant primary —
+usar bg-btn-primary (gradiente) + shadow-btn-glow.
+bg-brand sólido é permitido apenas em badges, dots e accents pontuais.
 ```
 
 ### Tabela de dados
@@ -250,7 +263,7 @@ Footer:
 
 ### Gráfico de linha (métricas de progresso)
 ```
-- Background: #0f0f0f (dentro de card #141414)
+- Background: #0f0f0f (dentro de card #111827)
 - Linha: #2b7fff / opacity 0.35–0.5 / stroke-width 1.5px
 - Ponto final: circle r=3 / #2b7fff / opacity 0.7
 - Linha base: 1px / #1e1e1e
@@ -272,7 +285,7 @@ Footer:
 ### Email transacional
 ```
 Estrutura:  logo → eyebrow → título → corpo (2 linhas) → credenciais → CTA → footer
-Container:  480px max / background #141414 / border-radius 16px
+Container:  480px max / background #111827 / border-radius 16px
 CTA:        background #2b7fff / border-radius 10px / padding 14px / branco / weight 700
 Credenciais: tabela 2 colunas (label | valor) com dividers 1px #222
 Footer:     border-top 1px #222 / texto 11px / #444

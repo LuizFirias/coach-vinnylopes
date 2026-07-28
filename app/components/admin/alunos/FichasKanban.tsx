@@ -179,8 +179,8 @@ export function FichasKanban({
           <div
             key={ficha.id}
             className={cn(
-              "flex flex-col rounded-xl border bg-[#111827] transition-colors",
-              isColOver ? "border-[#2b7fff]/50" : "border-card",
+              "flex flex-col rounded-xl border bg-surface-1 transition-colors",
+              isColOver ? "border-[#2b7fff]/50" : "border-transparent",
               dragColId === ficha.id && "opacity-60",
             )}
             onDragOver={(e) => {
@@ -353,7 +353,7 @@ export function FichasKanban({
       <button
         type="button"
         onClick={onCreateTreino}
-        className="min-h-28 rounded-xl border border-dashed border-card bg-transparent text-[11px] font-medium text-[#39c75a] hover:border-[#39c75a]/40 hover:bg-[#39c75a]/5 transition-colors flex flex-col items-center justify-center gap-2"
+        className="min-h-28 rounded-xl border border-dashed border-divider bg-transparent text-[11px] font-medium text-[#39c75a] hover:border-[#39c75a]/40 hover:bg-[#39c75a]/5 transition-colors flex flex-col items-center justify-center gap-2"
       >
         <Plus size={18} />
         + adicionar novo treino

@@ -157,7 +157,7 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-card bg-surface-1 p-4">
+        <div className="rounded-xl border-0 bg-surface-1 p-4">
           <p className="mb-1 text-[10px] uppercase tracking-wider text-text-tertiary">
             Kcal 4 semanas
           </p>
@@ -166,13 +166,13 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
             <span className="ml-1 text-xs font-bold text-brand">kcal</span>
           </p>
         </div>
-        <div className="rounded-xl border border-card bg-surface-1 p-4">
+        <div className="rounded-xl border-0 bg-surface-1 p-4">
           <p className="mb-1 text-[10px] uppercase tracking-wider text-text-tertiary">Sessões</p>
           <p className="text-2xl font-black tabular-nums lining-nums tracking-display text-text-primary">
             {kpis.sessoes}
           </p>
         </div>
-        <div className="rounded-xl border border-card bg-surface-1 p-4">
+        <div className="rounded-xl border-0 bg-surface-1 p-4">
           <p className="mb-1 text-[10px] uppercase tracking-wider text-text-tertiary">Volume</p>
           <p className="text-2xl font-black tabular-nums lining-nums tracking-display text-text-primary">
             {kpis.minutos}
@@ -190,7 +190,7 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
             <DumbbellLoader size={36} variant="inline" />
           </div>
         ) : prescricoes.length === 0 ? (
-          <div className="rounded-xl border border-card bg-surface-1 p-4">
+          <div className="rounded-xl border-0 bg-surface-1 p-4">
             <p className="text-xs text-text-tertiary">Nenhuma prescrição de cardio criada.</p>
             <span className="text-[10px] text-text-disabled">
               O aluno ainda pode registrar sessões livres.
@@ -207,7 +207,7 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
             return (
               <div
                 key={p.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-card bg-surface-1 px-4 py-3"
+                className="flex items-start justify-between gap-3 rounded-xl border-0 bg-surface-1 px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-[13px] font-semibold text-text-primary">
@@ -267,7 +267,7 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
           Sessões recentes
         </h4>
         {sessoes.length === 0 ? (
-          <div className="flex flex-col items-center gap-1.5 rounded-xl border border-card bg-surface-1 p-6 text-center">
+          <div className="flex flex-col items-center gap-1.5 rounded-xl border-0 bg-surface-1 p-6 text-center">
             <HeartStraight size={20} className="text-text-disabled" />
             <p className="text-xs text-text-tertiary">Nenhuma sessão de cardio registrada.</p>
           </div>
@@ -275,7 +275,7 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
           sessoes.slice(0, 8).map((s) => (
             <div
               key={s.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-card bg-surface-1 px-4 py-3"
+              className="flex items-center justify-between gap-3 rounded-xl border-0 bg-surface-1 px-4 py-3"
             >
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold text-text-primary">

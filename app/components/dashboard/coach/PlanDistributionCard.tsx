@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 
 export interface PlanDistributionItem {
@@ -28,7 +27,7 @@ export function PlanDistributionCard({
   return (
     <div
       className={cn(
-        "bg-surface-1 border border-card rounded-xl p-4 shadow-sm",
+        "rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]",
         className
       )}
     >

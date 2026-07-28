@@ -13,7 +13,7 @@ interface WorkoutBuilderBottomBarProps {
 }
 
 const sideBtnCls =
-  "w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-lg border border-card text-text-secondary hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40";
+  "w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-lg border-0 text-text-secondary hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40";
 
 export function WorkoutBuilderBottomBar({
   saving,

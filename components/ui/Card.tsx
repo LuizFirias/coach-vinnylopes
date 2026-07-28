@@ -10,7 +10,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 const cardVariants: Record<CardVariant, string> = {
   default: 'bg-surface-1 border-0',
-  primary: 'bg-surface-2 border border-brand-border shadow-glow-brand',
+  primary: 'bg-surface-1 border border-brand-border shadow-glow-brand',
   interactive:
     'bg-surface-1 border-0 cursor-pointer transition-all duration-fast ease-out hover:bg-surface-2 active:scale-[0.99]',
 };

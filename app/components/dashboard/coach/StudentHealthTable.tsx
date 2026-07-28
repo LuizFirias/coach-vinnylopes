@@ -60,14 +60,11 @@ export function StudentHealthTable({
   const rows = students.slice(0, limit);
 
   return (
-    <div className="bg-surface-1 border border-card rounded-xl p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary">Saúde dos alunos</h3>
-          <p className="text-[11px] text-text-secondary mt-0.5">
-            Engajamento e status de evolução
-          </p>
-        </div>
+    <div className="rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-0.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+      <div className="flex items-center justify-between gap-4 mb-1.5">
+        <h3 className="text-sm font-semibold text-text-primary">
+          Visão geral dos alunos
+        </h3>
         <Link
           href="/admin/alunos"
           className="inline-flex items-center gap-1 text-brand text-xs font-semibold hover:underline min-h-[44px]"

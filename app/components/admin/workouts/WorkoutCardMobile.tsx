@@ -21,7 +21,7 @@ export function WorkoutCardMobile({
   onDelete,
 }: WorkoutCardMobileProps) {
   return (
-    <div className="bg-surface-2/40 border border-card rounded-xl p-3.5">
+    <div className="bg-surface-1 border-0 rounded-xl p-3.5">
       <div className="flex items-start justify-between gap-3 mb-2.5">
         <div className="min-w-0">
           <p className="text-sm font-bold text-text-primary truncate">{plan.nome_rotina}</p>

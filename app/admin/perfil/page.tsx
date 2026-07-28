@@ -31,12 +31,12 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { SubscriptionBadge } from "@/app/components/SubscriptionBadge";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { cn } from "@/lib/utils/cn";
 import { isAccessGranted } from "@/lib/subscriptions/display";
 import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { formatStudentUsage, getPlanLabel } from "@/lib/subscriptions/plans";
 import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
+import { invalidateBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 import {
   COACH_COVER_SPECS,
   EMPTY_PUBLIC_PROFILE,
@@ -132,7 +132,7 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-card bg-surface-1 overflow-hidden shadow-sm">
+    <div className="rounded-xl border-0 bg-surface-1 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-divider bg-surface-2/50">
         <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-tertiary">
           {title}
@@ -438,6 +438,8 @@ export default function CoachPerfilPage() {
         .eq("id", profileId);
       if (updateError) throw updateError;
 
+      invalidateBootstrapProfile();
+
       const row = formToRow(publicForm, profileId);
       const { error: publicError } = await supabaseClient
         .from("coach_public_profiles")
@@ -484,6 +486,8 @@ export default function CoachPerfilPage() {
     );
   }
 
+  const primeiroNome =
+    (fullName ?? "").trim().split(/\s+/).filter(Boolean)[0] || "Coach";
   const saveDisabled = saving || uploadingAvatar || !isDirty;
 
   const headerActions = (
@@ -497,22 +501,6 @@ export default function CoachPerfilPage() {
       >
         <Gear size={20} />
       </button>
-      <button
-        type="button"
-        onClick={() => void handleSave()}
-        disabled={saveDisabled}
-        className={cn(
-          "hidden lg:inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-xs font-semibold",
-          "bg-brand text-text-on-brand disabled:opacity-40 touch-manipulation",
-        )}
-      >
-        {saving ? (
-          <CircleNotch size={14} className="animate-spin" />
-        ) : (
-          <FloppyDisk size={14} />
-        )}
-        Salvar
-      </button>
     </div>
   );
 
@@ -522,7 +510,7 @@ export default function CoachPerfilPage() {
 
     return (
       <div className="min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
-        <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-divider">
+        <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
           <div className="px-4 max-w-2xl mx-auto pt-4 pb-3 flex items-center gap-3">
             <button
               type="button"
@@ -584,30 +572,31 @@ export default function CoachPerfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
-      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md border-b border-divider">
-        <ScreenHeader
-          title="Perfil"
-          subtitle="Seu perfil profissional no Auron"
-          action={headerActions}
-        />
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pb-12 lg:pl-28">
+      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
+        <div className="px-4 max-w-[min(1200px,96vw)] mx-auto pt-3 pb-4 flex items-center justify-between gap-3">
+          <h1 className="min-w-0 text-xl md:text-2xl font-extrabold tracking-tight text-text-primary font-display">
+            Olá, <span className="text-brand">{primeiroNome}</span>
+          </h1>
+          {headerActions}
+        </div>
       </div>
 
       <div className="px-4 max-w-[min(1200px,96vw)] mx-auto flex flex-col gap-4 pt-4">
         {error && (
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle text-danger text-xs font-semibold">
             <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
             {error}
           </div>
         )}
         {success && (
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-success-subtle text-success text-xs font-semibold">
             <div className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
             {success}
           </div>
         )}
         {mercadoNotice && (
-          <div className="px-4 py-2.5 rounded-lg border border-brand/30 bg-brand/5 text-xs text-text-secondary">
+          <div className="px-4 py-2.5 rounded-lg bg-brand/5 text-xs text-text-secondary">
             {mercadoNotice}
           </div>
         )}
@@ -634,13 +623,13 @@ export default function CoachPerfilPage() {
               className="flex flex-col gap-5"
             >
               {/* Identidade */}
-              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-4">
+              <Card className="rounded-xl border-0 p-5 space-y-4">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Identidade
                 </h3>
                 <div className="flex items-center gap-4">
                   <div className="relative shrink-0">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-3 border border-border-default flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-3 border-0 flex items-center justify-center">
                       {uploadingAvatar ? (
                         <CircleNotch size={22} className="animate-spin text-brand" />
                       ) : avatarUrl ? (
@@ -701,7 +690,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Profissional */}
-              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-4">
+              <Card className="rounded-xl border-0 p-5 space-y-4">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Perfil profissional
                 </h3>
@@ -728,7 +717,7 @@ export default function CoachPerfilPage() {
                     rows={4}
                     onChange={(e) => patchPublic("bio", e.target.value)}
                     placeholder="Conte sua abordagem, experiência e para quem você trabalha…"
-                    className="w-full rounded-md px-3 py-2.5 text-xs bg-surface-2 border border-input text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 resize-y min-h-[96px]"
+                    className="w-full rounded-md px-3 py-2.5 text-xs bg-surface-2 border-0 text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-0 focus:shadow-none resize-y min-h-[96px]"
                   />
                   <p className="text-xs text-text-tertiary">
                     {publicForm.bio.length}/500
@@ -769,12 +758,12 @@ export default function CoachPerfilPage() {
                         }
                       }}
                       placeholder="Ex: Pós em Fisiologia — USP"
-                      className="flex-1 h-10 rounded-md px-3 text-xs bg-surface-2 border border-card text-text-primary"
+                      className="flex-1 h-10 rounded-md px-3 text-xs bg-surface-2 border-0 text-text-primary"
                     />
                     <button
                       type="button"
                       onClick={addCertification}
-                      className="h-10 w-10 rounded-lg border border-card text-brand flex items-center justify-center touch-manipulation"
+                      className="h-10 w-10 rounded-lg border-0 text-brand flex items-center justify-center touch-manipulation"
                       aria-label="Adicionar"
                     >
                       <Plus size={16} weight="bold" />
@@ -785,7 +774,7 @@ export default function CoachPerfilPage() {
                       {publicForm.certifications.map((c, i) => (
                         <li
                           key={`${c}-${i}`}
-                          className="flex items-center gap-2 text-xs text-text-primary bg-surface-2 border border-card rounded-lg px-3 py-2"
+                          className="flex items-center gap-2 text-xs text-text-primary bg-surface-2 border-0 rounded-lg px-3 py-2"
                         >
                           <span className="flex-1 min-w-0">{c}</span>
                           <button
@@ -809,7 +798,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Especialidades */}
-              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border-0 p-5 space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Especialidades
                 </h3>
@@ -820,7 +809,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Atendimento */}
-              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-4">
+              <Card className="rounded-xl border-0 p-5 space-y-4">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Atendimento
                 </h3>
@@ -835,10 +824,10 @@ export default function CoachPerfilPage() {
                         type="button"
                         onClick={() => patchPublic("modality", m.value)}
                         className={cn(
-                          "min-h-11 px-3 rounded-lg text-xs font-semibold border touch-manipulation",
+                          "min-h-11 px-3 rounded-lg text-xs font-semibold touch-manipulation",
                           publicForm.modality === m.value
-                            ? "bg-brand/15 text-brand border-brand/40"
-                            : "bg-surface-2 text-text-secondary border-card",
+                            ? "bg-brand/15 text-brand"
+                            : "bg-surface-2 text-text-secondary",
                         )}
                       >
                         {m.label}
@@ -863,7 +852,7 @@ export default function CoachPerfilPage() {
                     id="price"
                     value={publicForm.priceDisplay}
                     onChange={(e) => patchPublic("priceDisplay", e.target.value)}
-                    className="h-10 w-full rounded-md px-3 text-xs bg-surface-2 border border-card text-text-primary"
+                    className="h-10 w-full rounded-md px-3 text-xs bg-surface-2 border-0 text-text-primary"
                   >
                     <option value="">Não exibir</option>
                     {PRICE_PRESETS.map((p) => (
@@ -876,11 +865,11 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Galeria */}
-              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border-0 p-5 space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Galeria e capa
                 </h3>
-                <div className="rounded-lg border border-card bg-surface-2 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
+                <div className="rounded-lg border-0 bg-surface-1 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
                   <p className="font-semibold text-text-primary mb-0.5">
                     Capa sugerida: {COACH_COVER_SPECS.displayLabel} ({COACH_COVER_SPECS.ratioLabel})
                   </p>
@@ -900,7 +889,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Redes */}
-              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border-0 p-5 space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Redes
                 </h3>
@@ -924,7 +913,7 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Mercado */}
-              <Card className="rounded-xl border border-card/80 p-5 shadow-sm space-y-3">
+              <Card className="rounded-xl border-0 p-5 space-y-3">
                 <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
                   Mercado
                 </h3>
@@ -952,27 +941,36 @@ export default function CoachPerfilPage() {
           </div>
       </div>
 
-      <div
-        className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 lg:hidden",
-          "border-t border-divider bg-surface-0/95 backdrop-blur-md",
-          "px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-        )}
-      >
+      {(isDirty || saving) && (
         <button
           type="button"
           onClick={() => void handleSave()}
           disabled={saveDisabled}
-          className="w-full h-11 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand text-text-on-brand text-xs font-semibold disabled:opacity-40 touch-manipulation"
-        >
-          {saving ? (
-            <CircleNotch size={16} className="animate-spin" />
-          ) : (
-            <FloppyDisk size={16} />
+          aria-label={saving ? "Salvando alterações" : "Salvar alterações"}
+          className={cn(
+            "fixed z-50 right-4 lg:right-8",
+            "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-8",
+            "w-14 h-14 rounded-full bg-brand text-text-on-brand",
+            "flex items-center justify-center touch-manipulation overflow-hidden",
+            "shadow-[0_8px_28px_rgba(43,127,255,0.45)]",
+            "transition-all duration-200 active:scale-95",
+            "disabled:opacity-60",
           )}
-          {saving ? "Salvando…" : "Salvar alterações"}
+        >
+          {/* Brilho interno */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.42)_0%,rgba(255,255,255,0.08)_38%,transparent_62%)]"
+          />
+          <span className="relative z-10">
+            {saving ? (
+              <CircleNotch size={22} weight="bold" className="animate-spin" />
+            ) : (
+              <FloppyDisk size={22} weight="bold" />
+            )}
+          </span>
         </button>
-      </div>
+      )}
 
       <ChangePasswordModal
         isOpen={changePasswordModalOpen}

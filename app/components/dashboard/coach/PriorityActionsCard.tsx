@@ -1,80 +1,117 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { WarningCircle, ArrowRight } from "@phosphor-icons/react";
-import { cn } from "@/lib/utils/cn";
+import { useState } from 'react';
+import { CaretRight, WarningCircle } from '@phosphor-icons/react';
+import { cn } from '@/lib/utils/cn';
+import {
+  agruparAcoesPorAluno,
+  type AlunoComAcoes,
+  type PriorityAction,
+} from '@/lib/utils/agruparAcoesPorAluno';
+import { AcoesAlunoSheet } from './AcoesAlunoSheet';
 
-export interface PriorityAction {
-  id: string;
-  aluno_id: string;
-  nome: string;
-  tipo: "danger" | "warning" | "info" | "success";
-  descricao: string;
-  acao: string;
-  link: string;
-}
+export type { PriorityAction };
 
 interface PriorityActionsCardProps {
   actions: PriorityAction[];
   className?: string;
 }
 
+const URGENCIA_DOT: Record<AlunoComAcoes['urgenciaMax'], string> = {
+  alta: '#e05555',
+  media: '#f59e0b',
+};
+
+/** Coluna do marcador (ícone / dot) — alinha header com linhas da lista */
+const MARKER_COL = 'w-4 shrink-0 flex items-center justify-center';
+
 export function PriorityActionsCard({ actions, className }: PriorityActionsCardProps) {
-  if (actions.length === 0) return null;
+  const [alunoSelecionado, setAlunoSelecionado] = useState<string | null>(null);
+  const grupos = agruparAcoesPorAluno(actions);
+  const alunoAtivo = grupos.find((g) => g.alunoId === alunoSelecionado) ?? null;
+
+  if (grupos.length === 0) {
+    return (
+      <div
+        style={{ fontFamily: 'Nunito, var(--font-sans), sans-serif' }}
+        className={cn(
+          'w-full rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
+          className,
+        )}
+      >
+        <p className="text-[13px] font-bold text-text-primary">Ações prioritárias</p>
+        <p className="text-[11px] text-text-disabled mt-1">
+          Nenhuma ação pendente — tudo em ordem.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={cn(
-        "bg-surface-1 border border-card rounded-xl p-4 shadow-sm self-start h-auto",
-        className
-      )}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5">
-          <WarningCircle className="text-brand w-4 h-4" />
-          <h3 className="text-sm font-semibold text-text-primary">Ações prioritárias</h3>
-        </div>
-        <span className="px-2 py-0.5 bg-danger/10 text-danger text-[9px] font-semibold uppercase rounded-full">
-          Ação requerida
-        </span>
-      </div>
-
-      <div className="max-h-[24.5rem] md:max-h-[15.5rem] overflow-y-auto overscroll-contain pr-0.5 -mr-0.5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {actions.map((action) => (
-            <div
-              key={action.id}
-              className="p-3 bg-surface-2 border border-card hover:border-card-hover rounded-lg flex items-start justify-between gap-3 transition-all min-h-[56px]"
-            >
-              <div className="flex items-start gap-2.5 min-w-0">
-                <div
-                  className={cn(
-                    "w-2 h-2 rounded-full shrink-0 mt-1.5",
-                    action.tipo === "danger" && "bg-danger animate-pulse",
-                    action.tipo === "warning" && "bg-warning",
-                    action.tipo === "info" && "bg-info",
-                    action.tipo === "success" && "bg-success"
-                  )}
-                />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-text-primary leading-tight truncate">
-                    {action.nome}
-                  </span>
-                  <span className="text-xs text-text-secondary mt-0.5 leading-snug line-clamp-2">
-                    {action.descricao}
-                  </span>
-                </div>
-              </div>
-              <Link
-                href={action.link}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand-hover transition-colors shrink-0 min-h-[44px] px-1 pt-0.5"
-              >
-                {action.acao} <ArrowRight size={12} />
-              </Link>
+    <>
+      <div
+        style={{ fontFamily: 'Nunito, var(--font-sans), sans-serif' }}
+        className={cn(
+          'w-full rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
+          className,
+        )}
+      >
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className={MARKER_COL}>
+              <WarningCircle className="text-brand" size={16} weight="bold" />
             </div>
+            <h3 className="text-[13px] font-bold text-text-primary">Ações prioritárias</h3>
+          </div>
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-danger">
+            Ação requerida
+          </span>
+        </div>
+
+        <div className="flex flex-col max-h-[24.5rem] md:max-h-[18rem] overflow-y-auto overscroll-contain">
+          {grupos.map((grupo, i) => (
+            <button
+              key={grupo.alunoId}
+              type="button"
+              onClick={() => setAlunoSelecionado(grupo.alunoId)}
+              style={{ touchAction: 'manipulation' }}
+              className={cn(
+                'flex items-center justify-between py-3 text-left transition-opacity active:opacity-70',
+                i > 0 && 'border-t border-divider',
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className={MARKER_COL}>
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: URGENCIA_DOT[grupo.urgenciaMax] }}
+                  />
+                </div>
+                <span className="text-[13px] font-semibold text-text-primary truncate">
+                  {grupo.alunoNome}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <span
+                  className="text-[11px] font-semibold tabular-nums lining-nums"
+                  style={{ color: URGENCIA_DOT[grupo.urgenciaMax] }}
+                >
+                  {grupo.acoes.length} {grupo.acoes.length === 1 ? 'ação' : 'ações'}
+                </span>
+                <CaretRight size={12} className="text-text-disabled" />
+              </div>
+            </button>
           ))}
         </div>
       </div>
-    </div>
+
+      {alunoAtivo && (
+        <AcoesAlunoSheet
+          aluno={alunoAtivo}
+          onClose={() => setAlunoSelecionado(null)}
+        />
+      )}
+    </>
   );
 }

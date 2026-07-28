@@ -27,5 +27,8 @@ export function formatCurrency(value: number, currency = 'BRL'): string {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
-  }).format(value);
+  })
+    .format(value)
+    // Evita quebra tipográfica entre "R$" e o valor (espaço normal → NBSP)
+    .replace(/^R\$\s+/, 'R$\u00a0');
 }

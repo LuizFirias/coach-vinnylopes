@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
 import {
   FileArrowUp,
   Trash,
@@ -67,27 +68,9 @@ export default function TreinosPage() {
     setFetchingData(true);
     setError(null);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const session = await getSafeSession();
+      const coachId = session?.user?.id;
       if (!coachId) { setError('Sessão inválida'); setFetchingData(false); return; }
-
-      const { data: links, error: linkError } = await supabaseClient
-        .from('coach_alunos').select('aluno_id').eq('coach_id', coachId);
-
-      if (linkError) throw linkError;
-      const ids = links?.map(l => l.aluno_id) || [];
-
-      if (ids.length === 0) {
-        setAlunos([]);
-        setFichas([]);
-        setAlunosSemFicha([]);
-        setFichasAtivas(0);
-        setFichasCriadasMes(0);
-        setAlunosAtendidos(0);
-        setTreinosExecutados(0);
-        setFetchingData(false);
-        return;
-      }
 
       const trintaDiasAtras = new Date();
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
@@ -101,13 +84,12 @@ export default function TreinosPage() {
       const listSelectLegacy =
         'id, aluno_id, nome_rotina, ativo, criado_em, configuracao';
 
-      const [profilesResult, digitalPrimary, pdfResult, executionsResult] = await Promise.all([
+      // Vínculos+perfis (embed) e listas por coach_id — tudo em paralelo
+      const [linksResult, digitalPrimary, pdfResult] = await Promise.all([
         supabaseClient
-          .from('profiles')
-          .select('id, coaching_reference, full_name, email')
-          .in('id', ids)
-          .eq('arquivado', false)
-          .order('coaching_reference', { ascending: true }),
+          .from('coach_alunos')
+          .select('aluno:profiles!aluno_id(id, coaching_reference, full_name, email, arquivado)')
+          .eq('coach_id', coachId),
         supabaseClient
           .from('fichas_treino')
           .select(listSelectWithCount)
@@ -118,15 +100,27 @@ export default function TreinosPage() {
           .select('id, aluno_id, nome_arquivo, url_pdf, data_upload')
           .eq('coach_id', coachId)
           .order('data_upload', { ascending: false }),
-        supabaseClient
-          .from('historico_treinos')
-          .select('id', { count: 'exact', head: true })
-          .in('aluno_id', ids)
-          .gte('data_conclusao', trintaDiasIso),
       ]);
 
-      if (profilesResult.error) throw profilesResult.error;
+      if (linksResult.error) throw linksResult.error;
       if (pdfResult.error) throw pdfResult.error;
+
+      const linkedProfiles = ((linksResult.data ?? []) as unknown as Array<{ aluno: (Aluno & { arquivado?: boolean | null }) | null }>)
+        .map((r) => r.aluno)
+        .filter((p): p is Aluno & { arquivado?: boolean | null } => Boolean(p));
+      const ids = linkedProfiles.map((p) => p.id);
+
+      if (ids.length === 0) {
+        setAlunos([]);
+        setFichas([]);
+        setAlunosSemFicha([]);
+        setFichasAtivas(0);
+        setFichasCriadasMes(0);
+        setAlunosAtendidos(0);
+        setTreinosExecutados(0);
+        setFetchingData(false);
+        return;
+      }
 
       // Fallback se a migration 0043 (coluna exercicios_count) ainda não foi aplicada
       let digitalData: Array<{
@@ -149,27 +143,37 @@ export default function TreinosPage() {
         digitalData = digitalFallback.data || [];
       }
 
-      const profilesList = (profilesResult.data as Aluno[]) || [];
+      const profilesList = linkedProfiles
+        .filter((p) => !p.arquivado)
+        .sort((a, b) => (a.coaching_reference || '').localeCompare(b.coaching_reference || '')) as Aluno[];
       setAlunos(profilesList);
 
       const pdfData = pdfResult.data || [];
       const digitalIds = digitalData.map((f) => f.id);
 
-      const lastExecByFicha = new Map<string, string>();
-      if (digitalIds.length > 0) {
-        const { data: execData } = await supabaseClient
+      // Contagem de execuções (30d) + última execução por ficha em paralelo
+      const [executionsResult, execListResult] = await Promise.all([
+        supabaseClient
           .from('historico_treinos')
-          .select('ficha_id, data_conclusao')
-          .in('ficha_id', digitalIds)
-          .order('data_conclusao', { ascending: false })
-          .limit(2000);
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', ids)
+          .gte('data_conclusao', trintaDiasIso),
+        digitalIds.length > 0
+          ? supabaseClient
+              .from('historico_treinos')
+              .select('ficha_id, data_conclusao')
+              .in('ficha_id', digitalIds)
+              .order('data_conclusao', { ascending: false })
+              .limit(2000)
+          : Promise.resolve({ data: null as null }),
+      ]);
 
-        (execData || []).forEach((row) => {
-          if (row.ficha_id && !lastExecByFicha.has(row.ficha_id)) {
-            lastExecByFicha.set(row.ficha_id, row.data_conclusao);
-          }
-        });
-      }
+      const lastExecByFicha = new Map<string, string>();
+      (execListResult.data || []).forEach((row: { ficha_id: string | null; data_conclusao: string }) => {
+        if (row.ficha_id && !lastExecByFicha.has(row.ficha_id)) {
+          lastExecByFicha.set(row.ficha_id, row.data_conclusao);
+        }
+      });
 
       const combinedRoutines: WorkoutPlan[] = [];
       let activeCount = 0;
@@ -274,8 +278,7 @@ export default function TreinosPage() {
 
     setLoading(true);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = (await getSafeSession())?.user?.id;
       if (!coachId) throw new Error('Sessão inválida');
 
       const fileName = `${selectedAlunoId}/${Date.now()}_${selectedFile.name}`;
@@ -427,13 +430,13 @@ export default function TreinosPage() {
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5">
               <button
                 onClick={() => setShowPdfUpload(!showPdfUpload)}
-                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
               >
                 <FileArrowUp size={14} /> Upload de PDF
               </button>
               <Link
                 href="/admin/biblioteca-exercicios"
-                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border border-border-default hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all"
+                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all"
               >
                 <BookOpen size={14} /> Biblioteca
               </Link>
@@ -457,7 +460,7 @@ export default function TreinosPage() {
 
         {alunos.length === 0 ? (
           /* Empty State - No students registered yet */
-          <div className="bg-surface-1 border border-card rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
+          <div className="bg-surface-1 border-0 rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
             <Barbell size={44} className="text-brand/40 mx-auto mb-4" />
             <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno vinculado ainda</h3>
             <p className="text-text-secondary text-xs mb-6">
@@ -479,7 +482,7 @@ export default function TreinosPage() {
                 { label: "Alunos Atendidos", value: alunosAtendidos, dotColor: "bg-success" },
                 { label: "Execuções (30d)", value: treinosExecutados, dotColor: "bg-warning" },
               ].map(({ label, value, dotColor }) => (
-                <div key={label} className="bg-surface-1 rounded-lg p-4 border border-card shadow-sm flex flex-col justify-center h-20">
+                <div key={label} className="bg-surface-1 rounded-lg p-4 border-0 shadow-sm flex flex-col justify-center h-20">
                   <div className="flex items-center gap-1.5 leading-none">
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
                     <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
@@ -494,7 +497,7 @@ export default function TreinosPage() {
 
               {/* Inline PDF Upload Form */}
               {showPdfUpload && (
-                <Card className="rounded-xl border border-card p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
+                <Card className="rounded-xl border-0 p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
                   <div className="flex items-center justify-between pb-2 border-b border-divider">
                     <div className="flex items-center gap-2">
                       <FileArrowUp size={16} className="text-brand" />
@@ -555,7 +558,7 @@ export default function TreinosPage() {
               )}
 
               {/* Search & Filters */}
-              <div className="bg-surface-1 border border-card rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="bg-surface-1 border-0 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                   <div className="relative w-full sm:max-w-xs">
                     <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
                     <input
@@ -568,7 +571,7 @@ export default function TreinosPage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 bg-surface-2 border border-card rounded-lg p-1">
+                    <div className="flex items-center gap-1.5 bg-surface-2 border-0 rounded-lg p-1">
                       {(['todas', 'ativas', 'inativas'] as const).map((status) => (
                         <button
                           key={status}
@@ -587,7 +590,7 @@ export default function TreinosPage() {
 
                     <button
                       onClick={handleResetFilters}
-                      className="p-2 bg-surface-2 hover:bg-surface-3 border border-card text-text-secondary hover:text-text-primary rounded-lg transition-colors"
+                      className="p-2 bg-surface-2 hover:bg-surface-3 border-0 text-text-secondary hover:text-text-primary rounded-lg transition-colors"
                       title="Resetar busca"
                     >
                       <ArrowCounterClockwise size={13} />
@@ -596,7 +599,7 @@ export default function TreinosPage() {
                 </div>
 
               {/* Table / Mobile cards */}
-              <div className="bg-surface-1 border border-card rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
                 <div className="p-4 border-b border-divider bg-surface-2/40">
                   <h3 className="text-xs font-bold text-text-primary">Fichas e Protocolos</h3>
                   <p className="text-[10px] text-text-tertiary">Grade completa de planejamentos cadastrados</p>
@@ -652,7 +655,7 @@ export default function TreinosPage() {
       {/* Simplified Routine Preview Modal */}
       {selectedRoutineForPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
-          <div className="bg-surface-1 border border-border-default rounded-3xl w-full max-w-lg overflow-hidden shadow-elev-3 flex flex-col max-h-[85vh]">
+          <div className="bg-surface-1 border-0 rounded-3xl w-full max-w-lg overflow-hidden shadow-elev-3 flex flex-col max-h-[85vh]">
             {/* Modal Header */}
             <div className="p-5 border-b border-divider flex justify-between items-center bg-surface-2/40">
               <div>
@@ -679,7 +682,7 @@ export default function TreinosPage() {
                   return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;
                 }
                 return exercises.map((ex: any, idx: number) => (
-                  <div key={idx} className="p-4 bg-surface-2 border border-card rounded-xl space-y-2">
+                  <div key={idx} className="p-4 bg-surface-1 border-0 rounded-xl space-y-2">
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="text-xs font-bold text-text-primary">{idx + 1}. {ex.nome}</h4>
                       {ex.descanso && (

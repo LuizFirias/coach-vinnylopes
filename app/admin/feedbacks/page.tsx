@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getSafeSession } from "@/lib/authErrorHandler";
 import { 
   ChatCircle, Calendar, Barbell, WarningCircle, 
   CheckCircle, ArrowLeft, PaperPlaneRight, User, MagnifyingGlass,
@@ -78,8 +79,7 @@ export default function FeedbacksCoachPage() {
 
   const loadFeedbacks = async () => {
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = (await getSafeSession())?.user?.id;
       if (!coachId) { router.push("/login"); return; }
 
       const { data: profile } = await supabaseClient
@@ -233,7 +233,7 @@ export default function FeedbacksCoachPage() {
 
         {/* KPIs Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-          <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+          <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
             <div className="flex items-center gap-1.5 leading-none">
               <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-warning" />
               <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Não respondidos</span>
@@ -244,7 +244,7 @@ export default function FeedbacksCoachPage() {
             </div>
           </div>
 
-          <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+          <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
             <div className="flex items-center gap-1.5 leading-none">
               <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-danger" />
               <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Dor / Desconforto</span>
@@ -255,7 +255,7 @@ export default function FeedbacksCoachPage() {
             </div>
           </div>
 
-          <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+          <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
             <div className="flex items-center gap-1.5 leading-none">
               <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-text-disabled" />
               <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Pós-treino</span>
@@ -266,7 +266,7 @@ export default function FeedbacksCoachPage() {
             </div>
           </div>
 
-          <div className="p-4 bg-surface-1 border border-card shadow-sm rounded-lg flex flex-col justify-center h-20">
+          <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
             <div className="flex items-center gap-1.5 leading-none">
               <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success" />
               <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Check-ins (7d)</span>
@@ -281,7 +281,7 @@ export default function FeedbacksCoachPage() {
         {/* Filters bar + Search query input */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-6">
           {/* Tabs filters */}
-          <div className="flex gap-1 p-0.5 bg-surface-2 border border-card rounded-md h-8.5 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] items-center">
+          <div className="flex gap-1 p-0.5 bg-surface-2 border-0 rounded-md h-8.5 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] items-center">
             {([
               { key: 'todos', label: 'Todos', count: totalCount },
               { key: 'nao_respondidos', label: 'Pendentes', count: unansweredCount },
@@ -296,7 +296,7 @@ export default function FeedbacksCoachPage() {
                 className={cn(
                   "shrink-0 px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center",
                   filtro === key
-                    ? "bg-surface-0 border border-card/50 text-text-primary shadow-sm"
+                    ? "bg-surface-0 border-0 text-text-primary shadow-sm"
                     : "text-text-secondary hover:text-text-primary"
                 )}
               >
@@ -322,7 +322,7 @@ export default function FeedbacksCoachPage() {
 
         {/* Feedbacks cards grid */}
         {filteredFeedbacks.length === 0 ? (
-          <div className="text-center py-10 bg-surface-1 border border-dashed border-card rounded-md mt-6">
+          <div className="text-center py-10 bg-surface-1 border border-dashed border-divider rounded-md mt-6">
             <ChatCircle size={24} className="text-text-disabled mx-auto mb-1.5" />
             <p className="text-xs font-semibold text-text-secondary">
               Nenhum feedback
@@ -342,7 +342,7 @@ export default function FeedbacksCoachPage() {
                     "p-4 flex flex-col gap-3.5 transition-all border rounded-xl shadow-sm bg-surface-1",
                     hasPain 
                       ? "border-danger-border bg-danger-subtle/5" 
-                      : "border-card hover:border-brand/20"
+                      : "border-transparent hover:border-brand/20"
                   )}
                 >
                   <div>
@@ -368,7 +368,7 @@ export default function FeedbacksCoachPage() {
                           "text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded",
                           feedback.tipo === 'treino_completo'
                             ? "bg-brand/10 text-brand"
-                            : "bg-surface-3 text-text-secondary border border-card"
+                            : "bg-surface-3 text-text-secondary border-0"
                         )}>
                           {feedback.tipo === 'treino_completo' ? 'Pós-Treino' : 'Dashboard'}
                         </span>
@@ -394,7 +394,7 @@ export default function FeedbacksCoachPage() {
                     )}
 
                     {/* Feedback content text */}
-                    <div className="bg-surface-2 border border-card/50 rounded-lg px-3 py-2 text-xs text-text-primary leading-relaxed whitespace-pre-wrap font-medium">
+                    <div className="bg-surface-1 border-0 rounded-lg px-3 py-2 text-xs text-text-primary leading-relaxed whitespace-pre-wrap font-medium">
                       {feedback.texto_aluno}
                       {hasPain && (
                         <div className="mt-1 text-[9px] text-danger font-bold flex items-center gap-1">
@@ -435,7 +435,7 @@ export default function FeedbacksCoachPage() {
                         value={replyTextMap[feedback.id] ?? ""}
                         onChange={(e) => setReplyTextMap(prev => ({ ...prev, [feedback.id]: e.target.value }))}
                         disabled={submittingReplyId === feedback.id}
-                        className="flex-1 px-3 py-1.5 bg-surface-2 border border-border-default rounded-lg text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                        className="flex-1 px-3 py-1.5 bg-surface-2 border-0 rounded-lg text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
                       />
                       <button
                         onClick={() => handleSendReply(feedback.id, feedback.feedback)}

@@ -277,10 +277,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .metric-value {
-  font-family: var(--font-sans);
+  font-family: var(--font-kpi), 'DM Sans', system-ui, sans-serif;
   font-size: 36px;
   font-weight: 700;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .btn-primary {
@@ -466,6 +467,30 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(32px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheetUp 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-backdrop-in {
+  animation: backdropFadeIn 280ms ease-out both;
 }
 
 .animate-slide-up {
@@ -724,5 +749,217 @@ html[data-theme="light"] .dashboard-hero-chip {
 #mp-card-brick form button[type="submit"],
 #mp-card-brick button[type="submit"] {
   margin-top: 28px !important;
+}
+
+/* ── Coach dashboard KPI — glass no dark, surface-1 no light (ações prioritárias) ── */
+html[data-theme="light"] .glass-panel-flat-light {
+  background: var(--surface-1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  border-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-theme="light"] .glass-panel-flat-light .glass-panel-shine,
+html[data-theme="light"] .glass-panel-flat-light .glass-panel-shine-line {
+  display: none;
+}
+
+html[data-theme="light"] .glass-panel-flat-light.coach-kpi-tooltip {
+  background: var(--surface-2) !important;
+  box-shadow: var(--elev-2) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.coach-kpi-label {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .coach-kpi-label {
+  color: var(--text-tertiary);
+}
+
+.coach-kpi-value {
+  color: #ffffff;
+}
+
+html[data-theme="light"] .coach-kpi-value {
+  color: var(--text-primary);
+}
+
+.coach-kpi-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .coach-kpi-subtitle {
+  color: var(--text-secondary);
+}
+
+.coach-kpi-delta-up {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .coach-kpi-delta-up {
+  color: var(--success);
+}
+
+.coach-kpi-delta-down {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="light"] .coach-kpi-delta-down {
+  color: var(--danger);
+}
+
+.coach-kpi-info-btn {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.coach-kpi-info-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.coach-kpi-info-btn.is-open {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+html[data-theme="light"] .coach-kpi-info-btn {
+  color: var(--text-disabled);
+}
+
+html[data-theme="light"] .coach-kpi-info-btn:hover,
+html[data-theme="light"] .coach-kpi-info-btn.is-open {
+  color: var(--brand-primary);
+  background: var(--brand-subtle);
+}
+
+.coach-kpi-tooltip-title {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.coach-kpi-tooltip-body {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .coach-kpi-tooltip-title {
+  color: var(--text-tertiary);
+}
+
+html[data-theme="light"] .coach-kpi-tooltip-body {
+  color: var(--text-secondary);
+}
+
+.coach-mrr-title {
+  color: #ffffff;
+}
+
+html[data-theme="light"] .coach-mrr-title {
+  color: var(--text-primary);
+}
+
+.coach-mrr-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .coach-mrr-subtitle {
+  color: var(--text-secondary);
+}
+
+.coach-mrr-value {
+  color: #ffffff;
+}
+
+html[data-theme="light"] .coach-mrr-value {
+  color: var(--text-primary);
+}
+
+/* ── Coach app (/admin) typography baseline ───────────────────────────────── */
+.coach-app-typography {
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.coach-app-typography :is(h1, h2, h3, h4, h5, h6, p, span, label, button, input, select, textarea) {
+  font-family: inherit;
+}
+
+/* Números no app do personal seguem o mesmo padrão de KPI (DM Sans + tabular) */
+.coach-app-typography :is(.tabular-nums, [data-numeric], .font-kpi) {
+  font-family: var(--font-kpi), 'DM Sans', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: var(--numeric-features);
+}
+
+/* Inputs / selects / textareas do app do personal */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  min-height: 44px !important;
+  padding: 0 14px !important;
+  border: 1px solid var(--border-input) !important;
+  border-radius: 10px !important;
+  background: var(--surface-2) !important;
+  color: var(--text-primary) !important;
+  font-size: 16px !important;
+  font-weight: 500;
+  line-height: 1.2;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: all 150ms ease;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible {
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 1px rgba(43, 127, 255, 0.3) !important;
+  outline: none !important;
+}
+
+.coach-app-typography textarea {
+  min-height: 44px !important;
+  padding: 10px 14px !important;
+  line-height: 1.35;
+  resize: none;
+}
+
+.coach-app-typography select {
+  padding-right: 32px !important;
+  appearance: none;
+  cursor: pointer;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+)::placeholder {
+  color: var(--text-disabled) !important;
+  font-weight: 400;
+}
+
+.coach-mrr-badge {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .coach-mrr-badge {
+  color: var(--success);
+}
+
+.coach-mrr-empty {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+html[data-theme="light"] .coach-mrr-empty {
+  color: var(--text-tertiary);
 }
 

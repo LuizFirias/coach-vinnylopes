@@ -92,7 +92,7 @@ export function PrescricaoCardioModal({
       onClick={() => !submitting && onClose()}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] border border-card bg-surface-1 p-5 sm:rounded-[20px]"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] border-0 bg-surface-1 p-5 sm:rounded-[20px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">

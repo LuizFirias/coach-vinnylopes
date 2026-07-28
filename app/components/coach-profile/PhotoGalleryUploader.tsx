@@ -98,7 +98,7 @@ export function PhotoGalleryUploader({
                 setDragFrom(null);
               }}
               className={cn(
-                "relative aspect-square rounded-lg overflow-hidden border border-card bg-surface-2 group",
+                "relative aspect-square rounded-lg overflow-hidden border-0 bg-surface-2 group",
                 dragFrom === index && "opacity-60",
               )}
             >
@@ -136,7 +136,7 @@ export function PhotoGalleryUploader({
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "aspect-square rounded-lg border border-dashed border-border-default",
+              "aspect-square rounded-lg border border-dashed border-divider",
               "bg-surface-2 text-text-secondary hover:border-brand/40 hover:text-brand",
               "flex flex-col items-center justify-center gap-1 text-[10px] font-medium touch-manipulation",
               uploading && "opacity-50",

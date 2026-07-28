@@ -5,7 +5,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <MustChangePasswordGuard area="admin">
       <CoachSubscriptionGuard>
-        {children}
+        <div className="coach-app-typography">
+          {children}
+        </div>
       </CoachSubscriptionGuard>
     </MustChangePasswordGuard>
   );

@@ -1,5 +1,5 @@
 import './globals.css';
-import { Inter, JetBrains_Mono, Poppins, Montserrat } from 'next/font/google';
+import { Inter, JetBrains_Mono, Poppins, Montserrat, DM_Sans } from 'next/font/google';
 import Script from 'next/script';
 import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
@@ -57,6 +57,14 @@ const montserrat = Montserrat({
   variable: '--font-accent',
 });
 
+/** KPIs / valores monetários — geométrica, moderna (peso 700) */
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['700'],
+  variable: '--font-kpi',
+});
+
 export const metadata: Metadata = {
   title: 'Auronfit | High Performance',
   description: 'A Jornada Começa Agora - Ecossistema de Treinamento',
@@ -92,7 +100,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning className={`dark ${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable}`} data-theme="dark">
+    <html lang="pt-br" suppressHydrationWarning className={`dark ${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable} ${dmSans.variable}`} data-theme="dark">
       <body className="bg-surface-0 text-text-primary overflow-x-hidden min-h-screen" suppressHydrationWarning>
         <Script id="auron-theme-init" strategy="beforeInteractive">
           {themeInitScript.trim()}

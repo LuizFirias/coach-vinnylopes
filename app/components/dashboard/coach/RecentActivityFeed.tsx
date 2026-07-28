@@ -27,12 +27,12 @@ export function RecentActivityFeed({
 
   return (
     <div
-      className={`bg-surface-1 border border-card rounded-xl p-4 shadow-sm ${className ?? ""}`}
+      className={`rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] ${className ?? ""}`}
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-text-primary">Atividade recente</h3>
-          <p className="text-[11px] text-text-secondary mt-0.5">
+          <h3 className="text-[13px] font-bold text-text-primary">Atividade recente</h3>
+          <p className="text-[11px] text-text-tertiary mt-0.5">
             Atualizações dos seus alunos
           </p>
         </div>
@@ -45,9 +45,9 @@ export function RecentActivityFeed({
 
       <div className="flex flex-col">
         {visible.length === 0 ? (
-          <div className="py-8 text-center text-xs text-text-tertiary">
-            Nenhuma atividade recente encontrada.
-          </div>
+          <p className="text-[11px] text-text-disabled">
+            Nenhuma atividade ainda — aguardando atualizações dos alunos.
+          </p>
         ) : (
           visible.map((group, i) => (
             <Link
@@ -56,7 +56,7 @@ export function RecentActivityFeed({
               className="group flex items-start justify-between gap-3 border-b border-divider/50 py-3 last:border-b-0 -mx-2 px-2 rounded-lg hover:bg-surface-2/60 active:bg-surface-2 transition-colors min-h-[44px]"
             >
               <div className="flex gap-3 min-w-0 items-start">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-card bg-surface-2 text-text-secondary">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border-0 bg-surface-2 text-text-secondary">
                   <ActivityIcon type={group.events[0]?.type ?? "workout_completed"} />
                 </div>
                 <div className="flex flex-col min-w-0">

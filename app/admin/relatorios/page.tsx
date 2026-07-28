@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/authErrorHandler';
+import { Info } from '@phosphor-icons/react';
 import {
   BarChart,
   Bar,
@@ -14,6 +16,7 @@ import {
 } from 'recharts';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { cn } from '@/lib/utils/cn';
+import { GlassPanel, DASHBOARD_KPI_GLASS } from '@/components/ui/GlassPanel';
 
 function ChartActiveBar(props: any) {
   return (
@@ -42,10 +45,16 @@ function inicioDoCiclo(r: { data_inicio?: string | null; data_expiracao?: string
 }
 
 export default function RelatoriosPage() {
+  const receitaMesScrollRef = useRef<HTMLDivElement | null>(null);
+  const receitaAcumuladaCardRef = useRef<HTMLDivElement | null>(null);
+  const receitaAcumuladaInfoBtnRef = useRef<HTMLButtonElement | null>(null);
+  const receitaAcumuladaTooltipRef = useRef<HTMLDivElement | null>(null);
+  const [coachName, setCoachName] = useState('');
   const [totalAlunos, setTotalAlunos] = useState(0);
   const [ativos, setAtivos] = useState(0);
   const [inadimplentes, setInadimplentes] = useState(0);
   const [receitaTotal, setReceitaTotal] = useState<number | null>(null);
+  const [receitaAcumuladaAno, setReceitaAcumuladaAno] = useState<number | null>(null);
   const [alunosSemValor, setAlunosSemValor] = useState(0);
   const [receitaMensal, setReceitaMensal] = useState<number | null>(null);
   const [receitaMulti, setReceitaMulti] = useState<number | null>(null);
@@ -58,14 +67,19 @@ export default function RelatoriosPage() {
   const [adesaoAlimentarMedia, setAdesaoAlimentarMedia] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [receitaAcumuladaInfoOpen, setReceitaAcumuladaInfoOpen] = useState(false);
+  const [receitaAcumuladaTooltipPos, setReceitaAcumuladaTooltipPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   useEffect(() => {
     const fetchRelatorios = async () => {
       setLoading(true);
       setError(null);
       try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const coachId = authData?.user?.id;
+        const coachId = (await getSafeSession())?.user?.id;
 
         if (!coachId) { setError('Sessão inválida'); setLoading(false); return; }
 
@@ -74,12 +88,20 @@ export default function RelatoriosPage() {
 
         if (coachAlunosError) throw coachAlunosError;
 
+        const { data: coachProfile } = await supabaseClient
+          .from('profiles')
+          .select('full_name')
+          .eq('id', coachId)
+          .single();
+        setCoachName((coachProfile?.full_name ?? '').trim());
+
         const alunosIds = (coachAlunosData || []).map(ca => ca.aluno_id);
 
         if (alunosIds.length === 0) {
           setTotalAlunos(0); setAtivos(0); setInadimplentes(0);
           setReceitaTotal(0); setAlunosSemValor(0); setReceitaPorPlano({});
           setAlunosPorPlano({}); setReceitaMensal(0); setReceitaMulti(0);
+          setReceitaAcumuladaAno(0);
           setReceitaPorMes([]); setLoading(false); return;
         }
 
@@ -152,11 +174,24 @@ export default function RelatoriosPage() {
           .not('valor_plano', 'is', null)
           .in('id', alunosIds);
 
+        const { data: historicoFinanceiroData } = await supabaseClient
+          .from('aluno_planos_historico')
+          .select('valor_plano, registrado_em, status_pagamento')
+          .in('aluno_id', alunosIds)
+          .eq('status_pagamento', 'pago');
+
         const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
         const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
         const rangeStart = new Date(2026, 0, 1);
         const rangeEnd = new Date(hoje.getFullYear(), hoje.getMonth() + 6, 1);
         const mesMap: Record<string, number> = {};
+        const receitaPagamentosAcumulada = (historicoFinanceiroData || [])
+          .filter((row) => {
+            const d = new Date(row.registrado_em);
+            return !Number.isNaN(d.getTime()) && d.getFullYear() === anoAtual;
+          })
+          .reduce((acc, row) => acc + (row.valor_plano ?? 0), 0);
         const mesKeys: string[] = [];
         for (let d = new Date(rangeStart); d <= rangeEnd; d.setMonth(d.getMonth() + 1)) {
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -251,6 +286,7 @@ export default function RelatoriosPage() {
         setInadimplentes(inadimplenteCount || 0); setReceitaTotal(soma);
         setAlunosSemValor(semValor); setReceitaPorPlano(porPlano);
         setAlunosPorPlano(countsPlano); setReceitaMensal(totalMensal); setReceitaMulti(totalMulti);
+        setReceitaAcumuladaAno(receitaPagamentosAcumulada);
         setReceitaPorMes(mesList);
       } catch (err: any) {
         setError(err?.message || 'Erro ao carregar relatórios');
@@ -277,6 +313,85 @@ export default function RelatoriosPage() {
   };
 
   const fmt = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const primeiroNome =
+    coachName.trim().split(/\s+/).filter(Boolean)[0] || 'Coach';
+
+  useEffect(() => {
+    if (!receitaMesScrollRef.current || receitaPorMes.length === 0) return;
+
+    const barStep = 52; // acompanha o width usado no gráfico
+    let mesAtualIndex = 0;
+    for (let i = receitaPorMes.length - 1; i >= 0; i--) {
+      if (!receitaPorMes[i]?.futuro) {
+        mesAtualIndex = i;
+        break;
+      }
+    }
+
+    const targetCenter = mesAtualIndex * barStep + barStep / 2;
+    const targetScrollLeft = Math.max(
+      0,
+      targetCenter - receitaMesScrollRef.current.clientWidth / 2,
+    );
+    receitaMesScrollRef.current.scrollTo({ left: targetScrollLeft, behavior: 'smooth' });
+  }, [receitaPorMes]);
+
+  useEffect(() => {
+    if (!receitaAcumuladaInfoOpen) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      const clickedCard = receitaAcumuladaCardRef.current?.contains(target);
+      const clickedTooltip = receitaAcumuladaTooltipRef.current?.contains(target);
+      if (!clickedCard && !clickedTooltip) {
+        setReceitaAcumuladaInfoOpen(false);
+        setReceitaAcumuladaTooltipPos(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setReceitaAcumuladaInfoOpen(false);
+        setReceitaAcumuladaTooltipPos(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [receitaAcumuladaInfoOpen]);
+
+  useEffect(() => {
+    if (!receitaAcumuladaInfoOpen) return;
+
+    const updateTooltipPosition = () => {
+      const rect = receitaAcumuladaInfoBtnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = Math.min(320, window.innerWidth - 24);
+      const left = Math.min(
+        Math.max(12, rect.right - width),
+        window.innerWidth - width - 12,
+      );
+      setReceitaAcumuladaTooltipPos({
+        top: rect.bottom + 8,
+        left,
+        width,
+      });
+    };
+
+    updateTooltipPosition();
+    window.addEventListener('resize', updateTooltipPosition);
+    window.addEventListener('scroll', updateTooltipPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateTooltipPosition);
+      window.removeEventListener('scroll', updateTooltipPosition, true);
+    };
+  }, [receitaAcumuladaInfoOpen]);
 
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
@@ -284,10 +399,12 @@ export default function RelatoriosPage() {
 
         {/* Header */}
         <div className="mb-6 py-4 border-b border-divider">
-          <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight font-display">
-            Relatórios
+          <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-text-primary font-display">
+            Olá, <span className="text-brand">{primeiroNome}</span>
           </h1>
-          <p className="text-xs text-text-secondary mt-0.5">Financeiro e performance da consultoria</p>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            Aqui está o relatório financeiro da sua consultoria
+          </p>
         </div>
 
         {error && (
@@ -312,7 +429,7 @@ export default function RelatoriosPage() {
               ].map(item => (
                 <div
                   key={item.label}
-                  className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 h-20 flex flex-col justify-center"
+                  className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 h-20 flex flex-col justify-center"
                 >
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">{item.label}</p>
                   <p className={cn('text-xl font-bold mt-0.5', item.color)}>{item.value}</p>
@@ -322,14 +439,99 @@ export default function RelatoriosPage() {
 
             {/* Revenue + Distribution */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Receita Total */}
-              <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+              {/* Mobile: cards de receita arrastáveis */}
+              <div className="md:hidden -mx-1 overflow-x-auto overflow-y-visible px-1 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="flex gap-3 min-w-max">
+                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
+                    <div>
+                      <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
+                        Receita Total Bruta
+                      </p>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="coach-kpi-subtitle text-sm font-semibold">R$</span>
+                        <span className="coach-kpi-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none">
+                          {receitaTotal !== null ? receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                    {alunosSemValor > 0 ? (
+                      <div className="mt-3 p-2 bg-brand-subtle/50 border border-brand-border/20 rounded-lg flex items-center gap-2">
+                        <span className="text-xs">⚠️</span>
+                        <p className="text-[10px] text-text-secondary leading-tight">
+                          {alunosSemValor} alunos pagos sem valor definido no perfil.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[9px] text-text-tertiary mt-2 flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-text-disabled" />
+                        Baseado em status &quot;Pago&quot; e plano vigente
+                      </p>
+                    )}
+                  </div>
+
+                  <div
+                    ref={receitaAcumuladaCardRef}
+                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
+                  >
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-success/10 rounded-bl-[80px]" />
+                    {receitaAcumuladaInfoOpen && (
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 z-20 rounded-xl bg-black/25"
+                      />
+                    )}
+                    <div>
+                      <div className="relative mb-1 flex items-center justify-between gap-2">
+                        <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider">
+                          Faturamento anual
+                        </p>
+                        <button
+                          ref={receitaAcumuladaInfoBtnRef}
+                          type="button"
+                          aria-label="Como calculamos faturamento anual"
+                          aria-expanded={receitaAcumuladaInfoOpen}
+                          onClick={() =>
+                            setReceitaAcumuladaInfoOpen((open) => {
+                              if (open) setReceitaAcumuladaTooltipPos(null);
+                              return !open;
+                            })
+                          }
+                          className={cn(
+                            'coach-kpi-info-btn z-20 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all active:scale-95',
+                            receitaAcumuladaInfoOpen && 'is-open',
+                          )}
+                        >
+                          <Info size={14} weight="bold" />
+                        </button>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="coach-kpi-subtitle text-sm font-semibold">R$</span>
+                        <span className="coach-kpi-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none">
+                          {receitaAcumuladaAno !== null
+                            ? receitaAcumuladaAno.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            : '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-text-tertiary mt-2 flex items-center gap-1.5">
+                      <span className="w-1 h-1 rounded-full bg-success/80" />
+                      Soma de planos pagos e renovações registradas no ano
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop: receita total (mantém leitura original) */}
+              <div className="hidden md:flex rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex-col justify-between min-h-[140px]">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">Receita Total Bruta</p>
+                  <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
+                    Receita Total Bruta
+                  </p>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-sm font-sans font-semibold text-text-secondary">R$</span>
-                    <span className="text-2xl font-bold tracking-tight text-text-primary font-mono tabular-nums lining-nums leading-none">
+                    <span className="coach-kpi-subtitle text-sm font-semibold">R$</span>
+                    <span className="coach-kpi-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none">
                       {receitaTotal !== null ? receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
                     </span>
                   </div>
@@ -344,13 +546,13 @@ export default function RelatoriosPage() {
                 ) : (
                   <p className="text-[9px] text-text-tertiary mt-2 flex items-center gap-1.5">
                     <span className="w-1 h-1 rounded-full bg-text-disabled" />
-                    Baseado em status "Pago" e plano vigente
+                    Baseado em status &quot;Pago&quot; e plano vigente
                   </p>
                 )}
               </div>
 
               {/* Distribuição por plano */}
-              <div className="bg-surface-1 border border-card shadow-sm rounded-xl p-4 md:p-5 flex flex-col justify-between">
+              <div className="bg-surface-1 border-0 shadow-sm rounded-xl p-4 md:p-5 flex flex-col justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-3">Distribuição por Plano</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -358,7 +560,7 @@ export default function RelatoriosPage() {
                     { label: 'Trimestral', count: alunosPorPlano.trimestral || 0, color: 'bg-brand/60' },
                     { label: 'Semestral', count: alunosPorPlano.semestral || 0, color: 'bg-brand/30' },
                   ].map((item) => (
-                    <div key={item.label} className="flex flex-col justify-between p-2 bg-surface-2 border border-card rounded-lg">
+                    <div key={item.label} className="flex flex-col justify-between p-2 bg-surface-1 border-0 rounded-lg">
                       <div className="flex items-center gap-1.5">
                         <span className={cn('w-2 h-2 rounded-full shrink-0', item.color)} />
                         <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary truncate">{item.label}</span>
@@ -373,25 +575,32 @@ export default function RelatoriosPage() {
             </div>
 
             {/* Receita mensal — passado + projeção */}
-            <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5">
-              <div className="flex items-start justify-between mb-2 gap-4">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Projeção & Receita por Mês</p>
-                  <p className="text-[10px] text-text-tertiary mt-0.5">Distribuição proporcional por plano · desde Jan/26 + projeção de 6 meses</p>
+            <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
+              <div className="mb-2">
+                <div className="flex items-start justify-between gap-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary whitespace-nowrap">
+                    Projeção & Receita por Mês
+                  </p>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
+                      <span className="w-2 h-2 rounded bg-brand/30 border border-brand/40 inline-block" />
+                      Projeção
+                    </span>
+                    <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
+                      <span className="w-2 h-2 rounded bg-brand inline-block" />
+                      Realizado
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2.5 flex-shrink-0">
-                  <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
-                    <span className="w-2 h-2 rounded bg-brand inline-block" />
-                    Realizado
-                  </span>
-                  <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
-                    <span className="w-2 h-2 rounded bg-brand/30 border border-brand/40 inline-block" />
-                    Projeção
-                  </span>
-                </div>
+                <p className="mt-0.5 w-full text-[10px] text-text-tertiary">
+                  Distribuição proporcional por plano · desde Jan/26 + projeção de 6 meses
+                </p>
               </div>
               
-              <div className="overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div
+                ref={receitaMesScrollRef}
+                className="overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              >
                 <div style={{ width: `${receitaPorMes.length * 52}px`, height: '180px' }}>
                   <BarChart
                     width={receitaPorMes.length * 52}
@@ -428,7 +637,7 @@ export default function RelatoriosPage() {
 
             {/* Charts por tipo de plano */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
+              <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Faturamento Atual por Tipo de Plano (R$)</p>
                 <div className="flex-1 w-full mt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -455,7 +664,7 @@ export default function RelatoriosPage() {
                 </div>
               </div>
 
-              <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
+              <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Adesão por Categoria</p>
                 <div className="flex-1 w-full mt-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -476,7 +685,7 @@ export default function RelatoriosPage() {
             </div>
 
             {/* Financial summary */}
-            <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5">
+            <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-4">Resumo Financeiro Estratégico</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-3">
@@ -487,23 +696,23 @@ export default function RelatoriosPage() {
                       { label: 'Planos Trimestrais', val: receitaPorPlano.trimestral || 0 },
                       { label: 'Planos Semestrais', val: receitaPorPlano.semestral || 0 },
                     ].map(item => (
-                      <div key={item.label} className="flex justify-between items-center p-2.5 bg-surface-2 border border-card rounded-lg">
+                      <div key={item.label} className="flex justify-between items-center p-2.5 bg-surface-1 border-0 rounded-lg">
                         <span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide">{item.label}</span>
-                        <span className="text-xs font-bold text-text-primary font-mono tabular-nums lining-nums">{fmt(item.val)}</span>
+                        <span className="text-xs font-bold text-text-primary font-kpi tabular-nums lining-nums">{fmt(item.val)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary pl-2 border-l-2 border-card leading-none">Previsão de Fluxo</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary pl-2 border-l-2 border-divider leading-none">Previsão de Fluxo</p>
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center p-2.5 bg-brand-subtle/40 border border-brand-border/20 rounded-lg">
                       <span className="text-[10px] font-bold text-brand uppercase tracking-wide">Recorrência Mensal</span>
-                      <span className="text-sm font-bold text-brand font-mono tabular-nums lining-nums">{fmt(receitaMensal ?? 0)}</span>
+                      <span className="text-sm font-bold text-brand font-kpi tabular-nums lining-nums">{fmt(receitaMensal ?? 0)}</span>
                     </div>
-                    <div className="flex justify-between items-center p-2.5 bg-surface-2 border border-card rounded-lg">
+                    <div className="flex justify-between items-center p-2.5 bg-surface-1 border-0 rounded-lg">
                       <span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide">Receita LTV (Planos Longos)</span>
-                      <span className="text-xs font-bold text-text-primary font-mono tabular-nums lining-nums">{fmt(receitaMulti ?? 0)}</span>
+                      <span className="text-xs font-bold text-text-primary font-kpi tabular-nums lining-nums">{fmt(receitaMulti ?? 0)}</span>
                     </div>
                   </div>
                 </div>
@@ -511,28 +720,57 @@ export default function RelatoriosPage() {
             </div>
 
             {/* Nutrition summary */}
-            <div className="bg-surface-1 border border-card shadow-sm rounded-lg p-4 md:p-5">
+            <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-4">Acompanhamento Nutricional</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Adesão Alimentar Média</span>
-                  <span className="text-base font-bold text-success font-mono mt-1">{adesaoAlimentarMedia}%</span>
+                  <span className="text-base font-bold text-success font-kpi tabular-nums lining-nums mt-1">{adesaoAlimentarMedia}%</span>
                 </div>
-                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Planos Digitais Ativos</span>
-                  <span className="text-base font-bold text-text-primary font-mono mt-1">{planoDigitalAtivos}</span>
+                  <span className="text-base font-bold text-text-primary font-kpi tabular-nums lining-nums mt-1">{planoDigitalAtivos}</span>
                 </div>
-                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Alunos Sem Plano</span>
-                  <span className="text-base font-bold text-warning font-mono mt-1">{alunosSemPlano}</span>
+                  <span className="text-base font-bold text-warning font-kpi tabular-nums lining-nums mt-1">{alunosSemPlano}</span>
                 </div>
-                <div className="p-3 bg-surface-2 border border-card rounded-lg flex flex-col justify-center">
+                <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Check-ins no Mês</span>
-                  <span className="text-base font-bold text-brand font-mono mt-1">{checkinsNoPeriodo}</span>
+                  <span className="text-base font-bold text-brand font-kpi tabular-nums lining-nums mt-1">{checkinsNoPeriodo}</span>
                 </div>
               </div>
             </div>
             
+          </div>
+        )}
+
+        {receitaAcumuladaInfoOpen && receitaAcumuladaTooltipPos && (
+          <div
+            ref={receitaAcumuladaTooltipRef}
+            className="fixed z-[120]"
+            style={{
+              top: receitaAcumuladaTooltipPos.top,
+              left: receitaAcumuladaTooltipPos.left,
+              width: receitaAcumuladaTooltipPos.width,
+            }}
+          >
+            <GlassPanel
+              role="tooltip"
+              variant={DASHBOARD_KPI_GLASS}
+              shine="subtle"
+              flatInLight
+              className="coach-kpi-tooltip"
+            >
+              <div className="px-3 py-2.5">
+                <p className="coach-kpi-tooltip-title text-[10px] font-semibold uppercase tracking-wider mb-1">
+                  Faturamento anual
+                </p>
+                <p className="coach-kpi-tooltip-body text-[11px] leading-relaxed">
+                  Soma dos registros de planos com status pago no histórico financeiro do aluno, incluindo novas contratações e renovações do ano corrente.
+                </p>
+              </div>
+            </GlassPanel>
           </div>
         )}
       </div>
