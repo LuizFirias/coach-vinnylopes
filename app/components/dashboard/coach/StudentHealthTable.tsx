@@ -60,11 +60,8 @@ export function StudentHealthTable({
   const rows = students.slice(0, limit);
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-0.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-      <div className="flex items-center justify-between gap-4 mb-1.5">
-        <h3 className="text-sm font-semibold text-text-primary">
-          Visão geral dos alunos
-        </h3>
+    <div className="rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-0.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+      <div className="flex items-center justify-end gap-4 mb-1.5">
         <Link
           href="/admin/alunos"
           className="inline-flex items-center gap-1 text-brand text-xs font-semibold hover:underline min-h-[44px]"
@@ -105,7 +102,7 @@ export function StudentHealthTable({
                       <StatusPill isActive={isActive} label={label} />
                     </td>
                     <td className="py-2.5 text-xs text-text-secondary capitalize">
-                      {aluno.tipo_plano || "Sem plano"}
+                      {aluno.tipo_plano?.replace(/_/g, " ") || "Sem plano"}
                     </td>
                     <td className="py-2.5 text-xs text-text-secondary">
                       {aluno.ultimo_checkin
@@ -130,7 +127,7 @@ export function StudentHealthTable({
           </table>
         </div>
       ) : (
-        <div>
+        <div className="divide-y divide-[color:var(--list-row-divider)]">
           {rows.map((aluno) => {
             const expiration = aluno.data_expiracao ? new Date(aluno.data_expiracao) : null;
             const { isActive, label } = getStudentStatus(aluno, today);
@@ -150,7 +147,7 @@ export function StudentHealthTable({
                 }
                 meta={
                   <>
-                    <span className="capitalize">{aluno.tipo_plano || "Sem plano"}</span>
+                    <span className="capitalize">{aluno.tipo_plano?.replace(/_/g, " ") || "Sem plano"}</span>
                     <span className="text-text-tertiary">•</span>
                     <span>
                       {aluno.ultimo_checkin

@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils/cn";
 import type { WorkoutPlan } from "./types";
 import { formatLastExecution } from "./workoutFormat";
 import { WorkoutStatusBadge } from "./WorkoutCells";

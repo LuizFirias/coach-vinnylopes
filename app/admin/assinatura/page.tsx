@@ -175,7 +175,7 @@ function PriceHero({
       </span>
       <span
         className={cn(unitCls, "font-medium ml-1")}
-        style={{ color: dimmed ? "#4b5563" : "#2b7fff" }}
+        style={{ color: dimmed ? "#4b5563" : "#9333ea" }}
       >
         {unit}
       </span>
@@ -280,15 +280,15 @@ const BRICK_VISUAL = {
   style: {
     theme: "dark",
     customVariables: {
-      baseColor: "#2b7fff",
+      baseColor: "#9333ea",
       buttonTextColor: "#ffffff",
       formBackgroundColor: "transparent",
       inputBackgroundColor: "#111827",
       textPrimaryColor: "#ffffff",
       textSecondaryColor: "#7a8aab",
-      outlinePrimaryColor: "#2b7fff",
+      outlinePrimaryColor: "#9333ea",
       outlineSecondaryColor: "#282828",
-      baseColorFirstVariant: "#5a9fff",
+      baseColorFirstVariant: "#a855f7",
       // Fundo de listas/dropdowns — evita texto preto ilegível no dark
       baseColorSecondVariant: "#1e1e1e",
       errorColor: "#e05555",
@@ -835,7 +835,7 @@ export default function AssinaturaPage() {
               isSelected
                 ? isTest
                   ? "text-[#e05555] border-[#e05555]"
-                  : "text-white border-[#2b7fff]"
+                  : "text-white border-[#9333ea]"
                 : isTest
                   ? "text-[#e05555]/70 border-transparent hover:text-[#e05555]"
                   : "text-[#7a8aab] border-transparent hover:text-white",
@@ -866,7 +866,7 @@ export default function AssinaturaPage() {
               "flex-1 py-2.5 px-2 text-center transition-colors relative",
               idx > 0 && "border-l border-divider",
               active
-                ? "bg-[#111111] text-white z-1 ring-1 ring-[#2b7fff] ring-inset"
+                ? "bg-[#111111] text-white z-1 ring-1 ring-[#9333ea] ring-inset"
                 : "bg-transparent text-[#7a8aab] hover:text-white",
             )}
           >
@@ -1162,7 +1162,7 @@ export default function AssinaturaPage() {
                               period: selectedPeriod,
                             })
                           }
-                          className="mt-6 w-full flex items-center justify-between px-5 py-3.5 rounded-md text-sm font-bold text-white bg-[#2b7fff] hover:bg-[#5a9fff] transition-colors"
+                          className="mt-6 w-full flex items-center justify-between px-5 py-3.5 rounded-md text-sm font-bold text-white bg-[#9333ea] hover:bg-[#a855f7] transition-colors"
                         >
                           <span>Assinar {selectedPlan.label}</span>
                           <span>{selectedPlan.billing.priceDisplay}</span>

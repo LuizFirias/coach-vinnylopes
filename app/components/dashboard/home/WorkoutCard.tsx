@@ -9,7 +9,7 @@ type TreinoStatus = 'pendente' | 'concluido' | 'off' | 'sem-plano';
 
 const workoutCardBackground = {
   background:
-    'linear-gradient(180deg, rgba(43, 127, 255, 0.14) 0%, rgba(43, 127, 255, 0.22) 100%), linear-gradient(180deg, var(--dash-hero-from) 0%, var(--dash-hero-to) 100%)',
+    'linear-gradient(180deg, rgba(147, 51, 234, 0.14) 0%, rgba(147, 51, 234, 0.22) 100%), linear-gradient(180deg, var(--dash-hero-from) 0%, var(--dash-hero-to) 100%)',
 };
 
 interface WorkoutCardProps {
@@ -134,7 +134,7 @@ export function WorkoutCard({
           id="btn-iniciar-treino-dashboard"
           className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-bold text-white transition-opacity active:opacity-90"
           style={{
-            background: 'linear-gradient(90deg, #2563EB 0%, #1D4ED8 100%)',
+            background: 'linear-gradient(90deg, #9333ea 0%, #7e22ce 100%)',
           }}
         >
           <Barbell className="h-4 w-4" weight="fill" />

@@ -27,21 +27,15 @@ export function RecentActivityFeed({
 
   return (
     <div
-      className={`rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] ${className ?? ""}`}
+      className={`rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] ${className ?? ""}`}
     >
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div>
-          <h3 className="text-[13px] font-bold text-text-primary">Atividade recente</h3>
-          <p className="text-[11px] text-text-tertiary mt-0.5">
-            Atualizações dos seus alunos
-          </p>
-        </div>
-        {showViewAll && activities.length > limit && (
+      {showViewAll && activities.length > limit && (
+        <div className="flex justify-end mb-3">
           <Link href="/admin/alunos" className="text-xs font-semibold text-brand hover:text-brand-hover">
             Ver tudo →
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="flex flex-col">
         {visible.length === 0 ? (

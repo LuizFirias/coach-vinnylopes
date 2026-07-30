@@ -267,19 +267,20 @@ export default function Sidebar() {
       {/* Sidebar for Desktop */}
       <aside
         style={{ width: isExpanded ? '240px' : '80px' }}
-        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r border-divider flex-col py-3 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300 overflow-hidden"
+        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r border-border-subtle flex-col py-3 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300 overflow-hidden"
       >
         <div className="flex flex-col items-center gap-2 mb-3 px-2 relative shrink-0">
           <Link href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
             <Image
-              src="/LOGO-AURON.webp"
+              src="/images/logo-elo.webp"
               alt="Auronfit"
-              width={isExpanded ? 40 : 36}
-              height={isExpanded ? 40 : 36}
+              width={isExpanded ? 56 : 48}
+              height={isExpanded ? 56 : 48}
               className={cn(
                 "object-contain group-hover:scale-105 transition-transform",
-                isExpanded ? "w-10 h-10" : "w-9 h-9"
+                isExpanded ? "w-14 h-14" : "w-12 h-12"
               )}
+              priority
             />
           </Link>
 
@@ -331,23 +332,16 @@ export default function Sidebar() {
         <div className="mt-auto shrink-0">
           {showPlanIndicator && planIndicator && (
             <div
-              style={{
-                fontSize: 11,
-                color: planIndicator.isActive ? '#3a3a3a' : '#e05555',
-                padding: '12px 16px',
-                borderTop: '1px solid #1a1a1a',
-              }}
+              className={cn(
+                "text-[11px] px-4 py-3 border-t border-border-subtle",
+                planIndicator.isActive ? "text-text-tertiary" : "text-danger",
+              )}
             >
               {planIndicator.label} · {planIndicator.studentCount}/{planIndicator.studentLimit} alunos
             </div>
           )}
 
-          <div
-            className={cn(
-              "pt-2.5 pb-1 flex flex-col gap-1.5",
-              !showPlanIndicator && "border-t border-divider"
-            )}
-          >
+          <div className="pt-2.5 pb-1 flex flex-col gap-1.5 border-t border-border-subtle">
             {isExpanded && user && (
               <div className="flex flex-col min-w-0 px-2 py-0.5">
                 <span className="text-[8px] font-semibold text-text-tertiary uppercase tracking-[0.06em] mb-0.5">
@@ -396,15 +390,15 @@ export default function Sidebar() {
       </div>
 
       {/* Drawer Menu - Mobile Only */}
-      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-divider ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
+      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
         <div className="p-6 pb-4 flex items-center justify-between">
-          <div className="w-[66px] h-[66px] rounded-lg flex items-center justify-center overflow-hidden">
+          <div className="w-[72px] h-[72px] rounded-lg flex items-center justify-center overflow-hidden">
             <Image
-              src="/LOGO-AURON.webp"
+              src="/images/logo-elo.webp"
               alt="Auronfit"
-              width={54}
-              height={54}
-              className="object-contain w-[54px] h-[54px]"
+              width={64}
+              height={64}
+              className="object-contain w-16 h-16"
               priority
             />
           </div>

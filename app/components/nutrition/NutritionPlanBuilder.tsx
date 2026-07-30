@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { 
   Plus, Trash, ArrowLeft, FloppyDisk, CheckCircle, 
-  MagnifyingGlass, Barbell, Info, Calendar, Sparkle, Note, Copy, CaretRight
+  MagnifyingGlass, Barbell, Info, Calendar, Copy, CaretRight
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -445,14 +445,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           >
             <ArrowLeft size={16} />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-              {initialPlanData ? 'Editar Plano Alimentar' : 'Novo Plano Alimentar Digital'}
-            </h1>
-            <p className="text-xs text-text-secondary">
-              Monte uma rotina alimentar interativa e com acompanhamento de macros.
-            </p>
-          </div>
         </div>
 
         {/* Feedback Messages */}
@@ -477,11 +469,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
             
             {/* CARD 1: Dados Básicos */}
             <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2 flex items-center gap-2">
-                <Sparkle size={14} className="text-brand" />
-                Dados do Plano
-              </h2>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
                   label="Aluno destinatário"
@@ -573,11 +560,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
             {/* CARD 2: Metas Nutricionais */}
             <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2 flex items-center gap-2">
-                <Sparkle size={14} className="text-brand" />
-                Metas Nutricionais Diárias
-              </h2>
-
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Kcal Alvo</label>
@@ -628,12 +610,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
             {/* CARD 3: Refeições */}
             <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-divider/50 pb-2">
-                <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
-                  <Note size={14} className="text-brand" />
-                  Refeições Prescritas
-                </h2>
-                
+              <div className="flex items-center justify-end border-b border-divider/50 pb-2">
                 {meals.length === 0 && (
                   <Button
                     onClick={handleCreateDefaultMeals}
@@ -1000,10 +977,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
             
             {/* CARD Resumo Lateral */}
             <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2">
-                Resumo do Planejado
-              </h2>
-
               <div className="flex flex-col gap-3 font-mono">
                 {/* Calorias */}
                 <div>

@@ -33,8 +33,8 @@ html[data-theme="light"] select option {
 select option:hover,
 select option:focus,
 select option:checked {
-  background-color: rgba(43, 127, 255, 0.12);
-  color: #2b7fff;
+  background-color: rgba(147, 51, 234, 0.12);
+  color: #9333ea;
 }
 
 @theme inline {
@@ -107,7 +107,7 @@ select option:checked {
   --z-100: 100;
 
   --shadow-neon-red: 0 0 15px rgba(192, 57, 43, 0.3);
-  --shadow-neon-brand: 0 0 15px rgba(43, 127, 255, 0.3);
+  --shadow-neon-brand: 0 0 15px rgba(147, 51, 234, 0.3);
 }
 
 /* Anel de foco em botões/links — NÃO em campos de texto (evita contorno interno) */
@@ -649,28 +649,28 @@ html[data-theme="light"] .dashboard-mobile-toolbar.is-surface {
   --dash-text-muted: #9ca3af;
   --dash-text-subtle: #6b7280;
   --dash-progress-track: #1f2937;
-  --dash-today-bg: #1d3461;
-  --dash-selected-day-bg: #1a2336;
+  --dash-today-bg: rgba(147, 51, 234, 0.15);
+  --dash-selected-day-bg: rgba(147, 51, 234, 0.08);
   background-color: var(--dash-bg);
   color: var(--dash-text);
 }
 
 html[data-theme="light"] .dashboard-aluno {
   --dash-bg: #f1f5f9;
-  --dash-hero-from: #dbeafe;
-  --dash-hero-to: #bfdbfe;
+  --dash-hero-from: #faf5ff;
+  --dash-hero-to: #f3e8ff;
   --dash-card: #ffffff;
   --dash-card-border: transparent;
   --dash-curve: #f1f5f9;
-  --dash-hero-chip: rgba(43, 127, 255, 0.08);
-  --dash-habit-bg: rgba(43, 127, 255, 0.06);
+  --dash-hero-chip: rgba(147, 51, 234, 0.08);
+  --dash-habit-bg: rgba(147, 51, 234, 0.06);
   --dash-day-card-bg: #ffffff;
   --dash-text: #0f172a;
   --dash-text-muted: #64748b;
   --dash-text-subtle: #94a3b8;
   --dash-progress-track: #e2e8f0;
-  --dash-today-bg: #dbeafe;
-  --dash-selected-day-bg: #eff6ff;
+  --dash-today-bg: rgba(147, 51, 234, 0.15);
+  --dash-selected-day-bg: rgba(147, 51, 234, 0.08);
 }
 
 .dashboard-card {
@@ -682,11 +682,11 @@ html[data-theme="light"] .dashboard-aluno {
 .dashboard-hero-chip {
   background-color: transparent;
   border: 1px solid transparent;
-  color: #93c5fd;
+  color: #c084fc;
 }
 
 html[data-theme="light"] .dashboard-hero-chip {
-  color: #2563eb;
+  color: #9333ea;
 }
 
 .dashboard-habit-bar {
@@ -715,7 +715,7 @@ html[data-theme="light"] .dashboard-hero-chip {
 #mp-card-brick option:checked,
 #mp-card-brick option:hover,
 #mp-card-brick option:focus {
-  background-color: #2b7fff !important;
+  background-color: #9333ea !important;
   color: #ffffff !important;
 }
 
@@ -740,7 +740,7 @@ html[data-theme="light"] .dashboard-hero-chip {
 #mp-card-brick [role="option"][aria-selected="true"],
 #mp-card-brick [role="menuitem"]:hover,
 #mp-card-brick li[role="option"]:hover {
-  background-color: rgba(43, 127, 255, 0.22) !important;
+  background-color: rgba(147, 51, 234, 0.22) !important;
   color: #ffffff !important;
 }
 
@@ -751,7 +751,7 @@ html[data-theme="light"] .dashboard-hero-chip {
   margin-top: 28px !important;
 }
 
-/* ── Coach dashboard KPI — glass no dark, surface-1 no light (ações prioritárias) ── */
+/* ── Coach dashboard KPI — glass colorido em dark e light; tipografia clara no glass ── */
 html[data-theme="light"] .glass-panel-flat-light {
   background: var(--surface-1) !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
@@ -775,6 +775,7 @@ html[data-theme="light"] .glass-panel-flat-light.coach-kpi-tooltip {
   color: rgba(255, 255, 255, 0.75);
 }
 
+/* Relatórios / cards surface no light: texto escuro */
 html[data-theme="light"] .coach-kpi-label {
   color: var(--text-tertiary);
 }
@@ -875,6 +876,63 @@ html[data-theme="light"] .coach-mrr-value {
   color: var(--text-primary);
 }
 
+/* KPIs com glass colorido forte: mantêm tipografia clara também no light */
+html[data-theme="light"] .coach-kpi-card .coach-kpi-label,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-tooltip-title {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-value,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn:hover,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn.is-open {
+  color: #ffffff;
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-subtitle,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-tooltip-body {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-delta-up {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-delta-down {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn:hover,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn.is-open {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+html[data-theme="light"] .coach-mrr-card .coach-mrr-title,
+html[data-theme="light"] .coach-mrr-card .coach-mrr-value {
+  color: #ffffff;
+}
+
+html[data-theme="light"] .coach-mrr-card .coach-mrr-subtitle,
+html[data-theme="light"] .coach-mrr-card .coach-mrr-badge {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .coach-mrr-card .coach-mrr-empty {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Tooltip glass (dashboard / relatórios) — texto claro sobre roxo */
+html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-kpi-tooltip-title {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-kpi-tooltip-body {
+  color: rgba(255, 255, 255, 0.92);
+}
+
 /* ── Coach app (/admin) typography baseline ───────────────────────────────── */
 .coach-app-typography {
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -922,7 +980,7 @@ html[data-theme="light"] .coach-mrr-value {
   select
 ):focus-visible {
   border-color: var(--brand-primary) !important;
-  box-shadow: 0 0 0 1px rgba(43, 127, 255, 0.3) !important;
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.3) !important;
   outline: none !important;
 }
 
@@ -947,19 +1005,95 @@ html[data-theme="light"] .coach-mrr-value {
   font-weight: 400;
 }
 
+/* Controles de filtro (busca/selects das telas de listagem) — escapam do
+   baseline acima; o visual vem dos tokens --filter-* (theme-aware).
+   O seletor repete a cadeia de :not() do baseline para vencê-lo em
+   especificidade (ambos usam !important). */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+).filter-control {
+  background: var(--filter-bg) !important;
+  border: 1px solid var(--filter-border) !important;
+  color: var(--filter-text) !important;
+  font-size: 13px !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).filter-control::placeholder {
+  color: var(--filter-placeholder) !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+).filter-control:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+).filter-control:focus-visible {
+  background: var(--filter-bg-focus) !important;
+  border-color: var(--filter-border-focus) !important;
+  box-shadow: 0 0 0 1px var(--filter-ring) !important;
+}
+
+/* Busca com ícone de lupa à esquerda */
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control-search {
+  padding-left: 38px !important;
+}
+
+/* Busca compacta (ex.: lista de alunos) — foge do min-height 44px do baseline */
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact {
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact.filter-control-search {
+  padding-left: 30px !important;
+}
+
+/* iOS dá zoom ao focar inputs < 16px — no mobile a fonte volta a 16px */
+@media (max-width: 767px) {
+  .coach-app-typography :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+    textarea,
+    select
+  ).filter-control {
+    font-size: 16px !important;
+  }
+
+  .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact {
+    min-height: 32px !important;
+    height: 32px !important;
+    font-size: 16px !important;
+  }
+}
+
 .coach-mrr-badge {
   color: rgba(255, 255, 255, 0.75);
 }
 
-html[data-theme="light"] .coach-mrr-badge {
-  color: var(--success);
-}
-
-.coach-mrr-empty {
+html[data-theme="light"] .coach-mrr-card .coach-mrr-empty {
   color: rgba(255, 255, 255, 0.6);
 }
 
-html[data-theme="light"] .coach-mrr-empty {
-  color: var(--text-tertiary);
+/* Eixos e grid do gráfico MRR — força ticks/linhas legíveis no glass */
+.coach-mrr-card .recharts-cartesian-axis-tick text {
+  fill: rgba(255, 255, 255, 0.88) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+.coach-mrr-card .recharts-cartesian-grid-horizontal line {
+  stroke: rgba(255, 255, 255, 0.2) !important;
 }
 

@@ -180,7 +180,7 @@ export function FichasKanban({
             key={ficha.id}
             className={cn(
               "flex flex-col rounded-xl border bg-surface-1 transition-colors",
-              isColOver ? "border-[#2b7fff]/50" : "border-transparent",
+              isColOver ? "border-[#9333ea]/50" : "border-transparent",
               dragColId === ficha.id && "opacity-60",
             )}
             onDragOver={(e) => {
@@ -305,7 +305,7 @@ export function FichasKanban({
                     className={cn(
                       "flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[#191919] cursor-grab active:cursor-grabbing",
                       isDragging && "opacity-40",
-                      isOverHere && "ring-1 ring-[#2b7fff]/40",
+                      isOverHere && "ring-1 ring-[#9333ea]/40",
                     )}
                   >
                     <DotsSixVertical

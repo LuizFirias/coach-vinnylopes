@@ -198,7 +198,7 @@ export function WeekCalendar({
                 ],
                 !dia.isHoje && isSelected && [
                   'bg-[var(--dash-selected-day-bg)]',
-                  'border border-[rgba(43,127,255,0.2)]',
+                  'border border-[rgba(147, 51, 234,0.2)]',
                 ],
                 isEditing && isSelected && 'ring-1 ring-brand/50',
               )}

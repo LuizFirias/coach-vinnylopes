@@ -38,7 +38,7 @@ export function CardioKpis({
 
       <div className="rounded-[20px] border-0 bg-[var(--dash-card,#111827)] p-4">
         <p className={KPI_LABEL}>
-          <span className="inline-block h-1.5 w-1.5 rounded-[3px] bg-[#2b7fff]" />
+          <span className="inline-block h-1.5 w-1.5 rounded-[3px] bg-[#9333ea]" />
           Sessões
         </p>
         <p className={KPI_VALUE}>

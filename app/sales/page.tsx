@@ -50,7 +50,7 @@ export default function RootPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 text-[#FAFAFA] font-sans antialiased selection:bg-[#2563EB]/30 selection:text-white">
+    <div className="min-h-screen bg-surface-0 text-[#FAFAFA] font-sans antialiased selection:bg-[#9333ea]/30 selection:text-white">
       
       {/* NAVBAR */}
       <nav className={`fixed top-0 left-0 right-0 z-50 h-[72px] transition-all duration-300 flex items-center ${
@@ -94,7 +94,7 @@ export default function RootPage() {
             {!loading && user ? (
               <Link 
                 href={getDashboardRoute()}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] hover:from-[#3b82f6] hover:to-[#2563EB] text-white text-xs font-semibold px-5 py-2.5 rounded-lg shadow-md shadow-[#2563EB]/20 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
+                className="flex items-center gap-1.5 bg-gradient-to-r from-[#9333ea] to-[#7e22ce] hover:from-[#a855f7] hover:to-[#9333ea] text-white text-xs font-semibold px-5 py-2.5 rounded-lg shadow-md shadow-[#9333ea]/20 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
               >
                 Acessar Painel
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -109,7 +109,7 @@ export default function RootPage() {
                 </Link>
                 <Link 
                   href="/signup"
-                  className="bg-gradient-to-r from-[#2563EB] to-[#1d4ed8] hover:from-[#3b82f6] hover:to-[#2563EB] text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-md shadow-[#2563EB]/20 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
+                  className="bg-gradient-to-r from-[#9333ea] to-[#7e22ce] hover:from-[#a855f7] hover:to-[#9333ea] text-white text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-md shadow-[#9333ea]/20 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
                 >
                   Começar Grátis
                 </Link>
@@ -123,7 +123,7 @@ export default function RootPage() {
       <section className="relative min-h-screen pt-[72px] flex items-center bg-gradient-to-b from-surface-1 via-surface-1 to-surface-0 overflow-hidden">
         
         {/* Glows decorativos - Hidden on mobile to prevent performance lag */}
-        <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[#2563EB]/10 rounded-full blur-[150px] pointer-events-none hidden md:block" />
+        <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[#9333ea]/10 rounded-full blur-[150px] pointer-events-none hidden md:block" />
         <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-[#10B981]/5 rounded-full blur-[150px] pointer-events-none hidden md:block" />
 
         {/* Decorative Lines pattern on right edge */}
@@ -137,15 +137,15 @@ export default function RootPage() {
           
           {/* Hero Text */}
           <div className="space-y-8 max-w-xl text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2563EB]/15 border border-[#2563EB]/30">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#9333ea]/15 border border-[#9333ea]/30">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping" />
-              <span className="text-[11px] font-semibold text-[#3b82f6] uppercase tracking-wider">Consultoria Esportiva Inteligente</span>
+              <span className="text-[11px] font-semibold text-[#a855f7] uppercase tracking-wider">Consultoria Esportiva Inteligente</span>
             </div>
             
             <h1 className="font-display font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.08] not-italic">
               Seu treino,<br />
               seus dados<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3b82f6] via-[#2563EB] to-[#10B981]">em foco.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#a855f7] via-[#9333ea] to-[#10B981]">em foco.</span>
             </h1>
             
             <p className="font-sans text-base sm:text-lg text-text-secondary leading-relaxed max-w-lg">
@@ -156,7 +156,7 @@ export default function RootPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <Link 
                   href="/signup"
-                  className="bg-[#2563EB] hover:bg-[#3b82f6] text-white text-sm font-semibold px-8 py-4 rounded-xl shadow-lg shadow-[#2563EB]/30 transition-all duration-300 text-center hover:-translate-y-1 hover:shadow-xl active:translate-y-0"
+                  className="bg-[#9333ea] hover:bg-[#a855f7] text-white text-sm font-semibold px-8 py-4 rounded-xl shadow-lg shadow-[#9333ea]/30 transition-all duration-300 text-center hover:-translate-y-1 hover:shadow-xl active:translate-y-0"
                 >
                   Comece Agora Grátis
                 </Link>
@@ -177,7 +177,7 @@ export default function RootPage() {
           {/* Hero Phone Mockups - Left slot only as requested */}
           <div className="relative flex justify-center items-center h-[420px] sm:h-[480px] lg:h-[620px] w-full select-none">
             {/* Background geometric aura - Hidden on mobile */}
-            <div className="absolute w-[400px] h-[400px] bg-gradient-to-tr from-[#2563EB]/20 to-[#10B981]/20 rounded-full blur-[80px] -z-10 hidden md:block" />
+            <div className="absolute w-[400px] h-[400px] bg-gradient-to-tr from-[#9333ea]/20 to-[#10B981]/20 rounded-full blur-[80px] -z-10 hidden md:block" />
 
             {/* Mockup Container Coach (Left rotated) - Hidden on mobile */}
             <div className="hidden sm:block absolute left-[5%] md:left-[15%] lg:left-[8%] top-[10%] transform -rotate-[6deg] hover:rotate-0 hover:scale-102 hover:z-20 transition-all duration-500">
@@ -187,10 +187,10 @@ export default function RootPage() {
                 <div className="absolute top-3 right-8 w-2 h-2 bg-[#10B981]/80 rounded-full animate-pulse" />
                 {/* Mockup area */}
                 <div className="flex-1 w-full h-full flex flex-col justify-center items-center text-[#71717A] px-2">
-                  <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 border border-[#2563EB]/30 flex items-center justify-center mb-3">
-                    <User className="w-5 h-5 text-[#2563EB]" />
+                  <div className="w-10 h-10 rounded-full bg-[#9333ea]/10 border border-[#9333ea]/30 flex items-center justify-center mb-3">
+                    <User className="w-5 h-5 text-[#9333ea]" />
                   </div>
-                  <span className="text-[10px] font-bold tracking-widest text-[#2563EB] uppercase mb-1">Painel do Personal</span>
+                  <span className="text-[10px] font-bold tracking-widest text-[#9333ea] uppercase mb-1">Painel do Personal</span>
                   <p className="text-[9px] text-[#52525B] leading-relaxed max-w-[160px]">
                     Área do Mockup Coach. As imagens do painel serão inseridas manualmente aqui.
                   </p>
@@ -205,7 +205,7 @@ export default function RootPage() {
               <div className="w-[200px] sm:w-[270px] h-[400px] sm:h-[540px] border-[8px] sm:border-[10px] border-zinc-800 bg-zinc-950 rounded-[30px] sm:rounded-[36px] shadow-2xl relative flex flex-col justify-center items-center text-center p-4">
                 {/* Speaker pill */}
                 <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-16 sm:w-20 h-3 sm:h-3.5 bg-zinc-800 rounded-full" />
-                <div className="absolute top-3 right-8 w-2 h-2 bg-[#2563EB]/80 rounded-full" />
+                <div className="absolute top-3 right-8 w-2 h-2 bg-[#9333ea]/80 rounded-full" />
                 {/* Mockup area */}
                 <div className="flex-1 w-full h-full flex flex-col justify-center items-center text-[#71717A] px-2">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#10B981]/10 border border-[#10B981]/30 flex items-center justify-center mb-3">
@@ -276,14 +276,14 @@ export default function RootPage() {
           {/* Column CENTER: Image Mockup Placeholder */}
           <div className="flex justify-center items-center lg:py-6">
             <div className="w-full max-w-[320px] sm:max-w-[360px] aspect-[4/5] bg-gradient-to-b from-surface-2 to-surface-1 border border-border-subtle rounded-2xl p-6 shadow-2xl relative flex flex-col justify-between overflow-hidden group">
-              <div className="absolute inset-0 bg-[#2563EB]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="absolute inset-0 bg-[#9333ea]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider">Auronfit Studio</span>
                 <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
               </div>
               <div className="my-auto text-center flex flex-col items-center justify-center py-8">
-                <div className="w-12 h-12 rounded-2xl bg-[#2563EB]/10 border border-[#2563EB]/20 flex items-center justify-center mb-4">
-                  <Handshake className="w-6 h-6 text-[#2563EB]" />
+                <div className="w-12 h-12 rounded-2xl bg-[#9333ea]/10 border border-[#9333ea]/20 flex items-center justify-center mb-4">
+                  <Handshake className="w-6 h-6 text-[#9333ea]" />
                 </div>
                 <span className="text-xs font-bold text-white uppercase tracking-wider mb-2">Conexão Coach-Aluno</span>
                 <p className="text-[11px] text-text-secondary leading-relaxed max-w-[200px] mx-auto">
@@ -298,35 +298,35 @@ export default function RootPage() {
 
           {/* Column RIGHT: Para o Aluno */}
           <div className="space-y-6 text-left">
-            <span className="text-xs font-semibold uppercase tracking-widest text-[#2563EB]">Para o Aluno</span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#9333ea]">Para o Aluno</span>
             <h2 className="font-display font-bold text-3xl sm:text-4xl text-white tracking-tight leading-tight">
               Treinos intuitivos com vídeo
             </h2>
-            <div className="h-1 w-20 bg-gradient-to-r from-[#2563EB] to-transparent rounded-full" />
+            <div className="h-1 w-20 bg-gradient-to-r from-[#9333ea] to-transparent rounded-full" />
             <p className="text-sm text-text-secondary leading-relaxed">
               Forneça uma experiência digital moderna aos seus alunos. Execuções perfeitamente ilustradas, acompanhamento de progresso e feedbacks de carga instantâneos.
             </p>
 
             <ul className="space-y-4 pt-4">
               <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#2563EB]/15 border border-[#2563EB]/30 flex items-center justify-center mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                <div className="w-5 h-5 rounded-full bg-[#9333ea]/15 border border-[#9333ea]/30 flex items-center justify-center mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#9333ea]" />
                 </div>
                 <div className="text-sm text-text-secondary">
                   <span className="font-semibold text-white">Execução guiada:</span> Cronômetros de descanso inteligentes e vídeos explicativos em alta definição.
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#2563EB]/15 border border-[#2563EB]/30 flex items-center justify-center mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                <div className="w-5 h-5 rounded-full bg-[#9333ea]/15 border border-[#9333ea]/30 flex items-center justify-center mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#9333ea]" />
                 </div>
                 <div className="text-sm text-text-secondary">
                   <span className="font-semibold text-white">Histórico de Carga:</span> Aluno registra o peso utilizado a cada série, gerando progressão automática.
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#2563EB]/15 border border-[#2563EB]/30 flex items-center justify-center mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                <div className="w-5 h-5 rounded-full bg-[#9333ea]/15 border border-[#9333ea]/30 flex items-center justify-center mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#9333ea]" />
                 </div>
                 <div className="text-sm text-text-secondary">
                   <span className="font-semibold text-white">Nutrição Integrada:</span> Acesso prático ao plano alimentar com substituições recomendadas pelo coach.
@@ -343,7 +343,7 @@ export default function RootPage() {
         
         {/* Glow de fundo - Hidden on mobile to prevent performance lag */}
         <div className="absolute top-[20%] right-[-10%] w-[30%] h-[30%] bg-[#10B981]/5 rounded-full blur-[100px] pointer-events-none hidden md:block" />
-        <div className="absolute bottom-[20%] left-[-10%] w-[30%] h-[30%] bg-[#2563EB]/5 rounded-full blur-[100px] pointer-events-none hidden md:block" />
+        <div className="absolute bottom-[20%] left-[-10%] w-[30%] h-[30%] bg-[#9333ea]/5 rounded-full blur-[100px] pointer-events-none hidden md:block" />
 
         <div className="w-full max-w-7xl mx-auto px-6 md:px-12 text-center relative z-10">
           <div className="max-w-2xl mx-auto space-y-4 mb-16">
@@ -360,7 +360,7 @@ export default function RootPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
             
             {/* Card 1: Icon (Medidas & Composição) */}
-            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#2563EB] hover:shadow-xl hover:shadow-[#2563EB]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
+            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#9333ea] hover:shadow-xl hover:shadow-[#9333ea]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
               <div>
                 <div className="w-12 h-12 rounded-xl bg-[#10B981]/15 border border-[#10B981]/30 flex items-center justify-center text-[#10B981] mb-6">
                   <Ruler className="w-6 h-6" />
@@ -376,11 +376,11 @@ export default function RootPage() {
             </div>
 
             {/* Card 2: Photo Mockup (Progresso em foco) */}
-            <div className="bg-surface-2 border border-border-subtle rounded-xl overflow-hidden hover:-translate-y-2 hover:border-[#2563EB] hover:shadow-xl hover:shadow-[#2563EB]/5 transition-all duration-300 flex flex-col min-h-[280px]">
+            <div className="bg-surface-2 border border-border-subtle rounded-xl overflow-hidden hover:-translate-y-2 hover:border-[#9333ea] hover:shadow-xl hover:shadow-[#9333ea]/5 transition-all duration-300 flex flex-col min-h-[280px]">
               {/* Photo Area placeholder */}
               <div className="h-[140px] bg-gradient-to-br from-surface-1 to-surface-0 border-b border-border-subtle relative flex items-center justify-center text-center p-4">
                 <div className="space-y-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-[#2563EB]/10 border border-[#2563EB]/20 flex items-center justify-center mx-auto text-[#2563EB]">
+                  <div className="w-8 h-8 rounded-lg bg-[#9333ea]/10 border border-[#9333ea]/20 flex items-center justify-center mx-auto text-[#9333ea]">
                     <ChartLine className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] text-text-disabled uppercase font-bold tracking-widest block">Espaço para Foto / Gráfico</span>
@@ -393,12 +393,12 @@ export default function RootPage() {
                     Comparativo visual de evolução com fotos padronizadas e gráficos dinâmicos de bioimpedância e peso.
                   </p>
                 </div>
-                <span className="text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">Métrica de Fotos</span>
+                <span className="text-[10px] font-bold text-[#9333ea] uppercase tracking-wider">Métrica de Fotos</span>
               </div>
             </div>
 
             {/* Card 3: Icon (Relatórios PDF) */}
-            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#2563EB] hover:shadow-xl hover:shadow-[#2563EB]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
+            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#9333ea] hover:shadow-xl hover:shadow-[#9333ea]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
               <div>
                 <div className="w-12 h-12 rounded-xl bg-[#10B981]/15 border border-[#10B981]/30 flex items-center justify-center text-[#10B981] mb-6">
                   <FilePdf className="w-6 h-6" />
@@ -414,11 +414,11 @@ export default function RootPage() {
             </div>
 
             {/* Card 4: Photo Mockup (Tudo sincronizado) */}
-            <div className="bg-surface-2 border border-border-subtle rounded-xl overflow-hidden hover:-translate-y-2 hover:border-[#2563EB] hover:shadow-xl hover:shadow-[#2563EB]/5 transition-all duration-300 flex flex-col min-h-[280px]">
+            <div className="bg-surface-2 border border-border-subtle rounded-xl overflow-hidden hover:-translate-y-2 hover:border-[#9333ea] hover:shadow-xl hover:shadow-[#9333ea]/5 transition-all duration-300 flex flex-col min-h-[280px]">
               {/* Photo Area placeholder */}
               <div className="h-[140px] bg-gradient-to-br from-surface-1 to-surface-0 border-b border-border-subtle relative flex items-center justify-center text-center p-4">
                 <div className="space-y-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-[#2563EB]/10 border border-[#2563EB]/20 flex items-center justify-center mx-auto text-[#2563EB]">
+                  <div className="w-8 h-8 rounded-lg bg-[#9333ea]/10 border border-[#9333ea]/20 flex items-center justify-center mx-auto text-[#9333ea]">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <span className="text-[10px] text-text-disabled uppercase font-bold tracking-widest block">Espaço para Foto Sincronizada</span>
@@ -431,12 +431,12 @@ export default function RootPage() {
                     Aplicativo integrado em tempo real. O aluno conclui o treino e o coach visualiza o progresso instantaneamente.
                   </p>
                 </div>
-                <span className="text-[10px] font-bold text-[#2563EB] uppercase tracking-wider">Atualizações em Tempo Real</span>
+                <span className="text-[10px] font-bold text-[#9333ea] uppercase tracking-wider">Atualizações em Tempo Real</span>
               </div>
             </div>
 
             {/* Card 5: Icon (Notificações inteligentes) */}
-            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#2563EB] hover:shadow-xl hover:shadow-[#2563EB]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
+            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#9333ea] hover:shadow-xl hover:shadow-[#9333ea]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
               <div>
                 <div className="w-12 h-12 rounded-xl bg-[#10B981]/15 border border-[#10B981]/30 flex items-center justify-center text-[#10B981] mb-6">
                   <Bell className="w-6 h-6" />
@@ -452,7 +452,7 @@ export default function RootPage() {
             </div>
 
             {/* Card 6: Icon (Suporte dedicado) */}
-            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#2563EB] hover:shadow-xl hover:shadow-[#2563EB]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
+            <div className="bg-surface-2 border border-border-subtle rounded-xl p-8 hover:-translate-y-2 hover:border-[#9333ea] hover:shadow-xl hover:shadow-[#9333ea]/5 transition-all duration-300 flex flex-col justify-between min-h-[280px]">
               <div>
                 <div className="w-12 h-12 rounded-xl bg-[#10B981]/15 border border-[#10B981]/30 flex items-center justify-center text-[#10B981] mb-6">
                   <ChatCircle className="w-6 h-6" />
@@ -479,7 +479,7 @@ export default function RootPage() {
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-16">
             <div className="text-left space-y-4">
-              <span className="text-xs font-semibold uppercase tracking-widest text-[#2563EB]">Social Proof</span>
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#9333ea]">Social Proof</span>
               <h2 className="font-display font-black text-3xl sm:text-4xl text-white tracking-tight leading-tight">
                 Veja o que dizem sobre o AURON
               </h2>
@@ -488,7 +488,7 @@ export default function RootPage() {
               href="https://wa.me/556781232717" 
               target="_blank"
               rel="noopener noreferrer"
-              className="group text-sm font-semibold text-[#2563EB] hover:text-[#3b82f6] transition-colors flex items-center gap-1.5 underline underline-offset-4"
+              className="group text-sm font-semibold text-[#9333ea] hover:text-[#a855f7] transition-colors flex items-center gap-1.5 underline underline-offset-4"
             >
               Falar com nossa comunidade
               <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -502,7 +502,7 @@ export default function RootPage() {
             <div className="bg-white rounded-2xl p-8 shadow-xl flex flex-col justify-between text-[#1F2937] border border-gray-100 hover:scale-[1.01] transition-transform duration-300">
               <div>
                 {/* Dumbbell Icon in quote area */}
-                <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center text-[#2563EB] mb-6">
+                <div className="w-10 h-10 rounded-full bg-[#9333ea]/10 flex items-center justify-center text-[#9333ea] mb-6">
                   <ShieldCheck className="w-5 h-5" weight="fill" />
                 </div>
                 <p className="font-sans text-sm leading-relaxed text-[#4B5563] mb-6 not-italic">
@@ -510,7 +510,7 @@ export default function RootPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3 pt-6 border-t border-gray-100">
-                <div className="w-11 h-11 rounded-full bg-[#2563EB] text-white font-bold flex items-center justify-center text-sm shadow-md">
+                <div className="w-11 h-11 rounded-full bg-[#9333ea] text-white font-bold flex items-center justify-center text-sm shadow-md">
                   CS
                 </div>
                 <div>
@@ -544,7 +544,7 @@ export default function RootPage() {
             {/* Card 3 */}
             <div className="bg-white rounded-2xl p-8 shadow-xl flex flex-col justify-between text-[#1F2937] border border-gray-100 hover:scale-[1.01] transition-transform duration-300">
               <div>
-                <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center text-[#2563EB] mb-6">
+                <div className="w-10 h-10 rounded-full bg-[#9333ea]/10 flex items-center justify-center text-[#9333ea] mb-6">
                   <Ruler className="w-5 h-5" weight="fill" />
                 </div>
                 <p className="font-sans text-sm leading-relaxed text-[#4B5563] mb-6 not-italic">
@@ -552,7 +552,7 @@ export default function RootPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3 pt-6 border-t border-gray-100">
-                <div className="w-11 h-11 rounded-full bg-[#2563EB] text-white font-bold flex items-center justify-center text-sm shadow-md">
+                <div className="w-11 h-11 rounded-full bg-[#9333ea] text-white font-bold flex items-center justify-center text-sm shadow-md">
                   AS
                 </div>
                 <div>
@@ -583,7 +583,7 @@ export default function RootPage() {
 
           {/* Headline quote below photo */}
           <div className="text-center py-6">
-            <h3 className="font-display font-bold text-2xl md:text-3xl text-[#2563EB] leading-relaxed not-italic">
+            <h3 className="font-display font-bold text-2xl md:text-3xl text-[#9333ea] leading-relaxed not-italic">
               &quot;O App que simplifica a prescrição de treinos e potencializa seus resultados de evolução.&quot;
             </h3>
           </div>
@@ -595,7 +595,7 @@ export default function RootPage() {
       <section id="sobre" className="py-24 bg-surface-0 relative overflow-hidden border-t border-border-subtle">
         
         {/* Glow - Hidden on mobile to prevent performance lag */}
-        <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-[#2563EB]/5 rounded-full blur-[180px] pointer-events-none hidden md:block" />
+        <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-[#9333ea]/5 rounded-full blur-[180px] pointer-events-none hidden md:block" />
 
         <div className="w-full max-w-7xl mx-auto px-6 md:px-12 relative z-10 text-center space-y-16">
           
@@ -632,7 +632,7 @@ export default function RootPage() {
               {/* Play button overlay */}
               <button 
                 type="button"
-                className="w-16 sm:w-20 h-16 sm:h-20 rounded-full bg-[#2563EB] hover:bg-[#3b82f6] text-white flex items-center justify-center shadow-lg shadow-[#2563EB]/40 group-hover:scale-105 active:scale-95 transition-all duration-300 relative z-10"
+                className="w-16 sm:w-20 h-16 sm:h-20 rounded-full bg-[#9333ea] hover:bg-[#a855f7] text-white flex items-center justify-center shadow-lg shadow-[#9333ea]/40 group-hover:scale-105 active:scale-95 transition-all duration-300 relative z-10"
                 aria-label="Assistir Vídeo Demonstrativo"
               >
                 <Play className="w-8 h-8 fill-current ml-1" />
@@ -684,7 +684,7 @@ export default function RootPage() {
                 <div className="space-y-4 pt-4">
                   <Link 
                     href="/signup"
-                    className="w-full bg-[#2563EB] hover:bg-[#3b82f6] text-white text-sm font-semibold py-3.5 rounded-xl shadow-lg shadow-[#2563EB]/20 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-0.5"
+                    className="w-full bg-[#9333ea] hover:bg-[#a855f7] text-white text-sm font-semibold py-3.5 rounded-xl shadow-lg shadow-[#9333ea]/20 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-0.5"
                   >
                     Iniciar Teste Grátis
                     <ArrowRight className="w-4 h-4" />
@@ -726,7 +726,7 @@ export default function RootPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-border-subtle pb-16 text-left max-w-3xl mx-auto">
             {/* Card 1 */}
             <div className="group cursor-pointer space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-[#2563EB]/10 border border-[#2563EB]/20 flex items-center justify-center text-[#2563EB] group-hover:bg-[#2563EB] group-hover:text-white transition-all duration-300">
+              <div className="w-10 h-10 rounded-lg bg-[#9333ea]/10 border border-[#9333ea]/20 flex items-center justify-center text-[#9333ea] group-hover:bg-[#9333ea] group-hover:text-white transition-all duration-300">
                 <BookOpen className="w-5 h-5" />
               </div>
               <h4 className="font-sans font-bold text-sm text-white group-hover:text-[#10B981] transition-colors">

@@ -110,7 +110,7 @@ export default function ResponsiveNav() {
           <div className="flex-1 flex justify-center items-center">
             {!logoFailed ? (
                 <Image
-                  src="/logo.webp"
+                  src="/images/logo.webp"
                   alt="Auronfit"
                   width={120}
                   height={35}

@@ -90,7 +90,6 @@ export function WorkoutBuilderHeader({
           >
             <ArrowLeft size={16} />
           </button>
-          <h1 className="text-lg font-bold text-text-primary whitespace-nowrap">Nova ficha digital</h1>
         </div>
 
         <div className="flex flex-1 flex-col sm:flex-row gap-2 min-w-0">

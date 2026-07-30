@@ -99,7 +99,7 @@ export function MeasurementLineChart({
             <polyline
               points={points}
               fill="none"
-              stroke="#2b7fff"
+              stroke="#9333ea"
               strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -114,7 +114,7 @@ export function MeasurementLineChart({
                   x={toX(0)}
                   y={toY(lastPoint.value) - 8}
                   textAnchor="middle"
-                  fill="#2b7fff"
+                  fill="#9333ea"
                   fontSize={isDesktop ? 11 : 10}
                   fontWeight={600}
                 >
@@ -125,7 +125,7 @@ export function MeasurementLineChart({
                 cx={toX(data.length - 1)}
                 cy={toY(lastPoint.value)}
                 r={isSinglePoint ? 4 : 3}
-                fill="#2b7fff"
+                fill="#9333ea"
                 opacity={isSinglePoint ? 0.9 : 0.7}
               />
             </>

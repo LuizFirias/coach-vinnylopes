@@ -443,7 +443,7 @@ export function KanbanWorkoutBuilderSheet({
             </p>
           )}
           {bisetToast && (
-            <p className="text-xs text-white bg-[#1a2d4a] border-l-[3px] border-[#2b7fff] rounded-lg px-3 py-2">
+            <p className="text-xs text-white bg-[#1a2d4a] border-l-[3px] border-[#9333ea] rounded-lg px-3 py-2">
               {bisetToast}
             </p>
           )}
@@ -453,13 +453,13 @@ export function KanbanWorkoutBuilderSheet({
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">
               Exercícios{" "}
-              <span className="text-[#2b7fff]">({items.length})</span>
+              <span className="text-[#9333ea]">({items.length})</span>
             </h3>
             <button
               type="button"
               onClick={() => setLibraryOpen(true)}
               disabled={loadingCatalog}
-              className="inline-flex items-center gap-1.5 px-3 h-8 border-0 bg-[#1e1e1e] text-[#7a8aab] rounded-lg text-xs font-semibold hover:text-[#2b7fff] hover:border-[#2b7fff]/40"
+              className="inline-flex items-center gap-1.5 px-3 h-8 border-0 bg-[#1e1e1e] text-[#7a8aab] rounded-lg text-xs font-semibold hover:text-[#9333ea] hover:border-[#9333ea]/40"
             >
               <Plus size={14} weight="bold" /> Adicionar exercício
             </button>
@@ -474,7 +474,7 @@ export function KanbanWorkoutBuilderSheet({
               <button
                 type="button"
                 onClick={() => setLibraryOpen(true)}
-                className="px-4 h-9 bg-[#2b7fff] text-white rounded-lg text-xs font-semibold"
+                className="px-4 h-9 bg-[#9333ea] text-white rounded-lg text-xs font-semibold"
               >
                 Abrir biblioteca
               </button>

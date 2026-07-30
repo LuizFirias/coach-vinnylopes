@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { 
-  ArrowLeft, PencilSimple, Calendar, Sparkle, Note, 
-  User, CheckCircle, Info, BookmarkSimple
+  ArrowLeft, PencilSimple, Info
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -354,11 +353,6 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
             
             {/* CARD 1: Info Card */}
             <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2 flex items-center gap-2">
-                <BookmarkSimple size={14} className="text-brand" />
-                Dados do Plano
-              </h2>
-
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <div>
                   <p className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider mb-0.5">Objetivo</p>
@@ -382,7 +376,6 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
                 <div className="bg-brand/5 p-3 rounded-lg border border-brand/25">
                   <p className="text-[10px] text-brand uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5">
                     <Info size={12} />
-                    Orientações gerais
                   </p>
                   <p className="text-xs text-text-secondary whitespace-pre-wrap font-medium">
                     {plan.orientacoes_gerais || plan.notes}
@@ -393,11 +386,6 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
 
             {/* CARD 2: Refeições */}
             <div className="flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/50 pb-2 flex items-center gap-2">
-                <Note size={14} className="text-brand" />
-                Refeições Planejadas
-              </h2>
-
               {(!plan.days?.[0]?.meals || plan.days[0].meals.length === 0) ? (
                 <p className="text-xs text-text-disabled text-center py-8">Nenhuma refeição cadastrada neste plano.</p>
               ) : (
@@ -501,10 +489,6 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
             
             {/* Macros summary card */}
             <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider/60 pb-2">
-                Resumo do Planejado
-              </h2>
-
               <div className="flex flex-col gap-3 font-mono">
                 {/* Calories */}
                 <div>

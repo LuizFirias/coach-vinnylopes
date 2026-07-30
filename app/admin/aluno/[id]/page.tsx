@@ -70,6 +70,12 @@ import {
 } from "@/lib/utils/adminNav";
 import { parseFichaItems, serializeFichaItems } from "@/lib/utils/biset";
 import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
+import {
+  fetchCoachCustomPlans,
+  mergedPlans,
+  planDisplayName,
+  type CoachPlan,
+} from "@/lib/coachPlans";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -95,7 +101,7 @@ interface Profile {
 interface PlanoFinanceiroHistorico {
   id: string;
   status_pagamento: 'pago' | 'pendente' | 'atrasado';
-  tipo_plano: 'mensal' | 'trimestral' | 'semestral' | 'anual';
+  tipo_plano: string; // slug — planos padrão ou personalizados do coach
   valor_plano: number;
   data_inicio: string;
   data_expiracao: string;
@@ -219,6 +225,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [editingProfile, setEditingProfile] = useState(false);
   const [editStatus, setEditStatus] = useState<string>("pago");
   const [editPlano, setEditPlano] = useState<string>("mensal");
+  const [planosPersonalizados, setPlanosPersonalizados] = useState<CoachPlan[]>([]);
   const [editValorPlano, setEditValorPlano] = useState<string>("");
   const [editDataInicio, setEditDataInicio] = useState<string>("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -326,6 +333,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             setError("Acesso negado: este aluno não pertence ao seu perfil.");
             return;
           }
+
+          // Planos de venda personalizados do coach (para o select de modalidade)
+          fetchCoachCustomPlans(boot.userId)
+            .then(setPlanosPersonalizados)
+            .catch(() => setPlanosPersonalizados([]));
         }
       }
 
@@ -721,13 +733,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     setError(null);
     try {
       const dataInicio = new Date(editDataInicio);
-      let dataExpiracao = new Date(editDataInicio);
-      switch (editPlano) {
-        case "mensal":     dataExpiracao.setMonth(dataExpiracao.getMonth() + 1); break;
-        case "trimestral": dataExpiracao.setMonth(dataExpiracao.getMonth() + 3); break;
-        case "semestral":  dataExpiracao.setMonth(dataExpiracao.getMonth() + 6); break;
-        case "anual":      dataExpiracao.setFullYear(dataExpiracao.getFullYear() + 1); break;
-      }
+      const dataExpiracao = new Date(editDataInicio);
+      const planoSel = mergedPlans(planosPersonalizados).find((p) => p.slug === editPlano);
+      dataExpiracao.setMonth(dataExpiracao.getMonth() + (planoSel?.duracao_meses ?? 1));
       const valorPlanoNumber = editValorPlano.trim().length ? Number(editValorPlano.replace(",", ".")) : null;
       const { error } = await supabaseClient.from("profiles").update({
         status_pagamento: editStatus,
@@ -1466,9 +1474,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               
               {/* Prioridades / Pendências do Aluno */}
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-text-primary mb-1">Ações prioritárias deste atleta</h3>
-                <p className="text-2xs text-text-tertiary mb-5">Pendências operacionais identificadas pelo sistema</p>
-
                 <div className="flex flex-col gap-3">
                   {studentPriorities.length === 0 ? (
                     <div className="py-6 text-center text-xs text-text-tertiary">
@@ -1500,11 +1505,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
               {/* Estatísticas Avançadas do Aluno */}
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm flex flex-col gap-6">
-                <div>
-                  <h3 className="text-sm font-bold text-text-primary">Métricas de Treino & Fisiologia</h3>
-                  <p className="text-2xs text-text-tertiary">Análise de intensidade muscular e volume dos últimos 30 dias</p>
-                </div>
-
                 {historicoTreinos.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                     {/* Coluna 1: Cartões de Resumo 2x2 (Desktop span 6, Mobile span 12) */}
@@ -1532,7 +1532,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
                     {/* Coluna 2: Muscle Body Chart (Heatmap) (Desktop span 6, Mobile span 12) */}
                     <div className="md:col-span-6 flex flex-col gap-3 justify-center">
-                      <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Mapa de Calor Muscular (Semana)</p>
                       <div className="flex justify-around items-center bg-surface-1 border-0 py-3 px-2 rounded-xl h-full min-h-[320px]">
                         <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
                           <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" gender={alunoBodyGender} />
@@ -1545,7 +1544,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
                     {/* Radar Chart (Distribuição Muscular) (Desktop span 12, Mobile span 12) */}
                     <div className="md:col-span-12 flex flex-col gap-3">
-                      <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Distribuição Muscular (Radar - 30d)</p>
                       <div className="w-full h-56 bg-surface-1 border-0 rounded-xl p-2 flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData30}>
@@ -1569,11 +1567,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
               {/* Notas Rápidas */}
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-text-primary">Orientações do Especialista</h3>
-                    <p className="text-2xs text-text-tertiary">Notas internas e privadas do coach</p>
-                  </div>
+                <div className="flex items-center justify-end mb-4">
                   <button onClick={() => setActiveTab('observacoes')} className="text-brand hover:underline text-xs font-semibold">
                     Editar
                   </button>
@@ -1594,11 +1588,10 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               
               {/* Informações de Cadastro */}
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-text-primary mb-4">Detalhes do Vínculo</h3>
                 <div className="flex flex-col gap-3 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-text-tertiary font-medium">Plano Contratado</span>
-                    <span className="font-bold text-text-primary capitalize">{profile?.tipo_plano || "mensal"}</span>
+                    <span className="font-bold text-text-primary capitalize">{planDisplayName(profile?.tipo_plano, planosPersonalizados)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-text-tertiary font-medium">Data de Início</span>
@@ -1650,7 +1643,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         ),
                       )
                     }
-                    className="w-full text-center text-[11px] font-semibold text-[#2b7fff] hover:opacity-80 py-2 border-0 rounded-lg"
+                    className="w-full text-center text-[11px] font-semibold text-[#9333ea] hover:opacity-80 py-2 border-0 rounded-lg"
                   >
                     Ver ficha completa
                   </button>
@@ -1677,13 +1670,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             
             {/* Kanban de Fichas Digitais */}
             <div className="w-full bg-surface-1 border-0 rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0">
-              <div>
-                <h3 className="text-sm font-bold text-white">Fichas Digitais</h3>
-                <p className="text-[10px] text-[#7a8aab] mt-0.5">
-                  Treinos lado a lado — arraste exercícios entre colunas
-                </p>
-              </div>
-
               <FichasKanban
                 fichas={fichas}
                 alunoId={id}
@@ -1753,9 +1739,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     />
                     <div className={cn(
                       "flex items-center justify-center gap-2 min-h-20 rounded-lg border border-dashed transition-all",
-                      pdfFile ? "border-[#2b7fff]/50 bg-[#2b7fff]/5" : "border-transparent bg-surface-1 hover:border-[#2b7fff]/40"
+                      pdfFile ? "border-[#9333ea]/50 bg-[#9333ea]/5" : "border-transparent bg-surface-1 hover:border-[#9333ea]/40"
                     )}>
-                      <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-[#2b7fff]" : "text-[#7a8aab]")} />
+                      <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-[#9333ea]" : "text-[#7a8aab]")} />
                       <span className={cn("text-xs text-center px-4 truncate max-w-full", pdfFile ? "text-white font-medium" : "text-[#7a8aab]")}>
                         {pdfFile ? pdfFile.name : "Clique ou arraste o PDF do treino"}
                       </span>
@@ -1764,7 +1750,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
                   {treinosPdf.length > 0 && (
                     <div className="flex flex-col gap-2">
-                      <h4 className="text-[10px] font-semibold uppercase text-[#7a8aab] tracking-wider">Histórico de PDFs</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {treinosPdf.map((t) => (
                           <div key={t.id} className="flex items-center justify-between p-2 rounded-lg bg-surface-1 border-0">
@@ -1773,7 +1758,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                               <span className="text-xs text-[#7a8aab] truncate font-medium">{t.nome_arquivo}</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <a href={t.url_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-[#2b7fff] hover:underline font-semibold">
+                              <a href={t.url_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-[#9333ea] hover:underline font-semibold">
                                 Visualizar
                               </a>
                               <button type="button" onClick={() => handleDeleteTreino(t.id, t.original_url_pdf || t.url_pdf)} className="text-text-disabled hover:text-danger transition-colors">
@@ -1798,11 +1783,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             
             {/* Seção 1: Plano Digital Ativo */}
             <div className="bg-surface-1 border-0 rounded-xl p-5 flex flex-col gap-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-white">Acompanhamento Alimentar Digital</h3>
-                  <p className="text-[10px] text-[#7a8aab] mt-0.5">Acompanhe a adesão em tempo real do aluno</p>
-                </div>
+              <div className="flex items-center justify-end gap-3">
                 {!digitalPlan && (
                   <Link href="/admin/nutricao/novo-plano">
                     <Button variant="primary" size="sm" leftIcon={<AppleLogo size={14} />}>
@@ -2028,7 +2009,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                               href={p.pdf_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-[#2b7fff] hover:underline font-semibold"
+                              className="text-xs text-[#9333ea] hover:underline font-semibold"
                             >
                               Abrir
                             </a>
@@ -2064,11 +2045,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               
               {/* Gráfico de Evolução de Medidas */}
               <div className="rounded-2xl border-0 p-4 md:p-6 shadow-sm bg-surface-1">
-                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Gráfico de Evolução</h3>
-                    <p className="text-2xs text-[#555]">Acompanhamento visual de métricas corporais</p>
-                  </div>
+                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-end">
                   {medidas.length > 0 && (
                     <button
                       onClick={handleExportPDF}
@@ -2083,17 +2060,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   variant="embedded"
                   readOnly
                   medicoes={medidas as MedicaoRecord[]}
-                  subtitle="Evolução do aluno"
                 />
               </div>
 
               {/* Tabela de Medidas Corporais */}
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-text-primary">Evolução de Medidas</h3>
-                    <p className="text-2xs text-text-tertiary">Histórico completo de avaliações físicas</p>
-                  </div>
+                <div className="flex items-center justify-end mb-4">
                   <Ruler className="text-brand w-5 h-5" />
                 </div>
 
@@ -2142,11 +2114,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
             {/* Coluna Direita: Cargas de Treinos */}
             <div className="lg:col-span-4 bg-surface-1 border-0 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-text-primary">Evolução de Cargas</h3>
-                <p className="text-2xs text-text-tertiary">Maiores cargas registradas por exercício</p>
-              </div>
-
               {historicoTreinos.length > 0 ? (() => {
                 const sessoesPorData = new Map<string, any[]>();
                 historicoTreinos.forEach(h => {
@@ -2199,11 +2166,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             
             {/* Detalhes do Plano */}
             <div className="lg:col-span-6 bg-surface-1 border-0 rounded-2xl p-6 shadow-sm flex flex-col gap-5">
-              <div>
-                <h3 className="text-sm font-bold text-text-primary">Vigência do Acesso</h3>
-                <p className="text-2xs text-text-tertiary">Dados do contrato do atleta</p>
-              </div>
-
               <div className="flex flex-col gap-3.5 text-xs bg-surface-1 p-4 rounded-xl border-0">
                 <div className="flex items-center justify-between">
                   <span className="text-text-secondary font-medium">Situação de Cobrança</span>
@@ -2216,7 +2178,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-text-secondary font-medium">Ciclo de Plano</span>
-                  <span className="font-bold text-text-primary capitalize">{profile?.tipo_plano || "mensal"}</span>
+                  <span className="font-bold text-text-primary capitalize">{planDisplayName(profile?.tipo_plano, planosPersonalizados)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-text-secondary font-medium">Ticket de Consultoria</span>
@@ -2248,7 +2210,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             {/* Formulário / Transferência */}
             <div className="lg:col-span-6 flex flex-col gap-6">
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-text-primary mb-4">Histórico de Contratações</h3>
                 {historicoFinanceiro.length === 0 ? (
                   <p className="text-xs text-text-tertiary">
                     Ainda não há registros de planos pagos para este aluno.
@@ -2261,7 +2222,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         className="flex items-center justify-between rounded-xl border border-divider/60 bg-surface-1 px-3 py-2.5"
                       >
                         <div className="min-w-0">
-                          <p className="text-[11px] font-semibold text-text-primary capitalize">{item.tipo_plano}</p>
+                          <p className="text-[11px] font-semibold text-text-primary capitalize">{planDisplayName(item.tipo_plano, planosPersonalizados)}</p>
                           <p className="text-[10px] text-text-tertiary">
                             {new Date(item.registrado_em).toLocaleDateString("pt-BR")} ·{" "}
                             {new Date(item.data_inicio).toLocaleDateString("pt-BR")} →{" "}
@@ -2288,7 +2249,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               {/* Form de Edição Inline */}
               {editingProfile && (
                 <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm animate-fade-in">
-                  <h3 className="text-sm font-bold text-text-primary mb-4">Atualizar Plano Financeiro</h3>
                   <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Situação</label>
@@ -2303,10 +2263,17 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Modalidade</label>
                         <select value={editPlano} onChange={(e) => setEditPlano(e.target.value)} className={fieldCls}>
-                          <option value="mensal">Mensal</option>
-                          <option value="trimestral">Trimestral</option>
-                          <option value="semestral">Semestral</option>
-                          <option value="anual">Anual</option>
+                          {mergedPlans(planosPersonalizados).map((p) => (
+                            <option key={p.slug} value={p.slug}>
+                              {p.custom
+                                ? `${p.nome} (${p.duracao_meses} ${p.duracao_meses === 1 ? "mês" : "meses"})`
+                                : p.nome}
+                            </option>
+                          ))}
+                          {/* Plano legado do aluno que não existe mais no catálogo */}
+                          {!mergedPlans(planosPersonalizados).some((p) => p.slug === editPlano) && (
+                            <option value={editPlano}>{planDisplayName(editPlano, planosPersonalizados)}</option>
+                          )}
                         </select>
                       </div>
 
@@ -2351,11 +2318,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {/* ── FOTOS TAB ── */}
         {activeTab === 'fotos' && (
           <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-sm font-bold text-text-primary">Galeria de Evolução</h3>
-                <p className="text-2xs text-text-tertiary">Registro fotográfico para comparação física</p>
-              </div>
+            <div className="flex items-center justify-end mb-6">
               <ImageIcon className="text-brand w-5 h-5" />
             </div>
 
@@ -2397,11 +2360,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {/* ── OBSERVAÇÕES TAB ── */}
         {activeTab === 'observacoes' && (
           <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm max-w-3xl mx-auto w-full flex flex-col gap-4">
-            <div>
-              <h3 className="text-sm font-bold text-text-primary">Orientações do Coach</h3>
-              <p className="text-2xs text-text-tertiary">Notas clínicas, anamnese, restrições e dados internos</p>
-            </div>
-
             <textarea
               value={profile?.orientacoes || ""}
               onChange={(e) => {

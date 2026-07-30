@@ -74,7 +74,7 @@ export function ExerciseLibraryModal({
               <button
                 type="button"
                 onClick={onCreateNew}
-                className="px-2.5 h-8 bg-[#2b7fff] text-white rounded-lg text-xs font-semibold"
+                className="px-2.5 h-8 bg-[#9333ea] text-white rounded-lg text-xs font-semibold"
               >
                 + Novo
               </button>
@@ -97,7 +97,7 @@ export function ExerciseLibraryModal({
               placeholder="Filtrar por nome ou grupo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 pl-9 pr-4 bg-[#1e1e1e] border border-input rounded-lg text-xs text-white placeholder:text-[#555555] focus:outline-none focus:border-[#2b7fff]/40"
+              className="w-full h-10 pl-9 pr-4 bg-[#1e1e1e] border border-input rounded-lg text-xs text-white placeholder:text-[#555555] focus:outline-none focus:border-[#9333ea]/40"
               autoFocus
             />
           </div>
@@ -115,7 +115,7 @@ export function ExerciseLibraryModal({
                 className={cn(
                   "w-full flex items-center justify-between p-3 rounded-lg border text-left",
                   isSelected
-                    ? "border-[#2b7fff] bg-[#2b7fff]/5"
+                    ? "border-[#9333ea] bg-[#9333ea]/5"
                     : "border-transparent bg-surface-1",
                 )}
               >
@@ -123,7 +123,7 @@ export function ExerciseLibraryModal({
                   <p
                     className={cn(
                       "text-xs font-bold",
-                      isSelected ? "text-[#2b7fff]" : "text-white",
+                      isSelected ? "text-[#9333ea]" : "text-white",
                     )}
                   >
                     {ex.nome}
@@ -134,7 +134,7 @@ export function ExerciseLibraryModal({
                   </p>
                 </div>
                 {isSelected ? (
-                  <span className="w-4 h-4 rounded-full bg-[#2b7fff] text-[9px] text-white flex items-center justify-center">
+                  <span className="w-4 h-4 rounded-full bg-[#9333ea] text-[9px] text-white flex items-center justify-center">
                     ✓
                   </span>
                 ) : (
@@ -162,7 +162,7 @@ export function ExerciseLibraryModal({
             type="button"
             onClick={handleConfirm}
             disabled={selectedIds.size === 0}
-            className="px-4 py-2 bg-[#2b7fff] disabled:opacity-40 text-white rounded-lg text-xs font-semibold"
+            className="px-4 py-2 bg-[#9333ea] disabled:opacity-40 text-white rounded-lg text-xs font-semibold"
           >
             Adicionar ({selectedIds.size})
           </button>

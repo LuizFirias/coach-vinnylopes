@@ -53,17 +53,18 @@
   --border-card:        transparent;
   --border-card-hover:  rgba(255, 255, 255, 0.06);
   --border-input:       #282828;                   /* input — sólido (toque) */
-  --border-divider:     #1a1a1a;                   /* divisor interno */
-  --border-accent:      rgba(43, 127, 255, 0.40);  /* destaque / foco */
+  --border-divider:     #2A2A32;                   /* divisor interno (mais claro que #1a1a1a) */
+  --border-accent:      rgba(147, 51, 234, 0.40);  /* destaque / foco */
 
   /* ═══════════════════════════════════════════════════════════
-     BRAND (azul AURON — uso ≤10% da tela)
+     BRAND (roxo AURON — uso ≤10% da tela)
      ═══════════════════════════════════════════════════════════ */
-  --brand-primary:    #2b7fff;
-  --brand-hover:      #5a9fff;
-  --brand-pressed:    #1a6fee;
-  --brand-subtle:     rgba(43, 127, 255, 0.10);
-  --brand-border:     rgba(43, 127, 255, 0.36);
+  --brand-primary:    #9333ea;
+  --brand-hover:      #a855f7;
+  --brand-pressed:    #7e22ce;
+  --brand-subtle:     rgba(147, 51, 234, 0.10);
+  --brand-border:     rgba(147, 51, 234, 0.20);
+  --surface-card-light: #faf5ff;  /* fundo de card no light mode */
 
   /* Texto sobre a marca */
   --text-on-brand:    #FAFAFA;
@@ -73,7 +74,7 @@
      ═══════════════════════════════════════════════════════════ */
   --cal-done:         #39c75a;   /* treino feito */
   --cal-missed:       #e05555;   /* treino não feito */
-  --cal-today:        #2b7fff;   /* dia atual (= brand) */
+  --cal-today:        #9333ea;   /* dia atual (= brand) */
   --cal-upcoming:     #7a8aab;   /* treino futuro */
   --cal-rest:         #444444;   /* descanso / muted */
 
@@ -104,16 +105,16 @@
   --elev-2:           0 4px 12px rgba(0, 0, 0, 0.45);
   --elev-3:           0 12px 32px rgba(0, 0, 0, 0.55);
 
-  --glow-brand:       0 0 24px rgba(43, 127, 255, 0.22);
+  --glow-brand:       0 0 24px rgba(147, 51, 234, 0.22);
   --glow-success:     0 0 24px rgba(57, 199, 90, 0.24);
   --pr-glow:          0 0 20px rgba(57, 199, 90, 0.32);
 
-  --focus-ring:       0 0 0 2px rgba(43, 127, 255, 0.50);
+  --focus-ring:       0 0 0 2px rgba(147, 51, 234, 0.50);
 
   /* Botão primário — gradiente + glow */
-  --btn-primary-bg: linear-gradient(135deg, #60a5fa 0%, #2b7fff 55%, #1a6fee 100%);
-  --btn-primary-shadow: 0 4px 20px rgba(43, 127, 255, 0.45);
-  --btn-primary-shadow-hover: 0 6px 28px rgba(43, 127, 255, 0.60);
+  --btn-primary-bg: linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%);
+  --btn-primary-shadow: 0 4px 20px rgba(147, 51, 234, 0.45);
+  --btn-primary-shadow-hover: 0 6px 28px rgba(147, 51, 234, 0.60);
 
   /* ═══════════════════════════════════════════════════════════
      TYPOGRAPHY
@@ -248,6 +249,23 @@
   --touch-target-min:  48px;
   --max-width-mobile:  428px;  /* iPhone Pro Max baseline */
 
+  /* ═══════════════════════════════════════════════════════════
+     FILTROS / BUSCA (inputs, tabs e dropdowns de telas de listagem)
+     Dark: mantém visual atual. Light: cinza neutro sem borda + lavanda.
+     ═══════════════════════════════════════════════════════════ */
+  --filter-bg:            var(--surface-2);
+  --filter-bg-focus:      var(--surface-3);
+  --filter-border:        var(--border-input);
+  --filter-border-focus:  var(--brand-primary);
+  --filter-ring:          rgba(147, 51, 234, 0.30);
+  --filter-text:          var(--text-primary);
+  --filter-placeholder:   var(--text-disabled);
+
+  --tab-track-bg:         var(--surface-2);
+  --tab-active-bg:        var(--surface-0);
+  --tab-active-text:      var(--text-primary);
+  --tab-inactive-text:    var(--text-secondary);
+
   /* Mobile aluno shell (theme-aware — evita hex inline) */
   --mobile-page-bg-solid: #080c14;
   --mobile-page-bg: radial-gradient(120% 100% at 50% 0%, #0A1628 0%, #080c14 60%);
@@ -258,10 +276,14 @@
   --mobile-card-border-subtle: rgba(41, 48, 61, 0.24);
   --mobile-secondary-bg: #0D1829;
   --theme-color-meta: #080c14;
+
+  /* Divisor entre linhas de listas de cards (alunos etc.)
+     Dark: roxo sutil; Light: invisível — o espaçamento separa os itens. */
+  --list-row-divider: rgba(147, 51, 234, 0.40);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LIGHT THEME — overrides via data-theme (default = dark above)
+   LIGHT THEME — tema oficial (default); dark fica como opção
    ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] {
   --surface-0:        #FAFAFA;
@@ -283,10 +305,11 @@ html[data-theme="light"] {
   --border-card-hover:  rgba(0, 0, 0, 0.08);
   --border-input:       #D4D4D8;
   --border-divider:     #E4E4E7;
-  --border-accent:      rgba(43, 127, 255, 0.40);
+  --border-accent:      rgba(147, 51, 234, 0.40);
 
-  --brand-subtle:     rgba(43, 127, 255, 0.08);
-  --brand-border:     rgba(43, 127, 255, 0.28);
+  --brand-subtle:     rgba(147, 51, 234, 0.08);
+  --brand-border:     rgba(147, 51, 234, 0.20);
+  --surface-card-light: #faf5ff;
 
   --success-subtle:   rgba(57, 199, 90, 0.10);
   --success-border:   rgba(57, 199, 90, 0.22);
@@ -301,14 +324,28 @@ html[data-theme="light"] {
   --elev-2:           0 4px 12px rgba(0, 0, 0, 0.08);
   --elev-3:           0 12px 32px rgba(0, 0, 0, 0.12);
 
-  --glow-brand:       0 0 24px rgba(43, 127, 255, 0.16);
+  --glow-brand:       0 0 24px rgba(147, 51, 234, 0.16);
   --glow-success:     0 0 24px rgba(57, 199, 90, 0.18);
   --pr-glow:          0 0 20px rgba(57, 199, 90, 0.22);
 
-  --focus-ring:       0 0 0 2px rgba(43, 127, 255, 0.40);
+  --focus-ring:       0 0 0 2px rgba(147, 51, 234, 0.40);
 
   --color-gold-muted: var(--brand-subtle);
   --color-border-gold: var(--brand-border);
+
+  /* Filtros / busca — cinza neutro sem borda + tab lavanda */
+  --filter-bg:            #ebebf0;
+  --filter-bg-focus:      #e4e4ea;
+  --filter-border:        transparent;
+  --filter-border-focus:  transparent;
+  --filter-ring:          transparent;
+  --filter-text:          #444444;
+  --filter-placeholder:   #b0b0b8;
+
+  --tab-track-bg:         transparent;
+  --tab-active-bg:        #e9d8fd;
+  --tab-active-text:      #7e22ce;
+  --tab-inactive-text:    #999999;
 
   --mobile-page-bg-solid: var(--surface-0);
   --mobile-page-bg: linear-gradient(180deg, var(--surface-0) 0%, var(--surface-1) 100%);
@@ -319,6 +356,8 @@ html[data-theme="light"] {
   --mobile-card-border-subtle: var(--border-subtle);
   --mobile-secondary-bg: var(--surface-1);
   --theme-color-meta: var(--surface-0);
+
+  --list-row-divider: transparent;
 }
 
 html[data-theme="dark"],
@@ -372,6 +411,14 @@ select {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Spinners são feedback de status essencial — continuam girando,
+     apenas mais devagar (variante reduzida, não removida). */
+  .auron-loader-spin,
+  .animate-spin {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

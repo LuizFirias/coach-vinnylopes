@@ -31,8 +31,8 @@ export function AuronLinkIcon({
     >
       <defs>
         <linearGradient id={gradId} x1="50" y1="0" x2="50" y2="47" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#60a5fa" />
-          <stop offset="100%" stopColor="#2b7fff" />
+          <stop offset="0%" stopColor="#c084fc" />
+          <stop offset="100%" stopColor="#9333ea" />
         </linearGradient>
       </defs>
 

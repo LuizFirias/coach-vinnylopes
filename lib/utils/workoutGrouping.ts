@@ -21,6 +21,7 @@ export function groupWorkoutsByStudent(plans: WorkoutPlan[]): WorkoutGroup[] {
         studentId: plan.aluno_id,
         studentName: plan.aluno_nome,
         studentEmail: plan.aluno_email ?? null,
+        avatarUrl: plan.aluno_avatar_url ?? null,
         avatarColor: avatarGrad(plan.aluno_id),
         plans: [],
       });

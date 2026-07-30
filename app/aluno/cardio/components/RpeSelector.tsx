@@ -25,9 +25,9 @@ export function RpeSelector({ value, onChange }: RpeSelectorProps) {
               aria-pressed={ativo}
               className="flex h-11 w-11 items-center justify-center rounded-[8px] text-sm font-bold tabular-nums lining-nums transition-colors touch-manipulation"
               style={{
-                background: ativo ? '#2b7fff' : 'var(--surface-2)',
+                background: ativo ? '#9333ea' : 'var(--surface-2)',
                 color: ativo ? '#ffffff' : 'var(--text-secondary)',
-                border: `1px solid ${ativo ? '#2b7fff' : 'var(--border-input)'}`,
+                border: `1px solid ${ativo ? '#9333ea' : 'var(--border-input)'}`,
               }}
             >
               {n}

@@ -16,7 +16,12 @@ import { Metadata, Viewport } from 'next';
 const themeInitScript = `
 (function() {
   try {
-    var theme = localStorage.getItem('auron-theme') === 'light' ? 'light' : 'dark';
+    // Migração única: tema oficial = claro (mesmo quem tinha escuro salvo)
+    if (localStorage.getItem('auron-theme-v2-light') !== '1') {
+      localStorage.setItem('auron-theme', 'light');
+      localStorage.setItem('auron-theme-v2-light', '1');
+    }
+    var theme = localStorage.getItem('auron-theme') === 'dark' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.style.colorScheme = theme;
     if (theme === 'dark') document.documentElement.classList.add('dark');
@@ -24,9 +29,9 @@ const themeInitScript = `
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', theme === 'light' ? '#FAFAFA' : '#09090B');
   } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    document.documentElement.classList.add('dark');
-    document.documentElement.style.colorScheme = 'dark';
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.classList.remove('dark');
+    document.documentElement.style.colorScheme = 'light';
   }
 })();
 `;
@@ -73,12 +78,13 @@ export const metadata: Metadata = {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
       { url: '/favicon-96x96.png', type: 'image/png', sizes: '96x96' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
     apple: '/apple-touch-icon.png',
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black',
+    statusBarStyle: 'default',
     title: 'Auronfit',
   },
 };
@@ -100,7 +106,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning className={`dark ${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable} ${dmSans.variable}`} data-theme="dark">
+    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable} ${dmSans.variable}`} data-theme="light">
       <body className="bg-surface-0 text-text-primary overflow-x-hidden min-h-screen" suppressHydrationWarning>
         <Script id="auron-theme-init" strategy="beforeInteractive">
           {themeInitScript.trim()}
@@ -127,8 +133,8 @@ export default function RootLayout({
             <svg width="48" height="48" viewBox="0 0 100 47" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="auronBootGrad" x1="50" y1="0" x2="50" y2="47" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#60a5fa" />
-                  <stop offset="100%" stopColor="#2b7fff" />
+                  <stop offset="0%" stopColor="#c084fc" />
+                  <stop offset="100%" stopColor="#9333ea" />
                 </linearGradient>
               </defs>
               <path d="M 37,0 L 23.5,0 C 10.5,0 0,10.5 0,23.5 C 0,36.5 10.5,47 23.5,47 L 37,47 L 37,36 L 23.5,36 C 16.6,36 11,30.4 11,23.5 C 11,16.6 16.6,11 23.5,11 L 37,11 Z" fill="url(#auronBootGrad)" />

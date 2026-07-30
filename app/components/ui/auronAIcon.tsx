@@ -29,8 +29,8 @@ export function AuronAIcon({
     >
       <defs>
         <linearGradient id="auron-a-grad" x1="12" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#60a5fa"/>
-          <stop offset="100%" stopColor="#2b7fff"/>
+          <stop offset="0%" stopColor="#c084fc"/>
+          <stop offset="100%" stopColor="#9333ea"/>
         </linearGradient>
       </defs>
       <path

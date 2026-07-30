@@ -565,8 +565,6 @@ export default function EditarFichaPage({ params }: { params: Promise<{ id: stri
           >
             <ArrowLeft size={14} /> Voltar para Perfil
           </button>
-          <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Editar Ficha Digital</h1>
-          <p className="text-xs text-text-secondary">Modifique exercícios, Bi-Sets e prescrições da ficha</p>
         </div>
 
         {error && (

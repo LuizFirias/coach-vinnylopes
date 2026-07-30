@@ -402,7 +402,7 @@ function LoginForm() {
         {/* Logo / Marca */}
         <div className="relative z-10 flex items-center gap-2">
           <Image
-            src="/logo.webp"
+            src="/images/logo.webp"
             alt="Logo Auronfit"
             width={32}
             height={32}
@@ -473,7 +473,7 @@ function LoginForm() {
         <div className="flex flex-col items-center text-center mb-4 sm:mb-6 lg:mb-8">
           {!logoFailed ? (
             <Image
-              src="/logo.webp"
+              src="/images/logo.webp"
               alt="Auronfit"
               width={200}
               height={70}

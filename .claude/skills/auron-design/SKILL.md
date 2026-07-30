@@ -27,8 +27,13 @@ Background card:     #111827
 Background input:    #1e1e1e
 Borda input:         #282828   (1px)
 
-Azul primário:       #2b7fff   (ação, destaque, accent)
-Azul hover:          #5a9fff
+Roxo primário:       #9333ea   (ação, destaque, accent)
+Roxo hover:          #a855f7
+Roxo pressed:        #7e22ce
+Cal today:           #9333ea
+
+Gradiente botão:     linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)
+Glow botão:          0 4px 20px rgba(147,51,234,0.45)
 
 Verde (sucesso/ativo):#39c75a
 Vermelho (risco):    #e05555
@@ -87,7 +92,7 @@ Border radius pill:    9999px (APENAS status pills e tabs selecionadas)
 --border-card-hover: rgba(255,255,255,0.06)    ← hover em cards interativos
 --border-input:      #282828                 ← inputs (manter sólido)
 --border-divider:    #1a1a1a                 ← linhas internas de card
---border-accent:     rgba(43,127,255,0.40)   ← destaque/foco
+--border-accent:     rgba(147,51,234,0.40)   ← destaque/foco
 
 Regra: inputs mantêm borda sólida para feedback de toque.
        Cards NÃO usam outline branco — separação só por diferença de surface.
@@ -110,7 +115,7 @@ Cada cor tem significado fixo — usar fora do contexto quebra a comunicação:
 
 | Cor | Uso correto | Nunca usar para |
 |-----|-------------|-----------------|
-| `#2b7fff` azul | Ação primária, CTA, valores em destaque, accent | Status neutro, informação passiva |
+| `#9333ea` roxo | Ação primária, CTA, valores em destaque, accent | Status neutro, informação passiva |
 | `#39c75a` verde | Ativo, sucesso, delta negativo de peso (queda = bom) | Alerta, risco |
 | `#e05555` vermelho | Risco, erro, delta positivo de peso (ganho), deletar | Destaque genérico |
 | `#f59e0b` amarelo | Atenção, pendente, vencendo em breve | Erro, sucesso |
@@ -157,8 +162,8 @@ Identificar e eliminar qualquer um deles:
 ```
 ❌ background: #1e3a7a (escuro, pouco contraste)
 
-✅ background: linear-gradient(135deg, #60a5fa 0%, #2b7fff 55%, #1a6fee 100%)
-   + box-shadow azul semântico (repouso/hover)
+✅ background: linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)
+   + box-shadow roxo semântico (repouso/hover)
 ```
 
 ### ❌ Accordion "Adicionar mais detalhes" escondendo fluxo principal
@@ -172,7 +177,7 @@ Identificar e eliminar qualquer um deles:
 ```
 ❌ 83.0 kg em 22px/700
 
-✅ 83.0 kg em 44–96px/900 com unidade em azul menor
+✅ 83.0 kg em 44–96px/900 com unidade em roxo menor
 ```
 
 ### ❌ Label "EXERCÍCIO" repetida em cada card de ficha
@@ -205,12 +210,12 @@ Identificar e eliminar qualquer um deles:
 
 ### Botão primário
 ```
-background: linear-gradient(135deg, #60a5fa 0%, #2b7fff 55%, #1a6fee 100%)
-box-shadow: 0 4px 20px rgba(43,127,255,0.45)          ← repouso
-box-shadow: 0 6px 28px rgba(43,127,255,0.60)          ← hover
+background: linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)
+box-shadow: 0 4px 20px rgba(147,51,234,0.45)          ← repouso
+box-shadow: 0 6px 28px rgba(147,51,234,0.60)          ← hover
 opacity: 0.90 hover / 0.80 active / scale(0.98) active
 
-NÃO usar bg-brand sólido (#2b7fff) no variant primary —
+NÃO usar bg-brand sólido (#9333ea) no variant primary —
 usar bg-btn-primary (gradiente) + shadow-btn-glow.
 bg-brand sólido é permitido apenas em badges, dots e accents pontuais.
 ```
@@ -221,7 +226,7 @@ bg-brand sólido é permitido apenas em badges, dots e accents pontuais.
 - Header: 9–11px uppercase / weight 500 / --text-muted
 - Linhas: 12–14px / --text-primary com sublinha --text-secondary
 - Divisor: 1px / --border-subtle
-- Ação por linha: texto colorido (#2b7fff / weight 500) — NÃO botão cheio
+- Ação por linha: texto colorido (#9333ea / weight 500) — NÃO botão cheio
 - Avatar: inicial colorida (gerada por hash do id) / 28–32px / border-radius 50%
 - Status pill: border-radius 4–6px / background semântico / texto 10–11px weight 500
 - Mobile: tabela vira lista de cards — 1 card por linha
@@ -264,8 +269,8 @@ Footer:
 ### Gráfico de linha (métricas de progresso)
 ```
 - Background: #0f0f0f (dentro de card #111827)
-- Linha: #2b7fff / opacity 0.35–0.5 / stroke-width 1.5px
-- Ponto final: circle r=3 / #2b7fff / opacity 0.7
+- Linha: #9333ea / opacity 0.35–0.5 / stroke-width 1.5px
+- Ponto final: circle r=3 / #9333ea / opacity 0.7
 - Linha base: 1px / #1e1e1e
 - Labels de data: 7–8px / #333333
 - COM 0 pontos: linha horizontal muda em #1e1e1e (SEM empty state)
@@ -286,18 +291,18 @@ Footer:
 ```
 Estrutura:  logo → eyebrow → título → corpo (2 linhas) → credenciais → CTA → footer
 Container:  480px max / background #111827 / border-radius 16px
-CTA:        background #2b7fff / border-radius 10px / padding 14px / branco / weight 700
+CTA:        background #9333ea / border-radius 10px / padding 14px / branco / weight 700
 Credenciais: tabela 2 colunas (label | valor) com dividers 1px #222
 Footer:     border-top 1px #222 / texto 11px / #444
 NÃO incluir: mockup de iPhone, seção de features, accordion "mais detalhes"
-NÃO incluir: botão branco (CTA sempre em azul)
+NÃO incluir: botão branco (CTA sempre em roxo)
 ```
 
 ### Card de compartilhamento Instagram (1080×1080px)
 ```
 Background:  #0a0f1e
 Valor principal: 80–96px / weight 900 / letter-spacing -2px
-Unidade:     em azul #2b7fff, tamanho menor que o valor
+Unidade:     em roxo #9333ea, tamanho menor que o valor
 Label:       16–22px / #7a8aab / weight 400
 Divisor:     1px / #1a2540 / 48px de largura / centrado
 Rodapé:      position absolute / bottom 32px / AURONFIT (esquerda) + @handle (direita)
@@ -445,7 +450,7 @@ Hook de breakpoint: useBreakpoint('mobile') → true quando < 768px
 ```
 - Nome no app: AURONFIT (caixa alta, sem espaço)
 - Handle do coach: @{coachHandle} — dinâmico, não hardcoded
-- Cor de marca: #2b7fff (azul) — NÃO amarelo (que é do HEVY/referência)
+- Cor de marca: #9333ea (roxo) — NÃO amarelo (que é do HEVY/referência)
 - Logo: componente existente no projeto
 - E-mail: remetente AuronFit, footer "© 2026 AuronFit"
 ```
@@ -470,7 +475,7 @@ Hook de breakpoint: useBreakpoint('mobile') → true quando < 768px
 [ ] Não há mini-cards side-by-side decorativos
 [ ] Não há delta badge em pill colorido
 [ ] Não há painel lateral que duplica botões do header
-[ ] Botão de ação primária usa #2b7fff (NÃO fundo escuro)
+[ ] Botão de ação primária usa #9333ea / gradiente btn-primary (NÃO fundo escuro)
 [ ] Valor principal ≥ 44px quando é métrica central
 [ ] Gráfico sempre renderizado (sem mínimo de pontos)
 [ ] Delete tem confirmação modal

@@ -90,7 +90,7 @@ export default function SignupTypeSelector() {
           <div className="flex flex-col items-center text-center">
             {!logoFailed ? (
               <Image
-                src="/logo.webp"
+                src="/images/logo.webp"
                 alt="Auronfit"
                 width={200}
                 height={70}

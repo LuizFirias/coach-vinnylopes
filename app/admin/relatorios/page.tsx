@@ -17,25 +17,28 @@ import {
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { cn } from '@/lib/utils/cn';
 import { GlassPanel, DASHBOARD_KPI_GLASS } from '@/components/ui/GlassPanel';
+import { fetchCoachCustomPlans, buildPlanDurationMap, type CoachPlan } from '@/lib/coachPlans';
 
 function ChartActiveBar(props: any) {
   return (
     <Rectangle
       {...props}
-      fill="#5a9fff"
+      fill="#a855f7"
       stroke="none"
       strokeWidth={0}
     />
   );
 }
 
-const DURACAO_PLANO_MESES: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
-
-/** Deriva o início do ciclo vigente do plano com fallback progressivo. */
-function inicioDoCiclo(r: { data_inicio?: string | null; data_expiracao?: string | null; created_at?: string | null; tipo_plano?: string | null }): Date | null {
+/** Deriva o início do ciclo vigente do plano com fallback progressivo.
+ *  `duracaoMeses`: mapa slug → meses (planos padrão + personalizados do coach). */
+function inicioDoCiclo(
+  r: { data_inicio?: string | null; data_expiracao?: string | null; created_at?: string | null; tipo_plano?: string | null },
+  duracaoMeses: Record<string, number>
+): Date | null {
   if (r.data_inicio) return new Date(r.data_inicio);
   if (r.data_expiracao) {
-    const dur = DURACAO_PLANO_MESES[r.tipo_plano || 'mensal'] || 1;
+    const dur = duracaoMeses[r.tipo_plano || 'mensal'] || 1;
     const d = new Date(r.data_expiracao);
     d.setMonth(d.getMonth() - dur);
     return d;
@@ -87,6 +90,9 @@ export default function RelatoriosPage() {
           .from('coach_alunos').select('aluno_id').eq('coach_id', coachId);
 
         if (coachAlunosError) throw coachAlunosError;
+
+        const customPlans: CoachPlan[] = await fetchCoachCustomPlans(coachId).catch(() => []);
+        const duracaoMap = buildPlanDurationMap(customPlans);
 
         const { data: coachProfile } = await supabaseClient
           .from('profiles')
@@ -202,9 +208,9 @@ export default function RelatoriosPage() {
         for (const row of (historicoData || []) as { valor_plano: number; data_inicio: string | null; data_expiracao: string | null; created_at: string | null; tipo_plano: string | null }[]) {
           const valor = row.valor_plano ?? 0;
           if (valor <= 0) continue;
-          const meses = DURACAO_PLANO_MESES[row.tipo_plano || 'mensal'] || 1;
+          const meses = duracaoMap[row.tipo_plano || 'mensal'] || 1;
           const valorPorMes = valor / meses;
-          const inicio = inicioDoCiclo(row);
+          const inicio = inicioDoCiclo(row, duracaoMap);
           if (!inicio) continue;
           for (let m = 0; m < meses; m++) {
             const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
@@ -402,9 +408,6 @@ export default function RelatoriosPage() {
           <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-text-primary font-display">
             Olá, <span className="text-brand">{primeiroNome}</span>
           </h1>
-          <p className="text-xs text-text-tertiary mt-0.5">
-            Aqui está o relatório financeiro da sua consultoria
-          </p>
         </div>
 
         {error && (
@@ -442,7 +445,7 @@ export default function RelatoriosPage() {
               {/* Mobile: cards de receita arrastáveis */}
               <div className="md:hidden -mx-1 overflow-x-auto overflow-y-visible px-1 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="flex gap-3 min-w-max">
-                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                     <div>
                       <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -472,7 +475,7 @@ export default function RelatoriosPage() {
 
                   <div
                     ref={receitaAcumuladaCardRef}
-                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
+                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
                   >
                     <div className="absolute top-0 right-0 w-24 h-24 bg-success/10 rounded-bl-[80px]" />
                     {receitaAcumuladaInfoOpen && (
@@ -523,7 +526,7 @@ export default function RelatoriosPage() {
               </div>
 
               {/* Desktop: receita total (mantém leitura original) */}
-              <div className="hidden md:flex rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex-col justify-between min-h-[140px]">
+              <div className="hidden md:flex rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex-col justify-between min-h-[140px]">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                 <div>
                   <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -553,7 +556,6 @@ export default function RelatoriosPage() {
 
               {/* Distribuição por plano */}
               <div className="bg-surface-1 border-0 shadow-sm rounded-xl p-4 md:p-5 flex flex-col justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-3">Distribuição por Plano</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: 'Mensal', count: alunosPorPlano.mensal || 0, color: 'bg-brand' },
@@ -576,25 +578,17 @@ export default function RelatoriosPage() {
 
             {/* Receita mensal — passado + projeção */}
             <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
-              <div className="mb-2">
-                <div className="flex items-start justify-between gap-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary whitespace-nowrap">
-                    Projeção & Receita por Mês
-                  </p>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
-                      <span className="w-2 h-2 rounded bg-brand/30 border border-brand/40 inline-block" />
-                      Projeção
-                    </span>
-                    <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
-                      <span className="w-2 h-2 rounded bg-brand inline-block" />
-                      Realizado
-                    </span>
-                  </div>
+              <div className="mb-2 flex justify-end">
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
+                    <span className="w-2 h-2 rounded bg-brand/30 border border-brand/40 inline-block" />
+                    Projeção
+                  </span>
+                  <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
+                    <span className="w-2 h-2 rounded bg-brand inline-block" />
+                    Realizado
+                  </span>
                 </div>
-                <p className="mt-0.5 w-full text-[10px] text-text-tertiary">
-                  Distribuição proporcional por plano · desde Jan/26 + projeção de 6 meses
-                </p>
               </div>
               
               <div
@@ -624,8 +618,8 @@ export default function RelatoriosPage() {
                       {receitaPorMes.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.futuro ? 'rgba(37,99,235,0.25)' : '#2563EB'}
-                          stroke={entry.futuro ? 'rgba(37,99,235,0.5)' : 'none'}
+                          fill={entry.futuro ? 'rgba(147, 51, 234,0.25)' : '#9333ea'}
+                          stroke={entry.futuro ? 'rgba(147, 51, 234,0.5)' : 'none'}
                           strokeWidth={entry.futuro ? 1 : 0}
                         />
                       ))}
@@ -638,8 +632,7 @@ export default function RelatoriosPage() {
             {/* Charts por tipo de plano */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Faturamento Atual por Tipo de Plano (R$)</p>
-                <div className="flex-1 w-full mt-4">
+                <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
@@ -655,7 +648,7 @@ export default function RelatoriosPage() {
                         {chartData.map((_, index) => (
                           <Cell
                             key={`cell-${index}`}
-                            fill={index === 0 ? '#2563EB' : index === 1 ? 'rgba(37,99,235,0.6)' : '#52525B'}
+                            fill={index === 0 ? '#9333ea' : index === 1 ? 'rgba(147, 51, 234,0.6)' : '#52525B'}
                           />
                         ))}
                       </Bar>
@@ -665,8 +658,7 @@ export default function RelatoriosPage() {
               </div>
 
               <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">Adesão por Categoria</p>
-                <div className="flex-1 w-full mt-4">
+                <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
@@ -677,7 +669,7 @@ export default function RelatoriosPage() {
                         labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
                         itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
                       />
-                      <Bar dataKey="alunos" name="Alunos" fill="#2563EB" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />} />
+                      <Bar dataKey="alunos" name="Alunos" fill="#9333ea" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -686,10 +678,8 @@ export default function RelatoriosPage() {
 
             {/* Financial summary */}
             <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-4">Resumo Financeiro Estratégico</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand pl-2 border-l-2 border-brand leading-none">Composição de Carteira</p>
                   <div className="space-y-1.5">
                     {[
                       { label: 'Planos Mensais', val: receitaPorPlano.mensal || 0 },
@@ -704,7 +694,6 @@ export default function RelatoriosPage() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary pl-2 border-l-2 border-divider leading-none">Previsão de Fluxo</p>
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center p-2.5 bg-brand-subtle/40 border border-brand-border/20 rounded-lg">
                       <span className="text-[10px] font-bold text-brand uppercase tracking-wide">Recorrência Mensal</span>
@@ -721,7 +710,6 @@ export default function RelatoriosPage() {
 
             {/* Nutrition summary */}
             <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-4">Acompanhamento Nutricional</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Adesão Alimentar Média</span>
@@ -759,7 +747,6 @@ export default function RelatoriosPage() {
               role="tooltip"
               variant={DASHBOARD_KPI_GLASS}
               shine="subtle"
-              flatInLight
               className="coach-kpi-tooltip"
             >
               <div className="px-3 py-2.5">

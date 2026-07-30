@@ -36,6 +36,7 @@ interface Aluno {
   coaching_reference: string | null;
   full_name: string | null;
   email: string | null;
+  avatar_url?: string | null;
 }
 
 export default function TreinosPage() {
@@ -88,7 +89,7 @@ export default function TreinosPage() {
       const [linksResult, digitalPrimary, pdfResult] = await Promise.all([
         supabaseClient
           .from('coach_alunos')
-          .select('aluno:profiles!aluno_id(id, coaching_reference, full_name, email, arquivado)')
+          .select('aluno:profiles!aluno_id(id, coaching_reference, full_name, email, avatar_url, arquivado)')
           .eq('coach_id', coachId),
         supabaseClient
           .from('fichas_treino')
@@ -203,6 +204,7 @@ export default function TreinosPage() {
           aluno_id: f.aluno_id,
           aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
           aluno_email: student?.email ?? null,
+          aluno_avatar_url: student?.avatar_url ?? null,
           nome_rotina: f.nome_rotina,
           ativo: f.ativo,
           criado_em: f.criado_em,
@@ -227,6 +229,7 @@ export default function TreinosPage() {
           aluno_id: p.aluno_id,
           aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
           aluno_email: student?.email ?? null,
+          aluno_avatar_url: student?.avatar_url ?? null,
           nome_rotina: p.nome_arquivo || 'Plano de Treino PDF',
           ativo: true,
           criado_em: p.data_upload,
@@ -410,16 +413,7 @@ export default function TreinosPage() {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
 
         {/* ── Page Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4 border-b border-divider">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary font-display">
-              Gestão de Treinos
-            </h1>
-            <p className="text-xs text-text-secondary mt-0.5">
-              Crie, organize e distribua fichas digitais e PDFs para seus alunos
-            </p>
-          </div>
-
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 py-4 border-b border-divider">
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
             <button
               onClick={() => router.push('/admin/treinos/nova-ficha')}
@@ -501,7 +495,6 @@ export default function TreinosPage() {
                   <div className="flex items-center justify-between pb-2 border-b border-divider">
                     <div className="flex items-center gap-2">
                       <FileArrowUp size={16} className="text-brand" />
-                      <h4 className="font-bold text-text-primary text-xs uppercase tracking-wider">Protocolar PDF</h4>
                     </div>
                     <button onClick={() => { setShowPdfUpload(false); setSelectedFile(null); }} className="text-[10px] text-text-tertiary hover:text-text-primary font-bold uppercase">
                       Cancelar
@@ -560,13 +553,18 @@ export default function TreinosPage() {
               {/* Search & Filters */}
               <div className="bg-surface-1 border-0 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
                   <div className="relative w-full sm:max-w-xs">
-                    <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                    <MagnifyingGlass
+                      size={12}
+                      className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-[var(--filter-placeholder)]"
+                    />
                     <input
-                      type="text"
+                      type="search"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Buscar por rotina ou aluno..."
-                      className="w-full pl-9 pr-4 h-7.5 bg-surface-2 border border-input rounded-md text-2xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand/40 transition-colors"
+                      aria-label="Buscar treinos"
+                      style={{ touchAction: "manipulation" }}
+                      className="filter-control filter-control-search filter-control-compact w-full shadow-sm"
                     />
                   </div>
 
@@ -600,11 +598,6 @@ export default function TreinosPage() {
 
               {/* Table / Mobile cards */}
               <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-divider bg-surface-2/40">
-                  <h3 className="text-xs font-bold text-text-primary">Fichas e Protocolos</h3>
-                  <p className="text-[10px] text-text-tertiary">Grade completa de planejamentos cadastrados</p>
-                </div>
-
                 {processedRoutines.length === 0 ? (
                   <WorkoutsEmptyState />
                 ) : isMobile ? (

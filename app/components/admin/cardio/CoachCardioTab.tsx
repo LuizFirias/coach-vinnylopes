@@ -137,13 +137,7 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-bold text-text-primary">Cardio</h3>
-          <p className="text-2xs text-text-tertiary">
-            Prescrições ativas e sessões registradas pelo aluno
-          </p>
-        </div>
+      <div className="flex items-center justify-end gap-4">
         <button
           type="button"
           onClick={() => {

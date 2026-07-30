@@ -35,12 +35,15 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
       <div
         style={{ fontFamily: 'Nunito, var(--font-sans), sans-serif' }}
         className={cn(
-          'w-full rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
+          'relative w-full rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           className,
         )}
       >
-        <p className="text-[13px] font-bold text-text-primary">Ações prioritárias</p>
-        <p className="text-[11px] text-text-disabled mt-1">
+        <span className="absolute top-2.5 left-4 text-[10px] font-bold uppercase tracking-wider text-danger inline-flex items-center gap-1.5 leading-none">
+          <WarningCircle size={14} weight="bold" />
+          Ação requerida
+        </span>
+        <p className="text-[11px] text-text-disabled pt-5">
           Nenhuma ação pendente — tudo em ordem.
         </p>
       </div>
@@ -52,23 +55,16 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
       <div
         style={{ fontFamily: 'Nunito, var(--font-sans), sans-serif' }}
         className={cn(
-          'w-full rounded-xl border border-white/10 bg-[#122648]/35 px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
+          'relative w-full rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-3 pt-2.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           className,
         )}
       >
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className={MARKER_COL}>
-              <WarningCircle className="text-brand" size={16} weight="bold" />
-            </div>
-            <h3 className="text-[13px] font-bold text-text-primary">Ações prioritárias</h3>
-          </div>
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-danger">
-            Ação requerida
-          </span>
-        </div>
+        <span className="absolute top-2.5 left-4 z-10 text-[10px] font-bold uppercase tracking-wider text-danger inline-flex items-center gap-1.5 leading-none">
+          <WarningCircle size={14} weight="bold" />
+          Ação requerida
+        </span>
 
-        <div className="flex flex-col max-h-[24.5rem] md:max-h-[18rem] overflow-y-auto overscroll-contain">
+        <div className="flex flex-col max-h-[24.5rem] md:max-h-[18rem] overflow-y-auto overscroll-contain pt-5">
           {grupos.map((grupo, i) => (
             <button
               key={grupo.alunoId}
@@ -76,7 +72,7 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
               onClick={() => setAlunoSelecionado(grupo.alunoId)}
               style={{ touchAction: 'manipulation' }}
               className={cn(
-                'flex items-center justify-between py-3 text-left transition-opacity active:opacity-70',
+                'flex items-center justify-between py-2 text-left transition-opacity active:opacity-70',
                 i > 0 && 'border-t border-divider',
               )}
             >

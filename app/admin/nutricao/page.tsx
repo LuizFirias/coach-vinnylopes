@@ -7,12 +7,11 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { 
   FileArrowUp, CircleNotch, Trash, FileText, 
-  FilePdf, Eye, MagnifyingGlass, User, Info, CheckCircle, PencilSimple, AppleLogo, Clock
+  FilePdf, Eye, MagnifyingGlass, User, Info, CheckCircle, PencilSimple, AppleLogo
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { MobileListRow } from '@/app/components/MobileListRow';
 import { cn } from '@/lib/utils/cn';
@@ -481,18 +480,12 @@ export default function NutricaoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
-        <ScreenHeader
-          title="Gestão de Nutrição"
-          subtitle="Crie planos alimentares interativos digitais ou faça upload de PDFs para seus alunos"
-        />
-
-        <div className="px-4">
           <div className="flex flex-col gap-6">
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center min-h-[5.5rem] h-auto">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-brand" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Planos digitais ativos</span>
@@ -511,7 +504,7 @@ export default function NutricaoPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center min-h-[5.5rem] h-auto">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Adesão Média</span>
@@ -530,7 +523,7 @@ export default function NutricaoPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center min-h-[5.5rem] h-auto">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-warning" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Alunos sem plano</span>
@@ -549,7 +542,7 @@ export default function NutricaoPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center h-20">
+              <div className="p-4 bg-surface-1 border-0 shadow-sm rounded-lg flex flex-col justify-center min-h-[5.5rem] h-auto">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-danger" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Baixa Adesão</span>
@@ -585,14 +578,6 @@ export default function NutricaoPage() {
 
             {/* Acompanhamento Alimentar Table (Section 7) */}
             <Card className="rounded-xl border-0 p-4 md:p-5">
-              <div className="border-b border-divider/50 pb-2 mb-4">
-                <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
-                  <AppleLogo size={14} className="text-brand" />
-                  Acompanhamento Alimentar dos Alunos
-                </h2>
-                <p className="text-[10px] text-text-tertiary mt-0.5">Visão geral do engajamento e cumprimento das metas nutricionais prescritas</p>
-              </div>
-
               {studentNutritionList.length === 0 ? (
                 <p className="text-xs text-text-disabled text-center py-6">Nenhum aluno vinculado.</p>
               ) : (
@@ -681,7 +666,7 @@ export default function NutricaoPage() {
                 </div>
 
                 {/* Mobile — card list (Fase 7) */}
-                <div className="md:hidden">
+                <div className="md:hidden divide-y divide-[color:var(--list-row-divider)]">
                   {studentNutritionList.map((student) => {
                     const statusLabels = {
                       'em-dia': 'Em dia',
@@ -741,13 +726,99 @@ export default function NutricaoPage() {
             {/* Main Content Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
-              {/* Left Column: Recent Plans list/table (8 cols) */}
-              <div className="lg:col-span-8 flex flex-col gap-4">
+              {/* CTAs column first in DOM — mobile first; desktop right */}
+              <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col gap-6">
+                {/* Criar Plano Digital Card */}
+                <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5 flex flex-col gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
+                    <AppleLogo size={18} />
+                  </div>
+                  <Link href="/admin/nutricao/novo-plano" className="w-full">
+                    <Button variant="primary" fullWidth className="h-10 rounded-lg text-xs font-bold cursor-pointer">
+                      Criar Plano Digital
+                    </Button>
+                  </Link>
+                </Card>
+
+                {/* Enviar Plano Alimentar PDF */}
                 <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider">
-                      Histórico de Planos Enviados
-                    </h2>
+                  <form onSubmit={handleUpload} className="flex flex-col gap-4">
+                    {/* Select aluno */}
+                    <Select
+                      label="Selecione o Aluno"
+                      value={selectedAlunoId}
+                      onChange={setSelectedAlunoId}
+                      placeholder="Escolher aluno..."
+                      disabled={loading}
+                      options={alunos.map((a) => ({
+                        value: a.id,
+                        label: a.coaching_reference || a.full_name || a.email || a.id,
+                      }))}
+                    />
+
+                    {/* Descrição */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Descrição</label>
+                      <textarea
+                        value={descricao}
+                        onChange={(e) => setDescricao(e.target.value)}
+                        placeholder="Ex: Dieta bulking limpo, 3200 kcal/dia"
+                        disabled={loading}
+                        maxLength={200}
+                        rows={2}
+                        className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-none disabled:opacity-50"
+                      />
+                      <p className="text-[9px] text-text-disabled text-right">{descricao.length}/200</p>
+                    </div>
+
+                    {/* Upload */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Arquivo PDF</label>
+                      {!selectedFile ? (
+                        <label className="flex flex-col items-center justify-center h-20 border border-dashed border-border-default rounded-md bg-surface-2 hover:bg-brand-subtle/5 hover:border-brand/30 transition-all cursor-pointer group">
+                          <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
+                          <FileArrowUp size={16} className="text-text-disabled group-hover:text-brand transition-colors mb-1" />
+                          <p className="text-xs text-text-tertiary">Clique ou arraste o PDF</p>
+                          <p className="text-[9px] text-text-disabled mt-0.5">Máximo 50MB</p>
+                        </label>
+                      ) : (
+                        <div className="flex items-center gap-2.5 p-2 bg-brand-subtle border border-brand-border rounded-md">
+                          <div className="w-8 h-8 rounded bg-surface-1 border border-brand-border flex items-center justify-center text-brand shrink-0">
+                            <FilePdf size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-text-primary font-medium truncate">{selectedFile.name}</p>
+                            <p className="text-[9px] text-brand">PDF Pronto</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFile(null)}
+                            className="p-1 text-text-tertiary hover:text-danger transition-colors"
+                          >
+                            <Trash size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      loading={loading}
+                      disabled={loading || !selectedAlunoId || !selectedFile}
+                      fullWidth
+                      className="mt-2 h-10 rounded-lg text-xs font-bold"
+                    >
+                      Protocolar Plano
+                    </Button>
+                  </form>
+                </Card>
+              </div>
+
+              {/* History column — second on mobile, left on desktop */}
+              <div className="order-2 lg:order-1 lg:col-span-8 flex flex-col gap-4">
+                <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 mb-4">
                     {/* Search query input */}
                     <div className="relative w-full sm:w-[280px]">
                       <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-tertiary">
@@ -764,43 +835,45 @@ export default function NutricaoPage() {
                   </div>
 
                   {/* Tabs filter */}
-                  <div className="flex gap-1 p-0.5 bg-surface-2 border-0 rounded-md h-8.5 w-max items-center mb-4">
-                    <button
-                      onClick={() => setActiveTab('todos')}
-                      className={cn(
-                        'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'todos' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
-                      )}
-                    >
-                      Todos ({planos.filter(p => p.status !== 'template').length})
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('pdf')}
-                      className={cn(
-                        'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'pdf' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
-                      )}
-                    >
-                      PDF ({planos.filter(p => p.tipo === 'pdf').length})
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('digital')}
-                      className={cn(
-                        'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'digital' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
-                      )}
-                    >
-                      Digital ({planos.filter(p => p.tipo === 'digital' && p.status !== 'template').length})
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('templates')}
-                      className={cn(
-                        'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
-                        activeTab === 'templates' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
-                      )}
-                    >
-                      Templates ({planos.filter(p => p.tipo === 'digital' && p.status === 'template').length})
-                    </button>
+                  <div className="overflow-x-auto scrollbar-hide w-full mb-4">
+                    <div className="flex gap-1 p-0.5 bg-surface-2 border-0 rounded-md h-8.5 w-max items-center">
+                      <button
+                        onClick={() => setActiveTab('todos')}
+                        className={cn(
+                          'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
+                          activeTab === 'todos' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        )}
+                      >
+                        Todos ({planos.filter(p => p.status !== 'template').length})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('pdf')}
+                        className={cn(
+                          'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
+                          activeTab === 'pdf' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        )}
+                      >
+                        PDF ({planos.filter(p => p.tipo === 'pdf').length})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('digital')}
+                        className={cn(
+                          'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
+                          activeTab === 'digital' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        )}
+                      >
+                        Digital ({planos.filter(p => p.tipo === 'digital' && p.status !== 'template').length})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('templates')}
+                        className={cn(
+                          'px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap',
+                          activeTab === 'templates' ? 'bg-surface-0 border-0 text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+                        )}
+                      >
+                        Templates ({planos.filter(p => p.tipo === 'digital' && p.status === 'template').length})
+                      </button>
+                    </div>
                   </div>
 
                   {/* Table / List */}
@@ -812,7 +885,8 @@ export default function NutricaoPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto scrollbar-hide">
+                    <>
+                    <div className="hidden md:block overflow-x-auto scrollbar-hide">
                       <table className="w-full text-left border-collapse min-w-[500px]">
                         <thead>
                           <tr className="border-b border-divider">
@@ -944,111 +1018,94 @@ export default function NutricaoPage() {
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Mobile — plan list */}
+                    <div className="md:hidden divide-y divide-[color:var(--list-row-divider)]">
+                      {filteredPlanos.map((plan) => {
+                        const name = plan.aluno_ref || plan.aluno_nome || 'Aluno';
+                        const isTemplate = plan.status === 'template';
+                        const typeLabel = isTemplate ? 'TEMPLATE' : plan.tipo.toUpperCase();
+                        const typeBadgeClass = isTemplate
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : plan.tipo === 'digital'
+                            ? "bg-success/10 text-success border-success/20"
+                            : "bg-brand/10 text-brand border-brand/20";
+
+                        return (
+                          <MobileListRow
+                            key={plan.id}
+                            name={isTemplate ? 'Template' : name}
+                            badge={
+                              <span className={cn(
+                                "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide border shrink-0",
+                                typeBadgeClass
+                              )}>
+                                {typeLabel}
+                              </span>
+                            }
+                            topRight={
+                              <span className="text-[10px] text-text-tertiary font-mono whitespace-nowrap">
+                                {new Date(plan.criado_em).toLocaleDateString('pt-BR')}
+                              </span>
+                            }
+                            meta={
+                              <>
+                                <span className="truncate max-w-[55%]">{plan.descricao || plan.nome_arquivo}</span>
+                                <span className="text-text-tertiary">•</span>
+                                <span className="flex items-center gap-1.5 shrink-0">
+                                  {isTemplate && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedTemplate(plan);
+                                        setUseTemplatePlanName(plan.descricao || plan.nome_arquivo.replace('.json', ''));
+                                        setShowUseTemplateModal(true);
+                                      }}
+                                      className="text-[11px] font-medium text-brand"
+                                    >
+                                      Usar
+                                    </button>
+                                  )}
+                                  {plan.tipo === 'pdf' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handlePreviewPlan(plan.url_pdf!)}
+                                      className="text-text-secondary hover:text-brand"
+                                      title="Visualizar PDF"
+                                    >
+                                      <Eye size={14} />
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <Link href={`/admin/nutricao/planos/${plan.id}`} className="text-text-secondary hover:text-brand" title="Visualizar">
+                                        <Eye size={14} />
+                                      </Link>
+                                      <Link href={`/admin/nutricao/planos/${plan.id}/editar`} className="text-text-secondary hover:text-brand" title="Editar">
+                                        <PencilSimple size={14} />
+                                      </Link>
+                                    </>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeletePlan(plan.id, plan.url_pdf, plan.tipo)}
+                                    className="text-text-secondary hover:text-danger"
+                                    title="Excluir"
+                                  >
+                                    <Trash size={14} />
+                                  </button>
+                                </span>
+                              </>
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                    </>
                   )}
-                </Card>
-              </div>
-
-              {/* Right Column: Actions & Upload Form (4 cols) */}
-              <div className="lg:col-span-4 flex flex-col gap-6">
-                {/* Criar Plano Digital Card */}
-                <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5 flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
-                      <AppleLogo size={18} />
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Dieta Digital</h3>
-                      <p className="text-[10px] text-text-tertiary">Monte rotinas de refeições interativas integradas ao app</p>
-                    </div>
-                  </div>
-                  <Link href="/admin/nutricao/novo-plano" className="w-full mt-1">
-                    <Button variant="primary" fullWidth className="h-10 rounded-lg text-xs font-bold cursor-pointer">
-                      Criar Plano Digital
-                    </Button>
-                  </Link>
-                </Card>
-
-                {/* Enviar Plano Alimentar PDF */}
-                <Card className="rounded-xl border-0 shadow-sm p-4 md:p-5">
-                  <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-4 border-b border-divider pb-2">
-                    Enviar Plano Alimentar PDF
-                  </h2>
-                  
-                  <form onSubmit={handleUpload} className="flex flex-col gap-4">
-                    {/* Select aluno */}
-                    <Select
-                      label="Selecione o Aluno"
-                      value={selectedAlunoId}
-                      onChange={setSelectedAlunoId}
-                      placeholder="Escolher aluno..."
-                      disabled={loading}
-                      options={alunos.map((a) => ({
-                        value: a.id,
-                        label: a.coaching_reference || a.full_name || a.email || a.id,
-                      }))}
-                    />
-
-                    {/* Descrição */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Descrição</label>
-                      <textarea
-                        value={descricao}
-                        onChange={(e) => setDescricao(e.target.value)}
-                        placeholder="Ex: Dieta bulking limpo, 3200 kcal/dia"
-                        disabled={loading}
-                        maxLength={200}
-                        rows={2}
-                        className="w-full px-3 py-2 bg-surface-2 border-0 rounded-md text-text-primary text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-none disabled:opacity-50"
-                      />
-                      <p className="text-[9px] text-text-disabled text-right">{descricao.length}/200</p>
-                    </div>
-
-                    {/* Upload */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Arquivo PDF</label>
-                      {!selectedFile ? (
-                        <label className="flex flex-col items-center justify-center h-20 border border-dashed border-border-default rounded-md bg-surface-2 hover:bg-brand-subtle/5 hover:border-brand/30 transition-all cursor-pointer group">
-                          <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
-                          <FileArrowUp size={16} className="text-text-disabled group-hover:text-brand transition-colors mb-1" />
-                          <p className="text-xs text-text-tertiary">Clique ou arraste o PDF</p>
-                          <p className="text-[9px] text-text-disabled mt-0.5">Máximo 50MB</p>
-                        </label>
-                      ) : (
-                        <div className="flex items-center gap-2.5 p-2 bg-brand-subtle border border-brand-border rounded-md">
-                          <div className="w-8 h-8 rounded bg-surface-1 border border-brand-border flex items-center justify-center text-brand shrink-0">
-                            <FilePdf size={16} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-text-primary font-medium truncate">{selectedFile.name}</p>
-                            <p className="text-[9px] text-brand">PDF Pronto</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedFile(null)}
-                            className="p-1 text-text-tertiary hover:text-danger transition-colors"
-                          >
-                            <Trash size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      loading={loading}
-                      disabled={loading || !selectedAlunoId || !selectedFile}
-                      fullWidth
-                      className="mt-2 h-10 rounded-lg text-xs font-bold"
-                    >
-                      Protocolar Plano
-                    </Button>
-                  </form>
                 </Card>
               </div>
             </div>
           </div>
-        </div>
 
       {/* Usar Template Modal Overlay */}
       {showUseTemplateModal && selectedTemplate && (
@@ -1111,7 +1168,7 @@ export default function NutricaoPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
-  </div>
   );
 }

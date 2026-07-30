@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "@/lib/utils/cn";
 
 interface MobileListRowProps {
   /** Nome principal (trunca para não empurrar o layout). */
@@ -9,27 +10,28 @@ interface MobileListRowProps {
   topRight?: React.ReactNode;
   /** Linha de metadados inline (plano, atividade, etc.). */
   meta?: React.ReactNode;
+  className?: string;
 }
 
 /**
  * Linha compacta para converter tabelas em lista de cards no mobile.
- * Reutilizada em "Saúde dos alunos" (Fase 3) e "Acompanhamento Alimentar" (Fase 7).
+ * O separador entre itens fica no container pai (`divide-y`), não nesta row.
  */
-export function MobileListRow({ name, badge, topRight, meta }: MobileListRowProps) {
+export function MobileListRow({ name, badge, topRight, meta, className }: MobileListRowProps) {
   return (
-    <div className="flex items-start justify-between gap-3 py-3 border-b border-divider/50 last:border-b-0">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 min-w-0">
+    <div className={cn("flex flex-col gap-1 py-3", className)}>
+      <div className="flex items-start justify-between gap-3 w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <p className="font-semibold text-sm text-text-primary truncate">{name}</p>
           {badge}
         </div>
-        {meta && (
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-xs text-text-secondary">
-            {meta}
-          </div>
-        )}
+        {topRight && <div className="shrink-0 flex flex-col items-end gap-1">{topRight}</div>}
       </div>
-      {topRight && <div className="shrink-0 flex flex-col items-end gap-1">{topRight}</div>}
+      {meta && (
+        <div className="flex items-center w-full flex-nowrap overflow-hidden gap-x-1 text-[11px] text-text-secondary leading-tight">
+          {meta}
+        </div>
+      )}
     </div>
   );
 }

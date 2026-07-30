@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { CaretDown, CaretUp } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
+import { getPublicStorageUrl } from "@/lib/storageUrls";
 import { groupWorkoutsByStudent } from "@/lib/utils/workoutGrouping";
 import type { WorkoutGroup, WorkoutPlan } from "./types";
 import { WorkoutCardMobile } from "./WorkoutCardMobile";
+import {
+  StudentWorkoutsEyeButton,
+  StudentWorkoutsModal,
+} from "./StudentWorkoutsModal";
 
 interface WorkoutsMobileListProps {
   plans: WorkoutPlan[];
@@ -25,9 +29,12 @@ function MobileWorkoutGroup({
   onEdit: (plan: WorkoutPlan) => void;
   onDelete: (plan: WorkoutPlan) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
   const hasMultiple = group.plans.length > 1;
   const initial = group.studentName.charAt(0).toUpperCase();
+  const avatarSrc = group.avatarUrl
+    ? getPublicStorageUrl("avatars", group.avatarUrl)
+    : null;
 
   if (!hasMultiple) {
     return (
@@ -41,45 +48,38 @@ function MobileWorkoutGroup({
   }
 
   return (
-    <div className="border-0 rounded-xl overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-3.5 py-3 bg-surface-2/60 text-left"
-      >
-        <div
-          className={cn(
-            "w-7 h-7 rounded-md bg-gradient-to-br flex items-center justify-center font-bold text-[10px] text-white shrink-0",
-            group.avatarColor
-          )}
-        >
-          {initial}
+    <>
+      <div className="border-0 rounded-xl overflow-hidden">
+        <div className="w-full flex items-center gap-2.5 px-3.5 py-3 bg-surface-2/60">
+          <div
+            className={cn(
+              "w-7 h-7 rounded-md bg-gradient-to-br flex items-center justify-center font-bold text-[10px] text-white shrink-0 overflow-hidden",
+              group.avatarColor,
+            )}
+          >
+            {avatarSrc ? (
+              <img src={avatarSrc} alt={group.studentName} className="w-full h-full object-cover" />
+            ) : (
+              initial
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-text-primary truncate">{group.studentName}</p>
+            <p className="text-[10px] text-text-tertiary">{group.plans.length} fichas</p>
+          </div>
+          <StudentWorkoutsEyeButton onClick={() => setModalOpen(true)} />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-text-primary truncate">{group.studentName}</p>
-          <p className="text-[10px] text-text-tertiary">{group.plans.length} fichas</p>
-        </div>
-        {expanded ? (
-          <CaretUp size={14} className="text-text-tertiary shrink-0" />
-        ) : (
-          <CaretDown size={14} className="text-text-tertiary shrink-0" />
-        )}
-      </button>
-      {expanded && (
-        <div className="p-2 flex flex-col gap-2 bg-surface-1">
-          {group.plans.map((plan) => (
-            <WorkoutCardMobile
-              key={plan.id}
-              plan={plan}
-              showStudent={false}
-              onView={onView}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+      </div>
+      {modalOpen && (
+        <StudentWorkoutsModal
+          group={group}
+          onClose={() => setModalOpen(false)}
+          onView={onView}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       )}
-    </div>
+    </>
   );
 }
 

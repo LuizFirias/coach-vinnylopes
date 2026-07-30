@@ -42,14 +42,20 @@ export function applyTheme(theme: Theme) {
 
 function readStoredTheme(): Theme {
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
+    // Migração única para o tema claro oficial
+    if (localStorage.getItem('auron-theme-v2-light') !== '1') {
+      localStorage.setItem(THEME_STORAGE_KEY, 'light');
+      localStorage.setItem('auron-theme-v2-light', '1');
+      return 'light';
+    }
+    return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
   } catch {
-    return 'dark';
+    return 'light';
   }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>('light');
 
   useEffect(() => {
     const stored = readStoredTheme();

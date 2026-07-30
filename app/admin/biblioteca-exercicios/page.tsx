@@ -365,7 +365,7 @@ export default function BibliotecaExerciciosPage() {
             placeholder="Buscar por nome ou grupo muscular..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-8 pl-10 pr-4 bg-surface-2 border border-input rounded-md text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors text-2xs shadow-sm"
+            className="filter-control filter-control-search w-full h-8 pr-4 rounded-md focus:outline-none transition-colors shadow-sm"
           />
         </div>
 
@@ -394,12 +394,12 @@ export default function BibliotecaExerciciosPage() {
               ref={gruposScrollRef}
               className="overflow-x-auto pb-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-2"
             >
-              <div className="flex gap-1 p-0.5 bg-surface-2 border-0 rounded-md h-8.5 w-max items-center">
+              <div className="flex gap-1 p-0.5 bg-[var(--tab-track-bg)] border-0 rounded-md h-8.5 w-max items-center">
                 <button
                   onClick={() => setGrupoSelecionado("")}
                   className={cn(
-                    "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
-                    !grupoSelecionado ? "bg-surface-0 border-0 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                    "px-3 py-0.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
+                    !grupoSelecionado ? "bg-[var(--tab-active-bg)] border-0 text-[var(--tab-active-text)] shadow-sm" : "bg-transparent text-[var(--tab-inactive-text)] hover:text-text-primary"
                   )}
                 >
                   Todos
@@ -409,8 +409,8 @@ export default function BibliotecaExerciciosPage() {
                     key={grupo}
                     onClick={() => setGrupoSelecionado(grupo)}
                     className={cn(
-                      "px-3 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
-                      grupoSelecionado === grupo ? "bg-surface-0 border-0 text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                      "px-3 py-0.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider transition-all h-6.5 flex items-center justify-center whitespace-nowrap",
+                      grupoSelecionado === grupo ? "bg-[var(--tab-active-bg)] border-0 text-[var(--tab-active-text)] shadow-sm" : "bg-transparent text-[var(--tab-inactive-text)] hover:text-text-primary"
                     )}
                   >
                     {grupo}

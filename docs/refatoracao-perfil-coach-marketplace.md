@@ -140,7 +140,7 @@ Botão salvar: mesmo padrão do resto do app — disabled com opacity 0.4 quando
 | `PublicProfilePreviewCard` | Card de preview em tempo real (desktop: sticky lateral / mobile: topo compacto) | Novo — base do futuro card de "match" do Mercado, então vale construir já pensando em reuso |
 | `CityAutocomplete` | Input de cidade/UF com sugestão | Novo — verificar se já existe alguma lib de cidades BR no projeto antes de adicionar dependência |
 
-Todos seguem a paleta e tipografia do `auron-design-SKILL.md` (fundo `#141414`, accent `#2b7fff`, sem pill genérico fora de status/tabs).
+Todos seguem a paleta e tipografia do `auron-design-SKILL.md` (fundo `#141414`, accent `#9333ea`, sem pill genérico fora de status/tabs).
 
 ---
 

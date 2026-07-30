@@ -21,6 +21,12 @@ import { PriorityActionsCard, type PriorityAction } from "@/app/components/dashb
 import { RecentActivityFeed } from "@/app/components/dashboard/coach/RecentActivityFeed";
 import { StudentHealthTable } from "@/app/components/dashboard/coach/StudentHealthTable";
 import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
+import {
+  fetchCoachCustomPlans,
+  mergedPlans,
+  buildPlanDurationMap,
+  type CoachPlan,
+} from "@/lib/coachPlans";
 
 // Interfaces
 interface ProfileRow {
@@ -39,14 +45,15 @@ interface ProfileRow {
   arquivado?: boolean | null;
 }
 
-// Duração dos ciclos por tipo de plano (usado para caixa e projeção)
-const DURACAO_PLANO_MESES: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
-
-/** Deriva o início do ciclo vigente do plano com fallback progressivo. */
-function inicioDoCiclo(r: { data_inicio?: string | null; data_expiracao?: string | null; created_at?: string | null; tipo_plano?: string | null }): Date | null {
+/** Deriva o início do ciclo vigente do plano com fallback progressivo.
+ *  `duracaoMeses`: mapa slug → meses (planos padrão + personalizados do coach). */
+function inicioDoCiclo(
+  r: { data_inicio?: string | null; data_expiracao?: string | null; created_at?: string | null; tipo_plano?: string | null },
+  duracaoMeses: Record<string, number>
+): Date | null {
   if (r.data_inicio) return new Date(r.data_inicio);
   if (r.data_expiracao) {
-    const dur = DURACAO_PLANO_MESES[r.tipo_plano || 'mensal'] || 1;
+    const dur = duracaoMeses[r.tipo_plano || 'mensal'] || 1;
     const d = new Date(r.data_expiracao);
     d.setMonth(d.getMonth() - dur);
     return d;
@@ -115,8 +122,8 @@ export default function AdminDashboard() {
       const coachId = session?.user?.id;
       if (!coachId) { setError("Sessão inválida"); setLoading(false); return; }
 
-      // Status + alunos + nome de exibição do perfil em paralelo
-      const [statusResult, coachAlunosResult, coachProfileResult] = await Promise.all([
+      // Status + alunos + nome de exibição + planos personalizados em paralelo
+      const [statusResult, coachAlunosResult, coachProfileResult, customPlans] = await Promise.all([
         session.access_token
           ? fetchSubscriptionStatusCached(session.access_token)
           : Promise.resolve(null),
@@ -129,7 +136,10 @@ export default function AdminDashboard() {
           .select('full_name')
           .eq('id', coachId)
           .single(),
+        fetchCoachCustomPlans(coachId).catch(() => [] as CoachPlan[]),
       ]);
+
+      const duracaoMap = buildPlanDurationMap(customPlans);
 
       if (statusResult) {
         setCoachAccountType(statusResult.accountType ?? "padrao");
@@ -222,20 +232,13 @@ export default function AdminDashboard() {
 
           // Faturamento do mÃªs (CAIXA): conta o valor cheio do plano se o ciclo
           // vigente iniciou dentro do mÃªs corrente (venda/renovaÃ§Ã£o neste mÃªs).
-          const cicloInicio = inicioDoCiclo(r);
+          const cicloInicio = inicioDoCiclo(r, duracaoMap);
           if (cicloInicio && cicloInicio >= inicioDoMes && cicloInicio <= today) {
             tempReceitaMes += valor;
           }
 
-          if (r.tipo_plano === 'trimestral') {
-            tempMrr += valor / 3;
-          } else if (r.tipo_plano === 'semestral') {
-            tempMrr += valor / 6;
-          } else if (r.tipo_plano === 'anual') {
-            tempMrr += valor / 12;
-          } else {
-            tempMrr += valor;
-          }
+          // MRR normalizado pela duração do plano (padrão ou personalizado)
+          tempMrr += valor / (duracaoMap[r.tipo_plano || 'mensal'] || 1);
 
           // Check if active student is expiring within 7 days
           if (expiration) {
@@ -373,18 +376,23 @@ export default function AdminDashboard() {
       setAlunosAtivos(tempActiveCount);
       setAlunosEmRisco(tempRiscoCount);
 
-      // Plan counts distribution
+      // Plan counts distribution — padrão + personalizados; slugs desconhecidos
+      // caem em "Outros". A lista vai completa (com zeros) para o donut manter
+      // a cor atrelada ao plano, não à posição após filtrar.
       const counts = rows.reduce<Record<string, number>>((acc, r) => {
         const plano = r.tipo_plano || 'sem_plano';
         acc[plano] = (acc[plano] || 0) + 1;
         return acc;
       }, {});
+      const planosDoCoach = mergedPlans(customPlans);
+      const conhecidos = new Set(planosDoCoach.map(p => p.slug));
+      const outrosCount = Object.entries(counts)
+        .filter(([slug]) => !conhecidos.has(slug))
+        .reduce((acc, [, n]) => acc + n, 0);
       setAlunosPorPlano([
-        { name: 'Mensal', count: counts.mensal || 0 },
-        { name: 'Trimestral', count: counts.trimestral || 0 },
-        { name: 'Semestral', count: counts.semestral || 0 },
-        { name: 'Anual', count: counts.anual || 0 },
-      ].filter(p => p.count > 0));
+        ...planosDoCoach.map(p => ({ name: p.nome, count: counts[p.slug] || 0 })),
+        { name: 'Outros', count: outrosCount },
+      ]);
 
       // 5. Counts + feeds recentes em paralelo
       const [
@@ -512,9 +520,9 @@ export default function AdminDashboard() {
       for (const r of rows) {
         const valor = r.valor_plano ?? 0;
         if (valor <= 0) continue;
-        const meses = DURACAO_PLANO_MESES[r.tipo_plano || 'mensal'] || 1;
+        const meses = duracaoMap[r.tipo_plano || 'mensal'] || 1;
         const valorPorMes = valor / meses;
-        const inicio = inicioDoCiclo(r);
+        const inicio = inicioDoCiclo(r, duracaoMap);
         if (!inicio) continue;
         for (let m = 0; m < meses; m++) {
           const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
@@ -632,12 +640,12 @@ export default function AdminDashboard() {
               pendingCheckIns={checkinsPendentes}
               activeStudentsSubtitle={activeStudentsSubtitle}
             />
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               <MrrChartCard currentMrr={mrr} chartData={chartData} className="lg:col-span-7" />
               <PlanDistributionCard
                 plans={alunosPorPlano}
                 totalStudents={totalAlunos}
-                className="lg:col-span-5"
+                className="lg:col-span-5 h-full"
               />
             </div>
             <PriorityActionsCard actions={prioridades} />

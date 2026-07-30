@@ -81,7 +81,7 @@ export default function BottomNav() {
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
           'overflow-visible',
-          'rounded-[28px] border border-white/10 bg-[#122648]/35 backdrop-blur-xl backdrop-saturate-125',
+          'rounded-[28px] border border-white/10 bg-[#1a1033]/35 backdrop-blur-xl backdrop-saturate-125',
           'shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           'h-13',
         )}
@@ -110,7 +110,7 @@ export default function BottomNav() {
               A 8 50 0 0 1 8 0
               Z
             "
-            fill="#122648"
+            fill="#1a1033"
             fillOpacity="0.42"
           />
         </svg>
@@ -152,7 +152,7 @@ export default function BottomNav() {
                       )}
                       style={{
                         filter: isActive
-                          ? 'drop-shadow(0 2px 8px rgba(43,127,255,0.55))'
+                          ? 'drop-shadow(0 2px 8px rgba(147, 51, 234,0.55))'
                           : 'none',
                       }}
                     />
@@ -239,7 +239,7 @@ export default function BottomNav() {
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
           'rounded-[28px]',
-          'bg-[#122648]/35 backdrop-blur-xl backdrop-saturate-125',
+          'bg-[#1a1033]/35 backdrop-blur-xl backdrop-saturate-125',
           'shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           'border border-white/10',
           'h-16',

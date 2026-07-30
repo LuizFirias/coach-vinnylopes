@@ -1,6 +1,6 @@
 // Design System de E-mails — Auronfit (compacto, dark, mobile-first)
 
-const BRAND = "#2b7fff";
+const BRAND = "#9333ea";
 const BG_OUTER = "#0d0d0d";
 const BG_CARD = "#141414";
 const BORDER = "#222222";
@@ -22,7 +22,7 @@ function normalizeSiteUrl(siteUrl?: string): string {
 }
 
 function logoUrl(siteUrl?: string): string {
-  return `${normalizeSiteUrl(siteUrl)}/logo.png`;
+  return `${normalizeSiteUrl(siteUrl)}/images/logo.png`;
 }
 
 function emailEyebrow(text: string): string {

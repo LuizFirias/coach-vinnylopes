@@ -1,16 +1,18 @@
 "use client";
 
 import { Plus } from "@phosphor-icons/react";
+import { cn } from "@/lib/utils/cn";
 
 interface StudentsEmptyStateProps {
   variant: "no-students" | "grow";
   onAddStudent: () => void;
+  className?: string;
 }
 
-export function StudentsEmptyState({ variant, onAddStudent }: StudentsEmptyStateProps) {
+export function StudentsEmptyState({ variant, onAddStudent, className }: StudentsEmptyStateProps) {
   if (variant === "no-students") {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+      <div className={cn("flex flex-col items-center justify-center py-12 px-6 text-center", className)}>
         <h3 className="text-base font-semibold text-text-primary mb-2">Nenhum aluno ainda</h3>
         <p className="text-xs text-text-secondary leading-relaxed mb-5 max-w-sm">
           Adicione seu primeiro aluno para começar a acompanhar o progresso e prescrever treinos.
@@ -28,7 +30,12 @@ export function StudentsEmptyState({ variant, onAddStudent }: StudentsEmptyState
   }
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-divider pt-4 mt-2 px-1">
+    <div
+      className={cn(
+        "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 px-1",
+        className,
+      )}
+    >
       <p className="text-xs text-text-tertiary leading-relaxed flex-1">
         Adicione mais alunos para ver análises comparativas de engajamento e performance.
       </p>

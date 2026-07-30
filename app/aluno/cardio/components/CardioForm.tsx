@@ -99,9 +99,9 @@ export function CardioForm({
                 aria-pressed={ativo}
                 className="rounded-[8px] px-3 py-2 text-sm font-medium transition-colors touch-manipulation"
                 style={{
-                  background: ativo ? '#2b7fff' : 'var(--surface-2)',
+                  background: ativo ? '#9333ea' : 'var(--surface-2)',
                   color: ativo ? '#ffffff' : 'var(--text-secondary)',
-                  border: `1px solid ${ativo ? '#2b7fff' : 'var(--border-input)'}`,
+                  border: `1px solid ${ativo ? '#9333ea' : 'var(--border-input)'}`,
                 }}
               >
                 {m}

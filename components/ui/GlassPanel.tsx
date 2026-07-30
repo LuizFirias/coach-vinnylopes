@@ -6,11 +6,11 @@ export type GlassLevel = 1 | 2 | 3 | 4 | 5;
 
 export type GlassPanelVariant = `${GlassFamily}-${GlassLevel}`;
 
-/** Azul brand (#2b7fff) — KPIs e faturamento da dashboard coach */
+/** Roxo brand (#9333ea) — KPIs e faturamento da dashboard coach */
 export const DASHBOARD_KPI_GLASS: GlassPanelVariant = 'brand-1';
 
 const GLASS_RGB: Record<GlassFamily, { r: number; g: number; b: number }> = {
-  brand: { r: 43, g: 127, b: 255 },
+  brand: { r: 147, g: 51, b: 234 },
   success: { r: 57, g: 199, b: 90 },
   warning: { r: 245, g: 158, b: 11 },
   danger: { r: 224, g: 85, b: 85 },
@@ -50,7 +50,7 @@ export interface GlassPanelProps extends HTMLAttributes<HTMLDivElement> {
   level?: GlassLevel;
   /** Brilho interno — `subtle` para cards de dashboard */
   shine?: 'default' | 'subtle';
-  /** No light theme, usa surface-1 sólido (padrão cards da dashboard) */
+  /** No light theme, opcionalmente usa surface-1 sólido (não usar em KPIs glass) */
   flatInLight?: boolean;
   children: ReactNode;
 }
@@ -81,9 +81,13 @@ export function GlassPanel({
   const parsed = parseGlassVariant(variant);
   const family = familyProp ?? parsed.family;
   const level = levelProp ?? parsed.level;
-  const shadowStrength = shine === 'subtle' ? 0.16 : 0.38;
-  const glassOpacity = shine === 'subtle' ? 0.44 : 0.55;
-  const glassStyle = getGlassPanelStyle(family, level, glassOpacity);
+  const shadowStrength = shine === 'subtle' ? 0.28 : 0.38;
+  // Cor mais profunda (−30%) e cobertura alta no light (evita pastel lavado)
+  const glassOpacity = shine === 'subtle' ? 0.9 : 0.62;
+  const effectiveLevel = (
+    shine === 'subtle' ? Math.min(5, level + 2) : level
+  ) as GlassLevel;
+  const glassStyle = getGlassPanelStyle(family, effectiveLevel, glassOpacity);
   const rgbMatch = String(glassStyle.backgroundColor).match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
   const shadowColor = rgbMatch
     ? `0 12px 32px rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${shadowStrength})`
@@ -124,7 +128,7 @@ export const GLASS_VARIANT_META: {
   label: string;
   note: string;
 }[] = [
-  { variant: 'brand-1', label: 'Brand 1', note: 'Base #2b7fff · KPI info / ações' },
+  { variant: 'brand-1', label: 'Brand 1', note: 'Base #9333ea · KPI info / ações' },
   { variant: 'brand-2', label: 'Brand 2', note: '−15% luminosidade' },
   { variant: 'brand-3', label: 'Brand 3', note: '−30% luminosidade' },
   { variant: 'brand-4', label: 'Brand 4', note: '−45% luminosidade' },

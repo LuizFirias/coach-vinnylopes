@@ -68,7 +68,6 @@ export function CoachKpiCard({
       <GlassPanel
         variant={glassVariant}
         shine="subtle"
-        flatInLight
         className={cn(
           'relative flex flex-col justify-start min-h-[88px] px-3 pb-3 pt-2',
           compact && 'min-h-[80px] px-2 pb-2 pt-1.5',
@@ -106,7 +105,6 @@ export function CoachKpiCard({
               role="tooltip"
               variant={glassVariant}
               shine="subtle"
-              flatInLight
               className="coach-kpi-tooltip absolute z-30 left-0 right-0 top-full mt-1.5"
             >
               <div className="px-3 py-2.5">

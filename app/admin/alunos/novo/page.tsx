@@ -8,10 +8,14 @@ import { UserPlus, CheckCircle, ArrowLeft, X, WhatsappLogo } from "@phosphor-ico
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import Link from "next/link";
 import { Select } from "@/components/ui/Select";
+import {
+  fetchCoachCustomPlans,
+  mergedPlans,
+  type CoachPlan,
+} from "@/lib/coachPlans";
 
 export default function NovoAlunoPage() {
   const router = useRouter();
@@ -28,6 +32,7 @@ export default function NovoAlunoPage() {
   const [error, setError] = useState<string | null>(null);
   const [checkingRole, setCheckingRole] = useState(true);
   const [isCoach, setIsCoach] = useState(false);
+  const [planosPersonalizados, setPlanosPersonalizados] = useState<CoachPlan[]>([]);
 
   // Success Modal States
   const [showModal, setShowModal] = useState(false);
@@ -48,6 +53,14 @@ export default function NovoAlunoPage() {
         }
 
         setIsCoach(true);
+
+        // Planos personalizados do coach (RLS já limita aos dele)
+        try {
+          const custom = await fetchCoachCustomPlans(boot.userId);
+          setPlanosPersonalizados(custom);
+        } catch {
+          // sem planos personalizados — segue só com os padrão
+        }
       } finally {
         setCheckingRole(false);
       }
@@ -56,23 +69,27 @@ export default function NovoAlunoPage() {
     checkRole();
   }, [router]);
 
-  // Autopopulate dataExpiracao based on plan selection (today + X days)
+  // Autopopulate dataExpiracao based on plan selection (hoje + duração do plano)
   useEffect(() => {
     // 'outros' não tem validade automática — o coach define manualmente
     if (tipoPlano === "outros") return;
 
-    const today = new Date();
-    let daysToAdd = 30;
-    if (tipoPlano === "trimestral") daysToAdd = 90;
-    else if (tipoPlano === "semestral") daysToAdd = 180;
-    else if (tipoPlano === "anual") daysToAdd = 365;
+    const plano = mergedPlans(planosPersonalizados).find((p) => p.slug === tipoPlano);
+    const meses = plano?.duracao_meses ?? 1;
 
-    const expiryDate = new Date(today.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+    const expiryDate = new Date();
+    expiryDate.setMonth(expiryDate.getMonth() + meses);
     const yyyy = expiryDate.getFullYear();
     const mm = String(expiryDate.getMonth() + 1).padStart(2, "0");
     const dd = String(expiryDate.getDate()).padStart(2, "0");
     setDataExpiracao(`${yyyy}-${mm}-${dd}`);
-  }, [tipoPlano]);
+
+    // Pré-preenche o valor sugerido do plano personalizado (sem sobrescrever digitação)
+    if (plano?.custom && plano.valor_sugerido != null) {
+      setValorPlano((v) => (v.trim() ? v : String(plano.valor_sugerido)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoPlano, planosPersonalizados]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -167,11 +184,6 @@ export default function NovoAlunoPage() {
         </Link>
       </div>
 
-      <ScreenHeader
-        title="Adicionar aluno"
-        subtitle="Preencha os dados básicos para iniciar o acompanhamento"
-      />
-
       <div className="px-4 max-w-4xl mx-auto flex flex-col gap-5">
 
         {error && (
@@ -186,12 +198,8 @@ export default function NovoAlunoPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 relative">
               
-              {/* Coluna 1: DADOS BÁSICOS */}
+              {/* Coluna 1 */}
               <div className="flex flex-col gap-5">
-                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider pb-2">
-                  DADOS BÁSICOS
-                </h3>
-                
                 <Input
                   label="Nome completo do aluno"
                   name="fullName"
@@ -240,10 +248,6 @@ export default function NovoAlunoPage() {
 
               {/* Coluna 2: ACOMPANHAMENTO & PLANO */}
               <div className="flex flex-col gap-5">
-                <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider border-b border-divider pb-2">
-                  ACOMPANHAMENTO & PLANO
-                </h3>
-
                 <Select
                   label="Objetivo"
                   value={objetivo}
@@ -263,10 +267,10 @@ export default function NovoAlunoPage() {
                   onChange={setTipoPlano}
                   disabled={loading}
                   options={[
-                    { value: "mensal", label: "Mensal" },
-                    { value: "trimestral", label: "Trimestral" },
-                    { value: "semestral", label: "Semestral" },
-                    { value: "anual", label: "Anual" },
+                    ...mergedPlans(planosPersonalizados).map((p) => ({
+                      value: p.slug,
+                      label: p.custom ? `${p.nome} (${p.duracao_meses} ${p.duracao_meses === 1 ? "mês" : "meses"})` : p.nome,
+                    })),
                     { value: "outros", label: "Outros" },
                   ]}
                 />

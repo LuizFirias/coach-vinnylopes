@@ -25,6 +25,7 @@ import {
   CaretLeft,
   CaretRight,
   Envelope,
+  Tag,
 } from "@phosphor-icons/react";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
@@ -544,6 +545,15 @@ export default function CoachPerfilPage() {
             />
           </SettingsSection>
 
+          <SettingsSection title="Negócio">
+            <SettingsRow
+              icon={Tag}
+              label="Planos de venda"
+              value="Personalize suas modalidades"
+              href="/admin/planos"
+            />
+          </SettingsSection>
+
           <SettingsSection title="Acesso">
             <SettingsRow icon={Envelope} label="E-mail" value={emailDisplay} />
             <SettingsRow
@@ -952,7 +962,7 @@ export default function CoachPerfilPage() {
             "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-8",
             "w-14 h-14 rounded-full bg-brand text-text-on-brand",
             "flex items-center justify-center touch-manipulation overflow-hidden",
-            "shadow-[0_8px_28px_rgba(43,127,255,0.45)]",
+            "shadow-[0_8px_28px_rgba(147, 51, 234,0.45)]",
             "transition-all duration-200 active:scale-95",
             "disabled:opacity-60",
           )}

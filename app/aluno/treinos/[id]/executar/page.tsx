@@ -1808,7 +1808,7 @@ export default function ExecucaoTreinoPage() {
                     setModalCarga(newVal);
                     setModalCargaStr(String(newVal));
                   }}
-                  className="w-10 h-10 rounded-lg bg-brand flex items-center justify-center text-white active:bg-brand/90 transition-colors shrink-0 [@media(hover:hover)]:hover:bg-[#5a9fff]"
+                  className="w-10 h-10 rounded-lg bg-brand flex items-center justify-center text-white active:bg-brand/90 transition-colors shrink-0 [@media(hover:hover)]:hover:bg-[#a855f7]"
                   aria-label="Aumentar carga"
                 >
                   <Plus size={18} weight="bold" />
