@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Barbell, CaretLeft, CaretRight, PencilSimple } from '@phosphor-icons/react';
+import { Barbell, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 import { dashboardColors } from '@/lib/tokens/dashboardColors';
 
@@ -21,6 +21,11 @@ export interface DiaSemana {
   treinoPdfId?: string;
 }
 
+/** Tempo de long-press para entrar no modo edição (ms) */
+const LONG_PRESS_MS = 1000;
+/** Escala do card durante o hold */
+const PRESS_SCALE = 1.2;
+
 function getDayStatus(dia: DiaSemana, today: string): DayStatus {
   if (dia.isOff) return 'rest';
   if (dia.isHoje) {
@@ -35,7 +40,6 @@ function getDayStatus(dia: DiaSemana, today: string): DayStatus {
   return 'none';
 }
 
-/** Cor do CONTORNO do ícone de treino, por status */
 const workoutIconStroke: Record<DayStatus, string | null> = {
   done: dashboardColors.calDone,
   missed: dashboardColors.calMissed,
@@ -90,7 +94,7 @@ interface WeekCalendarProps {
   onWeekChange: (delta: number) => void;
   onSelectDia: (dia: DiaSemana) => void;
   onEditDay: (jsDay: number) => void;
-  /** Sai do modo edição quando o picker fecha (opcional) */
+  /** Controla o modo edição de fora (ex.: fechar junto com o picker) */
   editModeExternal?: boolean;
   onEditModeChange?: (editing: boolean) => void;
 }
@@ -109,29 +113,93 @@ export function WeekCalendar({
   const [editModeInternal, setEditModeInternal] = useState(false);
   const isEditing = editModeExternal ?? editModeInternal;
 
-  const setEditing = (next: boolean) => {
-    if (editModeExternal === undefined) setEditModeInternal(next);
-    onEditModeChange?.(next);
-  };
+  const setEditing = useCallback(
+    (next: boolean) => {
+      if (editModeExternal === undefined) setEditModeInternal(next);
+      onEditModeChange?.(next);
+    },
+    [editModeExternal, onEditModeChange],
+  );
 
-  const toggleEditMode = () => setEditing(!isEditing);
+  const [pressingData, setPressingData] = useState<string | null>(null);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+  const pressStartPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const clearPress = useCallback(() => {
+    if (pressTimerRef.current != null) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    setPressingData(null);
+    pressStartPosRef.current = null;
+  }, []);
+
+  const startPress = useCallback(
+    (dia: DiaSemana, clientX: number, clientY: number) => {
+      longPressFiredRef.current = false;
+      pressStartPosRef.current = { x: clientX, y: clientY };
+      setPressingData(dia.data);
+
+      pressTimerRef.current = setTimeout(() => {
+        longPressFiredRef.current = true;
+        pressTimerRef.current = null;
+        setPressingData(null);
+        pressStartPosRef.current = null;
+
+        // Long-press: entra no modo edição (como o lápis antigo)
+        onSelectDia(dia);
+        setEditing(true);
+
+        try {
+          navigator.vibrate?.(10);
+        } catch {
+          /* ignore */
+        }
+      }, LONG_PRESS_MS);
+    },
+    [onSelectDia, setEditing],
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{
-        opacity: 1,
-        y: 0,
-        scale: isEditing ? 1.035 : 1,
-      }}
-      transition={{
-        delay: isEditing ? 0 : 0.15,
-        type: 'spring',
-        stiffness: 280,
-        damping: 22,
-      }}
-      className="relative z-10 mx-4 origin-center"
-    >
+    <>
+      {isEditing && (
+        <motion.button
+          type="button"
+          aria-label="Sair do modo edição"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-40 cursor-default border-0"
+          style={{
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(2px)',
+            WebkitBackdropFilter: 'blur(2px)',
+            touchAction: 'manipulation',
+          }}
+          onClick={() => setEditing(false)}
+        />
+      )}
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          scale: isEditing ? 1.035 : 1,
+        }}
+        transition={{
+          delay: isEditing ? 0 : 0.15,
+          type: 'spring',
+          stiffness: 280,
+          damping: 22,
+        }}
+        className={cn(
+          'relative mx-4 origin-center',
+          isEditing ? 'z-50' : 'z-10',
+        )}
+      >
       <div className="mb-2 flex items-center justify-between">
         <button
           id="btn-semana-anterior"
@@ -143,54 +211,84 @@ export function WeekCalendar({
         >
           <CaretLeft className="h-4 w-4 dashboard-text-subtle" />
         </button>
-        <p className="text-[11px] font-medium dashboard-text-subtle">{weekLabel}</p>
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={toggleEditMode}
-            className={cn(
-              'flex h-6 w-6 items-center justify-center rounded-md transition-colors',
-              isEditing ? 'text-brand bg-brand/10' : 'dashboard-text-subtle',
-            )}
-            style={{ touchAction: 'manipulation' }}
-            aria-label={isEditing ? 'Sair do modo edição' : 'Editar agenda'}
-            aria-pressed={isEditing}
-          >
-            <PencilSimple className="h-3.5 w-3.5" weight={isEditing ? 'fill' : 'regular'} />
-          </button>
-          <button
-            id="btn-proxima-semana"
-            type="button"
-            onClick={() => onWeekChange(1)}
-            className="flex h-6 w-6 items-center justify-center"
-            style={{ touchAction: 'manipulation' }}
-            aria-label="Próxima semana"
-          >
-            <CaretRight className="h-4 w-4 dashboard-text-subtle" />
-          </button>
+
+        <div className="flex flex-col items-center gap-0.5">
+          <p className="text-[11px] font-medium dashboard-text-subtle">{weekLabel}</p>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="text-[10px] font-medium text-brand"
+              style={{ touchAction: 'manipulation' }}
+            >
+              Pronto
+            </button>
+          )}
         </div>
+
+        <button
+          id="btn-proxima-semana"
+          type="button"
+          onClick={() => onWeekChange(1)}
+          className="flex h-6 w-6 items-center justify-center"
+          style={{ touchAction: 'manipulation' }}
+          aria-label="Próxima semana"
+        >
+          <CaretRight className="h-4 w-4 dashboard-text-subtle" />
+        </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1.5">
         {diasSemana.map((dia) => {
           const status = getDayStatus(dia, today);
           const isSelected = selectedDia?.data === dia.data;
+          const isPressing = pressingData === dia.data;
 
           return (
-            <button
+            <motion.button
               key={dia.data}
               type="button"
+              onPointerDown={(e) => {
+                if (e.button !== 0) return;
+                // Só inicia long-press para entrar no modo (não para sair)
+                if (!isEditing) startPress(dia, e.clientX, e.clientY);
+              }}
+              onPointerUp={clearPress}
+              onPointerCancel={clearPress}
+              onPointerLeave={clearPress}
+              onPointerMove={(e) => {
+                const start = pressStartPosRef.current;
+                if (!start || pressTimerRef.current == null) return;
+                const dx = Math.abs(e.clientX - start.x);
+                const dy = Math.abs(e.clientY - start.y);
+                if (dx > 10 || dy > 10) clearPress();
+              }}
               onClick={() => {
+                if (longPressFiredRef.current) {
+                  longPressFiredRef.current = false;
+                  return;
+                }
                 onSelectDia(dia);
                 if (isEditing) {
                   const dateObj = new Date(`${dia.data}T12:00:00`);
                   onEditDay(dateObj.getDay());
                 }
               }}
+              animate={{
+                scale: isPressing ? PRESS_SCALE : 1,
+                zIndex: isPressing ? 8 : 0,
+              }}
+              transition={{
+                scale: {
+                  duration: isPressing ? LONG_PRESS_MS / 1000 : 0.18,
+                  ease: isPressing ? 'easeOut' : 'easeInOut',
+                },
+                zIndex: { duration: 0 },
+              }}
               className={cn(
-                'flex flex-col items-center justify-between gap-1',
+                'relative flex flex-col items-center justify-between gap-1',
                 'rounded-[12px] py-2 px-0.5',
-                'transition-all duration-[var(--duration-fast)] cursor-pointer',
+                'cursor-pointer select-none',
                 'min-h-[64px]',
                 !dia.isHoje && !isSelected && [
                   'bg-[var(--dash-day-card-bg,var(--dash-card))]',
@@ -201,6 +299,7 @@ export function WeekCalendar({
                   'border border-[rgba(147, 51, 234,0.2)]',
                 ],
                 isEditing && isSelected && 'ring-1 ring-brand/50',
+                isPressing && 'shadow-[0_8px_24px_rgba(147,51,234,0.25)]',
               )}
               style={
                 dia.isHoje
@@ -208,11 +307,22 @@ export function WeekCalendar({
                       backgroundColor: 'var(--dash-today-bg)',
                       border: `1.5px solid ${dashboardColors.calToday}`,
                       touchAction: 'manipulation',
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none',
                     }
-                  : { touchAction: 'manipulation' }
+                  : {
+                      touchAction: 'manipulation',
+                      WebkitUserSelect: 'none',
+                      userSelect: 'none',
+                    }
               }
               aria-current={dia.isHoje ? 'date' : undefined}
               aria-pressed={isSelected}
+              aria-label={
+                isEditing
+                  ? `${dia.label} ${dia.numero}. Toque para configurar`
+                  : `${dia.label} ${dia.numero}. Segure para editar a semana`
+              }
             >
               <span
                 className={cn(
@@ -235,7 +345,7 @@ export function WeekCalendar({
               </span>
 
               <DayIcon status={status} />
-            </button>
+            </motion.button>
           );
         })}
       </div>
@@ -265,5 +375,6 @@ export function WeekCalendar({
         </div>
       )}
     </motion.div>
+    </>
   );
 }

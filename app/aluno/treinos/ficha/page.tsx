@@ -809,32 +809,41 @@ function FichaContent() {
               className="bg-surface-1 border border-card shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-lg transition-all"
             >
               {/* Cabeçalho do exercício */}
-              <div className="flex items-start gap-2.5 px-4 pt-4 pb-3 border-b border-divider/50">
-                <div className="w-8 h-8 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center text-brand flex-shrink-0">
-                  <Barbell className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-normal text-text-primary leading-tight">{toTitleCase(exercicio.nome)}</h3>
-                    {exercicio.video_url && (
-                      <button
-                        onClick={() => setVideoModal(exercicio.video_url || null)}
-                        className="flex items-center gap-1 text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 rounded-md px-2 py-1 hover:opacity-80 transition-opacity"
-                      >
-                        <Play className="w-3 h-3 fill-brand" />
-                        Ver execução
-                      </button>
-                    )}
-                    {treinoIniciado && (
-                      <button
-                        onClick={() => iniciarExercicio(exIdx)}
-                        className="ml-auto h-6.5 px-2.5 bg-brand text-text-on-brand rounded-md text-[10px] font-semibold shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity flex-shrink-0"
-                      >
-                        Executar
-                      </button>
-                    )}
+              <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3
+                      className="font-semibold leading-tight mb-1"
+                      style={{ fontSize: 15, color: '#9333ea' }}
+                    >
+                      {toTitleCase(exercicio.nome)}
+                    </h3>
+                    <p style={{ fontSize: 11, color: '#aaa' }}>
+                      Descanso: {exercicio.descanso}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-text-tertiary mt-1.5">Descanso: {exercicio.descanso}</p>
+                  {exercicio.video_url && (
+                    <button
+                      onClick={() => setVideoModal(exercicio.video_url || null)}
+                      className="flex items-center gap-1 text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 rounded-md px-2 py-1 hover:opacity-80 transition-opacity shrink-0"
+                    >
+                      <Play className="w-3 h-3 fill-brand" />
+                      Ver
+                    </button>
+                  )}
+                  {treinoIniciado && (
+                    <button
+                      onClick={() => iniciarExercicio(exIdx)}
+                      className="rounded-[8px] px-3 py-1.5 text-[11px] font-semibold flex-shrink-0"
+                      style={{
+                        background: 'linear-gradient(135deg, #c084fc, #9333ea, #7e22ce)',
+                        color: '#fff',
+                        boxShadow: '0 2px 6px rgba(147,51,234,0.3)',
+                      }}
+                    >
+                      Executar
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -932,17 +941,18 @@ function FichaContent() {
                           <div key={sIdx}>
                             {/* Mobile Set Row */}
                             <div
-                              className={cn(
-                                "md:hidden transition-all rounded-md",
-                                serie.completado ? "bg-success/5" : "bg-transparent",
-                              )}
+                              className="md:hidden transition-all"
                               style={{
                                 display: 'grid',
                                 gridTemplateColumns: '24px minmax(36px,1fr) 44px 36px 24px 24px 28px',
                                 gap: '0 10px',
-                                padding: '8px 12px',
+                                padding: '10px 12px',
                                 alignItems: 'center',
-                                borderTop: sIdx > 0 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                                background: serie.completado
+                                  ? 'rgba(57,199,90,0.06)'
+                                  : sIdx % 2 === 0
+                                    ? '#ffffff'
+                                    : '#f9f9fb',
                               }}
                             >
                               {/* SET */}

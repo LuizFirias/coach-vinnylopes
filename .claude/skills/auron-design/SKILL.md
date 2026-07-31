@@ -85,6 +85,12 @@ Border radius botão:   10px (NÃO pill genérico)
 Border radius input:   8–10px
 Border radius badge:   4–6px
 Border radius pill:    9999px (APENAS status pills e tabs selecionadas)
+
+Exceção documentada (jul/2026):
+  Tabs Volume / Reps / Duração no gráfico da ficha do aluno
+  (`FichaHistoricoChart`) usam pill roxo estilo Hevy. São 3 opções
+  de visualização de métrica — não tabs de navegação de app.
+  Não generalizar esse padrão para nav, filtros ou CTAs.
 ```
 
 ### Bordas (dark mode)

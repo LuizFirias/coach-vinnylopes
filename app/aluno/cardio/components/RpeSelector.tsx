@@ -7,13 +7,21 @@ interface RpeSelectorProps {
   onChange: (value: number) => void;
 }
 
+const LABEL_STYLE = {
+  fontSize: 11,
+  fontWeight: 500,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.07em',
+  color: '#aaa',
+  marginBottom: 6,
+  display: 'block' as const,
+};
+
 export function RpeSelector({ value, onChange }: RpeSelectorProps) {
   return (
-    <div className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-        Percepção de esforço (RPE)
-      </p>
-      <div className="flex flex-wrap gap-1.5">
+    <div>
+      <p style={LABEL_STYLE}>Percepção de esforço (RPE)</p>
+      <div className="flex flex-wrap gap-2">
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
           const ativo = value === n;
           return (
@@ -23,11 +31,19 @@ export function RpeSelector({ value, onChange }: RpeSelectorProps) {
               onClick={() => onChange(n)}
               aria-label={`RPE ${n} — ${RPE_LABELS[n]}`}
               aria-pressed={ativo}
-              className="flex h-11 w-11 items-center justify-center rounded-[8px] text-sm font-bold tabular-nums lining-nums transition-colors touch-manipulation"
+              className="tabular-nums lining-nums"
               style={{
-                background: ativo ? '#9333ea' : 'var(--surface-2)',
-                color: ativo ? '#ffffff' : 'var(--text-secondary)',
-                border: `1px solid ${ativo ? '#9333ea' : 'var(--border-input)'}`,
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                border: 'none',
+                background: ativo ? '#9333ea' : '#ebebf0',
+                color: ativo ? '#fff' : '#555',
+                fontSize: 13,
+                fontWeight: ativo ? 700 : 400,
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                transition: 'all 0.15s',
               }}
             >
               {n}
@@ -36,7 +52,7 @@ export function RpeSelector({ value, onChange }: RpeSelectorProps) {
         })}
       </div>
       {value !== null && (
-        <p className="text-[11px] text-text-secondary">{RPE_LABELS[value]}</p>
+        <p style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{RPE_LABELS[value]}</p>
       )}
     </div>
   );

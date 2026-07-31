@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, HeartStraight, Plus, X } from '@phosphor-icons/react';
+import { Plus, X } from '@phosphor-icons/react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
@@ -166,33 +165,28 @@ export default function CardioPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-0">
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: 'var(--mobile-page-bg-solid)' }}
+      >
         <DumbbellLoader text="Carregando cardio..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 pb-24 md:p-6 lg:p-10 lg:pl-28">
+    <div
+      className="min-h-screen p-4 pb-24 md:p-6 lg:p-10 lg:pl-28"
+      style={{ background: 'var(--mobile-page-bg-solid)' }}
+    >
       <div className="mx-auto flex max-w-lg flex-col gap-5">
         <div>
-          <Link
-            href="/aluno/dashboard"
-            className="mb-4 inline-flex items-center gap-1.5 text-2xs uppercase tracking-caps text-brand"
-          >
-            <ArrowLeft className="h-3 w-3" /> Dashboard
-          </Link>
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold leading-tight tracking-tight text-text-primary">
-                Cardio
-              </h1>
-              <p className="mt-1 text-sm text-text-secondary">
-                Registre suas sessões e acompanhe o gasto calórico
-              </p>
-            </div>
-            <HeartStraight className="h-7 w-7 shrink-0 text-danger" weight="fill" />
-          </div>
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-text-primary">
+            Cardio
+          </h1>
+          <p className="mt-1 text-sm text-text-tertiary">
+            Registre suas sessões e acompanhe o gasto calórico
+          </p>
         </div>
 
         <CardioKpis
@@ -223,7 +217,11 @@ export default function CardioPage() {
             <button
               type="button"
               onClick={() => abrirForm()}
-              className="inline-flex items-center gap-1.5 rounded-[8px] bg-brand px-3 py-2 text-[11px] font-semibold text-white touch-manipulation"
+              className="inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2 text-[13px] font-semibold text-white touch-manipulation"
+              style={{
+                background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
+                boxShadow: '0 3px 10px rgba(147,51,234,0.30)',
+              }}
             >
               <Plus size={12} weight="bold" /> Nova sessão
             </button>
@@ -241,20 +239,35 @@ export default function CardioPage() {
           onClick={() => !submitting && setFormOpen(false)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] border-0 bg-surface-1 p-5 sm:rounded-[20px]"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] border-0 bg-white p-5 sm:rounded-[20px]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 id="cardio-form-title" className="text-lg font-semibold text-text-primary">
+              <h2
+                id="cardio-form-title"
+                style={{ fontSize: 17, fontWeight: 600, color: '#1a1a1a' }}
+              >
                 Registrar cardio
               </h2>
               <button
                 type="button"
                 onClick={() => setFormOpen(false)}
                 aria-label="Fechar"
-                className="flex h-9 w-9 items-center justify-center rounded-[8px] border border-input text-text-tertiary touch-manipulation"
+                className="touch-manipulation"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#ebebf0',
+                  color: '#888',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
               >
-                <X size={15} />
+                <X size={14} />
               </button>
             </div>
 

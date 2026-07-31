@@ -1,7 +1,7 @@
 'use client';
 
 import { CircleNotch, Plus, Warning } from '@phosphor-icons/react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties, type FocusEvent } from 'react';
 
 interface MeasurementInputCardProps {
   unit: string;
@@ -14,6 +14,19 @@ interface MeasurementInputCardProps {
   onDateChange: (isoDate: string) => void;
   onSubmit: (value: number) => void;
 }
+
+const SECTION_LABEL: CSSProperties = {
+  fontSize: 10,
+  fontWeight: 500,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  color: '#aaa',
+  marginBottom: 8,
+  display: 'block',
+};
+
+const INPUT_BG = '#ebebf0';
+const INPUT_BG_FOCUS = '#e4e4ea';
 
 export function MeasurementInputCard({
   unit,
@@ -41,39 +54,76 @@ export function MeasurementInputCard({
     setRaw('');
   };
 
+  const onFocus = (e: FocusEvent<HTMLInputElement>) => {
+    e.target.style.background = INPUT_BG_FOCUS;
+  };
+  const onBlur = (e: FocusEvent<HTMLInputElement>) => {
+    e.target.style.background = INPUT_BG;
+  };
+
   return (
     <div>
-      <p className="mb-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-text-muted">
-        Novo registro
-      </p>
+      <span style={SECTION_LABEL}>Novo registro</span>
 
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-11 flex-1 items-center justify-between rounded-[10px] border-0 bg-[var(--mobile-secondary-bg)] px-4">
-          <input
-            type="number"
-            step="0.1"
-            inputMode="decimal"
-            value={raw}
-            onChange={(e) => setRaw(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-            placeholder={placeholder}
-            className="flex-1 min-w-0 bg-transparent text-[22px] font-bold text-text-primary border-0 outline-none shadow-none ring-0 focus:outline-none focus:shadow-none focus:ring-0 focus-visible:!outline-none focus-visible:!shadow-none focus-visible:!border-transparent"
-            disabled={submitting}
-          />
-          <span className="text-sm text-text-secondary">{unit}</span>
-        </div>
+        <input
+          type="number"
+          step="0.1"
+          inputMode="decimal"
+          value={raw}
+          onChange={(e) => setRaw(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          disabled={submitting}
+          style={{
+            flex: 1,
+            height: 44,
+            fontSize: 16,
+            fontWeight: 500,
+            color: '#1a1a1a',
+            background: INPUT_BG,
+            border: 'none',
+            borderRadius: 10,
+            padding: '0 12px',
+            outline: 'none',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        />
+
+        <span style={{ fontSize: 13, color: '#aaa', fontWeight: 500 }}>
+          {unit}
+        </span>
 
         <button
           type="button"
           onClick={handleSubmit}
           disabled={submitting || !raw}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand text-white disabled:opacity-40"
           aria-label="Adicionar registro"
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            border: 'none',
+            background:
+              'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
+            boxShadow: '0 3px 10px rgba(147,51,234,0.35)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: submitting || !raw ? 'default' : 'pointer',
+            opacity: submitting || !raw ? 0.4 : 1,
+            touchAction: 'manipulation',
+            transition: 'opacity 0.15s',
+            flexShrink: 0,
+          }}
         >
           {submitting ? (
             <CircleNotch className="h-5 w-5 animate-spin" />
           ) : (
-            <Plus size={20} weight="bold" />
+            <Plus size={18} weight="bold" />
           )}
         </button>
       </div>
@@ -85,15 +135,23 @@ export function MeasurementInputCard({
         </p>
       )}
 
-      {error && <p className="mb-2 text-[11px] text-red-400">{error}</p>}
+      {error && <p className="mb-2 text-[11px] text-danger">{error}</p>}
 
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-text-muted">Data</span>
+      <div className="mt-2 flex items-center gap-2">
+        <span style={{ fontSize: 12, color: '#aaa', fontWeight: 500 }}>Data</span>
         <input
           type="date"
           value={date}
           onChange={(e) => onDateChange(e.target.value)}
-          className="bg-transparent text-[11px] text-text-secondary border-0 outline-none shadow-none ring-0 focus:outline-none focus:shadow-none focus:ring-0 focus-visible:!outline-none focus-visible:!shadow-none focus-visible:!border-transparent"
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#1a1a1a',
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            colorScheme: 'light',
+          }}
         />
       </div>
     </div>

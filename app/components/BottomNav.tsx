@@ -81,27 +81,25 @@ export default function BottomNav() {
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
           'overflow-visible',
-          'rounded-[28px] border border-white/10 bg-[#1a1033]/35 backdrop-blur-xl backdrop-saturate-125',
-          'shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           'h-13',
         )}
         style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
         aria-label="Navegação principal"
       >
-        {/* Fundo da barra com notch côncavo + pontas em cápsula (como rounded-[28px]) */}
+        {/* Fundo da barra com notch côncavo — cor via --nav-bg (tema) */}
         <svg
           className="absolute inset-0 w-full h-full overflow-visible"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           aria-hidden="true"
-          style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.55))' }}
+          style={{ filter: 'drop-shadow(var(--nav-shadow))' }}
         >
           <path
             d="
               M 8,0
-              L 20,0
-              C 38,0 38,58 50,58
-              C 62,58 62,0 80,0
+              L 30,0
+              C 36,0 38,12 50,14
+              C 62,12 64,0 70,0
               L 92,0
               A 8 50 0 0 1 100 50
               A 8 50 0 0 1 92 100
@@ -110,8 +108,8 @@ export default function BottomNav() {
               A 8 50 0 0 1 8 0
               Z
             "
-            fill="#1a1033"
-            fillOpacity="0.42"
+            fill="var(--nav-bg)"
+            fillOpacity="1"
           />
         </svg>
         <ul className="relative flex items-center justify-around h-full px-2 overflow-visible">
@@ -239,12 +237,15 @@ export default function BottomNav() {
         className={cn(
           'fixed left-4 right-4 z-40 lg:hidden',
           'rounded-[28px]',
-          'bg-[#1a1033]/35 backdrop-blur-xl backdrop-saturate-125',
-          'shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
-          'border border-white/10',
           'h-16',
         )}
-        style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        style={{
+          bottom: 'max(12px, env(safe-area-inset-bottom))',
+          background: 'var(--nav-bg)',
+          border: '1px solid var(--nav-border)',
+          boxShadow: 'var(--nav-shadow)',
+          backdropFilter: 'blur(16px)',
+        }}
         aria-label="Navegação coach"
       >
         <ul className="flex items-center justify-around h-full px-2">

@@ -36,6 +36,12 @@ interface MealCardProps {
   onToggleDone: () => void;
 }
 
+const CARD_STYLE = {
+  background: "var(--mobile-card-bg)",
+  border: "1px solid var(--mobile-card-border)",
+  boxShadow: "var(--mobile-card-shadow)",
+} as const;
+
 export function MealCard({
   mealId,
   title,
@@ -54,17 +60,22 @@ export function MealCard({
   const canExpand = showExpandControl && (foods.length > 0 || !!notes);
 
   return (
-    <article className="rounded-xl overflow-hidden transition-colors border-0 bg-[#111827]">
+    <article className="overflow-hidden rounded-[16px] transition-colors" style={CARD_STYLE}>
       <button
         type="button"
         onClick={() => canExpand && onToggleExpand()}
         disabled={!canExpand}
         className={cn(
-          "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
-          canExpand && "hover:bg-surface-2/60 lg:hover:bg-[#1a1a1a] cursor-pointer",
-          !canExpand && "cursor-default"
+          "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+          canExpand && "cursor-pointer hover:bg-black/[0.02]",
+          !canExpand && "cursor-default",
         )}
         id={`btn-refeicao-${mealId}`}
+        style={
+          isExpanded
+            ? { borderBottom: "1px solid var(--mobile-card-border)" }
+            : undefined
+        }
       >
         <div
           role="checkbox"
@@ -73,43 +84,41 @@ export function MealCard({
             e.stopPropagation();
             onToggleDone();
           }}
-          className={cn(
-            "w-5 h-5 rounded border-[1.5px] flex items-center justify-center shrink-0 cursor-pointer",
-            isDone ? "bg-success border-success" : "border-border-input bg-transparent"
-          )}
+          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center"
+          style={{
+            borderRadius: 5,
+            border: "none",
+            background: isDone ? "#39c75a" : "var(--filter-bg, #ebebf0)",
+            transition: "all 0.15s",
+          }}
         >
-          {isDone && <Check className="w-3 h-3 text-white" weight="bold" />}
+          {isDone && <Check className="h-3 w-3 text-white" weight="bold" />}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <p
-            className={cn(
-              "text-[15px] font-semibold leading-tight",
-              isDone ? "text-text-primary" : "text-text-primary"
-            )}
-          >
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold leading-tight text-text-primary">
             {title}
           </p>
           {time && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <Clock size={11} className="text-text-muted shrink-0" />
-              <p className="text-[11px] text-text-muted">{time.slice(0, 5)}</p>
+            <div className="mt-0.5 flex items-center gap-1">
+              <Clock size={11} className="shrink-0 text-text-tertiary" />
+              <p className="text-[11px] text-text-tertiary">{time.slice(0, 5)}</p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           {calories != null && (
-            <p className="text-[13px] font-medium tabular-nums lining-nums text-text-secondary">
+            <p className="text-[13px] font-medium tabular-nums lining-nums text-text-tertiary">
               {Math.round(calories)} kcal
             </p>
           )}
           {canExpand && (
             <CaretDown
-              size={16}
+              size={14}
               className={cn(
-                "text-text-muted transition-transform duration-200",
-                isExpanded && "rotate-180"
+                "text-text-disabled transition-transform duration-200",
+                isExpanded && "rotate-180",
               )}
             />
           )}
@@ -117,9 +126,9 @@ export function MealCard({
       </button>
 
       {isExpanded && (foods.length > 0 || notes) && (
-        <div className="px-4 pb-4 border-t border-divider/60">
+        <div className="px-4 pb-4">
           {foods.length > 0 && (
-            <div className="mt-2">
+            <div className="mt-1">
               {foods.map((food, idx) => (
                 <div key={food.id ?? `${mealId}-food-${idx}`}>
                   <FoodItemRow
@@ -131,10 +140,13 @@ export function MealCard({
                   />
                   {food.substitutions && food.substitutions.length > 0 && (
                     <details className="group mb-2 pl-1">
-                      <summary className="text-[10px] font-semibold text-brand cursor-pointer select-none">
+                      <summary className="cursor-pointer select-none text-[10px] font-semibold text-brand">
                         Opções de substituição
                       </summary>
-                      <div className="flex flex-col gap-1 mt-1 pl-2 border-l border-divider">
+                      <div
+                        className="mt-1 flex flex-col gap-1 pl-2"
+                        style={{ borderLeft: "1px solid rgba(147,51,234,0.20)" }}
+                      >
                         {food.substitutions.map((sub, subIdx) => {
                           const qty = formatFoodQuantityDisplay(
                             sub.quantityGrams,
@@ -144,13 +156,16 @@ export function MealCard({
                           return (
                             <div
                               key={subIdx}
-                              className="text-[10px] text-text-secondary flex justify-between gap-2"
+                              className="flex justify-between gap-2 text-[10px] text-text-tertiary"
                             >
                               <span>• {sub.name}</span>
-                              <span className="font-semibold tabular-nums lining-nums text-right">
+                              <span className="text-right font-semibold tabular-nums lining-nums">
                                 {qty.primary}
                                 {qty.secondary ? (
-                                  <span className="text-text-muted font-normal"> · {qty.secondary}</span>
+                                  <span className="font-normal text-text-disabled">
+                                    {" "}
+                                    · {qty.secondary}
+                                  </span>
                                 ) : null}
                               </span>
                             </div>
@@ -165,7 +180,7 @@ export function MealCard({
           )}
 
           {notes && (
-            <div className="mt-3 p-2.5 bg-brand-subtle border border-brand-border rounded-lg text-[11px] text-text-secondary italic">
+            <div className="mt-3 rounded-lg border border-brand-border bg-brand-subtle p-2.5 text-[11px] italic text-text-secondary">
               Recomendação: {notes}
             </div>
           )}
@@ -175,7 +190,13 @@ export function MealCard({
               type="button"
               onClick={onToggleDone}
               disabled={isToggling}
-              className="mt-3 w-full min-h-[44px] rounded-[10px] bg-brand text-sm font-semibold text-text-on-brand flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[10px] text-sm font-semibold text-white disabled:opacity-50"
+              style={{
+                background:
+                  "linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)",
+                boxShadow: "0 3px 10px rgba(147,51,234,0.30)",
+                border: "none",
+              }}
             >
               <Check size={16} weight="bold" />
               Marcar como feita
@@ -187,7 +208,11 @@ export function MealCard({
               type="button"
               onClick={onToggleDone}
               disabled={isToggling}
-              className="mt-3 w-full min-h-[44px] rounded-[10px] border-0 bg-surface-2 text-xs font-semibold text-text-secondary flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[10px] text-xs font-semibold text-text-tertiary disabled:opacity-50"
+              style={{
+                background: "var(--filter-bg, #ebebf0)",
+                border: "none",
+              }}
             >
               Desmarcar refeição
             </button>

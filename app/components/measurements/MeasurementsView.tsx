@@ -6,7 +6,6 @@ import { MeasurementCurrentCard } from '@/app/components/measurements/Measuremen
 import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
 import { MeasurementHistoryList } from '@/app/components/measurements/MeasurementHistoryList';
 import { MeasurementInputCard } from '@/app/components/measurements/MeasurementInputCard';
-import { MeasurementTabs } from '@/app/components/measurements/MeasurementTabs';
 import {
   buildChartData,
   buildHistoryEntries,
@@ -127,8 +126,6 @@ export function MeasurementsView({
         </div>
       )}
 
-      <MeasurementTabs selected={metricId} onChange={setMetricId} />
-
       <div
         className={cn(
           'flex flex-col gap-5',
@@ -137,6 +134,8 @@ export function MeasurementsView({
       >
         <div className={cn(isDesktop && 'sticky top-24')}>
           <MeasurementCurrentCard
+            metricId={metricId}
+            onMetricChange={setMetricId}
             value={currentValue}
             unit={metric.unit}
             lastUpdated={lastUpdated}
@@ -150,7 +149,14 @@ export function MeasurementsView({
           />
 
           {!readOnly && onSubmitValue && dataRegistro && onDataRegistroChange && (
-            <div className="mt-6">
+            <>
+              <div
+                style={{
+                  height: 1,
+                  background: 'rgba(0,0,0,0.06)',
+                  margin: '16px 0',
+                }}
+              />
               <MeasurementInputCard
                 unit={metric.unit}
                 date={dataRegistro}
@@ -162,14 +168,22 @@ export function MeasurementsView({
                 onDateChange={onDataRegistroChange}
                 onSubmit={(value) => onSubmitValue(metricId, value)}
               />
-            </div>
+            </>
           )}
         </div>
 
-        <div className="flex flex-col gap-5 min-w-0">
+        <div className="flex min-w-0 flex-col gap-5">
           {isDesktop && (
             <MeasurementLineChart data={chartPoints} isDesktop />
           )}
+
+          <div
+            style={{
+              height: 1,
+              background: 'rgba(0,0,0,0.06)',
+            }}
+            className="lg:hidden"
+          />
 
           <MeasurementHistoryList
             entries={historyEntries}
@@ -187,8 +201,10 @@ export function MeasurementsView({
   }
 
   return (
-    <div className="min-h-screen mobile-page-bg text-text-primary pb-[calc(5rem+env(safe-area-inset-bottom))]">
-      <div className={cn('mx-auto w-full', isDesktop ? 'max-w-[960px] px-6 py-8' : 'max-w-2xl')}>
+    <div
+      className="min-h-screen text-text-primary pb-[calc(5rem+env(safe-area-inset-bottom))]"
+      style={{ background: 'var(--mobile-page-bg-solid)' }}
+    >      <div className={cn('mx-auto w-full', isDesktop ? 'max-w-[960px] px-6 py-8' : 'max-w-2xl')}>
         {backHref && (
           <StatsPageHeader title={title} backHref={backHref} />
         )}

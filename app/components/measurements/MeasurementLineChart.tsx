@@ -9,13 +9,9 @@ interface MeasurementLineChartProps {
   data: ChartPoint[];
   height?: number;
   isDesktop?: boolean;
-  /** Escala Y fixa (ex.: [0, 100] para adesão %). Sem isso, auto-escala pelo min/max. */
   yDomain?: [number, number];
-  /** 'sparse' = 1ª / meio / última (padrão peso). 'all' = todos os pontos no eixo X. */
   labelMode?: 'sparse' | 'all';
-  /** Formata o valor do ponto único (ex.: "80%"). Default: 1 casa decimal. */
   formatValue?: (value: number) => string;
-  /** Usa fundo sólido do design system (#0f0f0f) em vez do token mobile. */
   solidBackground?: boolean;
 }
 
@@ -25,24 +21,21 @@ export function MeasurementLineChart({
   isDesktop = false,
   yDomain,
   labelMode = 'sparse',
-  formatValue,
-  solidBackground = false,
 }: MeasurementLineChartProps) {
   const chartHeight = height ?? (isDesktop ? 240 : 120);
   const width = 300;
-  const hasData = data.length >= 1;
-  const isSinglePoint = data.length === 1;
-  const padding = { top: isSinglePoint ? 14 : 6, bottom: 6 };
+  const hasEnough = data.length >= 2;
+  const padding = { top: 6, bottom: 6 };
   const chartH = chartHeight - padding.top - padding.bottom;
 
   const minVal = yDomain
     ? yDomain[0]
-    : hasData
+    : hasEnough
       ? Math.min(...data.map((d) => d.value))
       : 0;
   const maxVal = yDomain
     ? yDomain[1]
-    : hasData
+    : hasEnough
       ? Math.max(...data.map((d) => d.value))
       : 1;
   const range = maxVal - minVal || 1;
@@ -61,100 +54,86 @@ export function MeasurementLineChart({
   const midDate = data[Math.floor(data.length / 2)]?.date ?? '';
   const lastDate = data[data.length - 1]?.date ?? '';
   const lastPoint = data[data.length - 1];
-  const format = formatValue ?? ((v: number) => v.toFixed(1));
 
   return (
     <div
-      className={
-        solidBackground
-          ? 'rounded-[10px] border-0 p-3'
-          : 'rounded-[10px] border-0 mobile-stat-nav-card p-3'
-      }
+      className="rounded-[14px] p-4"
+      style={{
+        background: 'var(--mobile-card-bg, #ffffff)',
+        border: '1px solid var(--mobile-card-border, rgba(0,0,0,0.08))',
+        boxShadow: 'var(--mobile-card-shadow, 0 1px 3px rgba(0,0,0,0.05))',
+        minHeight: chartHeight + 24,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: hasEnough ? 'flex-start' : 'center',
+        alignItems: hasEnough ? 'stretch' : 'center',
+      }}
     >
-      <div
-        className="rounded-[10px] p-2.5 pb-1.5"
-        style={{
-          backgroundColor: solidBackground
-            ? '#0f0f0f'
-            : 'var(--mobile-secondary-bg)',
-        }}
-      >
-        <svg
-          width="100%"
-          height={chartHeight}
-          viewBox={`0 0 ${width} ${chartHeight}`}
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          <line
-            x1={0}
-            y1={chartHeight - 2}
-            x2={width}
-            y2={chartHeight - 2}
-            stroke="#1e1e1e"
-            strokeWidth={1}
-          />
+      {hasEnough ? (
+        <div>
+          <svg
+            width="100%"
+            height={chartHeight}
+            viewBox={`0 0 ${width} ${chartHeight}`}
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <line
+              x1={0}
+              y1={chartHeight - 2}
+              x2={width}
+              y2={chartHeight - 2}
+              stroke="rgba(0,0,0,0.06)"
+              strokeWidth={1}
+            />
 
-          {hasData && data.length >= 2 && (
             <polyline
               points={points}
               fill="none"
               stroke="#9333ea"
-              strokeWidth={1.5}
+              strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity={0.5}
             />
-          )}
 
-          {hasData && lastPoint && (
-            <>
-              {isSinglePoint && (
-                <text
-                  x={toX(0)}
-                  y={toY(lastPoint.value) - 8}
-                  textAnchor="middle"
-                  fill="#9333ea"
-                  fontSize={isDesktop ? 11 : 10}
-                  fontWeight={600}
-                >
-                  {format(lastPoint.value)}
-                </text>
-              )}
+            {lastPoint && (
               <circle
                 cx={toX(data.length - 1)}
                 cy={toY(lastPoint.value)}
-                r={isSinglePoint ? 4 : 3}
+                r={3}
                 fill="#9333ea"
-                opacity={isSinglePoint ? 0.9 : 0.7}
               />
-            </>
-          )}
-        </svg>
-
-        {hasData && labelMode === 'all' && (
-          <div className="mt-0.5 flex justify-between gap-0.5">
-            {data.map((d, i) => (
-              <span
-                key={`${d.date}-${i}`}
-                className="flex-1 text-center text-[7px] text-[#333333]"
-              >
-                {d.date}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {hasData && labelMode === 'sparse' && (
-          <div className="mt-0.5 flex justify-between">
-            <span className="text-[8px] text-text-muted">{firstDate}</span>
-            {data.length > 2 && (
-              <span className="text-[8px] text-text-muted">{midDate}</span>
             )}
-            <span className="text-[8px] text-text-muted">{lastDate}</span>
-          </div>
-        )}
-      </div>
+          </svg>
+
+          {labelMode === 'all' && (
+            <div className="mt-0.5 flex justify-between gap-0.5">
+              {data.map((d, i) => (
+                <span
+                  key={`${d.date}-${i}`}
+                  className="flex-1 text-center text-[7px] text-text-disabled"
+                >
+                  {d.date}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {labelMode === 'sparse' && (
+            <div className="mt-0.5 flex justify-between">
+              <span className="text-[8px] text-text-disabled">{firstDate}</span>
+              {data.length > 2 && (
+                <span className="text-[8px] text-text-disabled">{midDate}</span>
+              )}
+              <span className="text-[8px] text-text-disabled">{lastDate}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p style={{ fontSize: 12, color: '#bbb', textAlign: 'center' }}>
+          Registre pelo menos 2 medidas para ver o gráfico
+        </p>
+      )}
     </div>
   );
 }

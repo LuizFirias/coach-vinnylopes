@@ -41,6 +41,12 @@ const DAY_NAMES = [
 
 const ITEM_H = 44;
 
+const CARD_STYLE = {
+  background: 'var(--mobile-card-bg, #ffffff)',
+  border: '1px solid var(--mobile-card-border, rgba(0,0,0,0.08))',
+  boxShadow: 'var(--mobile-card-shadow, 0 8px 24px rgba(0,0,0,0.12))',
+} as const;
+
 export function DayConfigPicker({
   open,
   jsDay,
@@ -136,7 +142,7 @@ export function DayConfigPicker({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm"
       onClick={saving ? undefined : onClose}
       role="presentation"
     >
@@ -144,16 +150,22 @@ export function DayConfigPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby="day-config-title"
-        className="w-full max-w-[280px] overflow-hidden rounded-[16px] border border-[var(--dash-card-border,#222)] bg-[var(--dash-card-bg,#141414)] shadow-2xl"
+        className="w-full max-w-[280px] overflow-hidden rounded-[16px]"
+        style={CARD_STYLE}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
+        <div className="flex items-start justify-between gap-2 px-4 pb-2 pt-4">
           <div className="min-w-0">
-            <p id="day-config-title" className="text-[14px] font-bold dashboard-text">
+            <p
+              id="day-config-title"
+              className="text-[14px] font-semibold text-text-primary"
+            >
               {DAY_NAMES[jsDay]}
             </p>
             {subtitle && (
-              <p className="mt-0.5 text-[11px] dashboard-text-subtle capitalize">{subtitle}</p>
+              <p className="mt-0.5 text-[11px] capitalize text-text-tertiary">
+                {subtitle}
+              </p>
             )}
           </div>
           <button
@@ -161,34 +173,48 @@ export function DayConfigPicker({
             onClick={onClose}
             disabled={saving}
             aria-label="Fechar"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--dash-input-bg,#1e1e1e)] disabled:opacity-50"
-            style={{ touchAction: 'manipulation' }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg disabled:opacity-50"
+            style={{
+              background: 'var(--filter-bg, #ebebf0)',
+              border: 'none',
+              color: '#888',
+              touchAction: 'manipulation',
+            }}
           >
-            <X size={14} className="dashboard-text-subtle" />
+            <X size={14} />
           </button>
         </div>
 
         {/* Drum roll */}
-        <div className="relative mx-3 my-2 h-[132px] overflow-hidden rounded-[12px] bg-[#0d0d0d]">
-          {/* selection band */}
+        <div
+          className="relative mx-3 my-2 h-[132px] overflow-hidden rounded-[12px]"
+          style={{ background: 'var(--filter-bg, #ebebf0)' }}
+        >
           <div
             className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-[44px] -translate-y-1/2 rounded-[10px] border border-brand/40 bg-brand/10"
             aria-hidden
           />
-          {/* fade top/bottom */}
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-8 bg-gradient-to-b from-[#0d0d0d] to-transparent"
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-8"
+            style={{
+              background:
+                'linear-gradient(to bottom, var(--filter-bg, #ebebf0), transparent)',
+            }}
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-8 bg-gradient-to-t from-[#0d0d0d] to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-8"
+            style={{
+              background:
+                'linear-gradient(to top, var(--filter-bg, #ebebf0), transparent)',
+            }}
             aria-hidden
           />
 
           <div
             ref={listRef}
             onScroll={handleScroll}
-            className="h-full overflow-y-auto overscroll-contain snap-y snap-mandatory scrollbar-none"
+            className="scrollbar-none h-full snap-y snap-mandatory overflow-y-auto overscroll-contain"
             style={{
               scrollSnapType: 'y mandatory',
               paddingTop: ITEM_H,
@@ -209,16 +235,24 @@ export function DayConfigPicker({
                   className={cn(
                     'flex w-full snap-center items-center justify-center gap-1.5 px-3 text-center transition-all',
                     active
-                      ? 'text-[15px] font-semibold text-white'
-                      : 'text-[13px] font-medium text-[#555]',
+                      ? 'text-[15px] font-semibold text-text-primary'
+                      : 'text-[13px] font-normal text-text-tertiary',
                   )}
                   style={{ height: ITEM_H, touchAction: 'manipulation' }}
                 >
-                  {item.kind === 'rest' && <Moon size={14} weight={active ? 'fill' : 'regular'} />}
-                  {item.kind === 'status' && item.value === 'done' && (
-                    <Check size={14} weight="bold" className={active ? 'text-[#39c75a]' : undefined} />
+                  {item.kind === 'rest' && (
+                    <Moon size={14} weight={active ? 'fill' : 'regular'} />
                   )}
-                  <span className={cn('truncate', item.kind === 'workout' && 'uppercase')}>{item.label}</span>
+                  {item.kind === 'status' && item.value === 'done' && (
+                    <Check
+                      size={14}
+                      weight="bold"
+                      className={active ? 'text-[#39c75a]' : undefined}
+                    />
+                  )}
+                  <span className={cn('truncate', item.kind === 'workout' && 'uppercase')}>
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
@@ -230,9 +264,10 @@ export function DayConfigPicker({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="h-10 flex-1 rounded-[10px] text-[13px] font-semibold dashboard-text-subtle disabled:opacity-50"
+            className="h-10 flex-1 rounded-[10px] text-[13px] font-semibold text-text-tertiary disabled:opacity-50"
             style={{
-              backgroundColor: 'var(--dash-input-bg, #1e1e1e)',
+              background: 'var(--filter-bg, #ebebf0)',
+              border: 'none',
               touchAction: 'manipulation',
             }}
           >
@@ -242,8 +277,14 @@ export function DayConfigPicker({
             type="button"
             onClick={confirm}
             disabled={saving || items.length === 0}
-            className="h-10 flex-1 rounded-[10px] bg-brand text-[13px] font-bold text-white disabled:opacity-50"
-            style={{ touchAction: 'manipulation' }}
+            className="h-10 flex-1 rounded-[10px] text-[13px] font-semibold text-white disabled:opacity-50"
+            style={{
+              background:
+                'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
+              boxShadow: '0 3px 10px rgba(147,51,234,0.30)',
+              border: 'none',
+              touchAction: 'manipulation',
+            }}
           >
             {saving ? 'Salvando…' : 'Confirmar'}
           </button>

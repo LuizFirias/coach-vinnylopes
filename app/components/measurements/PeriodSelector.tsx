@@ -1,7 +1,15 @@
+'use client';
+
+import { PeriodSelect } from '@/app/components/ui/PeriodSelect';
 import type { MeasurementPeriod } from '@/lib/measurements/types';
 import { cn } from '@/lib/utils/cn';
 
-const PERIODS: MeasurementPeriod[] = ['7d', '30d', '90d', '1a'];
+const MEASUREMENT_PERIOD_OPTIONS: { value: MeasurementPeriod; label: string }[] = [
+  { value: '7d', label: 'Últimos 7 dias' },
+  { value: '30d', label: 'Últimos 30 dias' },
+  { value: '90d', label: 'Últimos 90 dias' },
+  { value: '1a', label: 'Último ano' },
+];
 
 interface PeriodSelectorProps {
   selected: MeasurementPeriod;
@@ -11,29 +19,14 @@ interface PeriodSelectorProps {
 
 export function PeriodSelector({ selected, onChange, className }: PeriodSelectorProps) {
   return (
-    <div className={cn('flex items-center shrink-0', className)}>
-      {PERIODS.map((p, i) => (
-        <button
-          key={p}
-          type="button"
-          onClick={() => onChange(p)}
-          style={{ touchAction: 'manipulation' }}
-          className={cn(
-            'text-[12px] font-semibold transition-colors px-2.5',
-            i > 0 && 'border-l border-[#282828]',
-            i === 0 && 'pl-0',
-            selected === p
-              ? 'text-brand'
-              : 'text-text-disabled [@media(hover:hover)]:hover:text-text-tertiary',
-          )}
-          aria-pressed={selected === p}
-          aria-label={`Período de ${p}`}
-        >
-          {p}
-        </button>
-      ))}
-    </div>
+    <PeriodSelect
+      className={cn(className)}
+      value={selected}
+      options={MEASUREMENT_PERIOD_OPTIONS}
+      onChange={(v) => onChange(v as MeasurementPeriod)}
+      aria-label="Selecionar período"
+    />
   );
 }
 
-export { PERIODS };
+export const PERIODS = MEASUREMENT_PERIOD_OPTIONS.map((o) => o.value);

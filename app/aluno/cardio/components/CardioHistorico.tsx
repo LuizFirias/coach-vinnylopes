@@ -11,6 +11,17 @@ interface CardioHistoricoProps {
   onDelete: (sessao: CardioSessao) => void;
 }
 
+const CARD_STYLE = {
+  background: 'var(--mobile-card-bg)',
+  border: '1px solid var(--mobile-card-border)',
+  boxShadow: 'var(--mobile-card-shadow)',
+} as const;
+
+const EMPTY_STYLE = {
+  background: 'var(--mobile-empty-bg)',
+  border: '1px solid var(--mobile-empty-border)',
+} as const;
+
 function formatarData(iso: string): string {
   const [ano, mes, dia] = iso.split('-').map(Number);
   return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR', {
@@ -22,9 +33,11 @@ function formatarData(iso: string): string {
 export function CardioHistorico({ sessoes, onDelete }: CardioHistoricoProps) {
   if (sessoes.length === 0) {
     return (
-      <div className="rounded-[20px] border-0 bg-[var(--dash-card,#111827)] p-6 text-center">
-        <p className="text-sm font-semibold text-text-primary">Nenhuma sessão registrada</p>
-        <p className="mt-1 text-xs text-text-secondary">
+      <div className="rounded-[16px] p-6 text-center" style={EMPTY_STYLE}>
+        <p className="text-[13px] font-semibold text-text-tertiary">
+          Nenhuma sessão registrada
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-text-disabled">
           Registre seu primeiro cardio para acompanhar o gasto calórico da semana.
         </p>
       </div>
@@ -34,16 +47,13 @@ export function CardioHistorico({ sessoes, onDelete }: CardioHistoricoProps) {
   return (
     <ul className="space-y-2">
       {sessoes.map((s) => (
-        <li
-          key={s.id}
-          className="rounded-[16px] border-0 bg-[var(--dash-card,#111827)] px-4 py-3"
-        >
+        <li key={s.id} className="rounded-[14px] px-4 py-3" style={CARD_STYLE}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-[14px] font-semibold text-text-primary">
                 {s.modalidade}
               </p>
-              <p className="mt-0.5 text-[11px] text-text-secondary">
+              <p className="mt-0.5 text-[11px] text-text-tertiary">
                 <span className="tabular-nums lining-nums">{formatarData(s.data)}</span>
                 {' · '}
                 <span className="tabular-nums lining-nums">{formatarDuracao(s.duracao_min)}</span>

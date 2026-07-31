@@ -17,7 +17,14 @@ export function PrescricaoCard({ prescricao, onRegistrar }: PrescricaoCardProps)
     .filter(Boolean);
 
   return (
-    <div className="rounded-[16px] border-0 bg-[var(--dash-card,#111827)] px-4 py-3">
+    <div
+      className="rounded-[16px] px-4 py-3"
+      style={{
+        background: 'var(--mobile-card-bg)',
+        border: '1px solid var(--mobile-card-border)',
+        boxShadow: 'var(--mobile-card-shadow)',
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[14px] font-semibold text-text-primary">

@@ -1,3 +1,52 @@
+/** Grupos para o select do formulário do aluno */
+export const MODALIDADES_CARDIO = [
+  {
+    grupo: 'Cardio tradicional',
+    itens: [
+      'Corrida',
+      'Caminhada',
+      'Bike',
+      'Elíptico',
+      'Natação',
+      'Pular corda',
+      'Remo',
+      'Escada (step)',
+      'Personalizado',
+    ],
+  },
+  {
+    grupo: 'Esportes',
+    itens: [
+      'Beach tennis',
+      'Futevôlei',
+      'Vôlei',
+      'Futsal',
+      'Basquete',
+      'Handebol',
+      'Tênis',
+      'Padel',
+      'Squash',
+      'Jiu-jitsu',
+      'Muay thai',
+      'Boxe',
+      'Natação (esporte)',
+      'Ciclismo (esporte)',
+    ],
+  },
+  {
+    grupo: 'Outros',
+    itens: [
+      'Dança',
+      'Yoga',
+      'Pilates',
+      'Funcional',
+      'CrossFit',
+      'Outro',
+    ],
+  },
+] as const;
+
+/** Lista plana usada na prescrição do coach (cardio tradicional) */
 export const CARDIO_MODALIDADES = [
   'Corrida',
   'Caminhada',

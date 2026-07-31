@@ -1,6 +1,6 @@
 "use client";
 
-import { MacroDotBar } from "./MacroDotBar";
+import { MacroProgressBar } from "./MacroDotBar";
 
 export interface MacroDisplay {
   label: string;
@@ -18,60 +18,99 @@ interface ActivePlanCardProps {
   isDesktop?: boolean;
 }
 
+const CARD_STYLE = {
+  background: "var(--mobile-card-bg)",
+  border: "1px solid var(--mobile-card-border)",
+  boxShadow: "var(--mobile-card-shadow)",
+} as const;
+
+const COR_MACRO: Record<string, string> = {
+  kcal: "#e05555",
+  proteina: "#9333ea",
+  proteína: "#9333ea",
+  carbo: "#f59e0b",
+  gordura: "#39c75a",
+};
+
+function corDoMacro(label: string): string {
+  const key = label
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .trim();
+  return COR_MACRO[key] ?? "#9333ea";
+}
+
 export function ActivePlanCard({
   planName,
   goal,
   completedMeals,
   totalMeals,
   macros,
-  isDesktop = false,
+  isDesktop: _isDesktop = false,
 }: ActivePlanCardProps) {
   if (!macros.length) return null;
 
   return (
-    <div className="bg-[#111827] border-0 rounded-xl p-4">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
-          <span className="text-xs font-medium text-success">Plano ativo</span>
+    <div className="rounded-[16px] p-4" style={CARD_STYLE}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: "#39c75a" }}
+          />
+          <span className="text-[12px] font-semibold text-text-primary">
+            Plano ativo
+          </span>
         </div>
-        <p className="text-xs text-text-secondary shrink-0">
+        <p className="shrink-0 text-[11px] text-text-tertiary">
           {completedMeals} de {totalMeals} refeições
         </p>
       </div>
 
-      <p className="text-base font-bold text-text-primary">{planName}</p>
-      <p className="text-xs text-text-muted mt-0.5">Foco: {goal}</p>
+      <p className="text-[16px] font-bold text-text-primary">{planName}</p>
+      <p className="mt-0.5 text-[11px] text-text-tertiary">Foco: {goal}</p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-3 border-t border-divider">
-        {macros.map(({ label, current, target, unit }) => (
-          <div key={label} className="min-w-0">
-            <p className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary mb-1">
-              {label}
-            </p>
-            <p
-              className={
-                isDesktop
-                  ? "text-[22px] font-bold tabular-nums lining-nums text-text-primary leading-none"
-                  : "text-lg font-bold tabular-nums lining-nums text-text-primary leading-none"
-              }
-            >
-              {Math.round(current).toLocaleString("pt-BR")}
-            </p>
-            <p className="text-[11px] lg:text-[13px] text-text-muted tabular-nums lining-nums mt-0.5">
-              /{target != null ? Math.round(target).toLocaleString("pt-BR") : "—"}
-              {unit}
-            </p>
-            {target != null && target > 0 && (
-              <MacroDotBar
-                current={current}
-                target={target}
-                isDesktop={isDesktop}
-                className="mt-2"
-              />
-            )}
-          </div>
-        ))}
+      <div
+        className="mt-4 grid grid-cols-2 gap-3 pt-3 sm:grid-cols-4"
+        style={{ borderTop: "1px solid var(--mobile-card-border)" }}
+      >
+        {macros.map(({ label, current, target, unit }) => {
+          const cor = corDoMacro(label);
+          return (
+            <div key={label} className="min-w-0">
+              <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                {label}
+              </p>
+              <p className="text-[22px] font-black leading-none tracking-display text-text-primary tabular-nums lining-nums">
+                {Math.round(current).toLocaleString("pt-BR")}
+                {unit ? (
+                  <span
+                    className="ml-0.5 text-[11px] font-semibold"
+                    style={{ color: cor }}
+                  >
+                    {unit}
+                  </span>
+                ) : label.toLowerCase() === "kcal" ? (
+                  <span
+                    className="ml-0.5 text-[11px] font-semibold"
+                    style={{ color: cor }}
+                  >
+                    kcal
+                  </span>
+                ) : null}
+              </p>
+              {target != null && target > 0 && (
+                <MacroProgressBar
+                  current={current}
+                  target={target}
+                  unit={unit || (label.toLowerCase() === "kcal" ? "kcal" : "")}
+                  color={cor}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

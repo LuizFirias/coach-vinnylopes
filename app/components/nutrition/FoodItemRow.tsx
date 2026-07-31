@@ -21,17 +21,19 @@ export function FoodItemRow({
     : formatFoodQuantityDisplay(quantityGrams, portionLabel, portionGrams);
 
   return (
-    <div className="py-2.5 border-b border-dashed border-surface-2 last:border-0">
+    <div className="border-b border-black/[0.04] py-2.5 last:border-0 dark:border-white/[0.06]">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium text-text-primary leading-snug">{name}</p>
+        <p className="text-[13px] font-medium leading-snug text-text-primary">
+          {name}
+        </p>
         {display.primary && (
-          <p className="text-[13px] font-semibold text-text-primary tabular-nums lining-nums shrink-0 text-right max-w-[48%]">
+          <p className="max-w-[48%] shrink-0 text-right text-[13px] font-semibold tabular-nums lining-nums text-text-tertiary">
             {display.primary}
           </p>
         )}
       </div>
       {display.secondary && (
-        <p className="text-[11px] text-text-muted text-right mt-0.5 leading-snug">
+        <p className="mt-0.5 text-right text-[11px] leading-snug text-text-disabled">
           {display.secondary}
         </p>
       )}

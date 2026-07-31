@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightning, Minus, Plus, Info, CaretDown } from '@phosphor-icons/react';
 import { RestTimerOverlay } from '@/app/components/treino/execucao/RestTimerOverlay';
-import { VolumeProgressDots } from '@/app/components/treinos/VolumeProgressDots';
+import { FichaHistoricoChart } from '@/app/components/treinos/FichaHistoricoChart';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { CompletionShareScreen } from '@/app/components/workout/share/CompletionShareScreen';
@@ -31,6 +31,12 @@ import {
   countWorkoutBlocks,
 } from '@/lib/utils/biset';
 import { formatRestTime } from '@/lib/utils/restTime';
+import {
+  getVolumeByFicha,
+  type HistoricoMetrica,
+  type HistoricoPeriodo,
+  type HistoricoPonto,
+} from '@/lib/queries/historicoFicha';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -76,11 +82,6 @@ interface ExercicioState {
   grupo_muscular?: string;
   series: SerieState[];
   biset_parceiro_id?: string;
-}
-
-interface VolumePoint {
-  data: string;
-  volume: number;
 }
 
 function estimateDurationMinFromBlocks(blocks: WorkoutBlock[]): number {
@@ -218,7 +219,12 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
       style={{
         gridTemplateColumns: gridCols,
         columnGap: SERIES_GRID_GAP,
-        borderTop: '1px solid rgba(0,0,0,0.06)',
+        padding: '10px 12px',
+        background: serie.completado
+          ? 'rgba(57,199,90,0.06)'
+          : idx % 2 === 0
+            ? '#ffffff'
+            : '#f9f9fb',
       }}
     >
       <div className="flex justify-center">
@@ -341,32 +347,42 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
   return (
     <div
       className={cn(
-        'rounded-[14px] transition-colors overflow-hidden px-4 py-3.5 mb-0',
-        all && treinoIniciado && 'ring-1 ring-success-border/40'
+        'transition-colors overflow-hidden px-0 py-0 mb-0',
+        all && treinoIniciado && 'ring-1 ring-success-border/40 rounded-[10px]'
       )}
-      style={{
-        background: '#ffffff',
-        border: '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-      }}
+      style={{ background: 'transparent' }}
     >
-      <div className="flex items-start gap-2 pb-2">
+      <div
+        className="flex items-start justify-between gap-2 px-4 pt-4 pb-3"
+        style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}
+      >
         <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-bold leading-snug" style={{ color: '#1a1a1a' }}>
+          <h3
+            className="font-semibold leading-tight mb-1"
+            style={{ fontSize: 15, color: '#9333ea' }}
+          >
             {toTitleCase(exercicio.nome)}
           </h3>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Clock size={12} className="shrink-0" style={{ color: '#aaa' }} />
-            <p className="text-[11px] font-medium" style={{ color: '#aaa' }}>
-              Descanso: {formatDuration(exercicio.descanso)}
-            </p>
-          </div>
+          <p style={{ fontSize: 11, color: '#aaa' }}>
+            Descanso: {formatDuration(exercicio.descanso)}
+          </p>
         </div>
+        {exercicio.gif_url ? (
+          <img
+            src={exercicio.gif_url}
+            alt={exercicio.nome}
+            className="rounded-lg object-cover flex-shrink-0"
+            style={{ width: 48, height: 48, background: '#f5f5f7' }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : null}
         {exercicio.video_url && (
           <button
             type="button"
             onClick={() => onVideoOpen(exercicio.video_url!)}
-            className="flex items-center justify-center shrink-0 p-1 -mr-0.5 active:opacity-70 transition-opacity"
+            className="flex items-center justify-center shrink-0 p-1 active:opacity-70 transition-opacity"
             aria-label="Ver vídeo do exercício"
           >
             <GradientPlayIcon size={22} />
@@ -381,8 +397,8 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
 
       {exercicio.observacoes && (
         <div
-          className="mb-3 px-2.5 py-2 rounded-lg"
-          style={{ background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.06)' }}
+          className="mx-4 my-3 px-2.5 py-2 rounded-lg"
+          style={{ background: '#f5f5f7' }}
         >
           <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: '#888' }}>
             Observações
@@ -391,25 +407,30 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
         </div>
       )}
 
-      <div className="pt-2" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+      <div className="pt-1 pb-2">
         <div
-          className="grid items-center py-2 mb-0.5"
-          style={{ gridTemplateColumns: gridCols, columnGap: SERIES_GRID_GAP }}
+          className="grid items-center"
+          style={{
+            gridTemplateColumns: gridCols,
+            columnGap: SERIES_GRID_GAP,
+            padding: '6px 12px',
+            marginBottom: 2,
+          }}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>Set</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>SET</span>
           {showAnteriorCol && (
             <span
-              className="text-[10px] font-semibold uppercase tracking-[0.05em]"
+              className="text-[10px] font-semibold tracking-[0.06em]"
               style={{ color: '#bbb', paddingLeft: ANT_COL_PAD_LEFT }}
             >
-              Ant.
+              ANT.
             </span>
           )}
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>Peso</span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>Reps</span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>T1</span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>T2</span>
-          <span className="text-[10px] text-center" style={{ color: '#bbb' }}>✓</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>PESO</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>REPS</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>T1</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>T2</span>
+          <span className="text-[10px] text-center" style={{ color: '#bbb' }} />
         </div>
 
         <div>
@@ -446,7 +467,9 @@ export default function ExecucaoTreinoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [volumeHistory, setVolumeHistory] = useState<VolumePoint[]>([]);
+  const [historicoPontos, setHistoricoPontos] = useState<HistoricoPonto[]>([]);
+  const [periodoHistorico, setPeriodoHistorico] = useState<HistoricoPeriodo>('3m');
+  const [metricaGrafico, setMetricaGrafico] = useState<HistoricoMetrica>('volume');
   const [showConfirmAbandon, setShowConfirmAbandon] = useState(false);
   const [coachUsername, setCoachUsername] = useState('@auronfit');
   const [prsCount, setPrsCount] = useState(0);
@@ -512,6 +535,8 @@ export default function ExecucaoTreinoPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [demoImg, setDemoImg] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+  /** Snapshot limpo da ficha — usado ao descartar o treino. */
+  const blocksBaseRef = useRef<WorkoutBlock[]>([]);
 
   useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
@@ -540,6 +565,17 @@ export default function ExecucaoTreinoPage() {
     loadFicha();
   }, [fichaId]);
 
+  useEffect(() => {
+    if (!fichaId || !userId || treinoIniciado) return;
+    let cancelled = false;
+    getVolumeByFicha(fichaId, userId, periodoHistorico).then((points) => {
+      if (!cancelled) setHistoricoPontos(points);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fichaId, userId, periodoHistorico, treinoIniciado]);
+
   const loadFicha = async () => {
     setLoading(true);
     try {
@@ -548,27 +584,13 @@ export default function ExecucaoTreinoPage() {
       if (!uid) { router.push('/login'); return; }
       setUserId(uid);
 
-      // Ficha + histórico da ficha em paralelo (histórico só depende de fichaId/uid).
-      // Importante: data_conclusao DESC — ASC + limit cortava as sessões mais recentes.
-      const [
-        { data: fichaData, error: fichaError },
-        { data: historicoData },
-      ] = await Promise.all([
-        supabaseClient
-          .from('fichas_treino')
-          .select('nome_rotina, configuracao')
-          .eq('id', fichaId)
-          .eq('aluno_id', uid)
-          .eq('ativo', true)
-          .single(),
-        supabaseClient
-          .from('historico_treinos')
-          .select('data_conclusao, dados_sessao, exercicio_id')
-          .eq('ficha_id', fichaId)
-          .eq('aluno_id', uid)
-          .order('data_conclusao', { ascending: false })
-          .limit(200),
-      ]);
+      const { data: fichaData, error: fichaError } = await supabaseClient
+        .from('fichas_treino')
+        .select('nome_rotina, configuracao')
+        .eq('id', fichaId)
+        .eq('aluno_id', uid)
+        .eq('ativo', true)
+        .single();
 
       if (fichaError || !fichaData) { router.push('/aluno/treinos'); return; }
 
@@ -607,29 +629,9 @@ export default function ExecucaoTreinoPage() {
         (bibData || []).map(ex => [ex.id, ex.video_url || ''])
       );
 
-      // Montar gráfico de volume: agrupar por dia (ordem cronológica)
-      const volumePorDia: Record<string, number> = {};
-      for (const h of (historicoData || [])) {
-        const dia = h.data_conclusao?.slice(0, 10) || '';
-        const sessao = h.dados_sessao as any;
-        const vol = (sessao?.series || []).reduce((acc: number, s: any) => {
-          if (!s.completado) return acc;
-          const r = parseFloat(String(s.reps)) || 0;
-          return acc + (s.peso_atual || 0) * r;
-        }, 0);
-        volumePorDia[dia] = (volumePorDia[dia] || 0) + vol;
-      }
-      const volumePoints = Object.entries(volumePorDia)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([data, volume]) => ({
-          data: new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
-          volume,
-        }));
-      setVolumeHistory(volumePoints);
-
       // Última sessão por exercício (qualquer ficha) — rows já vêm DESC
       const ultimoPorExercicio: Record<string, any> = {};
-      for (const h of (historicoPorExercicio || historicoData || [])) {
+      for (const h of (historicoPorExercicio || [])) {
         if (!h.exercicio_id || ultimoPorExercicio[h.exercicio_id]) continue;
         ultimoPorExercicio[h.exercicio_id] = h;
       }
@@ -687,6 +689,8 @@ export default function ExecucaoTreinoPage() {
       };
 
       const storageKey = `treino_${uid}_${fichaId}`;
+      blocksBaseRef.current = structuredClone(blocksState);
+
       const savedRaw = localStorage.getItem(storageKey);
       if (savedRaw) {
         try {
@@ -1216,6 +1220,7 @@ export default function ExecucaoTreinoPage() {
             anterior: s.anterior || '—',
           })),
           data_sessao: agora,
+          duracao_segundos: elapsed,
           satisfacao_treino: feedbackSatisfacao || null,
           nivel_dor: feedbackDor,
         },
@@ -1271,11 +1276,20 @@ export default function ExecucaoTreinoPage() {
       localStorage.removeItem('treino_ativo_pointer');
     }
     setTreinoIniciado(false);
-    setBlocks([]);
     setElapsed(0);
     setTimerStartAt(null);
     setModalBlockIdx(null);
     setRestActive(false);
+    setRestEndAt(null);
+    setRestExpired(false);
+    restPendingCb.current = null;
+    // Restaura a ficha limpa — não zerar blocks (sumia a lista de exercícios)
+    const base = blocksBaseRef.current;
+    if (base.length > 0) {
+      setBlocks(structuredClone(base));
+    } else {
+      void loadFicha();
+    }
     setShowConfirmAbandon(false);
     haptic('light');
   };
@@ -1331,12 +1345,21 @@ export default function ExecucaoTreinoPage() {
   const hasHistorico = exercicios.some((ex) =>
     ex.series.some((s) => s.anterior && s.anterior !== '—')
   );
-  const sessionsCompleted = volumeHistory.length;
+
+  const renderHistoricoChart = () => (
+    <FichaHistoricoChart
+      data={historicoPontos}
+      periodo={periodoHistorico}
+      metrica={metricaGrafico}
+      onPeriodoChange={setPeriodoHistorico}
+      onMetricaChange={setMetricaGrafico}
+    />
+  );
 
   return (
     <div
       className={cn('min-h-screen', treinoIniciado ? 'pb-4' : 'pb-28')}
-      style={{ background: '#f5f5f7' }}
+      style={{ background: '#ffffff' }}
     >
 
       {/* ── Header sticky (mobile + treino em andamento) ── */}
@@ -1346,8 +1369,8 @@ export default function ExecucaoTreinoPage() {
           !treinoIniciado && 'lg:hidden'
         )}
         style={{
-          background: 'rgba(245,245,247,0.95)',
-          borderBottom: '1px solid rgba(0,0,0,0.08)',
+          background: 'rgba(255,255,255,0.95)',
+          borderBottom: '1px solid rgba(0,0,0,0.07)',
         }}
       >
         <div className="flex items-center gap-3 px-4 py-3 max-w-[1100px] mx-auto">
@@ -1441,7 +1464,7 @@ export default function ExecucaoTreinoPage() {
                 <p className="text-[13px] mt-1" style={{ color: '#888' }}>
                   {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
                 </p>
-                <VolumeProgressDots sessionsCompleted={sessionsCompleted} className="mt-5" />
+                {isDesktop && <div className="mt-5">{renderHistoricoChart()}</div>}
                 <button
                   type="button"
                   onClick={iniciarTreino}
@@ -1476,7 +1499,7 @@ export default function ExecucaoTreinoPage() {
                   <span className="flex-1 text-center">Iniciar treino</span>
                   <CaretRight size={16} className="text-white/50" />
                 </button>
-                <VolumeProgressDots sessionsCompleted={sessionsCompleted} />
+                {!isDesktop && <div className="px-1">{renderHistoricoChart()}</div>}
               </div>
             )}
 
@@ -1712,8 +1735,8 @@ export default function ExecucaoTreinoPage() {
       {showConfirmAbandon && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-surface-1 border border-card shadow-elev-2 rounded-2xl p-6">
-            <div className="w-14 h-14 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto mb-4">
-              <X className="w-7 h-7 text-destructive" />
+            <div className="w-14 h-14 rounded-2xl bg-danger-subtle border border-danger-border flex items-center justify-center mx-auto mb-4">
+              <X className="w-7 h-7 text-danger" />
             </div>
             <h3 className="text-lg font-bold text-text-primary text-center mb-2">Descartar Treino?</h3>
             <p className="text-sm text-text-secondary text-center mb-6 leading-relaxed">
@@ -1722,7 +1745,11 @@ export default function ExecucaoTreinoPage() {
             <div className="flex flex-col gap-2">
               <button
                 onClick={descartarTreino}
-                className="w-full h-11 bg-destructive text-white rounded-xl text-xs font-semibold shadow-sm shadow-destructive/30 hover:opacity-90"
+                className="w-full h-11 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+                style={{
+                  background: '#e05555',
+                  boxShadow: '0 2px 8px rgba(224,85,85,0.35)',
+                }}
               >
                 Sim, Descartar
               </button>

@@ -216,6 +216,10 @@
   --nav-height:       64px;
   --nav-safe-area:    env(safe-area-inset-bottom, 0px);
   --tap-min:          44px;
+  /* BottomNav — fundo sólido por tema (SVG student + barra coach) */
+  --nav-bg:           #1a1033;
+  --nav-border:       rgba(255, 255, 255, 0.08);
+  --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.45);
 
   /* ═══════════════════════════════════════════════════════════
      LEGACY COMPAT (old --bg-* and --gold-* names still used)
@@ -274,6 +278,9 @@
   --mobile-card-border-soft: rgba(41, 48, 61, 0.5);
   --mobile-card-border-faint: rgba(41, 48, 61, 0.4);
   --mobile-card-border-subtle: rgba(41, 48, 61, 0.24);
+  --mobile-card-shadow: none;
+  --mobile-empty-bg: #111827;
+  --mobile-empty-border: rgba(41, 48, 61, 0.5);
   --mobile-secondary-bg: #0D1829;
   --theme-color-meta: #080c14;
 
@@ -294,8 +301,12 @@ html[data-theme="light"] {
 
   --text-primary:     #09090B;
   --text-secondary:   #52525B;
-  --text-tertiary:    #71717A;
+  --text-tertiary:    #888888;   /* contraste mínimo sobre fundo branco (BottomNav) */
   --text-disabled:    #A1A1AA;
+
+  --nav-bg:           #1a1033;
+  --nav-border:       rgba(255, 255, 255, 0.08);
+  --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.28);
 
   --border-subtle:    #E4E4E7;
   --border-default:   #D4D4D8;
@@ -347,10 +358,13 @@ html[data-theme="light"] {
   --tab-active-text:      #7e22ce;
   --tab-inactive-text:    #999999;
 
-  --mobile-page-bg-solid: var(--surface-0);
-  --mobile-page-bg: linear-gradient(180deg, var(--surface-0) 0%, var(--surface-1) 100%);
-  --mobile-card-bg: var(--surface-2);
-  --mobile-card-border: var(--border-subtle);
+  --mobile-page-bg-solid: #ffffff;
+  --mobile-page-bg: linear-gradient(180deg, #ffffff 0%, var(--surface-1) 100%);
+  --mobile-card-bg: #ffffff;
+  --mobile-card-border: rgba(0, 0, 0, 0.08);
+  --mobile-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --mobile-empty-bg: #f9f9fb;
+  --mobile-empty-border: rgba(0, 0, 0, 0.06);
   --mobile-card-border-soft: var(--border-subtle);
   --mobile-card-border-faint: var(--border-subtle);
   --mobile-card-border-subtle: var(--border-subtle);

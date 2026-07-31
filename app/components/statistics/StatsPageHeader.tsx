@@ -20,29 +20,32 @@ export function StatsPageHeader({
   className,
 }: StatsPageHeaderProps) {
   const backButtonClass = cn(
-    "w-11 h-11 rounded-lg bg-[#141414] flex items-center justify-center",
-    "text-text-secondary hover:text-text-primary transition-colors shrink-0"
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+    "text-text-tertiary transition-colors",
+    "hover:text-text-secondary active:opacity-70",
   );
 
   return (
     <header
       className={cn(
-        "sticky top-0 z-10 flex items-center gap-3 px-4 py-3",
-        "mobile-page-bg border-b border-[#1e1e1e] pt-safe-top",
-        className
+        "sticky top-0 z-10 flex items-center gap-2 px-4 py-3",
+        "mobile-page-bg border-b border-black/[0.06] pt-safe-top dark:border-white/[0.06]",
+        className,
       )}
     >
       {backHref ? (
         <Link href={backHref} className={backButtonClass} aria-label="Voltar">
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} weight="regular" />
         </Link>
       ) : (
         <button type="button" onClick={onBack} className={backButtonClass} aria-label="Voltar">
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} weight="regular" />
         </button>
       )}
 
-      <h1 className="flex-1 min-w-0 text-lg font-bold text-text-primary truncate">{title}</h1>
+      <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-text-primary">
+        {title}
+      </h1>
 
       {periodSelector}
     </header>

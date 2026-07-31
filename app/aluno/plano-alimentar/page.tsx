@@ -10,6 +10,7 @@ import { ForkKnife, FileText, FilePdf } from '@phosphor-icons/react';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { getTodayBrazil } from '@/lib/dateUtils';
 import { loadStudentNutritionPageData, attachMealSubstitutions } from '@/lib/nutrition/plans';
+import { buildAutoExpandedMap } from '@/lib/nutrition/mealAutoExpand';
 import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHeader';
 import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
 import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
@@ -184,13 +185,17 @@ export default function PlanoAlimentarPage() {
         setDigitalCheckins(checkinsMap);
 
         const day1 = digitalPlanData.days?.[0];
-        if (day1 && day1.meals && day1.meals.length > 0) {
-          const firstPending = day1.meals.find((m: any) => !checkinsMap[m.id]);
-          if (firstPending) {
-            setExpandedMeals({ [firstPending.id]: true });
-          } else {
-            setExpandedMeals({ [day1.meals[0].id]: true });
-          }
+        if (day1?.meals?.length) {
+          setExpandedMeals(
+            buildAutoExpandedMap(
+              day1.meals.map((m: { id: string; time_suggestion?: string | null; meal_type?: string | null }) => ({
+                id: m.id,
+                time: m.time_suggestion,
+                meal_type: m.meal_type,
+              })),
+              (id) => checkinsMap[id] === 'done',
+            ),
+          );
         }
 
         // Substituições fora do caminho crítico (evita timeout do embed profundo)
@@ -218,8 +223,21 @@ export default function PlanoAlimentarPage() {
               .eq('data_consumo', today),
           ]);
 
-          setLegacyRefeicoes(refeicaoData || []);
-          setLegacyConsumidos(new Set((consumos || []).map((c: any) => c.refeicao_id)));
+          const legacyMeals = refeicaoData || [];
+          const consumidos = new Set((consumos || []).map((c: any) => c.refeicao_id as string));
+          setLegacyRefeicoes(legacyMeals);
+          setLegacyConsumidos(consumidos);
+          if (legacyMeals.length > 0) {
+            setExpandedMeals(
+              buildAutoExpandedMap(
+                legacyMeals.map((r: { id: string; horario_sugerido?: string | null }) => ({
+                  id: r.id,
+                  time: r.horario_sugerido,
+                })),
+                (id) => consumidos.has(id),
+              ),
+            );
+          }
         } else {
           setHistoricoPDFs(plansPDFData);
         }
@@ -382,7 +400,10 @@ export default function PlanoAlimentarPage() {
   const getDigitalPlanMacros = (): CalculatedMacro => {
     const day1 = digitalPlan?.days?.[0];
     if (!day1 || !day1.meals) return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
-    const mealMacros = day1.meals.map((m: any) => getDigitalMealMacros(m));
+    // Só conta macros das refeições marcadas como feitas hoje
+    const mealMacros = day1.meals
+      .filter((m: { id: string }) => digitalCheckins[m.id] === 'done')
+      .map((m: unknown) => getDigitalMealMacros(m));
     return sumMacros(mealMacros);
   };
 
@@ -457,7 +478,10 @@ export default function PlanoAlimentarPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen pb-24 lg:pb-12 bg-surface-0 flex items-center justify-center">
+      <div
+        className="flex min-h-screen items-center justify-center pb-24 lg:pb-12"
+        style={{ background: 'var(--mobile-page-bg-solid)' }}
+      >
         <DumbbellLoader />
       </div>
     );
@@ -465,7 +489,7 @@ export default function PlanoAlimentarPage() {
 
   // Digital calculations
   const totalMealsCount = digitalPlan?.days?.[0]?.meals?.length || 0;
-  const completedMealsCount = Object.keys(digitalCheckins).length;
+  const completedMealsCount = Object.values(digitalCheckins).filter((s) => s === 'done').length;
   const digitalPlanMacros = getDigitalPlanMacros();
 
   // Legacy calculations
@@ -484,6 +508,7 @@ export default function PlanoAlimentarPage() {
   const mlAtual = agua.copos * agua.ml_por_copo;
   const mlMeta = metaCopos * agua.ml_por_copo;
   const dateLabel = `${diaSemanaStr}, ${diaNumStr} de ${mesStr}`;
+  const datePart = `${diaNumStr} de ${mesStr}`;
 
   const macroDisplays = digitalPlan?.calories_target
     ? [
@@ -508,10 +533,15 @@ export default function PlanoAlimentarPage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen pb-24 lg:pb-12 bg-surface-0">
+      <div
+        className="min-h-screen pb-24 lg:pb-12"
+        style={{ background: 'var(--mobile-page-bg-solid)' }}
+      >
         <div className="max-w-2xl lg:max-w-[1000px] mx-auto flex flex-col pt-safe lg:px-6 lg:pt-10">
 
           <NutritionPageHeader
+            weekday={diaSemanaStr}
+            datePart={datePart}
             dateLabel={dateLabel}
             isDesktop={isDesktop}
             className="px-4 pt-4 pb-3 lg:hidden"
@@ -528,27 +558,46 @@ export default function PlanoAlimentarPage() {
           {/* ── SEM PLANO (Nem digital nem PDF) ── */}
           {!digitalPlan && !planoPDF && (
             <div className="flex flex-col items-center text-center gap-4 px-4 py-8">
-              <div className="w-16 h-16 border-0 rounded-2xl bg-[#111827] flex items-center justify-center">
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                style={{
+                  background: 'var(--mobile-empty-bg)',
+                  border: '1px solid var(--mobile-empty-border)',
+                }}
+              >
                 <ForkKnife className="w-8 h-8 text-brand" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-text-primary mb-2">Plano alimentar em preparação</h2>
-                <p className="text-sm text-text-secondary leading-relaxed max-w-xs mx-auto">
+                <h2 className="mb-2 text-lg font-bold text-text-primary">
+                  Plano alimentar em preparação
+                </h2>
+                <p className="mx-auto max-w-xs text-sm leading-relaxed text-text-tertiary">
                   Seu coach ainda não liberou um plano alimentar para você. Enquanto isso, mantenha a hidratação e rotina saudável.
                 </p>
               </div>
 
-              {/* Dicas temporárias */}
-              <div className="w-full mt-4 flex flex-col gap-2 text-left">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-1">Dicas de hidratação e rotina</p>
+              <div className="mt-4 flex w-full flex-col gap-2 text-left">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                  Dicas de hidratação e rotina
+                </p>
                 {[
                   { icon: '💧', text: 'Beba pelo menos 35ml de água por kg de peso todos os dias' },
                   { icon: '🥩', text: 'Consuma fontes limpas de proteínas em todas as refeições' },
                   { icon: '⏰', text: 'Tente comer a cada 3 ou 4 horas para manter o metabolismo ativo' },
                 ].map((tip, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-[#111827] border-0 rounded-xl px-4 py-3">
-                    <span className="text-lg leading-none flex-shrink-0">{tip.icon}</span>
-                    <span className="text-xs text-text-secondary leading-relaxed font-medium">{tip.text}</span>
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 rounded-[16px] px-4 py-3"
+                    style={{
+                      background: 'var(--mobile-card-bg)',
+                      border: '1px solid var(--mobile-card-border)',
+                      boxShadow: 'var(--mobile-card-shadow)',
+                    }}
+                  >
+                    <span className="flex-shrink-0 text-lg leading-none">{tip.icon}</span>
+                    <span className="text-xs font-medium leading-relaxed text-text-secondary">
+                      {tip.text}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -560,6 +609,8 @@ export default function PlanoAlimentarPage() {
             <div className="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-6 lg:items-start px-4 lg:px-0">
               <aside className="lg:sticky lg:top-6 space-y-4 mb-4 lg:mb-0">
                 <NutritionPageHeader
+                  weekday={diaSemanaStr}
+                  datePart={datePart}
                   dateLabel={dateLabel}
                   isDesktop={isDesktop}
                   className="hidden lg:block"
@@ -577,13 +628,24 @@ export default function PlanoAlimentarPage() {
 
               <main className="space-y-2 mb-4 lg:mb-0">
                 {(digitalPlan.orientacoes_gerais || digitalPlan.notes) && (
-                  <div className="rounded-xl border border-brand/30 bg-[#111827] p-4 mb-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[1.5px] text-brand mb-2">
-                      Orientações gerais
-                    </p>
-                    <p className="text-xs text-text-primary whitespace-pre-wrap leading-relaxed">
-                      {digitalPlan.orientacoes_gerais || digitalPlan.notes}
-                    </p>
+                  <div className="mb-2 flex overflow-hidden rounded-[16px]">
+                    <div
+                      className="w-1 shrink-0"
+                      style={{
+                        background: 'linear-gradient(180deg, #c084fc, #9333ea)',
+                      }}
+                      aria-hidden
+                    />
+                    <div
+                      className="flex-1 rounded-r-[16px] border border-l-0 border-brand-border bg-brand-subtle px-3.5 py-3"
+                    >
+                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-brand">
+                        Orientações gerais
+                      </p>
+                      <p className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
+                        {digitalPlan.orientacoes_gerais || digitalPlan.notes}
+                      </p>
+                    </div>
                   </div>
                 )}
                 {digitalPlan.days?.[0]?.meals?.map((meal: {
@@ -625,16 +687,26 @@ export default function PlanoAlimentarPage() {
           {/* ── CASO 2: APENAS PLANO PDF ATIVO (Fallback) ── */}
           {!digitalPlan && planoPDF && (
             <div className="px-4 lg:px-0 space-y-4 mb-4">
-              <div className="bg-[#111827] border-0 rounded-xl p-4 flex items-center justify-between gap-3">
+              <div
+                className="flex items-center justify-between gap-3 rounded-[16px] p-4"
+                style={{
+                  background: 'var(--mobile-card-bg)',
+                  border: '1px solid var(--mobile-card-border)',
+                  boxShadow: 'var(--mobile-card-shadow)',
+                }}
+              >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg border-0 bg-surface-2 flex items-center justify-center text-brand shrink-0">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-brand"
+                    style={{ background: 'var(--filter-bg, #ebebf0)' }}
+                  >
                     <ForkKnife className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-text-primary truncate">
+                    <p className="truncate text-sm font-semibold text-text-primary">
                       {planoPDF.nome_arquivo.replace('.pdf', '')}
                     </p>
-                    <p className="text-xs text-text-muted">
+                    <p className="text-xs text-text-tertiary">
                       Enviado em {new Date(planoPDF.criado_em).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
@@ -642,7 +714,8 @@ export default function PlanoAlimentarPage() {
                 <button
                   onClick={openPdf}
                   id="btn-ver-pdf-nutricao"
-                  className="flex items-center gap-1.5 px-3 h-9 rounded-lg border-0 bg-surface-2 text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
+                  className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  style={{ background: 'var(--filter-bg, #ebebf0)', border: 'none' }}
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Ver PDF
@@ -698,8 +771,15 @@ export default function PlanoAlimentarPage() {
 
           {/* ── HISTÓRICO DE DOCUMENTOS PDF ADICIONAIS ── */}
           {historicoPDFs.length > 0 && (
-            <div className="mx-4 lg:mx-0 mb-6 bg-[#111827] border-0 rounded-xl p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3 flex items-center gap-1.5">
+            <div
+              className="mx-4 mb-6 rounded-[16px] p-4 lg:mx-0"
+              style={{
+                background: 'var(--mobile-card-bg)',
+                border: '1px solid var(--mobile-card-border)',
+                boxShadow: 'var(--mobile-card-shadow)',
+              }}
+            >
+              <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                 <FilePdf className="w-3.5 h-3.5" />
                 Documentos em PDF
               </p>
@@ -707,22 +787,27 @@ export default function PlanoAlimentarPage() {
                 {historicoPDFs.map(histPlano => (
                   <div
                     key={histPlano.id}
-                    className="border-0 rounded-lg p-3 bg-[#111827] ring-1 ring-white/5 flex items-center justify-between gap-3"
+                    className="flex items-center justify-between gap-3 rounded-lg p-3"
+                    style={{
+                      background: 'var(--mobile-empty-bg)',
+                      border: '1px solid var(--mobile-empty-border)',
+                    }}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FilePdf className="w-4 h-4 text-text-secondary shrink-0" />
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FilePdf className="h-4 w-4 shrink-0 text-text-tertiary" />
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-text-primary truncate">
+                        <p className="truncate text-xs font-semibold text-text-primary">
                           {histPlano.nome_arquivo.replace('.pdf', '')}
                         </p>
-                        <p className="text-[10px] text-text-muted mt-0.5">
+                        <p className="mt-0.5 text-[10px] text-text-tertiary">
                           Enviado em {new Date(histPlano.criado_em).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => openPdfForPlan(histPlano)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-0 bg-surface-1 text-[10px] font-bold text-text-secondary hover:text-text-primary transition-colors shrink-0 cursor-pointer"
+                      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-text-secondary transition-colors hover:text-text-primary"
+                      style={{ background: 'var(--filter-bg, #ebebf0)', border: 'none' }}
                     >
                       Abrir PDF
                     </button>
