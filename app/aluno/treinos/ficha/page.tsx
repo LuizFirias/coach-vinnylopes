@@ -880,37 +880,126 @@ function FichaContent() {
                       </div>
 
                       {/* Mobile Column Headers */}
-                      <div className="md:hidden flex items-center gap-1 px-3 pb-1 select-none">
-                        <span className="w-6 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Set</span>
-                        <span className="flex-1 text-[8px] font-bold uppercase tracking-wider text-text-disabled pl-2">Ant.</span>
-                        <span className="w-12 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Peso</span>
-                        <span className="w-7 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">Reps</span>
-                        <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">T1</span>
-                        <span className="w-8 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center flex items-center justify-center gap-0.5">
+                      <div
+                        className="md:hidden flex items-center px-3 pb-1 select-none"
+                        style={{ gap: 6 }}
+                      >
+                        <span
+                          style={{
+                            width: 22,
+                            minWidth: 22,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#bbb',
+                            textAlign: 'center',
+                          }}
+                        >
+                          Set
+                        </span>
+                        <span
+                          style={{
+                            flex: 1,
+                            minWidth: 48,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#bbb',
+                            paddingLeft: 8,
+                          }}
+                        >
+                          Ant.
+                        </span>
+                        <span
+                          style={{
+                            width: 52,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#bbb',
+                            textAlign: 'center',
+                          }}
+                        >
+                          Peso
+                        </span>
+                        <span
+                          style={{
+                            width: 28,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#bbb',
+                            textAlign: 'center',
+                          }}
+                        >
+                          Reps
+                        </span>
+                        <span
+                          style={{
+                            width: 32,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#bbb',
+                            textAlign: 'center',
+                          }}
+                        >
+                          T1
+                        </span>
+                        <span
+                          className="flex items-center justify-center gap-0.5"
+                          style={{
+                            minWidth: 48,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#bbb',
+                            textAlign: 'center',
+                          }}
+                        >
                           T2
                           <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} className="text-[8px]" />
                         </span>
-                        <span className="w-7 text-[8px] font-bold uppercase tracking-wider text-text-disabled text-center">✓</span>
+                        <span
+                          style={{
+                            width: 28,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#bbb',
+                            textAlign: 'center',
+                          }}
+                        >
+                          ✓
+                        </span>
                       </div>
 
                       <div className="flex flex-col gap-1">
                         {exercicio.series.map((serie, sIdx) => (
                           <div key={sIdx}>
                             {/* Mobile Set Row */}
-                            <div className={cn(
-                              "md:hidden flex items-center gap-1 py-0.5 px-3 transition-all border border-card/30 rounded-md",
-                              serie.completado ? "bg-success/5 border-success-border/20" : "bg-surface-0"
-                            )}>
+                            <div
+                              className={cn(
+                                "md:hidden flex items-center py-1.5 px-3 transition-all border rounded-md",
+                                serie.completado
+                                  ? "bg-success/5 border-success-border/20"
+                                  : "bg-transparent border-transparent"
+                              )}
+                              style={{ gap: 6 }}
+                            >
                               {/* Set number */}
-                              <div className={cn(
-                                "w-5.5 h-5.5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
-                                serie.completado ? "bg-success text-white" : "bg-surface-3 text-text-secondary"
-                              )}>
+                              <div
+                                className={cn(
+                                  "rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
+                                  serie.completado ? "bg-success text-white" : "bg-surface-3 text-text-secondary"
+                                )}
+                                style={{ width: 22, height: 22, minWidth: 22 }}
+                              >
                                 {sIdx + 1}
                               </div>
 
                               {/* Anterior */}
-                              <div className="flex-1 min-w-0 pl-2">
+                              <div style={{ flex: 1, minWidth: 48, paddingLeft: 8 }}>
                                 <span className={cn(
                                   "text-[9px] font-mono",
                                   serie.completado ? "text-text-disabled line-through" : "text-text-tertiary"
@@ -920,7 +1009,7 @@ function FichaContent() {
                               </div>
 
                               {/* Peso */}
-                              <div className="w-11 shrink-0">
+                              <div style={{ width: 52, flexShrink: 0 }}>
                                 <input
                                   type="number"
                                   inputMode="decimal"
@@ -928,40 +1017,57 @@ function FichaContent() {
                                   onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
                                   disabled={!treinoIniciado || serie.completado}
                                   placeholder="0"
-                                  className="w-full h-6 bg-surface-2 border border-input rounded-md text-center text-[10px] font-bold text-text-primary focus:border-brand focus:outline-none disabled:opacity-50"
+                                  className="w-full rounded-md text-center font-bold focus:border-brand focus:outline-none disabled:opacity-50"
+                                  style={{
+                                    height: 28,
+                                    fontSize: '14px',
+                                    background: '#ebebf0',
+                                    border: '1px solid rgba(0,0,0,0.10)',
+                                    color: '#1a1a1a',
+                                  }}
                                 />
                               </div>
 
                               {/* Reps */}
-                              <div className="w-7 shrink-0 text-center">
-                                <span className="text-[10px] font-bold text-brand">{serie.reps || "0"}</span>
+                              <div style={{ width: 28, flexShrink: 0, textAlign: 'center' }}>
+                                <span className="text-[11px] font-bold text-brand">{serie.reps || "0"}</span>
                               </div>
 
                               {/* Téc 1 */}
-                              <div className="w-8 shrink-0 text-center">
+                              <div style={{ width: 32, flexShrink: 0, textAlign: 'center' }}>
                                 {serie.tecnica ? (
                                   <button
                                     onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                    className="px-1 py-0.5 bg-surface-2 border border-card/50 rounded text-[8px] font-semibold text-text-tertiary hover:border-brand/30 transition-colors uppercase leading-none"
+                                    className="px-1 py-0.5 rounded text-[8px] font-semibold uppercase leading-none"
+                                    style={{
+                                      background: '#ebebf0',
+                                      border: '1px solid rgba(0,0,0,0.08)',
+                                      color: '#666',
+                                    }}
                                   >
                                     {serie.tecnica.substring(0, 2).toUpperCase()}
                                   </button>
                                 ) : (
-                                  <span className="text-[10px] text-text-disabled">—</span>
+                                  <span style={{ fontSize: 10, color: '#ccc' }}>—</span>
                                 )}
                               </div>
 
                               {/* Téc 2 */}
-                              <div className="min-w-[3.5rem] max-w-[5.5rem] shrink-0 text-center">
+                              <div style={{ minWidth: 48, maxWidth: 72, flexShrink: 0, textAlign: 'center' }}>
                                 {serie.tecnica_extra ? (
                                   <button
                                     onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
-                                    className="px-1 py-0.5 bg-brand/5 border border-brand/15 rounded text-[8px] font-semibold text-brand/80 hover:bg-brand/10 transition-all leading-tight line-clamp-2"
+                                    className="px-1 py-0.5 rounded text-[8px] font-semibold leading-tight line-clamp-2"
+                                    style={{
+                                      background: 'rgba(147,51,234,0.06)',
+                                      border: '1px solid rgba(147,51,234,0.15)',
+                                      color: '#9333ea',
+                                    }}
                                   >
                                     {serie.tecnica_extra}
                                   </button>
                                 ) : (
-                                  <span className="text-[10px] text-text-disabled">—</span>
+                                  <span style={{ fontSize: 10, color: '#ccc' }}>—</span>
                                 )}
                               </div>
 
@@ -970,9 +1076,16 @@ function FichaContent() {
                                 onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
                                 disabled={!treinoIniciado}
                                 className={cn(
-                                  "w-6 h-6 rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 shrink-0",
-                                  serie.completado ? "bg-success text-white" : "bg-surface-3 border border-border-default text-text-tertiary"
+                                  "rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 shrink-0",
+                                  serie.completado ? "text-white" : "text-text-tertiary"
                                 )}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  ...(serie.completado
+                                    ? { background: '#39c75a' }
+                                    : { background: 'transparent', border: '1.5px solid rgba(0,0,0,0.18)' }),
+                                }}
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
@@ -1247,21 +1360,33 @@ function FichaContent() {
             </div>
 
             {/* Vídeo */}
-            <div className="w-full aspect-video bg-surface-0 border-y border-divider flex items-center justify-center overflow-hidden flex-shrink-0">
-              {ficha.exercicios[exercicioAtivo].video_url ? (
+            {ficha.exercicios[exercicioAtivo].video_url ? (
+              <div className="w-full aspect-video bg-surface-0 border-y border-divider overflow-hidden flex-shrink-0">
                 <iframe
                   src={ficha.exercicios[exercicioAtivo].video_url}
                   className="w-full h-full"
                   allowFullScreen
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
                 />
-              ) : (
-                <div className="text-text-disabled text-center">
-                  <Video className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-xs">Sem vídeo disponível</p>
+              </div>
+            ) : (
+              <div
+                className="w-full border-y border-divider flex-shrink-0"
+                style={{ background: 'rgba(0,0,0,0.03)' }}
+              >
+                <div className="flex items-center gap-2.5 px-5 py-3">
+                  <Video className="w-4 h-4 flex-shrink-0" style={{ color: '#ccc' }} />
+                  <div>
+                    <p className="text-[12px] font-medium" style={{ color: '#999' }}>
+                      Sem demonstração disponível
+                    </p>
+                    <p className="text-[11px]" style={{ color: '#bbb' }}>
+                      Este exercício não possui vídeo na biblioteca
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Overlay descanso */}
             {descansoAtivo && (

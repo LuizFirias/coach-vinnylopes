@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useId } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightning, Minus, Plus, Info, CaretDown } from '@phosphor-icons/react';
@@ -89,17 +89,43 @@ function estimateDurationMinFromBlocks(blocks: WorkoutBlock[]): number {
   return Math.max(15, Math.round(countWorkoutBlocks(blocks) * 3 + totalSets * 2));
 }
 
-const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px 1fr 52px 44px 34px 34px 36px';
-const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 52px 44px 34px 34px 36px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px 1fr 64px 52px 44px 44px 36px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 64px 52px 44px 44px 36px';
-const GRID_COLS_HISTORICO = '28px 72px 1fr 40px 32px 32px';
+const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(96px, 1.6fr) 40px 34px 30px 30px 30px';
+const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px 40px 32px 32px 32px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(110px, 1.5fr) 48px 48px 44px 44px 36px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px 48px 44px 44px 36px';
+const GRID_COLS_HISTORICO = '28px minmax(96px, 1.3fr) 52px 40px 32px 32px';
+const SERIES_GRID_GAP = '8px';
+/** Espaço extra só na coluna Ant. (não mexe no SET) */
+const ANT_COL_PAD_LEFT = 14;
 
 function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean): string {
   if (showAnterior) {
     return isDesktop ? GRID_COLS_SERIES_WITH_ANT_DESKTOP : GRID_COLS_SERIES_WITH_ANT_MOBILE;
   }
   return isDesktop ? GRID_COLS_SERIES_NO_ANT_DESKTOP : GRID_COLS_SERIES_NO_ANT_MOBILE;
+}
+
+function GradientPlayIcon({ size = 22 }: { size?: number }) {
+  const gradId = useId().replace(/:/g, '');
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={gradId} x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#c084fc" />
+          <stop offset="55%" stopColor="#9333ea" />
+          <stop offset="100%" stopColor="#7e22ce" />
+        </linearGradient>
+      </defs>
+      <path d="M8.2 5.1a1 1 0 0 1 1.55-.83l9.1 5.9a1 1 0 0 1 0 1.66l-9.1 5.9A1 1 0 0 1 8 16.9V7.1a1 1 0 0 1 .2-.99Z" fill={`url(#${gradId})`} />
+    </svg>
+  );
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -184,32 +210,47 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
   return (
     <div
       className={cn(
-        'grid items-center border-t border-divider/30',
-        isDesktop ? 'py-2.5 min-h-10 [@media(hover:hover)]:hover:bg-[#1a1a1a]' : 'py-2.5'
+        'grid items-center',
+        isDesktop ? 'py-2.5 min-h-10' : 'py-2.5'
       )}
-      style={{ gridTemplateColumns: gridCols }}
+      style={{
+        gridTemplateColumns: gridCols,
+        columnGap: SERIES_GRID_GAP,
+        borderTop: '1px solid rgba(0,0,0,0.06)',
+      }}
     >
       <div className="flex justify-center">
-        <span className={cn(
-          'w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-semibold font-mono',
-          serie.completado ? 'bg-success text-white' : 'bg-surface-2 text-text-muted'
-        )}>
+        <span
+          className="rounded-md flex items-center justify-center text-[11px] font-semibold font-kpi shrink-0"
+          style={{
+            width: 22,
+            height: 22,
+            minWidth: 22,
+            ...(serie.completado
+              ? { background: '#39c75a', color: '#fff' }
+              : { background: '#ebebf0', color: '#888' }),
+          }}
+        >
           {idx + 1}
         </span>
       </div>
 
       {showAnteriorCol && (
-        <div className="min-w-0 pl-2">
-          <p className={cn(
-            'text-[11px] font-mono tabular-nums lining-nums truncate',
-            serie.completado ? 'text-text-disabled line-through' : 'text-text-muted'
-          )}>
+        <div className="min-w-0 overflow-hidden" style={{ paddingLeft: ANT_COL_PAD_LEFT }}>
+          <p
+            className={cn(
+              'text-[11px] font-kpi tabular-nums lining-nums truncate',
+              serie.completado && 'line-through'
+            )}
+            style={{ color: serie.completado ? '#bbb' : '#888' }}
+            title={serie.anterior || '—'}
+          >
             {serie.anterior || '—'}
           </p>
         </div>
       )}
 
-      <div className="flex justify-end pr-2">
+      <div className="flex justify-center min-w-0">
         <input
           type="number"
           inputMode="decimal"
@@ -217,24 +258,36 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
           onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
           disabled={!treinoIniciado}
           placeholder="0"
-          className={cn(
-            'w-full h-7 rounded-md text-right text-[13px] font-semibold font-mono tabular-nums lining-nums',
-            'bg-transparent border-b border-brand/60',
-            'text-text-primary focus:border-brand focus:outline-none',
-            'disabled:opacity-50 px-1'
-          )}
+          className="w-full max-w-[40px] bg-transparent border-0 text-center font-kpi tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+          style={{
+            height: 28,
+            fontSize: '15px',
+            color: '#666',
+            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+            fontVariantNumeric: 'tabular-nums lining-nums',
+            fontWeight: 400,
+            borderBottom: '1.5px solid transparent',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderBottomColor = 'rgba(147,51,234,0.45)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderBottomColor = 'transparent';
+          }}
         />
       </div>
 
       <div className="flex justify-center">
-        <span className={cn(
-          'text-[13px] font-semibold font-mono tabular-nums lining-nums',
-          serie.completado ? 'text-success' : 'text-text-primary'
-        )}>{serie.reps}</span>
+        <span
+          className="text-[13px] font-semibold font-kpi tabular-nums lining-nums"
+          style={{ color: serie.completado ? '#39c75a' : '#1a1a1a' }}
+        >
+          {serie.reps}
+        </span>
       </div>
 
       <div className="flex justify-center">
-        <span className="text-[11px] font-medium text-text-secondary leading-tight text-center">
+        <span className="text-[11px] font-medium leading-tight text-center" style={{ color: '#888' }}>
           {duasLetrasTenica(serie.tecnica) || '—'}
         </span>
       </div>
@@ -249,10 +302,14 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
         <button
           onClick={onCheck}
           disabled={!treinoIniciado}
-          className={cn(
-            'w-5 h-5 rounded border-[1.5px] border-border-input flex items-center justify-center transition-all active:scale-90 disabled:opacity-30',
-            serie.completado ? 'bg-success border-success text-white' : 'bg-transparent text-text-muted'
-          )}
+          className="rounded-[4px] flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"
+          style={{
+            width: 28,
+            height: 28,
+            ...(serie.completado
+              ? { background: '#9333ea', border: '1.5px solid #9333ea', color: '#fff' }
+              : { background: 'transparent', border: '1.5px solid rgba(0,0,0,0.2)', color: '#888' }),
+          }}
         >
           {serie.completado && <Check className="w-3 h-3" weight="bold" />}
         </button>
@@ -280,18 +337,25 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
   const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop);
 
   return (
-    <div className={cn(
-      'rounded-xl transition-colors overflow-hidden bg-surface-1 px-4 py-3.5',
-      all && treinoIniciado && 'ring-1 ring-success-border/40'
-    )}>
-      <div className="flex items-start gap-3 pb-3">
+    <div
+      className={cn(
+        'rounded-[14px] transition-colors overflow-hidden px-4 py-3.5 mb-0',
+        all && treinoIniciado && 'ring-1 ring-success-border/40'
+      )}
+      style={{
+        background: '#ffffff',
+        border: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}
+    >
+      <div className="flex items-start gap-2 pb-2">
         <div className="flex-1 min-w-0">
-          <h3 className="text-[15px] font-normal text-text-primary leading-snug">
+          <h3 className="text-[14px] font-bold leading-snug" style={{ color: '#1a1a1a' }}>
             {toTitleCase(exercicio.nome)}
           </h3>
-          <div className="flex items-center gap-1.5 mt-1.5 min-h-[44px]">
-            <Clock size={12} className="text-brand shrink-0" />
-            <p className="text-xs text-brand font-medium">
+          <div className="flex items-center gap-1.5 mt-1">
+            <Clock size={12} className="shrink-0" style={{ color: '#aaa' }} />
+            <p className="text-[11px] font-medium" style={{ color: '#aaa' }}>
               Descanso: {formatDuration(exercicio.descanso)}
             </p>
           </div>
@@ -300,10 +364,10 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
           <button
             type="button"
             onClick={() => onVideoOpen(exercicio.video_url!)}
-            className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0 min-h-[44px] min-w-[44px]"
+            className="flex items-center justify-center shrink-0 p-1 -mr-0.5 active:opacity-70 transition-opacity"
             aria-label="Ver vídeo do exercício"
           >
-            <Play size={18} weight="fill" />
+            <GradientPlayIcon size={22} />
           </button>
         )}
         {all && treinoIniciado && (
@@ -314,23 +378,36 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
       </div>
 
       {exercicio.observacoes && (
-        <div className="mb-3 px-2.5 py-2 bg-surface-2 border border-card rounded-lg">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-1">Observações</p>
-          <p className="text-[11px] text-text-secondary leading-relaxed">{exercicio.observacoes}</p>
+        <div
+          className="mb-3 px-2.5 py-2 rounded-lg"
+          style={{ background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.06)' }}
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: '#888' }}>
+            Observações
+          </p>
+          <p className="text-[11px] leading-relaxed" style={{ color: '#555' }}>{exercicio.observacoes}</p>
         </div>
       )}
 
-      <div className="border-t border-divider/50 pt-2">
-        <div className="grid items-center py-2 mb-0.5" style={{ gridTemplateColumns: gridCols }}>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">Set</span>
+      <div className="pt-2" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        <div
+          className="grid items-center py-2 mb-0.5"
+          style={{ gridTemplateColumns: gridCols, columnGap: SERIES_GRID_GAP }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>Set</span>
           {showAnteriorCol && (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted pl-2">Ant.</span>
+            <span
+              className="text-[10px] font-semibold uppercase tracking-[0.05em]"
+              style={{ color: '#bbb', paddingLeft: ANT_COL_PAD_LEFT }}
+            >
+              Ant.
+            </span>
           )}
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-right pr-2">Peso</span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">Reps</span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">T1</span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-text-muted text-center">T2</span>
-          <span className="text-[10px] text-text-muted text-center">✓</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>Peso</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>Reps</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>T1</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-center" style={{ color: '#bbb' }}>T2</span>
+          <span className="text-[10px] text-center" style={{ color: '#bbb' }}>✓</span>
         </div>
 
         <div>
@@ -1196,7 +1273,7 @@ export default function ExecucaoTreinoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f5f5f7' }}>
         <DumbbellLoader text="Preparando treino..." />
       </div>
     );
@@ -1246,30 +1323,45 @@ export default function ExecucaoTreinoPage() {
   const sessionsCompleted = volumeHistory.length;
 
   return (
-    <div className={cn('min-h-screen bg-surface-0', treinoIniciado ? 'pb-4' : 'pb-28')}>
+    <div
+      className={cn('min-h-screen', treinoIniciado ? 'pb-4' : 'pb-28')}
+      style={{ background: '#f5f5f7' }}
+    >
 
       {/* ── Header sticky (mobile + treino em andamento) ── */}
       <header
         className={cn(
-          'sticky top-0 z-40 bg-surface-0 border-b border-surface-2',
+          'sticky top-0 z-40 backdrop-blur-sm',
           !treinoIniciado && 'lg:hidden'
         )}
+        style={{
+          background: 'rgba(245,245,247,0.95)',
+          borderBottom: '1px solid rgba(0,0,0,0.08)',
+        }}
       >
         <div className="flex items-center gap-3 px-4 py-3 max-w-[1100px] mx-auto">
           <Link
             href="/aluno/treinos"
-            className="w-11 h-11 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0"
+            className="w-11 h-11 flex items-center justify-center transition-colors shrink-0"
+            style={{ color: '#555' }}
             aria-label="Voltar para Minhas Rotinas"
           >
             <ArrowLeft size={20} />
           </Link>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold uppercase tracking-wide text-text-primary truncate">{nomeRotina}</h1>
+            <h1
+              className="font-bold uppercase tracking-wide truncate"
+              style={{ color: '#1a1a1a', fontSize: '16px' }}
+            >
+              {nomeRotina}
+            </h1>
             {treinoIniciado ? (
-              <p className="text-[11px] text-text-muted mt-0.5">{setsCompletos}/{totalSets} sets</p>
+              <p className="mt-0.5" style={{ color: '#888', fontSize: '12px' }}>
+                {setsCompletos}/{totalSets} sets
+              </p>
             ) : (
-              <p className="text-[11px] text-text-muted mt-0.5">
+              <p className="mt-0.5" style={{ color: '#888', fontSize: '12px' }}>
                 {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
               </p>
             )}
@@ -1279,14 +1371,24 @@ export default function ExecucaoTreinoPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowConfirmAbandon(true)}
-                className="w-8 h-8 rounded-lg bg-surface-2 border border-card flex items-center justify-center text-text-secondary hover:text-destructive transition-colors shrink-0"
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                style={{
+                  background: '#ebebf0',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  color: '#555',
+                }}
                 title="Descartar treino"
               >
                 <X className="w-4 h-4" />
               </button>
               <div className="text-right">
-                <p className="font-mono tabular-nums lining-nums text-sm font-bold text-brand leading-none">{formatDuration(elapsed)}</p>
-                <p className="text-2xs text-text-muted">{formatVolume(volume)}</p>
+                <p
+                  className="font-mono tabular-nums lining-nums text-sm font-bold leading-none"
+                  style={{ color: '#9333ea' }}
+                >
+                  {formatDuration(elapsed)}
+                </p>
+                <p className="text-2xs" style={{ color: '#888' }}>{formatVolume(volume)}</p>
               </div>
               <button
                 onClick={handleFinalizar}
@@ -1306,23 +1408,37 @@ export default function ExecucaoTreinoPage() {
           {/* Coluna esquerda — contexto + iniciar (desktop, pré-execução) */}
           {!treinoIniciado && (
             <aside className="hidden lg:block lg:sticky lg:top-6">
-              <div className="bg-surface-1 border border-card rounded-[14px] p-6">
+              <div
+                className="rounded-[14px] p-6"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}
+              >
                 <Link
                   href="/aluno/treinos"
-                  className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors mb-4"
+                  className="inline-flex items-center gap-1.5 text-xs transition-colors mb-4"
+                  style={{ color: '#555' }}
                 >
                   <ArrowLeft size={16} />
                   Minhas Rotinas
                 </Link>
-                <h1 className="text-xl font-bold uppercase tracking-wide text-text-primary">{nomeRotina}</h1>
-                <p className="text-[13px] text-text-muted mt-1">
+                <h1 className="text-xl font-bold uppercase tracking-wide" style={{ color: '#1a1a1a' }}>
+                  {nomeRotina}
+                </h1>
+                <p className="text-[13px] mt-1" style={{ color: '#888' }}>
                   {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
                 </p>
                 <VolumeProgressDots sessionsCompleted={sessionsCompleted} className="mt-5" />
                 <button
                   type="button"
                   onClick={iniciarTreino}
-                  className="w-full min-h-14 mt-5 rounded-xl font-bold text-[15px] bg-brand text-text-on-brand transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
+                  className="w-full min-h-14 mt-5 rounded-xl font-bold text-[15px] text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
+                  style={{
+                    background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
+                    boxShadow: '0 4px 16px rgba(147,51,234,0.40)',
+                  }}
                 >
                   <Lightning size={18} weight="fill" />
                   <span className="flex-1 text-center">Iniciar treino</span>
@@ -1339,7 +1455,11 @@ export default function ExecucaoTreinoPage() {
                 <button
                   type="button"
                   onClick={iniciarTreino}
-                  className="w-full min-h-12 rounded-xl font-bold text-[15px] bg-brand text-text-on-brand transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
+                  className="w-full min-h-12 rounded-xl font-bold text-[15px] text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
+                  style={{
+                    background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
+                    boxShadow: '0 4px 16px rgba(147,51,234,0.40)',
+                  }}
                 >
                   <Lightning size={18} weight="fill" />
                   <span className="flex-1 text-center">Iniciar treino</span>
@@ -1351,12 +1471,18 @@ export default function ExecucaoTreinoPage() {
 
             {/* Header da coluna de exercícios — desktop */}
             {!treinoIniciado && (
-              <div className="hidden lg:flex sticky top-0 z-10 bg-surface-0 border-b border-surface-2 py-3 items-center justify-between">
+              <div
+                className="hidden lg:flex sticky top-0 z-10 py-3 items-center justify-between"
+                style={{
+                  background: 'rgba(245,245,247,0.95)',
+                  borderBottom: '1px solid rgba(0,0,0,0.08)',
+                }}
+              >
                 <div className="flex items-center gap-2">
-                  <ArrowLeft size={18} className="text-text-secondary" />
-                  <span className="text-sm font-semibold text-text-primary">Exercícios</span>
+                  <ArrowLeft size={18} style={{ color: '#555' }} />
+                  <span className="text-sm font-semibold" style={{ color: '#1a1a1a' }}>Exercícios</span>
                 </div>
-                <span className="text-xs text-text-muted">{blockCount} blocos</span>
+                <span className="text-xs" style={{ color: '#888' }}>{blockCount} blocos</span>
               </div>
             )}
 
@@ -1381,7 +1507,8 @@ export default function ExecucaoTreinoPage() {
               {blocks.map((block, index) => (
                 <div
                   key={block.kind === 'simples' ? block.exercise.id : block.id}
-                  className={index > 0 ? 'border-t border-dashed border-surface-2 pt-2.5' : undefined}
+                  className={index > 0 ? 'pt-2.5' : undefined}
+                  style={index > 0 ? { borderTop: '1px dashed rgba(0,0,0,0.08)' } : undefined}
                 >
                   {block.kind === 'simples' ? (
                     <ExercicioCard
@@ -1416,11 +1543,14 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── Rest Timer: bottom bar (só quando o modal de exercício está fechado) ── */}
       {restActive && modalBlockIdx === null && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-1 border-t border-divider shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
+        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-8px_32px_rgba(0,0,0,0.08)]"
+          style={{ background: '#ffffff', borderTop: '1px solid rgba(0,0,0,0.08)' }}
+        >
           <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center gap-2">
             <button
               onClick={() => restAddSecs(-15)}
-              className="w-12 h-10 bg-surface-2 border border-card rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0"
+              className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
+              style={{ background: '#ebebf0', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
             >
               −15
             </button>
@@ -1434,7 +1564,7 @@ export default function ExecucaoTreinoPage() {
                   Pronto! →
                 </button>
               ) : (
-                <p className="font-mono text-3xl font-bold text-text-primary tabular-nums lining-nums tracking-display">
+                <p className="font-mono text-3xl font-bold tabular-nums lining-nums tracking-display" style={{ color: '#1a1a1a' }}>
                   {Math.floor(restRemaining / 60).toString().padStart(2, '0')}:{(restRemaining % 60).toString().padStart(2, '0')}
                 </p>
               )}
@@ -1442,7 +1572,8 @@ export default function ExecucaoTreinoPage() {
 
             <button
               onClick={() => restAddSecs(15)}
-              className="w-12 h-10 bg-surface-2 border border-card rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary transition-colors flex-shrink-0"
+              className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
+              style={{ background: '#ebebf0', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
             >
               +15
             </button>
@@ -1597,7 +1728,10 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── Modal de execução por exercício ── */}
       {modalEx && modalSerie && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-surface-0 lg:max-w-[640px] lg:mx-auto lg:left-1/2 lg:-translate-x-1/2">
+        <div
+          className="fixed inset-0 z-50 flex flex-col lg:max-w-[640px] lg:mx-auto lg:left-1/2 lg:-translate-x-1/2"
+          style={{ background: '#f5f5f7' }}
+        >
           {restActive && (
             <RestTimerOverlay
               remaining={restRemaining}
@@ -1614,41 +1748,51 @@ export default function ExecucaoTreinoPage() {
           )}
 
           {bisetTransitionName && (
-            <div className="absolute inset-0 z-[55] flex flex-col items-center justify-center bg-surface-0 animate-in fade-in duration-300">
+            <div
+              className="absolute inset-0 z-[55] flex flex-col items-center justify-center animate-in fade-in duration-300"
+              style={{ background: '#f5f5f7' }}
+            >
               <p className="text-brand text-2xl font-bold">↓</p>
-              <p className="text-xl font-bold text-text-primary mt-1">{bisetTransitionName}</p>
-              <p className="text-xs text-[#7a8aab] mt-1">agora</p>
+              <p className="text-xl font-bold mt-1" style={{ color: '#1a1a1a' }}>{bisetTransitionName}</p>
+              <p className="text-xs mt-1" style={{ color: '#888' }}>agora</p>
             </div>
           )}
 
-          <div className="w-full h-0.5 bg-surface-2 flex-shrink-0">
+          <div className="w-full h-0.5 flex-shrink-0" style={{ background: '#ebebf0' }}>
             <div
               className="h-full bg-brand transition-all duration-300"
               style={{ width: `${((modalRodadaIdx + 1) / modalTotalRodadas) * 100}%` }}
             />
           </div>
 
-          <header className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 bg-surface-0 border-b border-surface-2 flex-shrink-0 pt-safe-top">
+          <header
+            className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 flex-shrink-0 pt-safe-top"
+            style={{
+              background: 'rgba(245,245,247,0.95)',
+              borderBottom: '1px solid rgba(0,0,0,0.08)',
+            }}
+          >
             <button
               type="button"
               onClick={() => setModalBlockIdx(null)}
-              className="w-9 h-9 rounded-lg bg-surface-1 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0"
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+              style={{ background: '#ebebf0', color: '#555' }}
               aria-label="Fechar execução"
             >
               <X size={20} />
             </button>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold text-text-primary leading-tight truncate">
+              <h2 className="text-base font-bold leading-tight truncate" style={{ color: '#1a1a1a' }}>
                 {toTitleCase(modalEx.nome)}
                 {modalIsBiSet && (
-                  <span className="ml-1.5 inline-block text-[10px] font-bold uppercase text-brand bg-[#1a2d4a] rounded px-1.5 py-0.5 align-middle">
+                  <span className="ml-1.5 inline-block text-[10px] font-bold uppercase text-brand bg-brand/10 rounded px-1.5 py-0.5 align-middle">
                     BI-SET {bisetFase === 'b' ? 'B/B' : 'A/B'}
                   </span>
                 )}
               </h2>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-xs text-text-muted tabular-nums lining-nums">
+              <p className="text-xs tabular-nums lining-nums" style={{ color: '#888' }}>
                 Ex. {(modalBlockIdx ?? 0) + 1}/{blockCount}
                 {modalIsBiSet
                   ? ` · Rodada ${modalRodadaIdx + 1}/${modalTotalRodadas} · A→B`
@@ -1659,8 +1803,11 @@ export default function ExecucaoTreinoPage() {
 
           <div className="flex-1 overflow-y-auto pb-36">
             {modalIsBiSet && modalPartnerEx && bisetFase === 'a' && (
-              <div className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg bg-[#0f1a2e] border-l-[3px] border-brand">
-                <p className="text-xs text-[#7a8aab]">
+              <div
+                className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] border-brand"
+                style={{ background: '#faf5ff' }}
+              >
+                <p className="text-xs" style={{ color: '#555' }}>
                   ↓ Em seguida: {modalPartnerEx.nome} · {modalPartnerEx.series[modalRodadaIdx]?.reps} reps
                   {modalPartnerEx.series[modalRodadaIdx]?.peso_atual
                     ? ` · ${modalPartnerEx.series[modalRodadaIdx]?.peso_atual} kg`
@@ -1670,8 +1817,11 @@ export default function ExecucaoTreinoPage() {
             )}
 
             {modalIsBiSet && bisetFase === 'b' && modalBlock?.kind === 'biset' && (
-              <div className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg bg-[#0f1a2e] border-l-[3px] border-brand">
-                <p className="text-xs text-[#7a8aab]">
+              <div
+                className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] border-brand"
+                style={{ background: '#faf5ff' }}
+              >
+                <p className="text-xs" style={{ color: '#555' }}>
                   ⊙ Após esta série: {formatRestTime(modalBlock.descanso)} de descanso
                   {modalRodadaIdx < modalTotalRodadas - 1 ? ', depois repete' : ''}
                 </p>
@@ -1682,7 +1832,12 @@ export default function ExecucaoTreinoPage() {
               <div className="px-4 mt-4 mb-4">
                 <button
                   onClick={() => setDemoImg(modalEx.gif_url!)}
-                  className="w-full h-11 rounded-lg bg-surface-1 border border-card flex items-center justify-center gap-2 text-sm font-medium text-text-secondary hover:text-brand hover:border-brand transition-colors"
+                  className="w-full h-11 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    color: '#555',
+                  }}
                 >
                   <Play className="w-4 h-4" fill="currentColor" />
                   Ver demonstração
@@ -1692,26 +1847,50 @@ export default function ExecucaoTreinoPage() {
 
             {/* 3 cards de contexto: REPETIÇÕES / ÚLTIMA VEZ / TÉCNICA */}
             <div className="mt-4 grid grid-cols-3 gap-2 px-4 mb-4">
-              <div className="bg-[#141414] rounded-[10px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors">
-                <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-1">
+              <div
+                className="rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}
+              >
+                <span
+                  className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] mb-1"
+                  style={{ color: '#aaa' }}
+                >
                   Repetições
                 </span>
-                <span className="text-[28px] lg:text-4xl font-extrabold tabular-nums lining-nums tracking-display text-text-primary leading-none">
+                <span
+                  className="text-[28px] lg:text-4xl font-extrabold font-kpi tabular-nums lining-nums leading-none"
+                  style={{ color: '#1a1a1a', letterSpacing: 'var(--tracking-display, -0.02em)' }}
+                >
                   {modalSerie.reps}
                 </span>
               </div>
 
-              <div className="bg-[#141414] rounded-[10px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center justify-center [@media(hover:hover)]:hover:bg-[#1a1a1a] transition-colors">
-                <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-1">
+              <div
+                className="rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center justify-center"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}
+              >
+                <span
+                  className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] mb-1"
+                  style={{ color: '#aaa' }}
+                >
                   Última vez
                 </span>
                 <span
                   className={cn(
-                    "text-center leading-tight tabular-nums lining-nums",
+                    "text-center leading-tight font-kpi tabular-nums lining-nums",
                     modalSerie.anterior
-                      ? "text-sm lg:text-base font-bold text-text-primary"
-                      : "text-[28px] lg:text-4xl font-extrabold text-text-muted"
+                      ? "text-sm lg:text-base font-bold"
+                      : "text-[28px] lg:text-4xl font-extrabold"
                   )}
+                  style={{ color: modalSerie.anterior ? '#1a1a1a' : '#bbb' }}
                 >
                   {modalSerie.anterior || "—"}
                 </span>
@@ -1729,25 +1908,32 @@ export default function ExecucaoTreinoPage() {
                     }}
                     disabled={!hasTecnica}
                     className={cn(
-                      "rounded-[10px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center relative transition-colors",
-                      hasTecnica
-                        ? "bg-[#141414] cursor-pointer [@media(hover:hover)]:hover:bg-[#1a1a1a]"
-                        : "bg-[#141414] cursor-default"
+                      "rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center relative transition-colors",
+                      hasTecnica ? "cursor-pointer" : "cursor-default"
                     )}
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    }}
                   >
-                    <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-1 flex items-center gap-1">
+                    <span
+                      className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] mb-1 flex items-center gap-1"
+                      style={{ color: '#aaa' }}
+                    >
                       Técnica
-                      {hasTecnica && <Info size={12} className="text-text-muted" aria-hidden />}
+                      {hasTecnica && <Info size={12} style={{ color: '#aaa' }} aria-hidden />}
                     </span>
                     <span
                       className={cn(
                         "text-center leading-tight truncate w-full",
                         !hasTecnica
-                          ? "text-[28px] lg:text-4xl font-extrabold text-text-muted"
+                          ? "text-[28px] lg:text-4xl font-extrabold"
                           : isLongLabel
                             ? "text-base font-bold text-brand"
-                            : "text-[28px] lg:text-4xl font-extrabold text-text-primary"
+                            : "text-[28px] lg:text-4xl font-extrabold"
                       )}
+                      style={!hasTecnica || !isLongLabel ? { color: hasTecnica ? '#1a1a1a' : '#bbb' } : undefined}
                     >
                       {tecnicaLabel || "—"}
                     </span>
@@ -1766,7 +1952,10 @@ export default function ExecucaoTreinoPage() {
 
             {/* Campo de CARGA */}
             <div className="mx-4 mt-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted mb-3">
+              <p
+                className="text-[10px] font-semibold uppercase tracking-[0.1em] mb-3"
+                style={{ color: '#888' }}
+              >
                 Carga (kg)
               </p>
               <div className="flex items-center gap-2">
@@ -1777,13 +1966,20 @@ export default function ExecucaoTreinoPage() {
                     setModalCarga(newVal);
                     setModalCargaStr(String(newVal));
                   }}
-                  className="w-10 h-10 rounded-lg bg-surface-2 flex items-center justify-center text-text-primary active:opacity-80 transition-colors shrink-0"
+                  className="w-11 h-11 rounded-[10px] flex items-center justify-center text-xl font-bold transition-colors active:scale-95 shrink-0"
+                  style={{ background: '#ebebf0', color: '#555' }}
                   aria-label="Diminuir carga"
                 >
                   <Minus size={18} weight="bold" />
                 </button>
 
-                <div className="flex-1 h-14 bg-surface-2 border border-input rounded-[10px] flex items-center justify-center">
+                <div
+                  className="flex-1 h-12 rounded-[12px] flex items-center justify-center"
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid rgba(0,0,0,0.10)',
+                  }}
+                >
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1797,7 +1993,13 @@ export default function ExecucaoTreinoPage() {
                       }
                     }}
                     placeholder="0"
-                    className="w-full bg-transparent border-0 text-center text-[28px] font-bold tabular-nums lining-nums tracking-display text-text-primary focus:outline-none"
+                    className="w-full bg-transparent border-0 text-center font-black font-kpi tabular-nums lining-nums focus:outline-none"
+                    style={{
+                      color: '#1a1a1a',
+                      fontSize: '24px',
+                      letterSpacing: '-0.02em',
+                      fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                    }}
                   />
                 </div>
 
@@ -1808,7 +2010,11 @@ export default function ExecucaoTreinoPage() {
                     setModalCarga(newVal);
                     setModalCargaStr(String(newVal));
                   }}
-                  className="w-10 h-10 rounded-lg bg-brand flex items-center justify-center text-white active:bg-brand/90 transition-colors shrink-0 [@media(hover:hover)]:hover:bg-[#a855f7]"
+                  className="w-11 h-11 rounded-[10px] flex items-center justify-center text-xl font-bold text-white transition-colors active:scale-95 shrink-0"
+                  style={{
+                    background: 'linear-gradient(135deg, #c084fc, #9333ea, #7e22ce)',
+                    boxShadow: '0 2px 8px rgba(147,51,234,0.35)',
+                  }}
                   aria-label="Aumentar carga"
                 >
                   <Plus size={18} weight="bold" />
@@ -1826,7 +2032,8 @@ export default function ExecucaoTreinoPage() {
                       setModalCarga(newVal);
                       setModalCargaStr(String(newVal));
                     }}
-                    className="min-h-11 rounded-lg bg-[#141414] border border-card text-[13px] font-medium tabular-nums lining-nums text-text-primary active:opacity-80 transition-colors [@media(hover:hover)]:hover:bg-[#1a1a1a] [@media(hover:hover)]:hover:border-card-hover"
+                    className="min-h-11 rounded-[8px] text-[13px] font-semibold tabular-nums lining-nums transition-colors active:scale-95"
+                    style={{ background: '#ebebf0', color: '#555' }}
                   >
                     {inc}
                   </button>
@@ -1841,10 +2048,13 @@ export default function ExecucaoTreinoPage() {
                 onClick={() => setShowSeriesHistory(v => !v)}
                 className="w-full flex items-center justify-between py-2 min-h-11"
               >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: '#888' }}
+                >
                   Histórico de Séries
                 </p>
-                <span className="text-xs font-medium text-brand flex items-center gap-1">
+                <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: '#9333ea' }}>
                   {showSeriesHistory ? "Ocultar" : "Mostrar"}
                   <CaretDown
                     size={14}
@@ -1854,7 +2064,13 @@ export default function ExecucaoTreinoPage() {
                 </span>
               </button>
               {showSeriesHistory && (
-                <div className="bg-[#141414] rounded-[10px] overflow-hidden border border-[#1e1e1e]">
+                <div
+                  className="rounded-[12px] overflow-hidden p-0"
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                  }}
+                >
                   {modalIsBiSet && modalBlock?.kind === 'biset' ? (
                     <div className="p-3 space-y-3">
                       {modalBlock.exercicioA.series.map((_, rodadaIdx) => {
@@ -1863,21 +2079,29 @@ export default function ExecucaoTreinoPage() {
                         if (!aSerie || !bSerie) return null;
                         const rows = [
                           { label: 'A', nome: modalBlock.exercicioA.nome, exId: modalBlock.exercicioA.id, s: aSerie, color: 'text-brand' },
-                          { label: 'B', nome: modalBlock.exercicioB.nome, exId: modalBlock.exercicioB.id, s: bSerie, color: 'text-[#7a8aab]' },
+                          { label: 'B', nome: modalBlock.exercicioB.nome, exId: modalBlock.exercicioB.id, s: bSerie, color: 'text-[#888]' },
                         ];
                         return (
-                          <div key={rodadaIdx} className={rodadaIdx > 0 ? 'pt-3 border-t border-dashed border-[#1e1e1e]' : ''}>
-                            <p className="text-[10px] font-semibold uppercase text-text-disabled mb-2">Rodada {rodadaIdx + 1}</p>
+                          <div
+                            key={rodadaIdx}
+                            className={rodadaIdx > 0 ? 'pt-3' : ''}
+                            style={rodadaIdx > 0 ? { borderTop: '1px dashed rgba(0,0,0,0.06)' } : undefined}
+                          >
+                            <p className="text-[10px] font-semibold uppercase mb-2" style={{ color: '#bbb' }}>
+                              Rodada {rodadaIdx + 1}
+                            </p>
                             {rows.map(({ label, nome, exId, s, color }) => {
                               const isAtualRow =
                                 rodadaIdx === modalRodadaIdx &&
                                 ((label === 'A' && bisetFase === 'a') || (label === 'B' && bisetFase !== 'a'));
                               return (
                                 <div key={label} className="flex items-center justify-between py-1 text-xs">
-                                  <span className="text-text-secondary truncate flex-1">{nome}</span>
-                                  <span className="text-text-muted mx-2">{s.anterior || '—'}</span>
+                                  <span className="truncate flex-1" style={{ color: '#555' }}>{nome}</span>
+                                  <span className="mx-2" style={{ color: '#bbb' }}>{s.anterior || '—'}</span>
                                   {isAtualRow ? (
-                                    <span className="font-bold tabular-nums lining-nums">{modalCarga ? `${modalCarga}kg` : '—'}</span>
+                                    <span className="font-bold font-kpi tabular-nums lining-nums" style={{ color: '#1a1a1a' }}>
+                                      {modalCarga ? `${modalCarga}kg` : '—'}
+                                    </span>
                                   ) : (
                                     <input
                                       type="number"
@@ -1886,7 +2110,12 @@ export default function ExecucaoTreinoPage() {
                                       onChange={(e) => handlePesoChange(exId, s.ordem, parseFloat(e.target.value) || 0)}
                                       placeholder="—"
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
-                                      className="w-14 h-7 bg-transparent border-b border-brand/40 px-1 text-right font-bold tabular-nums lining-nums text-text-primary focus:border-brand focus:outline-none"
+                                      className="w-14 h-7 bg-transparent px-1 text-right font-bold font-kpi tabular-nums lining-nums focus:outline-none"
+                                      style={{
+                                        borderBottom: '1.5px solid rgba(147,51,234,0.3)',
+                                        color: '#1a1a1a',
+                                        fontSize: '16px',
+                                      }}
                                     />
                                   )}
                                   <span className="text-accent mx-2 tabular-nums lining-nums">{s.reps}</span>
@@ -1900,13 +2129,19 @@ export default function ExecucaoTreinoPage() {
                     </div>
                   ) : (
                     <>
-                  <div className="grid items-center px-3 py-2 border-b border-[#1e1e1e]" style={{ gridTemplateColumns: GRID_COLS_HISTORICO }}>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">Set</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted pl-2">Ant.</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-right">Peso</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">Reps</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">T1</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted text-center">T2</span>
+                  <div
+                    className="grid items-center px-3 py-2"
+                    style={{
+                      gridTemplateColumns: GRID_COLS_HISTORICO,
+                      borderBottom: '1px solid rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>Set</span>
+                    <span className="text-[9px] font-semibold uppercase pl-2" style={{ color: '#bbb' }}>Ant.</span>
+                    <span className="text-[9px] font-semibold uppercase text-right" style={{ color: '#bbb' }}>Peso</span>
+                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>Reps</span>
+                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>T1</span>
+                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>T2</span>
                   </div>
                   {modalEx.series.map((s, idx) => {
                     const isAtual = idx === modalRodadaIdx;
@@ -1914,21 +2149,36 @@ export default function ExecucaoTreinoPage() {
                       <div
                         key={s.ordem}
                         className={cn(
-                          'grid items-center py-2 border-b border-divider/30 last:border-0 px-3',
+                          'grid items-center py-2 last:border-0 px-3',
                           s.completado ? 'bg-success/5' : isAtual ? 'bg-brand/5' : ''
-                        )} style={{ gridTemplateColumns: GRID_COLS_HISTORICO }}
+                        )}
+                        style={{
+                          gridTemplateColumns: GRID_COLS_HISTORICO,
+                          borderBottom: '1px solid rgba(0,0,0,0.06)',
+                        }}
                       >
                         <div className="flex justify-center">
                           <span className={cn(
-                            'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold font-mono',
-                            s.completado ? 'bg-success text-white' : isAtual ? 'bg-brand text-white' : 'bg-surface-3 text-text-secondary'
-                          )}>
+                            'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold font-kpi',
+                            s.completado ? 'bg-success text-white' : isAtual ? 'bg-brand text-white' : ''
+                          )}
+                          style={
+                            !s.completado && !isAtual
+                              ? { background: '#ebebf0', color: '#888' }
+                              : undefined
+                          }
+                          >
                             {idx + 1}
                           </span>
                         </div>
-                        <span className="text-[11px] font-mono text-text-muted truncate pl-2">{s.anterior || '—'}</span>
+                        <span className="text-[12px] font-kpi truncate pl-2" style={{ color: '#bbb' }}>
+                          {s.anterior || '—'}
+                        </span>
                         {isAtual ? (
-                          <span className="text-[15px] font-bold font-mono tabular-nums lining-nums text-text-primary text-right">
+                          <span
+                            className="text-[15px] font-bold font-kpi tabular-nums lining-nums text-right"
+                            style={{ color: '#1a1a1a' }}
+                          >
                             {modalCarga ? `${modalCarga}kg` : '—'}
                           </span>
                         ) : (
@@ -1939,12 +2189,21 @@ export default function ExecucaoTreinoPage() {
                             onChange={(e) => handlePesoChange(modalEx.id, s.ordem, parseFloat(e.target.value) || 0)}
                             placeholder="—"
                             aria-label={`Editar peso da série ${idx + 1}`}
-                            className="w-full h-8 bg-transparent border-b border-brand/40 px-1 text-right text-[15px] font-bold font-mono tabular-nums lining-nums text-text-primary focus:border-brand focus:outline-none"
+                            className="w-full h-8 bg-transparent px-1 text-right font-bold font-kpi tabular-nums lining-nums focus:outline-none"
+                            style={{
+                              borderBottom: '1.5px solid rgba(147,51,234,0.3)',
+                              color: '#1a1a1a',
+                              fontSize: '16px',
+                            }}
                           />
                         )}
-                        <span className="text-[13px] font-semibold font-mono tabular-nums lining-nums text-accent text-center">{s.reps}</span>
-                        <span className="text-[11px] font-medium text-text-secondary text-center">{duasLetrasTenica(s.tecnica) || '—'}</span>
-                        <span className="text-[11px] font-medium text-accent text-center">{abreviarTecnica(s.tecnica_extra) || '—'}</span>
+                        <span className="text-[13px] font-semibold font-kpi tabular-nums lining-nums text-accent text-center">{s.reps}</span>
+                        <span className="text-[11px] font-medium text-center" style={{ color: '#888' }}>
+                          {duasLetrasTenica(s.tecnica) || '—'}
+                        </span>
+                        <span className="text-[11px] font-medium text-accent text-center">
+                          {abreviarTecnica(s.tecnica_extra) || '—'}
+                        </span>
                       </div>
                     );
                   })}
@@ -1960,23 +2219,44 @@ export default function ExecucaoTreinoPage() {
                 exercicioNome={modalEx.nome}
               />
             ) : !modalEx.gif_url ? (
-              <div className="mx-4 mt-4 rounded-[14px] border border-card bg-surface-1 px-4 py-6 text-center">
-                <Video className="mx-auto mb-2 h-8 w-8 text-text-disabled opacity-40" />
-                <p className="text-xs font-medium text-text-tertiary">Sem demonstração disponível</p>
-                <p className="mt-0.5 text-[11px] text-text-disabled">
-                  Este exercício não possui vídeo nem GIF na biblioteca
-                </p>
+              <div
+                className="mx-4 mt-4 rounded-[14px] flex-shrink-0"
+                style={{
+                  background: 'rgba(0,0,0,0.03)',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                }}
+              >
+                <div className="flex items-center gap-2.5 px-4 py-3">
+                  <Video className="w-4 h-4 flex-shrink-0" style={{ color: '#ccc' }} />
+                  <div>
+                    <p className="text-[12px] font-medium" style={{ color: '#999' }}>
+                      Sem demonstração disponível
+                    </p>
+                    <p className="text-[11px]" style={{ color: '#bbb' }}>
+                      Este exercício não possui vídeo nem GIF na biblioteca
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
 
           {/* Botão fixo no rodapé */}
-          <div className="absolute bottom-0 left-0 right-0 px-4 pt-3 bg-gradient-to-t from-surface-0 via-surface-0/95 to-transparent flex flex-col gap-1.5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div
+            className="absolute bottom-0 left-0 right-0 px-4 pt-3 flex flex-col gap-1.5 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+            style={{
+              background: 'linear-gradient(to top, #f5f5f7 60%, rgba(245,245,247,0.85) 85%, transparent)',
+            }}
+          >
             <button
               type="button"
               onClick={concluirSerieModal}
               disabled={restActive || bisetFase === 'transicao'}
-              className="w-full min-h-[52px] bg-brand text-text-on-brand rounded-[10px] flex items-center justify-center gap-2 text-[15px] font-bold shadow-lg shadow-brand/30 hover:opacity-90 active:bg-brand/90 transition-all disabled:opacity-40"
+              className="w-full min-h-[52px] rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-40"
+              style={{
+                background: 'linear-gradient(135deg, #c084fc, #9333ea, #7e22ce)',
+                boxShadow: '0 4px 16px rgba(147,51,234,0.40)',
+              }}
             >
               <Check size={18} weight="bold" />
               {(() => {
@@ -2003,7 +2283,8 @@ export default function ExecucaoTreinoPage() {
             {modalBlockIdx !== null && modalBlockIdx < blocks.length - 1 && modalRodadaIdx >= modalTotalRodadas - 1 && !modalIsBiSet && (
               <button
                 onClick={() => { setModalBlockIdx(null); }}
-                className="w-full h-10 text-text-tertiary text-xs hover:text-text-secondary transition-colors"
+                className="w-full h-10 text-xs transition-colors"
+                style={{ color: '#888' }}
               >
                 Fechar e voltar à lista
               </button>

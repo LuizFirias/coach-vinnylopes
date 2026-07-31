@@ -5,7 +5,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getSignedStorageUrl } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
-import { Barbell, FileText, MagnifyingGlass } from '@phosphor-icons/react';
+import { FileText, MagnifyingGlass } from '@phosphor-icons/react';
 import PDFViewer from '@/app/components/PDFViewer';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { RoutineCard } from '@/app/components/treinos/RoutineCard';
@@ -98,7 +98,7 @@ export default function AlunoTreinosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-0">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f5f5f7' }}>
         <DumbbellLoader text="Carregando treinos..." />
       </div>
     );
@@ -108,9 +108,12 @@ export default function AlunoTreinosPage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen pb-24 bg-surface-0">
+      <div className="min-h-screen pb-24" style={{ background: '#f5f5f7' }}>
         <div className="px-4 pt-6 pb-4 max-w-[680px] mx-auto lg:pt-10 lg:pb-6">
-          <h1 className="text-[22px] lg:text-[26px] font-extrabold text-text-primary tracking-tight">
+          <h1
+            className="text-[22px] lg:text-[26px] font-extrabold tracking-tight"
+            style={{ color: '#1a1a1a' }}
+          >
             Minhas Rotinas
           </h1>
         </div>
@@ -156,7 +159,7 @@ export default function AlunoTreinosPage() {
               </div>
 
               {fichas.length < 3 && (
-                <p className="text-xs text-text-muted text-center mt-4 lg:mt-6">
+                <p className="text-xs text-center mt-4 lg:mt-6" style={{ color: '#999' }}>
                   Seu coach pode adicionar mais rotinas ao seu plano
                 </p>
               )}
@@ -165,7 +168,10 @@ export default function AlunoTreinosPage() {
 
           {treinosPdf.length > 0 && (
             <section>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mb-3 flex items-center gap-2">
+              <p
+                className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-3 flex items-center gap-2"
+                style={{ color: '#888' }}
+              >
                 Fichas PDF
               </p>
               <div className="flex flex-col gap-2.5">
@@ -173,20 +179,31 @@ export default function AlunoTreinosPage() {
                   <button
                     key={pdf.id}
                     onClick={() => void openPdf(pdf)}
-                    className="w-full text-left border-0 bg-[var(--dash-card,#111827)] p-3.5 rounded-xl transition-colors active:bg-[#1a2332] flex items-center gap-3 group [@media(hover:hover)]:hover:bg-[#1a2332] min-h-16"
+                    className="w-full text-left p-3.5 rounded-[12px] transition-all active:scale-[0.99] flex items-center gap-3 group min-h-16"
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    }}
                   >
-                    <div className="w-10 h-10 rounded-[10px] bg-surface-2 border border-card flex items-center justify-center text-text-secondary shrink-0">
+                    <div
+                      className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0"
+                      style={{ background: '#ebebf0', color: '#555' }}
+                    >
                       <FileText size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-text-primary truncate">
+                      <p className="text-sm font-semibold truncate" style={{ color: '#1a1a1a' }}>
                         {pdf.nome_arquivo.replace('.pdf', '')}
                       </p>
-                      <p className="text-[11px] text-text-muted mt-0.5">
+                      <p className="text-[11px] mt-0.5" style={{ color: '#888' }}>
                         Enviado em {new Date(pdf.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center text-text-muted shrink-0">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: '#ebebf0', color: '#bbb' }}
+                    >
                       <MagnifyingGlass size={14} />
                     </div>
                   </button>
@@ -196,7 +213,7 @@ export default function AlunoTreinosPage() {
           )}
 
           {total === 0 && (
-            <p className="text-xs text-text-muted text-center py-16">
+            <p className="text-sm text-center py-16" style={{ color: '#999' }}>
               Nenhum treino ativo. Seu coach ainda não atribuiu uma rotina para o seu perfil.
             </p>
           )}

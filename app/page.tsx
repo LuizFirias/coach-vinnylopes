@@ -381,8 +381,14 @@ function LoginForm() {
 
       {/* Glow decorativo - Hidden on mobile to prevent performance lag */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none hidden md:block">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-brand/5 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-brand/5 rounded-full blur-[120px]" />
+        <div
+          className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full blur-[120px]"
+          style={{ background: 'rgba(147,51,234,0.08)' }}
+        />
+        <div
+          className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] rounded-full blur-[120px]"
+          style={{ background: 'rgba(147,51,234,0.06)' }}
+        />
       </div>
 
       {/* Lado Esquerdo - Hero Panel (Desktop) */}
@@ -399,7 +405,7 @@ function LoginForm() {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/40 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-br from-brand-subtle/10 via-transparent to-transparent pointer-events-none" />
 
-        {/* Logo / Marca */}
+        {/* Logo / Marca — texto branco: painel sempre sobre imagem escura */}
         <div className="relative z-10 flex items-center gap-2">
           <Image
             src="/images/logo.webp"
@@ -408,7 +414,10 @@ function LoginForm() {
             height={32}
             className="w-8 h-8 object-contain"
           />
-          <span className="font-bold text-xs lg:text-sm text-text-primary tracking-widest uppercase font-display">
+          <span
+            className="font-bold text-xs lg:text-sm tracking-widest uppercase font-display"
+            style={{ color: '#F3F4F6' }}
+          >
             AURONFIT
           </span>
         </div>
@@ -416,43 +425,64 @@ function LoginForm() {
         {/* Headline e Proposições de Valor */}
         <div className="relative z-10 max-w-md lg:my-auto mt-2 lg:mt-0 space-y-6">
           <div className="space-y-2 lg:space-y-3">
-            <h2 className="text-base sm:text-xl lg:text-2xl xl:text-3xl font-extrabold text-text-primary tracking-tight font-display leading-tight">
+            <h2
+              className="text-base sm:text-xl lg:text-2xl xl:text-3xl font-extrabold tracking-tight font-display leading-tight"
+              style={{ color: '#F9FAFB' }}
+            >
               Sua consultoria conectada à evolução dos seus alunos.
             </h2>
-            <p className="text-[10px] sm:text-xs text-text-secondary leading-relaxed hidden sm:block lg:block">
+            <p
+              className="text-[10px] sm:text-xs leading-relaxed hidden sm:block lg:block"
+              style={{ color: 'rgba(243,244,246,0.75)' }}
+            >
               Gerencie treinos, nutrição, progresso, feedbacks e cobranças in uma única plataforma.
             </p>
           </div>
 
           {/* Pontos de valor - Ocultados em mobile para otimizar espaço */}
-          <div className="space-y-4 pt-6 border-t border-border-subtle/30 hidden lg:block">
+          <div
+            className="space-y-4 pt-6 border-t hidden lg:block"
+            style={{ borderColor: 'rgba(255,255,255,0.15)' }}
+          >
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/20 border border-brand/30 flex items-center justify-center text-[#c084fc]">
                 <Barbell className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-text-primary font-display">Seus alunos recebem tudo em um lugar</p>
-                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Treinos, PDFs de nutrição e execuções guiadas, sem precisar de WhatsApp ou planilha.</p>
+                <p className="text-sm font-bold font-display" style={{ color: '#F3F4F6' }}>
+                  Seus alunos recebem tudo em um lugar
+                </p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(243,244,246,0.65)' }}>
+                  Treinos, PDFs de nutrição e execuções guiadas, sem precisar de WhatsApp ou planilha.
+                </p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/20 border border-brand/30 flex items-center justify-center text-[#c084fc]">
                 <ChartLine className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-text-primary font-display">Evolução que você mostra, não só sente</p>
-                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Histórico de cargas, medidas e fotos organizados automaticamente.</p>
+                <p className="text-sm font-bold font-display" style={{ color: '#F3F4F6' }}>
+                  Evolução que você mostra, não só sente
+                </p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(243,244,246,0.65)' }}>
+                  Histórico de cargas, medidas e fotos organizados automaticamente.
+                </p>
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/20 border border-brand/30 flex items-center justify-center text-[#c084fc]">
                 <ChatCircle className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-text-primary font-display">Nunca perca um feedback de aluno</p>
-                <p className="text-xs text-text-secondary mt-1 leading-relaxed">Caixa integrada com alertas de dor e dúvidas, tudo em um painel.</p>
+                <p className="text-sm font-bold font-display" style={{ color: '#F3F4F6' }}>
+                  Nunca perca um feedback de aluno
+                </p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(243,244,246,0.65)' }}>
+                  Caixa integrada com alertas de dor e dúvidas, tudo em um painel.
+                </p>
               </div>
             </div>
           </div>
@@ -460,14 +490,22 @@ function LoginForm() {
 
         {/* Rodapé do Hero - Ocultado em mobile */}
         <div className="relative z-10 hidden lg:block">
-          <p className="text-[9px] text-text-disabled uppercase tracking-widest leading-none">
+          <p
+            className="text-[9px] uppercase tracking-widest leading-none"
+            style={{ color: 'rgba(243,244,246,0.45)' }}
+          >
             AURON conecta quem prescreve com quem evolui.
           </p>
         </div>
       </div>
 
       {/* Lado Direito - Form Panel */}
-      <div className="flex flex-1 flex-col items-center w-full max-w-lg lg:max-w-none mx-auto relative z-10 px-6 py-6 sm:py-8 md:px-12 lg:px-16 lg:justify-center lg:min-h-screen">
+      <div
+        className="flex flex-1 flex-col items-center w-full max-w-lg lg:max-w-none mx-auto relative z-10 px-6 py-6 sm:py-8 md:px-12 lg:px-16 lg:justify-center lg:min-h-screen"
+        style={{
+          background: 'linear-gradient(160deg, #faf5ff 0%, #f5f5f7 60%, #ffffff 100%)',
+        }}
+      >
         
         {/* Logo */}
         <div className="flex flex-col items-center text-center mb-4 sm:mb-6 lg:mb-8">
@@ -495,44 +533,32 @@ function LoginForm() {
             <div
               role="tablist"
               aria-label="Tipo de acesso"
-              className="relative z-50 mb-5 flex w-full gap-1 rounded-full bg-white/5 p-1"
+              className="relative z-50 mb-5 flex w-full gap-1 rounded-full p-1"
+              style={{ background: 'rgba(147,51,234,0.08)' }}
             >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={roleTab === "coach"}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleRoleTabChange("coach");
-                }}
-                onClick={() => handleRoleTabChange("coach")}
-                className={cn(
-                  "relative z-10 min-h-[48px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out touch-manipulation cursor-pointer select-none",
-                  roleTab === "coach"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-transparent text-gray-400 active:text-white"
-                )}
-              >
-                Coach
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={roleTab === "aluno"}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleRoleTabChange("aluno");
-                }}
-                onClick={() => handleRoleTabChange("aluno")}
-                className={cn(
-                  "relative z-10 min-h-[48px] flex-1 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-all duration-200 ease-in-out touch-manipulation cursor-pointer select-none",
-                  roleTab === "aluno"
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-transparent text-gray-400 active:text-white"
-                )}
-              >
-                Aluno
-              </button>
+              {(['coach', 'aluno'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={roleTab === tab}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    handleRoleTabChange(tab);
+                  }}
+                  onClick={() => handleRoleTabChange(tab)}
+                  className={cn(
+                    'relative z-10 min-h-[44px] flex-1 rounded-full px-4 py-2.5',
+                    'text-xs font-bold uppercase tracking-widest',
+                    'transition-all duration-200 ease-in-out touch-manipulation cursor-pointer select-none',
+                    roleTab === tab
+                      ? 'bg-brand text-white shadow-sm'
+                      : 'bg-transparent text-text-tertiary hover:text-text-secondary',
+                  )}
+                >
+                  {tab === 'coach' ? 'Coach' : 'Aluno'}
+                </button>
+              ))}
             </div>
           )}
 
@@ -558,7 +584,11 @@ function LoginForm() {
                 ) : (
                   <form onSubmit={handleRecovery} className="space-y-4">
                     <div className="space-y-2">
-                      <label htmlFor="recoveryEmail" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block ml-0.5">
+                      <label
+                        htmlFor="recoveryEmail"
+                        className="text-[11px] font-semibold uppercase tracking-wider block ml-0.5"
+                        style={{ color: '#666' }}
+                      >
                         E-mail de acesso
                       </label>
                       <input
@@ -568,7 +598,13 @@ function LoginForm() {
                         onChange={(e) => { setRecoveryEmail(e.target.value); setRecoveryError(null); }}
                         placeholder="seu@email.com"
                         required
-                        className="w-full h-11 bg-surface-0 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200"
+                        className="w-full h-11 border text-text-primary px-3.5 rounded-[10px] placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200"
+                        style={{
+                          fontSize: '16px',
+                          fontWeight: 500,
+                          background: '#ebebf0',
+                          borderColor: 'rgba(0,0,0,0.10)',
+                        }}
                       />
                     </div>
 
@@ -589,11 +625,16 @@ function LoginForm() {
                     <button
                       type="submit"
                       disabled={recoveryLoading}
-                      className="w-full h-11 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full h-11 rounded-[10px] font-semibold text-white flex items-center justify-center gap-2 transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{
+                        background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
+                        boxShadow: '0 4px 20px rgba(147,51,234,0.40)',
+                        fontSize: '15px',
+                      }}
                     >
                       {recoveryLoading ? (
                         <>
-                          <div className="w-3.5 h-3.5 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
+                          <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                           <span>Enviando...</span>
                         </>
                       ) : (
@@ -643,14 +684,23 @@ function LoginForm() {
                 />
 
                 <div className="flex items-center gap-3 py-1">
-                  <div className="flex-1 h-px bg-border-subtle" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-text-disabled">ou</span>
-                  <div className="flex-1 h-px bg-border-subtle" />
+                  <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.12)' }} />
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ color: '#aaa' }}
+                  >
+                    ou
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.12)' }} />
                 </div>
 
                 {/* Email — validação inline só no cadastro */}
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block ml-0.5">
+                  <label
+                    htmlFor="email"
+                    className="text-[11px] font-semibold uppercase tracking-wider block ml-0.5"
+                    style={{ color: '#666' }}
+                  >
                     E-mail de acesso
                   </label>
                   <input
@@ -661,21 +711,32 @@ function LoginForm() {
                     onChange={handleEmailChange}
                     placeholder="seu@email.com"
                     required
-                    className="w-full h-11 bg-surface-0 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                    className="w-full h-11 border text-text-primary px-3.5 rounded-[10px] placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                    style={{
+                      fontSize: '16px',
+                      fontWeight: 500,
+                      background: '#ebebf0',
+                      borderColor: 'rgba(0,0,0,0.10)',
+                    }}
                   />
                 </div>
 
                 {/* Senha Input com medidor de força e Caps Lock */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center ml-0.5">
-                    <label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-text-secondary block">
+                    <label
+                      htmlFor="password"
+                      className="text-[11px] font-semibold uppercase tracking-wider block"
+                      style={{ color: '#666' }}
+                    >
                       Senha
                     </label>
                     <button
                       type="button"
                       disabled={loading}
                       onClick={() => { setMode("recovery"); setRecoveryEmail(email); }}
-                      className="text-[10px] font-bold text-text-tertiary hover:text-brand uppercase tracking-wider transition-colors disabled:opacity-50"
+                      className="text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+                      style={{ color: '#9333ea' }}
                     >
                       Recuperar senha
                     </button>
@@ -691,14 +752,20 @@ function LoginForm() {
                       onKeyDown={handlePasswordKeyDown}
                       placeholder="••••••••"
                       required
-                      className="w-full h-11 bg-surface-0 border border-border-subtle text-text-primary px-3.5 pr-10 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                      className="w-full h-11 border text-text-primary px-3.5 pr-10 rounded-[10px] placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                      style={{
+                        fontSize: '16px',
+                        fontWeight: 500,
+                        background: '#ebebf0',
+                        borderColor: 'rgba(0,0,0,0.10)',
+                      }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
                     >
-                      {showPassword ? <EyeSlash className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
 
@@ -728,26 +795,32 @@ function LoginForm() {
                   <span
                     aria-hidden
                     className={cn(
-                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded transition-colors duration-200",
+                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] transition-colors duration-200",
                       rememberMe
-                        ? "bg-blue-600"
-                        : "border-[1.5px] border-gray-600 bg-transparent"
+                        ? "bg-brand"
+                        : "border-[1.5px] bg-transparent"
                     )}
+                    style={!rememberMe ? { borderColor: 'rgba(0,0,0,0.2)' } : undefined}
                   >
                     {rememberMe && <Check className="h-3 w-3 text-white" weight="bold" />}
                   </span>
-                  <span className="text-sm text-gray-400">Lembrar-me neste dispositivo</span>
+                  <span className="text-sm text-text-secondary">Lembrar-me neste dispositivo</span>
                 </label>
 
                 <div className="pt-1">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-11 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-11 rounded-[10px] font-semibold text-white flex items-center justify-center gap-2 transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
+                      boxShadow: '0 4px 20px rgba(147,51,234,0.40)',
+                      fontSize: '15px',
+                    }}
                   >
                     {loading ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
+                        <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                         <span>Entrando...</span>
                       </>
                     ) : (
@@ -761,7 +834,12 @@ function LoginForm() {
                   <div className="mt-3 text-center">
                     <Link
                       href={roleTab === "coach" ? "/signup/coach" : "/signup/aluno"}
-                      className="block w-full rounded-lg border-[1.5px] border-blue-600 py-3 text-xs font-semibold text-blue-500 transition-colors hover:bg-blue-600/10 touch-manipulation"
+                      className="block w-full rounded-[10px] py-3 text-[14px] font-semibold transition-all duration-150 hover:opacity-80 touch-manipulation"
+                      style={{
+                        border: '1.5px solid #9333ea',
+                        color: '#9333ea',
+                        background: 'transparent',
+                      }}
                     >
                       Criar minha conta gratuita →
                     </Link>
@@ -776,7 +854,12 @@ function LoginForm() {
         <div className="mt-6 text-center pb-6 lg:pb-0">
           <button
             onClick={handleSupportClick}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-border-subtle rounded-full bg-surface-1 text-text-secondary text-xs hover:text-brand hover:border-brand/40 transition-all shadow-sm active:scale-95"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs transition-all shadow-sm active:scale-95"
+            style={{
+              border: '1px solid rgba(0,0,0,0.12)',
+              background: '#fff',
+              color: '#555',
+            }}
           >
             <ChatCircle className="w-4 h-4 text-[#10B981]" weight="fill" />
             <span>Precisa de ajuda? Fale com o suporte</span>

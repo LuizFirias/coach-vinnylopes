@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Clock, Play, ArrowDown } from "@phosphor-icons/react";
+import { useId } from "react";
+import { Check, Clock, ArrowDown } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 import type { WorkoutBlock } from "@/lib/utils/biset";
 import { formatRestTime } from "@/lib/utils/restTime";
@@ -22,6 +23,25 @@ function toTitleCase(str: string) {
 function duasLetrasTenica(t?: string) {
   if (!t) return "";
   return t.length <= 3 ? t : t.slice(0, 2).toUpperCase();
+}
+
+function GradientPlayIcon({ size = 22 }: { size?: number }) {
+  const gradId = useId().replace(/:/g, "");
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <defs>
+        <linearGradient id={gradId} x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#c084fc" />
+          <stop offset="55%" stopColor="#9333ea" />
+          <stop offset="100%" stopColor="#7e22ce" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M8.2 5.1a1 1 0 0 1 1.55-.83l9.1 5.9a1 1 0 0 1 0 1.66l-9.1 5.9A1 1 0 0 1 8 16.9V7.1a1 1 0 0 1 .2-.99Z"
+        fill={`url(#${gradId})`}
+      />
+    </svg>
+  );
 }
 
 interface HalfPreviewProps {
@@ -54,11 +74,13 @@ function HalfPreview({
     <div>
       <div className="flex items-start gap-3 pb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-[15px] font-semibold text-text-primary leading-snug">{toTitleCase(nome)}</h3>
+          <h3 className="text-[14px] font-bold leading-snug" style={{ color: "#1a1a1a" }}>
+            {toTitleCase(nome)}
+          </h3>
           {showSemDescanso && (
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Clock size={11} className="text-text-disabled shrink-0" />
-              <p className="text-[11px] text-text-disabled">Sem descanso</p>
+            <div className="flex items-center gap-1.5 mt-1">
+              <Clock size={11} className="shrink-0" style={{ color: "#aaa" }} />
+              <p className="text-[11px]" style={{ color: "#aaa" }}>Sem descanso</p>
             </div>
           )}
         </div>
@@ -66,9 +88,10 @@ function HalfPreview({
           <button
             type="button"
             onClick={() => onVideoOpen(videoUrl)}
-            className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center text-text-secondary hover:text-brand shrink-0"
+            className="flex items-center justify-center shrink-0 p-1 active:opacity-70 transition-opacity"
+            aria-label="Ver vídeo do exercício"
           >
-            <Play size={18} weight="fill" />
+            <GradientPlayIcon size={22} />
           </button>
         )}
         {all && treinoIniciado && (
@@ -77,44 +100,74 @@ function HalfPreview({
           </div>
         )}
       </div>
-      <div className="border-t border-divider/50 pt-2">
-        <div className="grid items-center py-2 mb-0.5" style={{ gridTemplateColumns: gridCols }}>
-          <span className="text-[10px] font-semibold uppercase text-text-muted text-center">Set</span>
-          {showAnteriorCol && <span className="text-[10px] font-semibold uppercase text-text-muted pl-2">Ant.</span>}
-          <span className="text-[10px] font-semibold uppercase text-text-muted text-right pr-2">Peso</span>
-          <span className="text-[10px] font-semibold uppercase text-text-muted text-center">Reps</span>
-          <span className="text-[10px] font-semibold uppercase text-text-muted text-center">T1</span>
-          <span className="text-[10px] font-semibold uppercase text-text-muted text-center">T2</span>
-          <span className="text-[10px] text-text-muted text-center">✓</span>
+      <div className="pt-2" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+        <div className="grid items-center py-2 mb-0.5" style={{ gridTemplateColumns: gridCols, columnGap: "10px" }}>
+          <span className="text-[10px] font-semibold uppercase text-left" style={{ color: "#bbb" }}>Set</span>
+          {showAnteriorCol && (
+            <span className="text-[10px] font-semibold uppercase" style={{ color: "#bbb", paddingLeft: 4 }}>Ant.</span>
+          )}
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>Peso</span>
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>Reps</span>
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>T1</span>
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>T2</span>
+          <span className="text-[10px] text-center" style={{ color: "#bbb" }}>✓</span>
         </div>
         {series.map((serie, idx) => (
           <div
             key={serie.ordem}
-            className="grid items-center py-2 border-b border-divider/30 last:border-0"
-            style={{ gridTemplateColumns: gridCols }}
+            className="grid items-center py-2"
+            style={{
+              gridTemplateColumns: gridCols,
+              columnGap: "10px",
+              borderBottom: "1px solid rgba(0,0,0,0.06)",
+            }}
           >
-            <span className="text-center text-xs font-bold text-text-muted">{idx + 1}</span>
-            {showAnteriorCol && <span className="text-[11px] text-text-muted pl-2 truncate">{serie.anterior || "—"}</span>}
+            <span className="text-center text-xs font-bold font-kpi" style={{ color: "#888" }}>{idx + 1}</span>
+            {showAnteriorCol && (
+              <span className="text-[11px] font-kpi truncate" style={{ color: "#888", paddingLeft: 14 }}>
+                {serie.anterior || "—"}
+              </span>
+            )}
             <input
               type="number"
+              inputMode="decimal"
               value={serie.peso_atual || ""}
               onChange={(e) => onPesoChange(serie.ordem, parseFloat(e.target.value) || 0)}
-              className="text-right text-sm font-bold bg-transparent border-none focus:outline-none tabular-nums lining-nums"
+              className="w-full max-w-[40px] mx-auto bg-transparent border-0 text-center font-kpi tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+              style={{
+                height: 28,
+                fontSize: "15px",
+                color: "#666",
+                fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                fontVariantNumeric: "tabular-nums lining-nums",
+                fontWeight: 400,
+                borderBottom: "1.5px solid transparent",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderBottomColor = "rgba(147,51,234,0.45)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderBottomColor = "transparent";
+              }}
               disabled={!treinoIniciado}
             />
-            <span className="text-center text-sm font-semibold text-accent tabular-nums lining-nums">{serie.reps}</span>
-            <span className="text-center text-[11px] text-text-secondary">{duasLetrasTenica(serie.tecnica) || "—"}</span>
+            <span className="text-center text-sm font-semibold font-kpi text-accent tabular-nums lining-nums">{serie.reps}</span>
+            <span className="text-center text-[11px]" style={{ color: "#888" }}>
+              {duasLetrasTenica(serie.tecnica) || "—"}
+            </span>
             <span className="text-center text-[11px] text-accent">{serie.tecnica_extra || "—"}</span>
             <button
               type="button"
               onClick={() => onCheck(serie.ordem)}
               disabled={!treinoIniciado}
-              className={cn(
-                "mx-auto w-7 h-7 rounded-md border flex items-center justify-center transition-colors",
-                serie.completado ? "bg-success border-success text-white" : "border-card bg-surface-2"
-              )}
+              className="mx-auto w-5 h-5 rounded-[4px] flex items-center justify-center transition-colors disabled:opacity-30"
+              style={
+                serie.completado
+                  ? { background: "#9333ea", border: "1.5px solid #9333ea", color: "#fff" }
+                  : { background: "transparent", border: "1.5px solid rgba(0,0,0,0.2)" }
+              }
             >
-              {serie.completado && <Check size={14} weight="bold" />}
+              {serie.completado && <Check size={12} weight="bold" color="#fff" />}
             </button>
           </div>
         ))}
@@ -148,8 +201,15 @@ export function BiSetGroupPreviewCard({
   onVideoOpen,
 }: BiSetGroupPreviewCardProps) {
   return (
-    <div className="rounded-[14px] border border-[#1a2d4a] bg-[#141414] px-4 py-3.5">
-      <span className="inline-block text-[9px] font-bold uppercase tracking-wider text-brand bg-[#1a2d4a] rounded px-1.5 py-0.5 mb-3">
+    <div
+      className="rounded-[14px] px-4 py-3.5"
+      style={{
+        background: "#ffffff",
+        border: "1px solid rgba(0,0,0,0.08)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+      }}
+    >
+      <span className="inline-block text-[9px] font-bold uppercase tracking-wider text-brand bg-brand/10 rounded px-1.5 py-0.5 mb-3">
         BI-SET
       </span>
 
@@ -168,7 +228,7 @@ export function BiSetGroupPreviewCard({
 
       <div className="flex items-center justify-center gap-1.5 py-2 my-1">
         <ArrowDown size={12} className="text-brand" />
-        <span className="text-[11px] text-text-disabled">↓ imediatamente</span>
+        <span className="text-[11px]" style={{ color: "#aaa" }}>↓ imediatamente</span>
       </div>
 
       <HalfPreview
@@ -183,9 +243,12 @@ export function BiSetGroupPreviewCard({
         onVideoOpen={onVideoOpen}
       />
 
-      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-divider/50">
-        <Clock size={12} className="text-brand shrink-0" />
-        <p className="text-xs text-brand font-medium">
+      <div
+        className="flex items-center gap-1.5 mt-3 pt-3"
+        style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}
+      >
+        <Clock size={12} className="shrink-0" style={{ color: "#aaa" }} />
+        <p className="text-[11px] font-medium" style={{ color: "#aaa" }}>
           Descanso após o par: {formatRestTime(block.descanso)}
         </p>
       </div>

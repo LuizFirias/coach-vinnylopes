@@ -30,37 +30,43 @@ export function RoutineCard({ routine, isDesktop = false }: RoutineCardProps) {
     <Link
       href={`/aluno/treinos/${routine.id}/executar`}
       className={cn(
-        "routine-card group flex min-h-11 items-center gap-2.5",
-        "border-0 rounded-xl bg-[var(--dash-card,#111827)]",
-        "px-3 py-2 lg:px-4 lg:py-2.5",
-        "transition-colors active:bg-[#1a2332]",
-        "[@media(hover:hover)]:hover:bg-[#1a2332]"
+        "routine-card group flex min-h-11 items-center gap-3",
+        "rounded-[12px] px-4 py-3.5",
+        "transition-all active:scale-[0.99]"
       )}
+      style={{
+        background: "#ffffff",
+        border: "1px solid rgba(0,0,0,0.08)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+      }}
     >
-      <AuronLinkIcon size={22} className="shrink-0 text-brand" />
+      <AuronLinkIcon size={20} active className="shrink-0" />
 
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "font-semibold uppercase tracking-wide text-text-primary truncate",
-            isDesktop ? "text-base" : "text-[15px]"
+            "font-bold uppercase tracking-wide truncate",
+            isDesktop ? "text-base" : "text-[13px]"
           )}
+          style={{ color: "#1a1a1a" }}
         >
           {routine.nome_rotina}
         </p>
         {exercisePreview ? (
-          <p className="mt-0.5 line-clamp-2 text-[11px] font-normal leading-snug text-text-disabled opacity-70">
+          <p
+            className="mt-0.5 line-clamp-2 text-[11px] font-normal leading-snug truncate"
+            style={{ color: "#888" }}
+          >
             {exercisePreview}
           </p>
         ) : (
-          <p className="mt-0.5 text-[11px] font-normal text-text-disabled opacity-70">Sem exercícios</p>
+          <p className="mt-0.5 text-[11px] font-normal" style={{ color: "#888" }}>
+            Sem exercícios
+          </p>
         )}
       </div>
 
-      <CaretRight
-        size={16}
-        className="text-text-muted shrink-0 transition-colors [@media(hover:hover)]:group-hover:text-brand"
-      />
+      <CaretRight size={16} className="shrink-0" style={{ color: "#bbb" }} />
     </Link>
   );
 }
