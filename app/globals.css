@@ -469,6 +469,27 @@ h1, h2, h3, h4, h5, h6 {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-down {
+    animation: none;
+  }
+}
+
 @keyframes sheetUp {
   from {
     opacity: 0;

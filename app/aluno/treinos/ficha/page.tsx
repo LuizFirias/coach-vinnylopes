@@ -881,135 +881,107 @@ function FichaContent() {
 
                       {/* Mobile Column Headers */}
                       <div
-                        className="md:hidden flex items-center px-3 pb-1 select-none"
-                        style={{ gap: 6 }}
+                        className="md:hidden select-none"
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '24px minmax(36px,1fr) 44px 36px 24px 24px 28px',
+                          gap: '0 10px',
+                          padding: '0 12px',
+                          marginBottom: 6,
+                        }}
                       >
-                        <span
-                          style={{
-                            width: 22,
-                            minWidth: 22,
-                            fontSize: 8,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: '#bbb',
-                            textAlign: 'center',
-                          }}
-                        >
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
                           Set
                         </span>
-                        <span
-                          style={{
-                            flex: 1,
-                            minWidth: 48,
-                            fontSize: 8,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: '#bbb',
-                            paddingLeft: 8,
-                          }}
-                        >
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb' }}>
                           Ant.
                         </span>
-                        <span
-                          style={{
-                            width: 52,
-                            fontSize: 8,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: '#bbb',
-                            textAlign: 'center',
-                          }}
-                        >
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'right' }}>
                           Peso
                         </span>
-                        <span
-                          style={{
-                            width: 28,
-                            fontSize: 8,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: '#bbb',
-                            textAlign: 'center',
-                          }}
-                        >
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
                           Reps
                         </span>
-                        <span
-                          style={{
-                            width: 32,
-                            fontSize: 8,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: '#bbb',
-                            textAlign: 'center',
-                          }}
-                        >
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
                           T1
                         </span>
                         <span
-                          className="flex items-center justify-center gap-0.5"
                           style={{
-                            minWidth: 48,
-                            fontSize: 8,
+                            fontSize: 9,
                             fontWeight: 700,
                             textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
                             color: '#bbb',
                             textAlign: 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 2,
                           }}
                         >
                           T2
                           <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} className="text-[8px]" />
                         </span>
-                        <span
-                          style={{
-                            width: 28,
-                            fontSize: 8,
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: '#bbb',
-                            textAlign: 'center',
-                          }}
-                        >
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
                           ✓
                         </span>
                       </div>
 
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col">
                         {exercicio.series.map((serie, sIdx) => (
                           <div key={sIdx}>
                             {/* Mobile Set Row */}
                             <div
                               className={cn(
-                                "md:hidden flex items-center py-1.5 px-3 transition-all border rounded-md",
-                                serie.completado
-                                  ? "bg-success/5 border-success-border/20"
-                                  : "bg-transparent border-transparent"
+                                "md:hidden transition-all rounded-md",
+                                serie.completado ? "bg-success/5" : "bg-transparent",
                               )}
-                              style={{ gap: 6 }}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '24px minmax(36px,1fr) 44px 36px 24px 24px 28px',
+                                gap: '0 10px',
+                                padding: '8px 12px',
+                                alignItems: 'center',
+                                borderTop: sIdx > 0 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                              }}
                             >
-                              {/* Set number */}
+                              {/* SET */}
                               <div
-                                className={cn(
-                                  "rounded-full flex items-center justify-center text-[9px] font-bold shrink-0",
-                                  serie.completado ? "bg-success text-white" : "bg-surface-3 text-text-secondary"
-                                )}
-                                style={{ width: 22, height: 22, minWidth: 22 }}
+                                style={{
+                                  width: 22,
+                                  height: 22,
+                                  borderRadius: '50%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  margin: '0 auto',
+                                  flexShrink: 0,
+                                  background: serie.completado ? '#39c75a' : '#ebebf0',
+                                  color: serie.completado ? '#fff' : '#888',
+                                }}
                               >
                                 {sIdx + 1}
                               </div>
 
-                              {/* Anterior */}
-                              <div style={{ flex: 1, minWidth: 48, paddingLeft: 8 }}>
-                                <span className={cn(
-                                  "text-[9px] font-mono",
-                                  serie.completado ? "text-text-disabled line-through" : "text-text-tertiary"
-                                )}>
-                                  {serie.anterior || "—"}
-                                </span>
-                              </div>
+                              {/* ANT. */}
+                              <span
+                                className={cn(serie.completado && "line-through")}
+                                style={{
+                                  fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                                  fontSize: 10,
+                                  color: serie.completado ? '#ccc' : '#aaa',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {serie.anterior || '—'}
+                              </span>
 
-                              {/* Peso */}
-                              <div style={{ width: 52, flexShrink: 0 }}>
+                              {/* PESO */}
+                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                 <input
                                   type="number"
                                   inputMode="decimal"
@@ -1017,32 +989,51 @@ function FichaContent() {
                                   onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
                                   disabled={!treinoIniciado || serie.completado}
                                   placeholder="0"
-                                  className="w-full rounded-md text-center font-bold focus:border-brand focus:outline-none disabled:opacity-50"
                                   style={{
+                                    width: 40,
                                     height: 28,
-                                    fontSize: '14px',
+                                    fontSize: 14,
+                                    fontWeight: 500,
                                     background: '#ebebf0',
                                     border: '1px solid rgba(0,0,0,0.10)',
+                                    borderRadius: 6,
+                                    textAlign: 'center',
                                     color: '#1a1a1a',
+                                    fontVariantNumeric: 'tabular-nums',
+                                    fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                                    outline: 'none',
                                   }}
                                 />
                               </div>
 
-                              {/* Reps */}
-                              <div style={{ width: 28, flexShrink: 0, textAlign: 'center' }}>
-                                <span className="text-[11px] font-bold text-brand">{serie.reps || "0"}</span>
-                              </div>
+                              {/* REPS */}
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: '#9333ea',
+                                  textAlign: 'center',
+                                  fontVariantNumeric: 'tabular-nums',
+                                  fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                                }}
+                              >
+                                {serie.reps || '0'}
+                              </span>
 
-                              {/* Téc 1 */}
-                              <div style={{ width: 32, flexShrink: 0, textAlign: 'center' }}>
+                              {/* T1 */}
+                              <div style={{ textAlign: 'center' }}>
                                 {serie.tecnica ? (
                                   <button
                                     onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                    className="px-1 py-0.5 rounded text-[8px] font-semibold uppercase leading-none"
                                     style={{
+                                      padding: '2px 4px',
                                       background: '#ebebf0',
                                       border: '1px solid rgba(0,0,0,0.08)',
+                                      borderRadius: 4,
+                                      fontSize: 8,
+                                      fontWeight: 700,
                                       color: '#666',
+                                      textTransform: 'uppercase',
                                     }}
                                   >
                                     {serie.tecnica.substring(0, 2).toUpperCase()}
@@ -1052,43 +1043,51 @@ function FichaContent() {
                                 )}
                               </div>
 
-                              {/* Téc 2 */}
-                              <div style={{ minWidth: 48, maxWidth: 72, flexShrink: 0, textAlign: 'center' }}>
+                              {/* T2 */}
+                              <div style={{ textAlign: 'center' }}>
                                 {serie.tecnica_extra ? (
                                   <button
                                     onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
-                                    className="px-1 py-0.5 rounded text-[8px] font-semibold leading-tight line-clamp-2"
                                     style={{
+                                      padding: '2px 4px',
                                       background: 'rgba(147,51,234,0.06)',
                                       border: '1px solid rgba(147,51,234,0.15)',
+                                      borderRadius: 4,
+                                      fontSize: 8,
+                                      fontWeight: 700,
                                       color: '#9333ea',
+                                      textTransform: 'uppercase',
                                     }}
                                   >
-                                    {serie.tecnica_extra}
+                                    {serie.tecnica_extra.substring(0, 2).toUpperCase()}
                                   </button>
                                 ) : (
                                   <span style={{ fontSize: 10, color: '#ccc' }}>—</span>
                                 )}
                               </div>
 
-                              {/* Check */}
-                              <button
-                                onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
-                                disabled={!treinoIniciado}
-                                className={cn(
-                                  "rounded-md flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 shrink-0",
-                                  serie.completado ? "text-white" : "text-text-tertiary"
-                                )}
-                                style={{
-                                  width: 28,
-                                  height: 28,
-                                  ...(serie.completado
-                                    ? { background: '#39c75a' }
-                                    : { background: 'transparent', border: '1.5px solid rgba(0,0,0,0.18)' }),
-                                }}
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
+                              {/* CHECK */}
+                              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <button
+                                  onClick={() => handleCheckSerie(exercicio.id, serie.ordem)}
+                                  disabled={!treinoIniciado}
+                                  style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: 6,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.15s',
+                                    flexShrink: 0,
+                                    ...(serie.completado
+                                      ? { background: '#39c75a', border: '1.5px solid #39c75a' }
+                                      : { background: 'transparent', border: '1.5px solid rgba(0,0,0,0.18)' }),
+                                  }}
+                                >
+                                  {serie.completado && <Check className="w-3.5 h-3.5 text-white" />}
+                                </button>
+                              </div>
                             </div>
 
                             {/* Desktop */}

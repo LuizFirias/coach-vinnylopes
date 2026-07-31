@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { CaretDown, Info } from "@phosphor-icons/react";
+import { Info, X } from "@phosphor-icons/react";
 import { getExtraByValue, getTechniqueByValue } from "@/lib/constants/workout-techniques";
 import { cn } from "@/lib/utils/cn";
 
@@ -10,34 +9,56 @@ interface StudentTechniqueCardProps {
   extraValue?: string | null;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
-  defaultExpanded?: boolean;
   className?: string;
 }
 
+function TechniqueBlock({
+  name,
+  instruction,
+  example,
+}: {
+  name: string;
+  instruction: string;
+  example?: string | null;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-bold text-[#333] mb-1">{name}</p>
+      <p
+        className={cn(
+          "text-[11px] text-[#555] leading-relaxed",
+          example ? "mb-2" : undefined,
+        )}
+      >
+        {instruction}
+      </p>
+      {example && (
+        <p className="text-[10px] text-brand italic leading-snug">
+          Ex: {example}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Card inline de técnica (padrão D: branco + accent bar roxa).
+ * Oculto por padrão — o pai controla `expanded` via ⓘ do KPI TÉCNICA.
+ */
 export function StudentTechniqueCard({
   techniqueValue,
   extraValue,
-  expanded: controlledExpanded,
+  expanded = false,
   onExpandedChange,
-  defaultExpanded = false,
   className,
 }: StudentTechniqueCardProps) {
-  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
-  const expanded = controlledExpanded ?? internalExpanded;
-
   const technique = getTechniqueByValue(techniqueValue);
   const extra = getExtraByValue(extraValue);
 
   const hasTechnique = Boolean(technique?.studentInstruction);
   const hasExtra = Boolean(extra?.studentInstruction);
 
-  if (!hasTechnique && !hasExtra) return null;
-
-  const toggle = () => {
-    const next = !expanded;
-    onExpandedChange?.(next);
-    if (controlledExpanded === undefined) setInternalExpanded(next);
-  };
+  if (!expanded || (!hasTechnique && !hasExtra)) return null;
 
   const summaryLabel = [technique?.shortLabel, extra?.label]
     .filter((v) => v && v !== "—")
@@ -46,71 +67,69 @@ export function StudentTechniqueCard({
   return (
     <div
       className={cn(
-        "rounded-[10px] border-l-2 border-brand overflow-hidden",
-        "bg-[#0f1a2e]",
-        className
+        "flex overflow-hidden rounded-[12px] animate-slide-down",
+        className,
       )}
+      style={{
+        background: "#ffffff",
+        border: "1px solid rgba(0,0,0,0.08)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      }}
+      role="region"
+      aria-label="Como executar esta série"
     >
-      <button
-        type="button"
-        onClick={toggle}
-        className="w-full flex items-start gap-2.5 px-3.5 py-3 text-left transition-colors"
-        aria-expanded={expanded}
-      >
-        <Info size={14} className="text-brand shrink-0 mt-0.5" aria-hidden />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-brand leading-tight">
-            Como executar esta série
-          </p>
-          {summaryLabel && (
-            <p className="text-[11px] text-text-secondary mt-0.5">{summaryLabel}</p>
-          )}
+      <div
+        className="w-1 shrink-0"
+        style={{
+          background: "linear-gradient(180deg, #c084fc 0%, #9333ea 100%)",
+        }}
+        aria-hidden
+      />
+
+      <div className="flex-1 px-3.5 py-3">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Info size={14} className="text-brand shrink-0" aria-hidden />
+            <p className="text-xs font-bold text-brand truncate">
+              Como executar esta série
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onExpandedChange?.(false)}
+            className="shrink-0 p-0.5 text-[#ccc] hover:text-[#888] transition-colors"
+            aria-label="Fechar técnica"
+          >
+            <X size={16} weight="bold" />
+          </button>
         </div>
-        <CaretDown
-          size={14}
-          className={cn(
-            "text-text-muted shrink-0 mt-0.5 transition-transform duration-200",
-            expanded && "rotate-180"
-          )}
-          aria-hidden
-        />
-      </button>
 
-      {expanded && (
-        <div className="px-3.5 pb-3.5 space-y-3 border-t border-brand/20">
+        {summaryLabel && (
+          <p className="text-[11px] text-[#888] mb-2.5">{summaryLabel}</p>
+        )}
+
+        <div className="space-y-2.5">
           {hasTechnique && (
-            <div>
-              <p className="text-xs font-semibold text-text-primary mb-1">{technique.name}</p>
-              <p className="text-xs text-text-secondary leading-relaxed">
-                {technique.studentInstruction}
-              </p>
-              {technique.example && (
-                <p className="text-[11px] text-text-muted italic mt-1.5 leading-snug">
-                  <span className="font-semibold not-italic text-text-secondary">Exemplo: </span>
-                  {technique.example}
-                </p>
-              )}
-            </div>
+            <TechniqueBlock
+              name={technique.name!}
+              instruction={technique.studentInstruction!}
+              example={technique.example}
+            />
           )}
 
-          {hasTechnique && hasExtra && <div className="h-px bg-brand/20" />}
+          {hasTechnique && hasExtra && (
+            <div className="h-px bg-black/6" />
+          )}
 
           {hasExtra && (
-            <div>
-              <p className="text-xs font-semibold text-text-primary mb-1">{extra.name}</p>
-              <p className="text-xs text-text-secondary leading-relaxed">
-                {extra.studentInstruction}
-              </p>
-              {extra.example && (
-                <p className="text-[11px] text-text-muted italic mt-1.5 leading-snug">
-                  <span className="font-semibold not-italic text-text-secondary">Exemplo: </span>
-                  {extra.example}
-                </p>
-              )}
-            </div>
+            <TechniqueBlock
+              name={extra.name!}
+              instruction={extra.studentInstruction!}
+              example={extra.example}
+            />
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

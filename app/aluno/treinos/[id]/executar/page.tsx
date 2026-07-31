@@ -93,10 +93,12 @@ const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(96px, 1.6fr) 40px 34px 30p
 const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px 40px 32px 32px 32px';
 const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(110px, 1.5fr) 48px 48px 44px 44px 36px';
 const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px 48px 44px 44px 36px';
-const GRID_COLS_HISTORICO = '28px minmax(96px, 1.3fr) 52px 40px 32px 32px';
+const GRID_COLS_HISTORICO = '24px minmax(36px,1fr) 44px 36px 24px 24px';
 const SERIES_GRID_GAP = '8px';
-/** Espaço extra só na coluna Ant. (não mexe no SET) */
+/** Espaço extra só na coluna Ant. da lista (não mexe no SET) */
 const ANT_COL_PAD_LEFT = 14;
+const HISTORICO_COL_GAP = '10px';
+const HISTORICO_ROW_PAD_X = 12;
 
 function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean): string {
   if (showAnterior) {
@@ -473,13 +475,32 @@ export default function ExecucaoTreinoPage() {
   const [showSeriesHistory, setShowSeriesHistory] = useState(true);
 
   const [techniqueCardExpanded, setTechniqueCardExpanded] = useState(false);
+  const tecnicaKpiRef = useRef<HTMLButtonElement>(null);
+  const tecnicaPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (modalBlockIdx !== null) {
       setShowSeriesHistory(true);
-      setTechniqueCardExpanded(false);
     }
   }, [modalBlockIdx]);
+
+  // Fecha o card de técnica ao trocar exercício/série/fase do bi-set
+  useEffect(() => {
+    setTechniqueCardExpanded(false);
+  }, [modalBlockIdx, modalRodadaIdx, bisetFase]);
+
+  // Fecha ao clicar fora do KPI ⓘ e do card
+  useEffect(() => {
+    if (!techniqueCardExpanded) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (tecnicaKpiRef.current?.contains(target)) return;
+      if (tecnicaPanelRef.current?.contains(target)) return;
+      setTechniqueCardExpanded(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [techniqueCardExpanded]);
 
   // Termômetro de treino — feedback após finalização
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -699,36 +720,25 @@ export default function ExecucaoTreinoPage() {
       }
 
       // Username do coach só aparece na tela de compartilhamento pós-treino —
-      // busca em background, sem segurar o loader
+      // busca em background, sem segurar o loader.
+      // Aluno não tem SELECT em profiles do coach (RLS) — só coach_public_profiles.
       if (uid) {
         void (async () => {
           const { data: coachData } = await supabaseClient
             .from('coach_alunos')
             .select('coach_id')
             .eq('aluno_id', uid)
-            .single();
+            .maybeSingle();
 
           if (!coachData?.coach_id) return;
 
-          const [{ data: publicProfile }, { data: profileData }] = await Promise.all([
-            supabaseClient
-              .from('coach_public_profiles')
-              .select('handle')
-              .eq('coach_id', coachData.coach_id)
-              .maybeSingle(),
-            supabaseClient
-              .from('profiles')
-              .select('coaching_reference, full_name')
-              .eq('id', coachData.coach_id)
-              .single(),
-          ]);
+          const { data: publicProfile } = await supabaseClient
+            .from('coach_public_profiles')
+            .select('handle')
+            .eq('coach_id', coachData.coach_id)
+            .maybeSingle();
 
-          setCoachUsername(
-            resolveCoachShareHandle(
-              publicProfile?.handle || profileData?.coaching_reference,
-              profileData?.full_name,
-            ),
-          );
+          setCoachUsername(resolveCoachShareHandle(publicProfile?.handle));
         })().catch(() => undefined);
       }
     } finally {
@@ -1040,6 +1050,7 @@ export default function ExecucaoTreinoPage() {
     if (modalBlockIdx === null) return;
     const block = blocks[modalBlockIdx];
     if (!block) return;
+    setTechniqueCardExpanded(false);
 
     if (block.kind === 'simples') {
       const ex = block.exercise;
@@ -1900,20 +1911,26 @@ export default function ExecucaoTreinoPage() {
                 const hasTecnica = !!(modalSerie.tecnica?.trim() || modalSerie.tecnica_extra?.trim());
                 const tecnicaLabel = modalSerie.tecnica_extra || modalSerie.tecnica || "";
                 const isLongLabel = tecnicaLabel.length > 8 || tecnicaLabel.includes(" ");
+                const expanded = techniqueCardExpanded && hasTecnica;
                 return (
                   <button
+                    ref={tecnicaKpiRef}
                     type="button"
                     onClick={() => {
                       if (hasTecnica) setTechniqueCardExpanded((v) => !v);
                     }}
                     disabled={!hasTecnica}
+                    aria-expanded={expanded}
+                    aria-controls="tecnica-info-panel"
                     className={cn(
-                      "rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center relative transition-colors",
+                      "rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center relative transition-all",
                       hasTecnica ? "cursor-pointer" : "cursor-default"
                     )}
                     style={{
-                      background: '#ffffff',
-                      border: '1px solid rgba(0,0,0,0.08)',
+                      background: expanded ? 'rgba(147,51,234,0.05)' : '#ffffff',
+                      border: expanded
+                        ? '1px solid rgba(147,51,234,0.2)'
+                        : '1px solid rgba(0,0,0,0.08)',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                     }}
                   >
@@ -1922,18 +1939,31 @@ export default function ExecucaoTreinoPage() {
                       style={{ color: '#aaa' }}
                     >
                       Técnica
-                      {hasTecnica && <Info size={12} style={{ color: '#aaa' }} aria-hidden />}
+                      {hasTecnica && (
+                        <Info
+                          size={12}
+                          style={{ color: expanded ? '#9333ea' : '#bbb' }}
+                          weight={expanded ? 'fill' : 'regular'}
+                          aria-hidden
+                        />
+                      )}
                     </span>
                     <span
                       className={cn(
-                        "text-center leading-tight truncate w-full",
+                        "text-center leading-tight truncate w-full transition-colors",
                         !hasTecnica
                           ? "text-[28px] lg:text-4xl font-extrabold"
                           : isLongLabel
-                            ? "text-base font-bold text-brand"
+                            ? "text-base font-bold"
                             : "text-[28px] lg:text-4xl font-extrabold"
                       )}
-                      style={!hasTecnica || !isLongLabel ? { color: hasTecnica ? '#1a1a1a' : '#bbb' } : undefined}
+                      style={{
+                        color: !hasTecnica
+                          ? '#bbb'
+                          : expanded
+                            ? '#9333ea'
+                            : '#1a1a1a',
+                      }}
                     >
                       {tecnicaLabel || "—"}
                     </span>
@@ -1942,13 +1972,14 @@ export default function ExecucaoTreinoPage() {
               })()}
             </div>
 
-            <StudentTechniqueCard
-              className="mx-4 mb-4"
-              techniqueValue={modalSerie.tecnica}
-              extraValue={modalSerie.tecnica_extra}
-              expanded={techniqueCardExpanded}
-              onExpandedChange={setTechniqueCardExpanded}
-            />
+            <div ref={tecnicaPanelRef} id="tecnica-info-panel" className="mx-4 mb-4 empty:hidden">
+              <StudentTechniqueCard
+                techniqueValue={modalSerie.tecnica}
+                extraValue={modalSerie.tecnica_extra}
+                expanded={techniqueCardExpanded}
+                onExpandedChange={setTechniqueCardExpanded}
+              />
+            </div>
 
             {/* Campo de CARGA */}
             <div className="mx-4 mt-4">
@@ -2065,14 +2096,16 @@ export default function ExecucaoTreinoPage() {
               </button>
               {showSeriesHistory && (
                 <div
-                  className="rounded-[12px] overflow-hidden p-0"
+                  className="rounded-[12px] overflow-hidden"
                   style={{
                     background: '#ffffff',
                     border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: 12,
+                    padding: '10px 0',
                   }}
                 >
                   {modalIsBiSet && modalBlock?.kind === 'biset' ? (
-                    <div className="p-3 space-y-3">
+                    <div className="space-y-3 px-3">
                       {modalBlock.exercicioA.series.map((_, rodadaIdx) => {
                         const aSerie = modalBlock.exercicioA.series[rodadaIdx];
                         const bSerie = modalBlock.exercicioB.series[rodadaIdx];
@@ -2099,7 +2132,7 @@ export default function ExecucaoTreinoPage() {
                                   <span className="truncate flex-1" style={{ color: '#555' }}>{nome}</span>
                                   <span className="mx-2" style={{ color: '#bbb' }}>{s.anterior || '—'}</span>
                                   {isAtualRow ? (
-                                    <span className="font-bold font-kpi tabular-nums lining-nums" style={{ color: '#1a1a1a' }}>
+                                    <span className="font-medium font-kpi tabular-nums lining-nums" style={{ color: '#1a1a1a', fontWeight: 500 }}>
                                       {modalCarga ? `${modalCarga}kg` : '—'}
                                     </span>
                                   ) : (
@@ -2110,11 +2143,12 @@ export default function ExecucaoTreinoPage() {
                                       onChange={(e) => handlePesoChange(exId, s.ordem, parseFloat(e.target.value) || 0)}
                                       placeholder="—"
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
-                                      className="w-14 h-7 bg-transparent px-1 text-right font-bold font-kpi tabular-nums lining-nums focus:outline-none"
+                                      className="w-14 h-7 bg-transparent px-1 text-right font-kpi tabular-nums lining-nums focus:outline-none"
                                       style={{
                                         borderBottom: '1.5px solid rgba(147,51,234,0.3)',
                                         color: '#1a1a1a',
-                                        fontSize: '16px',
+                                        fontSize: '12px',
+                                        fontWeight: 500,
                                       }}
                                     />
                                   )}
@@ -2130,54 +2164,99 @@ export default function ExecucaoTreinoPage() {
                   ) : (
                     <>
                   <div
-                    className="grid items-center px-3 py-2"
                     style={{
+                      display: 'grid',
                       gridTemplateColumns: GRID_COLS_HISTORICO,
-                      borderBottom: '1px solid rgba(0,0,0,0.06)',
+                      gap: `0 ${HISTORICO_COL_GAP}`,
+                      padding: `0 ${HISTORICO_ROW_PAD_X}px`,
+                      marginBottom: 6,
+                      alignItems: 'center',
                     }}
                   >
-                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>Set</span>
-                    <span className="text-[9px] font-semibold uppercase pl-2" style={{ color: '#bbb' }}>Ant.</span>
-                    <span className="text-[9px] font-semibold uppercase text-right" style={{ color: '#bbb' }}>Peso</span>
-                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>Reps</span>
-                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>T1</span>
-                    <span className="text-[9px] font-semibold uppercase text-center" style={{ color: '#bbb' }}>T2</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                      Set
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb' }}>
+                      Ant.
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'right' }}>
+                      Peso
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                      Reps
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                      T1
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                      T2
+                    </span>
                   </div>
                   {modalEx.series.map((s, idx) => {
                     const isAtual = idx === modalRodadaIdx;
                     return (
                       <div
                         key={s.ordem}
-                        className={cn(
-                          'grid items-center py-2 last:border-0 px-3',
-                          s.completado ? 'bg-success/5' : isAtual ? 'bg-brand/5' : ''
-                        )}
                         style={{
+                          display: 'grid',
                           gridTemplateColumns: GRID_COLS_HISTORICO,
-                          borderBottom: '1px solid rgba(0,0,0,0.06)',
+                          gap: `0 ${HISTORICO_COL_GAP}`,
+                          padding: `8px ${HISTORICO_ROW_PAD_X}px`,
+                          borderTop: idx > 0 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                          alignItems: 'center',
+                          background: s.completado
+                            ? 'rgba(57,199,90,0.05)'
+                            : isAtual
+                              ? 'rgba(147,51,234,0.05)'
+                              : undefined,
                         }}
                       >
-                        <div className="flex justify-center">
-                          <span className={cn(
-                            'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold font-kpi',
-                            s.completado ? 'bg-success text-white' : isAtual ? 'bg-brand text-white' : ''
-                          )}
-                          style={
-                            !s.completado && !isAtual
-                              ? { background: '#ebebf0', color: '#888' }
-                              : undefined
-                          }
-                          >
-                            {idx + 1}
-                          </span>
+                        <div
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            margin: '0 auto',
+                            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                            ...(s.completado
+                              ? { background: '#39c75a', color: '#fff' }
+                              : isAtual
+                                ? { background: '#9333ea', color: '#fff' }
+                                : { background: '#ebebf0', color: '#888' }),
+                          }}
+                        >
+                          {idx + 1}
                         </div>
-                        <span className="text-[12px] font-kpi truncate pl-2" style={{ color: '#bbb' }}>
+
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                            fontSize: 10,
+                            color: '#aaa',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={s.anterior || '—'}
+                        >
                           {s.anterior || '—'}
                         </span>
+
                         {isAtual ? (
                           <span
-                            className="text-[15px] font-bold font-kpi tabular-nums lining-nums text-right"
-                            style={{ color: '#1a1a1a' }}
+                            style={{
+                              fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: '#1a1a1a',
+                              textAlign: 'right',
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
                           >
                             {modalCarga ? `${modalCarga}kg` : '—'}
                           </span>
@@ -2189,20 +2268,39 @@ export default function ExecucaoTreinoPage() {
                             onChange={(e) => handlePesoChange(modalEx.id, s.ordem, parseFloat(e.target.value) || 0)}
                             placeholder="—"
                             aria-label={`Editar peso da série ${idx + 1}`}
-                            className="w-full h-8 bg-transparent px-1 text-right font-bold font-kpi tabular-nums lining-nums focus:outline-none"
+                            className="w-full bg-transparent focus:outline-none"
                             style={{
-                              borderBottom: '1.5px solid rgba(147,51,234,0.3)',
+                              fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                              fontSize: 12,
+                              fontWeight: 500,
                               color: '#1a1a1a',
-                              fontSize: '16px',
+                              textAlign: 'right',
+                              fontVariantNumeric: 'tabular-nums',
+                              borderBottom: '1.5px solid rgba(147,51,234,0.3)',
+                              height: 24,
                             }}
                           />
                         )}
-                        <span className="text-[13px] font-semibold font-kpi tabular-nums lining-nums text-accent text-center">{s.reps}</span>
-                        <span className="text-[11px] font-medium text-center" style={{ color: '#888' }}>
-                          {duasLetrasTenica(s.tecnica) || '—'}
+
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: '#9333ea',
+                            textAlign: 'center',
+                            fontVariantNumeric: 'tabular-nums',
+                            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                          }}
+                        >
+                          {s.reps || '—'}
                         </span>
-                        <span className="text-[11px] font-medium text-accent text-center">
-                          {abreviarTecnica(s.tecnica_extra) || '—'}
+
+                        <span style={{ fontSize: 10, color: '#ccc', textAlign: 'center' }}>
+                          {s.tecnica ? s.tecnica.substring(0, 2).toUpperCase() : '—'}
+                        </span>
+
+                        <span style={{ fontSize: 10, color: '#ccc', textAlign: 'center' }}>
+                          {s.tecnica_extra ? s.tecnica_extra.substring(0, 2).toUpperCase() : '—'}
                         </span>
                       </div>
                     );
