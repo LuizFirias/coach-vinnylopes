@@ -9,7 +9,7 @@ import PDFViewer from '@/app/components/PDFViewer';
 import { ForkKnife, FileText, FilePdf } from '@phosphor-icons/react';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { getTodayBrazil } from '@/lib/dateUtils';
-import { loadStudentNutritionPageData, attachMealSubstitutions } from '@/lib/nutrition/plans';
+import { loadStudentNutritionPageData, attachMealSubstitutionsForMealIds } from '@/lib/nutrition/plans';
 import { buildAutoExpandedMap } from '@/lib/nutrition/mealAutoExpand';
 import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHeader';
 import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
@@ -139,14 +139,25 @@ export default function PlanoAlimentarPage() {
     return () => mql.removeEventListener('change', update);
   }, []);
 
+  const subsLoadedPlanRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!digitalPlan || !isDesktop) return;
+    const planId = digitalPlan.id as string | undefined;
     const meals = digitalPlan.days?.[0]?.meals ?? [];
     const expanded: Record<string, boolean> = {};
+    const ids: string[] = [];
     meals.forEach((meal: { id: string }) => {
       expanded[meal.id] = true;
+      ids.push(meal.id);
     });
     setExpandedMeals(expanded);
+
+    if (!planId || !ids.length || subsLoadedPlanRef.current === planId) return;
+    subsLoadedPlanRef.current = planId;
+    void attachMealSubstitutionsForMealIds(digitalPlan, ids, supabaseClient).then((enriched) => {
+      if (enriched !== digitalPlan) setDigitalPlan(enriched);
+    });
   }, [digitalPlan, isDesktop]);
 
   useEffect(() => {
@@ -157,6 +168,29 @@ export default function PlanoAlimentarPage() {
     });
     setExpandedMeals(expanded);
   }, [legacyRefeicoes, digitalPlan, isDesktop]);
+
+  const ensureMealSubstitutions = useCallback((mealId: string) => {
+    setDigitalPlan((prev: any) => {
+      if (!prev) return prev;
+      const meal = prev.days?.[0]?.meals?.find((m: any) => m.id === mealId);
+      const needs =
+        meal?.items?.some((i: any) => !i._subsLoaded) ?? false;
+      if (!needs) return prev;
+
+      void attachMealSubstitutionsForMealIds(prev, [mealId], supabaseClient).then((enriched) => {
+        if (enriched !== prev) setDigitalPlan(enriched);
+      });
+      return prev;
+    });
+  }, []);
+
+  const toggleMealExpand = useCallback((mealId: string) => {
+    setExpandedMeals((prev) => {
+      const nextOpen = !prev[mealId];
+      if (nextOpen) ensureMealSubstitutions(mealId);
+      return { ...prev, [mealId]: nextOpen };
+    });
+  }, [ensureMealSubstitutions]);
 
   // ── Carregar Dados ──────────────────────────────────────────────────────────
 
@@ -185,23 +219,30 @@ export default function PlanoAlimentarPage() {
         setDigitalCheckins(checkinsMap);
 
         const day1 = digitalPlanData.days?.[0];
+        let expandedIds: string[] = [];
         if (day1?.meals?.length) {
-          setExpandedMeals(
-            buildAutoExpandedMap(
-              day1.meals.map((m: { id: string; time_suggestion?: string | null; meal_type?: string | null }) => ({
-                id: m.id,
-                time: m.time_suggestion,
-                meal_type: m.meal_type,
-              })),
-              (id) => checkinsMap[id] === 'done',
-            ),
+          const expandedMap = buildAutoExpandedMap(
+            day1.meals.map((m: { id: string; time_suggestion?: string | null; meal_type?: string | null }) => ({
+              id: m.id,
+              time: m.time_suggestion,
+              meal_type: m.meal_type,
+            })),
+            (id) => checkinsMap[id] === 'done',
           );
+          setExpandedMeals(expandedMap);
+          expandedIds = Object.keys(expandedMap).filter((id) => expandedMap[id]);
         }
 
-        // Substituições fora do caminho crítico (evita timeout do embed profundo)
-        void attachMealSubstitutions(digitalPlanData, supabaseClient).then((enriched) => {
-          if (enriched !== digitalPlanData) setDigitalPlan(enriched);
-        });
+        // Lazy: só a(s) refeição(ões) já aberta(s) — evita 500/timeout no mount
+        if (expandedIds.length) {
+          void attachMealSubstitutionsForMealIds(
+            digitalPlanData,
+            expandedIds,
+            supabaseClient,
+          ).then((enriched) => {
+            if (enriched !== digitalPlanData) setDigitalPlan(enriched);
+          });
+        }
       }
 
       if (plansPDFData && plansPDFData.length > 0) {
@@ -672,9 +713,7 @@ export default function PlanoAlimentarPage() {
                       isDesktop={isDesktop}
                       foods={mapDigitalMealFoods(meal)}
                       notes={meal.notes}
-                      onToggleExpand={() =>
-                        setExpandedMeals((prev) => ({ ...prev, [meal.id]: !prev[meal.id] }))
-                      }
+                      onToggleExpand={() => toggleMealExpand(meal.id)}
                       onToggleDone={() => toggleDigitalMeal(meal.id)}
                     />
                   );

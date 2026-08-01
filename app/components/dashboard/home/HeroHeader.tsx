@@ -21,6 +21,8 @@ interface HeroHeaderProps {
   userName: string;
   avatarUrl?: string | null;
   showNotificationBadge?: boolean;
+  chatNaoLidas?: number;
+  notificationsHref?: string;
   agua: HabitData;
   dieta: HabitData;
   treinos: HabitData;
@@ -45,7 +47,7 @@ function HabitBar({
   dieta,
   treinos,
   cardio,
-}: Omit<HeroHeaderProps, 'userName' | 'avatarUrl' | 'showNotificationBadge'>) {
+}: Omit<HeroHeaderProps, 'userName' | 'avatarUrl' | 'showNotificationBadge' | 'chatNaoLidas' | 'notificationsHref'>) {
   const habits: { icon: Icon; label: string; value: string; done: boolean }[] = [
     {
       icon: Drop,
@@ -106,6 +108,8 @@ export function HeroHeader({
   userName,
   avatarUrl,
   showNotificationBadge,
+  chatNaoLidas,
+  notificationsHref = '/aluno/chat',
   agua,
   dieta,
   treinos,
@@ -162,6 +166,8 @@ export function HeroHeader({
           <DashboardTopActions
             variant="hero"
             showNotificationBadge={showNotificationBadge}
+            chatNaoLidas={chatNaoLidas}
+            notificationsHref={notificationsHref}
           />
         </div>
 

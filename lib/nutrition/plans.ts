@@ -133,10 +133,13 @@ const FOOD_EMBED =
 const MEAL_ITEM_SELECT = `id, meal_id, food_id, quantity_grams, portion_label, notes, sort_order, food:nutrition_foods(${FOOD_EMBED})`;
 
 /**
- * Substituições: a FK é substitute_food_id (não food_id).
- * Sem o !hint o PostgREST gera join inválido/lento → statement timeout.
+ * Substituições: FK substitute_food_id.
+ * Select leve (sem portions aninhadas) + chunks — evita timeout/500 no PostgREST.
  */
-const SUB_SELECT = `id, meal_item_id, quantity_grams, portion_label, notes, food:nutrition_foods!substitute_food_id(${FOOD_EMBED})`;
+const SUB_FOOD_EMBED =
+  'id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g';
+const SUB_SELECT = `id, meal_item_id, quantity_grams, portion_label, notes, food:nutrition_foods!substitute_food_id(${SUB_FOOD_EMBED})`;
+const SUB_CHUNK_SIZE = 40;
 
 type HydrateOptions = {
   /** Default true. Na tela do aluno pode adiar para first paint. */
@@ -181,17 +184,13 @@ async function hydratePlanDays(
 
     if (includeSubstitutions && itemList.length) {
       const itemIds = itemList.map((i) => i.id as string);
-      const { data: subRows, error: subsError } = await client
-        .from('nutrition_substitutions')
-        .select(SUB_SELECT)
-        .in('meal_item_id', itemIds);
+      const subRows = await fetchSubstitutionsByItemIds(itemIds, client);
 
-      if (subsError) {
-        console.warn('[hydratePlanDays] Substituições omitidas:', subsError.message);
-        items = itemList.map((item) => ({ ...item, substitutions: [] }));
+      if (!subRows.length) {
+        items = itemList.map((item) => ({ ...item, substitutions: [], _subsLoaded: true }));
       } else {
         const subsByItem = new Map<string, any[]>();
-        for (const sub of subRows ?? []) {
+        for (const sub of subRows) {
           const key = sub.meal_item_id as string;
           const bucket = subsByItem.get(key) ?? [];
           bucket.push(sub);
@@ -200,6 +199,7 @@ async function hydratePlanDays(
         items = itemList.map((item) => ({
           ...item,
           substitutions: subsByItem.get(item.id as string) ?? [],
+          _subsLoaded: true,
         }));
       }
     } else {
@@ -233,7 +233,35 @@ async function hydratePlanDays(
 }
 
 /**
+ * Busca substituições em lotes pequenos (evita IN enorme + timeout).
+ */
+export async function fetchSubstitutionsByItemIds(
+  itemIds: string[],
+  client = supabaseClient,
+): Promise<any[]> {
+  const unique = Array.from(new Set(itemIds.filter(Boolean)));
+  if (!unique.length) return [];
+
+  const rows: any[] = [];
+  for (let i = 0; i < unique.length; i += SUB_CHUNK_SIZE) {
+    const chunk = unique.slice(i, i + SUB_CHUNK_SIZE);
+    const { data, error } = await client
+      .from('nutrition_substitutions')
+      .select(SUB_SELECT)
+      .in('meal_item_id', chunk);
+
+    if (error) {
+      console.warn('[fetchSubstitutionsByItemIds]', error.message);
+      continue;
+    }
+    if (data?.length) rows.push(...data);
+  }
+  return rows;
+}
+
+/**
  * Enriquece um plano já hidratado com substituições (após first paint).
+ * Prefira attachMealSubstitutionsForMealIds para lazy-load por refeição.
  */
 export async function attachMealSubstitutions(
   plan: any,
@@ -245,16 +273,45 @@ export async function attachMealSubstitutions(
   const itemIds = items.map((i: any) => i.id).filter(Boolean) as string[];
   if (!itemIds.length) return plan;
 
-  const { data: subRows, error } = await client
-    .from('nutrition_substitutions')
-    .select(SUB_SELECT)
-    .in('meal_item_id', itemIds);
+  const subRows = await fetchSubstitutionsByItemIds(itemIds, client);
+  if (!subRows.length) return plan;
 
-  if (error || !subRows?.length) {
-    if (error) console.warn('[attachMealSubstitutions]', error.message);
-    return plan;
-  }
+  return mergeSubstitutionsIntoPlan(plan, subRows);
+}
 
+/**
+ * Carrega substituições só das refeições pedidas (lazy ao expandir).
+ */
+export async function attachMealSubstitutionsForMealIds(
+  plan: any,
+  mealIds: string[],
+  client = supabaseClient,
+): Promise<any> {
+  if (!plan?.days?.[0] || !mealIds.length) return plan;
+
+  const idSet = new Set(mealIds);
+  const items = (plan.days[0].meals ?? [])
+    .filter((m: any) => idSet.has(m.id))
+    .flatMap((m: any) => m.items ?? []);
+  const itemIds = items.map((i: any) => i.id).filter(Boolean) as string[];
+  if (!itemIds.length) return plan;
+
+  // Já carregadas? pula
+  const needsFetch = items.some(
+    (i: any) => !Array.isArray(i.substitutions) || i._subsLoaded !== true,
+  );
+  if (!needsFetch) return plan;
+
+  const subRows = await fetchSubstitutionsByItemIds(itemIds, client);
+  return mergeSubstitutionsIntoPlan(plan, subRows, mealIds);
+}
+
+function mergeSubstitutionsIntoPlan(
+  plan: any,
+  subRows: any[],
+  onlyMealIds?: string[],
+): any {
+  const mealFilter = onlyMealIds ? new Set(onlyMealIds) : null;
   const subsByItem = new Map<string, any[]>();
   for (const sub of subRows) {
     const key = sub.meal_item_id as string;
@@ -269,13 +326,17 @@ export async function attachMealSubstitutions(
       if (idx !== 0) return d;
       return {
         ...d,
-        meals: (d.meals ?? []).map((meal: any) => ({
-          ...meal,
-          items: (meal.items ?? []).map((item: any) => ({
-            ...item,
-            substitutions: subsByItem.get(item.id) ?? [],
-          })),
-        })),
+        meals: (d.meals ?? []).map((meal: any) => {
+          if (mealFilter && !mealFilter.has(meal.id)) return meal;
+          return {
+            ...meal,
+            items: (meal.items ?? []).map((item: any) => ({
+              ...item,
+              substitutions: subsByItem.get(item.id) ?? item.substitutions ?? [],
+              _subsLoaded: true,
+            })),
+          };
+        }),
       };
     }),
   };

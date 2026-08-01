@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   ForkKnife, User, HeartStraight,
-  Users, Chat, Plus, BookOpen, X, Handshake, ChartBar, ShieldWarning,
+  Users, Chat, ChatCircle, Plus, BookOpen, X, Handshake, ChartBar, ShieldWarning,
   AppleLogo, Trophy, List, Link as LinkIcon,
 } from '@phosphor-icons/react';
 import { useAuth } from './AuthProvider';
@@ -52,6 +52,8 @@ export default function BottomNav() {
     pathname === '/aluno/onboarding' ||
     loading || 
     pathname.endsWith('/executar') ||
+    !!pathname?.match(/^\/aluno\/chat\/[^/]+$/) ||
+    !!pathname?.match(/^\/admin\/chat\/[^/]+$/) ||
     isWorkoutBuilder
   ) {
     return null;
@@ -62,6 +64,7 @@ export default function BottomNav() {
   const profileRoute = userRole === 'super_admin' ? '/super-admin/perfil' : '/admin/perfil';
 
   const actions = [
+    { label: 'Mensagens',  href: '/admin/chat',                 icon: ChatCircle },
     { label: 'Nutrição',   href: '/admin/nutricao',             icon: AppleLogo },
     { label: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen  },
     { label: 'Parceiros',  href: '/admin/parceiros',            icon: Handshake },

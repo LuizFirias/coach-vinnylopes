@@ -29,6 +29,7 @@ export function RoutineCard({ routine, isDesktop = false }: RoutineCardProps) {
   return (
     <Link
       href={`/aluno/treinos/${routine.id}/executar`}
+      prefetch={false}
       className={cn(
         "routine-card group flex min-h-11 items-center gap-3",
         "rounded-[12px] px-4 py-3.5",

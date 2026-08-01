@@ -27,6 +27,7 @@ import {
   buildPlanDurationMap,
   type CoachPlan,
 } from "@/lib/coachPlans";
+import { useNaoLidasRealtime } from "@/lib/chat/realtime";
 
 // Interfaces
 interface ProfileRow {
@@ -77,6 +78,7 @@ function timeAgo(dateStr: string | null | undefined): string | null {
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const chatNaoLidas = useNaoLidasRealtime(user?.id ?? null, 'coach');
   const isMobile = useBreakpoint("mobile");
   const hasDataRef = useRef(false);
   
@@ -589,6 +591,7 @@ export default function AdminDashboard() {
           linkedStudentCount={linkedStudentCount}
           coachAccountType={coachAccountType}
           showNotificationBadge={checkinsPendentes > 0}
+          chatNaoLidas={chatNaoLidas}
         />
 
         {totalAlunos === 0 ? (

@@ -131,6 +131,7 @@ export function WorkoutCard({
       ) : (
         <Link
           href={treinoHref}
+          prefetch={false}
           id="btn-iniciar-treino-dashboard"
           className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-bold text-white transition-opacity active:opacity-90"
           style={{

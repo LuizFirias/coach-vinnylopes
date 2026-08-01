@@ -125,6 +125,7 @@ export function NextActionCard({
       <div className="flex gap-2 border-t border-divider/50 pt-3 relative">
         <Link
           href={fichaId ? `/aluno/treinos/${fichaId}/executar` : '/aluno/treinos'}
+          prefetch={fichaId ? false : undefined}
           className="flex-1 h-10 bg-brand text-text-on-brand text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-glow-brand hover:opacity-90 active:scale-95 transition-all"
         >
           Iniciar treino

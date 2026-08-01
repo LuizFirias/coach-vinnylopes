@@ -9,6 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getBootstrapProfile } from '@/lib/auth/bootstrapProfile';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
 
@@ -31,17 +32,10 @@ export default function ParceirosPage() {
   useEffect(() => {
     const fetchParceiros = async () => {
       try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (!user) { setError('Usuário não autenticado'); setLoading(false); return; }
+        const profile = await getBootstrapProfile();
+        if (!profile) { setError('Usuário não autenticado'); setLoading(false); return; }
 
-        const { data: profileData } = await supabaseClient
-          .from('profiles')
-          .select('coach_id')
-          .eq('id', user.id)
-          .single();
-
-        const coachId = profileData?.coach_id;
+        const coachId = profile.coach_id;
         if (!coachId) { setParceiros([]); setLoading(false); return; }
 
         const { data, error: fetchError } = await supabaseClient

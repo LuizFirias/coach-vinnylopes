@@ -208,15 +208,12 @@ export default function AlunoPerfil() {
     const fetchHistory = async () => {
       setLoadingWorkouts(true);
       try {
-        const { data: historicoData } = await supabaseClient
-          .from("historico_treinos")
-          .select("id, data_conclusao, dados_sessao, exercicio_id")
-          .eq("aluno_id", userId)
-          .order("data_conclusao", { ascending: false });
+        const { getHistoricoTreinosFull } = await import('@/lib/queries/historicoTreinosCache');
+        const historicoData = await getHistoricoTreinosFull(userId);
 
         if (historicoData && historicoData.length > 0) {
           // Agrupar por data_conclusao
-          const sessoesPorData = new Map<string, any[]>();
+          const sessoesPorData = new Map<string, typeof historicoData>();
           historicoData.forEach(h => {
             const key = h.data_conclusao;
             if (!sessoesPorData.has(key)) sessoesPorData.set(key, []);
@@ -225,13 +222,14 @@ export default function AlunoPerfil() {
 
           const sessoesList = Array.from(sessoesPorData.entries()).map(([data, exerciciosSessao]) => {
             const firstEx = exerciciosSessao[0];
-            const nome_rotina = firstEx?.dados_sessao?.nome_rotina || "Treino";
+            const ds0 = (firstEx?.dados_sessao ?? {}) as Record<string, any>;
+            const nome_rotina = ds0.nome_rotina || "Treino";
             
             // Calcular volume total e quantidade de séries/reps
             let volumeTotal = 0;
             let totalSets = 0;
             const parsedExercises = exerciciosSessao.map(ex => {
-              const ds = ex.dados_sessao || {};
+              const ds = (ex.dados_sessao || {}) as Record<string, any>;
               const series = ds.series || [];
               const completedSeries = series.filter((s: any) => s.completado);
               totalSets += completedSeries.length;

@@ -46,7 +46,7 @@ export function CoachCard({
 
       <div className="grid grid-cols-2 gap-2">
         <Link
-          href="/aluno/mensagens"
+          href="/aluno/chat"
           className={cn(
             'flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all',
             'bg-surface-2 border-card hover:border-brand/30',

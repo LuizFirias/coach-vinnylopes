@@ -228,11 +228,8 @@ export default function EstatisticasPage() {
         });
         setExerciciosBiblioteca(bibMap);
 
-        const { data: histData } = await supabaseClient
-          .from('historico_treinos')
-          .select('id, data_conclusao, dados_sessao, exercicio_id')
-          .eq('aluno_id', uid)
-          .order('data_conclusao', { ascending: false });
+        const { getHistoricoTreinosFull } = await import('@/lib/queries/historicoTreinosCache');
+        const histData = await getHistoricoTreinosFull(uid);
         setHistorico(histData || []);
       } catch (err) {
         console.error(err);

@@ -3,14 +3,12 @@
 import { useEffect, useState, useRef, useCallback, useId } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightning, Minus, Plus, Info, CaretDown } from '@phosphor-icons/react';
 import { RestTimerOverlay } from '@/app/components/treino/execucao/RestTimerOverlay';
-import { FichaHistoricoChart } from '@/app/components/treinos/FichaHistoricoChart';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
-import { CompletionShareScreen } from '@/app/components/workout/share/CompletionShareScreen';
 import { resolveCoachShareHandle } from '@/lib/utils/workoutShare';
-import { YouTubePlayer } from '@/app/components/YouTubePlayer';
 import { VideoPlayerCard } from '@/app/components/treino/execucao/VideoPlayerCard';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
@@ -37,7 +35,32 @@ import {
   type HistoricoPeriodo,
   type HistoricoPonto,
 } from '@/lib/queries/historicoFicha';
+import { invalidateHistoricoTreinosCache } from '@/lib/queries/historicoTreinosCache';
+import { invalidateDashboardAlunoCache } from '@/lib/queries/dashboardAlunoCache';
 
+const FichaHistoricoChart = dynamic(
+  () =>
+    import('@/app/components/treinos/FichaHistoricoChart').then((m) => ({
+      default: m.FichaHistoricoChart,
+    })),
+  { ssr: false },
+);
+
+const CompletionShareScreen = dynamic(
+  () =>
+    import('@/app/components/workout/share/CompletionShareScreen').then((m) => ({
+      default: m.CompletionShareScreen,
+    })),
+  { ssr: false },
+);
+
+const YouTubePlayer = dynamic(
+  () =>
+    import('@/app/components/YouTubePlayer').then((m) => ({
+      default: m.YouTubePlayer,
+    })),
+  { ssr: false },
+);
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface SerieConfig {
@@ -1237,6 +1260,9 @@ export default function ExecucaoTreinoPage() {
         }
         if (savedCount === 0) throw error;
       }
+
+      invalidateHistoricoTreinosCache(userId);
+      invalidateDashboardAlunoCache(userId);
 
       // Atualizar o ultimo_checkin no perfil do aluno
       try {

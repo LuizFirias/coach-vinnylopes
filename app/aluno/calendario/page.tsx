@@ -73,59 +73,54 @@ export default function AlunoCalendario() {
 
   const fetchHistory = useCallback(async (uid: string) => {
     try {
-      const { data: historicoData } = await supabaseClient
-        .from("historico_treinos")
-        .select("id, data_conclusao, dados_sessao, exercicio_id")
-        .eq("aluno_id", uid)
-        .order("data_conclusao", { ascending: false });
+      const { getHistoricoTreinosFull } = await import('@/lib/queries/historicoTreinosCache');
+      const historicoData = await getHistoricoTreinosFull(uid);
+      const sessoesPorData = new Map<string, typeof historicoData>();
+      historicoData.forEach((h) => {
+        const key = toWorkoutDateKey(h.data_conclusao);
+        if (!key) return;
+        if (!sessoesPorData.has(key)) sessoesPorData.set(key, []);
+        sessoesPorData.get(key)!.push(h);
+      });
 
-      if (historicoData) {
-        const sessoesPorData = new Map<string, typeof historicoData>();
-        historicoData.forEach((h) => {
-          const key = toWorkoutDateKey(h.data_conclusao);
-          if (!key) return;
-          if (!sessoesPorData.has(key)) sessoesPorData.set(key, []);
-          sessoesPorData.get(key)!.push(h);
-        });
+      const sessoesList: WorkoutSession[] = Array.from(sessoesPorData.entries()).map(
+        ([data, exerciciosSessao]) => {
+          const firstEx = exerciciosSessao[0];
+          const ds0 = (firstEx?.dados_sessao ?? {}) as Record<string, unknown>;
+          const nome_rotina = (ds0.nome_rotina as string) || "Treino";
 
-        const sessoesList: WorkoutSession[] = Array.from(sessoesPorData.entries()).map(
-          ([data, exerciciosSessao]) => {
-            const firstEx = exerciciosSessao[0];
-            const nome_rotina = firstEx?.dados_sessao?.nome_rotina || "Treino";
+          let volumeTotal = 0;
+          let totalSets = 0;
+          const parsedExercises = exerciciosSessao.map((ex) => {
+            const ds = (ex.dados_sessao ?? {}) as Record<string, unknown>;
+            const series = (ds.series as Array<{ completado?: boolean; peso_atual?: number | string; reps?: number | string }>) || [];
+            const completedSeries = series.filter((s) => s.completado);
+            totalSets += completedSeries.length;
 
-            let volumeTotal = 0;
-            let totalSets = 0;
-            const parsedExercises = exerciciosSessao.map((ex) => {
-              const ds = ex.dados_sessao || {};
-              const series = ds.series || [];
-              const completedSeries = series.filter((s: { completado?: boolean }) => s.completado);
-              totalSets += completedSeries.length;
-
-              completedSeries.forEach((s: { peso_atual?: number | string; reps?: number | string }) => {
-                const peso = Number(s.peso_atual) || 0;
-                const reps = Number(s.reps) || 0;
-                volumeTotal += peso * reps;
-              });
-
-              return {
-                nome: ds.nome_exercicio || "Exercício",
-                sets: series.length,
-                completedSets: completedSeries.length,
-              };
+            completedSeries.forEach((s) => {
+              const peso = Number(s.peso_atual) || 0;
+              const reps = Number(s.reps) || 0;
+              volumeTotal += peso * reps;
             });
 
             return {
-              data_conclusao: data,
-              nome_rotina,
-              volumeTotal,
-              totalSets,
-              exercises: parsedExercises,
+              nome: (ds.nome_exercicio as string) || "Exercício",
+              sets: series.length,
+              completedSets: completedSeries.length,
             };
-          }
-        );
+          });
 
-        setWorkouts(sessoesList);
-      }
+          return {
+            data_conclusao: data,
+            nome_rotina,
+            volumeTotal,
+            totalSets,
+            exercises: parsedExercises,
+          };
+        }
+      );
+
+      setWorkouts(sessoesList);
     } catch (err) {
       console.error("Erro ao buscar histórico de treinos:", err);
     } finally {
@@ -141,13 +136,6 @@ export default function AlunoCalendario() {
         router.replace("/login");
         return;
       }
-
-      await supabaseClient
-        .from("profiles")
-        .select("full_name, avatar_url")
-        .eq("id", user.id)
-        .single();
-
       fetchHistory(user.id);
     } catch (err) {
       console.error("Erro:", err);

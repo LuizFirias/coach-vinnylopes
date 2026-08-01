@@ -52,6 +52,7 @@ const alunoMenuItems: MenuItem[] = [
   { id: 'treinos', name: 'Treinos', href: '/aluno/treinos', icon: Barbell },
   { id: 'cardio', name: 'Cardio', href: '/aluno/cardio', icon: HeartStraight },
   { id: 'plano-alimentar', name: 'Plano Alimentar', href: '/aluno/plano-alimentar', icon: ForkKnife },
+  { id: 'chat', name: 'Mensagens', href: '/aluno/chat', icon: ChatCircle },
   { id: 'medidas', name: 'Medidas', href: '/aluno/medidas', icon: Ruler },
   { id: 'fotos', name: 'Fotos', href: '/aluno/fotos', icon: Camera },
   { id: 'ranking', name: 'Ranking', href: '/aluno/ranking', icon: Trophy },
@@ -68,6 +69,7 @@ const coachItemConfig: Record<string, MenuItem> = {
   parceiros: { id: 'parceiros', name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
   ranking: { id: 'ranking', name: 'Ranking', href: '/admin/ranking', icon: Trophy },
   convites: { id: 'convites', name: 'Convites', href: '/super-admin/convites', icon: Handshake },
+  chat: { id: 'chat', name: 'Mensagens', href: '/admin/chat', icon: ChatCircle },
   feedbacks: { id: 'feedbacks', name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
   'master-control': { id: 'master-control', name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
   'perfil-master': { id: 'perfil-master', name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
@@ -76,7 +78,7 @@ const coachItemConfig: Record<string, MenuItem> = {
 
 const coachMenuGroups: MenuGroup[] = [
   { label: 'Visão geral', items: ['dashboard'] },
-  { label: 'Alunos', items: ['alunos', 'treinos', 'nutricao', 'biblioteca'] },
+  { label: 'Alunos', items: ['alunos', 'treinos', 'nutricao', 'biblioteca', 'chat'] },
   { label: 'Negócio', items: ['financeiro', 'parceiros', 'ranking', 'convites'] },
   { label: 'Sistema', items: ['feedbacks', 'master-control', 'perfil-master', 'perfil'] },
 ];

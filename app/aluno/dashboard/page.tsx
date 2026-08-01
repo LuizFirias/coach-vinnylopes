@@ -20,6 +20,14 @@ import { HydrationCard } from '@/app/components/dashboard/home/HydrationCard';
 import { QuickActions } from '@/app/components/dashboard/home/QuickActions';
 import { updateTreinoStatus } from '@/lib/aluno/updateTreinoStatus';
 import { hasActiveAccess } from '@/lib/access/hasActiveAccess';
+import { getBootstrapProfile } from '@/lib/auth/bootstrapProfile';
+import {
+  invalidateDashboardAlunoCache,
+  peekDashboardAlunoCache,
+  patchDashboardAlunoCache,
+  setDashboardAlunoCache,
+} from '@/lib/queries/dashboardAlunoCache';
+import { useNaoLidasRealtime } from '@/lib/chat/realtime';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -117,6 +125,8 @@ export default function AlunoDashboardPage() {
   const [coachId, setCoachId] = useState<string | null>(null);
   const [incompleteData, setIncompleteData] = useState(false);
 
+  const chatNaoLidas = useNaoLidasRealtime(userId, 'aluno');
+
   const [kpis, setKpis] = useState<KpisAluno | null>(null);
   const [checkinFeito, setCheckinFeito] = useState(false);
   const [checkinPontos, setCheckinPontos] = useState<number | null>(null);
@@ -166,8 +176,28 @@ export default function AlunoDashboardPage() {
   useEffect(() => {
     if (didFetchRef.current) return;
     didFetchRef.current = true;
-    fetchDashboard();
+    void fetchDashboard();
   }, []);
+
+  const applyDashboardSnapshot = (cached: NonNullable<ReturnType<typeof peekDashboardAlunoCache>>) => {
+    setUserId(cached.userId);
+    setUserName(cached.userName);
+    setUserAvatar(cached.userAvatar);
+    setCoachId(cached.coachId);
+    setCoachInfo(cached.coachInfo);
+    setCoachContactAvailable(cached.coachContactAvailable);
+    setCoachPendings(cached.coachPendings);
+    setIncompleteData(cached.incompleteData);
+    setKpis(cached.kpis);
+    setDiasSemana(cached.diasSemana);
+    setWeekOffset(cached.weekOffset);
+    setTreinoHoje(cached.treinoHoje);
+    setPlanoNutricao(cached.planoNutricao);
+    setAgua(cached.agua);
+    setParceiros(cached.parceiros);
+    setAvailableWorkouts(cached.availableWorkouts);
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -251,6 +281,7 @@ export default function AlunoDashboardPage() {
       });
 
       setDiasSemana(updatedDays);
+      patchDashboardAlunoCache(uid, { diasSemana: updatedDays, weekOffset: offset });
       const hojeDia = updatedDays.find((d) => d.isHoje);
       setSelectedDia(hojeDia || updatedDays[0]);
 
@@ -304,12 +335,14 @@ export default function AlunoDashboardPage() {
           .maybeSingle();
 
         if (!day) {
-          setPlanoNutricao({
+          const next = {
             nome: plan.name,
             refeicoesConcluidas: 0,
             totalRefeicoes: 0,
-            proximaRefeicao: null,
-          });
+            proximaRefeicao: null as null,
+          };
+          setPlanoNutricao(next);
+          patchDashboardAlunoCache(uid, { planoNutricao: next });
           return;
         }
 
@@ -323,7 +356,7 @@ export default function AlunoDashboardPage() {
         const checkedMealIds = new Set(checkins?.map((c) => c.meal_id) || []);
         const nextMeal = mealList.find((m) => !checkedMealIds.has(m.id));
 
-        setPlanoNutricao({
+        const next = {
           nome: plan.name,
           refeicoesConcluidas: checkedMealIds.size,
           totalRefeicoes: mealList.length,
@@ -335,7 +368,9 @@ export default function AlunoDashboardPage() {
                   : '',
               }
             : null,
-        });
+        };
+        setPlanoNutricao(next);
+        patchDashboardAlunoCache(uid, { planoNutricao: next });
       } catch {
         // sem plano digital
       }
@@ -364,6 +399,7 @@ export default function AlunoDashboardPage() {
           options.push({ id: p.id, name: p.nome_arquivo, type: 'pdf' }),
         );
         setAvailableWorkouts(options);
+        patchDashboardAlunoCache(uid, { availableWorkouts: options });
       } catch (err) {
         console.warn('[Dashboard] Erro ao buscar treinos para configuração:', err);
       }
@@ -377,7 +413,12 @@ export default function AlunoDashboardPage() {
           .from('feedbacks_treinos')
           .select('id', { count: 'exact', head: true })
           .eq('aluno_id', uid);
-        setCoachPendings((prev) => ({ ...prev, feedbacks: fbCount ?? 0 }));
+        const feedbacks = fbCount ?? 0;
+        setCoachPendings((prev) => {
+          const next = { ...prev, feedbacks };
+          patchDashboardAlunoCache(uid, { coachPendings: next });
+          return next;
+        });
       } catch (err) {
         console.warn('[Dashboard] Erro ao buscar feedbacks pendentes:', err);
       }
@@ -391,17 +432,21 @@ export default function AlunoDashboardPage() {
             .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
             .eq('coach_id', coachIdForExtras)
             .order('nome_marca', { ascending: true });
-          setParceiros(parceirosData || []);
+          const list = parceirosData || [];
+          setParceiros(list);
+          patchDashboardAlunoCache(uid, { parceiros: list });
         } catch {
           setParceiros([]);
+          patchDashboardAlunoCache(uid, { parceiros: [] });
         }
       })();
     } else {
       setParceiros([]);
+      patchDashboardAlunoCache(uid, { parceiros: [] });
     }
   };
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (opts?: { force?: boolean }) => {
     try {
       const session = await getSafeSession();
       const user = session?.user;
@@ -413,44 +458,52 @@ export default function AlunoDashboardPage() {
       const uid = user.id;
       setUserId(uid);
 
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select(
-          'full_name, avatar_url, role, first_access_completed, date_of_birth, coach_id, must_change_password',
-        )
-        .eq('id', uid)
-        .single();
+      if (!opts?.force) {
+        const cached = peekDashboardAlunoCache(uid);
+        if (cached) {
+          applyDashboardSnapshot(cached);
+          return;
+        }
+      }
 
-      if (profile?.coach_id) setCoachId(profile.coach_id);
+      const profile = await getBootstrapProfile();
+      if (!profile || profile.userId !== uid) {
+        router.push('/login');
+        return;
+      }
 
-      if (profile?.role === 'coach' || profile?.role === 'super_admin') {
+      if (profile.coach_id) setCoachId(profile.coach_id);
+
+      if (profile.role === 'coach' || profile.role === 'super_admin') {
         router.push('/admin/dashboard');
         return;
       }
-      if (profile?.must_change_password) {
+      if (profile.must_change_password) {
         router.push('/aluno/trocar-senha');
         return;
       }
-      if (profile?.role === 'aluno' && !profile?.first_access_completed) {
+      if (profile.role === 'aluno' && !profile.first_access_completed) {
         router.push('/aluno/onboarding');
         return;
       }
       if (
-        profile?.role === 'aluno' &&
-        profile?.first_access_completed &&
-        !profile?.date_of_birth
+        profile.role === 'aluno' &&
+        profile.first_access_completed &&
+        !profile.date_of_birth
       ) {
         setIncompleteData(true);
       }
 
-      setUserName(profile?.full_name || user.email?.split('@')[0] || 'Aluno');
-      setUserAvatar(getPublicStorageUrl('avatars', profile?.avatar_url ?? null));
+      const resolvedName = profile.full_name || user.email?.split('@')[0] || 'Aluno';
+      const resolvedAvatar = getPublicStorageUrl('avatars', profile.avatar_url ?? null);
+      setUserName(resolvedName);
+      setUserAvatar(resolvedAvatar);
 
       // First paint IMEDIATO — não espera KPIs / agenda / nutrição
       setLoading(false);
 
       const today = getTodayBrazil();
-      const coachIdValue = profile?.coach_id ?? null;
+      const coachIdValue = profile.coach_id ?? null;
 
       // ── Dados principais em paralelo (sem duplicar agenda do dia) ─────────
       const [kpiResult, coachResult, aguaResult, weekDays] = await Promise.all([
@@ -474,8 +527,10 @@ export default function AlunoDashboardPage() {
         fetchWeeklyAgenda(uid, 0),
       ]);
 
+      let nextKpis: KpisAluno | null = null;
       if (kpiResult.data) {
-        setKpis(kpiResult.data as KpisAluno);
+        nextKpis = kpiResult.data as KpisAluno;
+        setKpis(nextKpis);
       } else {
         try {
           const [{ data: medida }, { count: treinos }] = await Promise.all([
@@ -491,7 +546,7 @@ export default function AlunoDashboardPage() {
               .select('*', { count: 'exact', head: true })
               .eq('aluno_id', uid),
           ]);
-          setKpis({
+          nextKpis = {
             volume_semana_kg: 0,
             volume_delta_pct: null,
             peso_atual_kg: medida?.peso ?? null,
@@ -499,12 +554,14 @@ export default function AlunoDashboardPage() {
             treinos_mes: treinos ?? 0,
             treinos_delta: 0,
             streak_atual: 0,
-          });
+          };
+          setKpis(nextKpis);
         } catch {
           /* ignore */
         }
       }
 
+      let nextCoachInfo: { nome: string; avatar: string | null } | null = null;
       let coachExtrasEnabled = true;
       if (coachResult.data) {
         const coachData = coachResult.data as {
@@ -514,10 +571,11 @@ export default function AlunoDashboardPage() {
           account_type?: string | null;
           role?: string | null;
         };
-        setCoachInfo({
+        nextCoachInfo = {
           nome: coachData.full_name?.split(' ').slice(0, 2).join(' ') || 'Seu Coach',
           avatar: getPublicStorageUrl('avatars', coachData.avatar_url ?? null),
-        });
+        };
+        setCoachInfo(nextCoachInfo);
         coachExtrasEnabled =
           coachData.role === 'super_admin' ||
           hasActiveAccess({
@@ -529,35 +587,61 @@ export default function AlunoDashboardPage() {
 
       // Treino de hoje derivado da agenda semanal (já carregada)
       const hoje = weekDays.find((d) => d.isHoje) ?? weekDays.find((d) => d.data === today);
+      let nextTreinoHoje: typeof treinoHoje = null;
       if (!hoje || (!hoje.temTreino && !hoje.isOff)) {
-        setTreinoHoje({ status: 'sem-plano' });
+        nextTreinoHoje = { status: 'sem-plano' };
       } else if (hoje.isOff) {
-        setTreinoHoje({ status: 'off' });
+        nextTreinoHoje = { status: 'off' };
       } else if (hoje.treinoConcluido) {
-        setTreinoHoje({
+        nextTreinoHoje = {
           status: 'concluido',
           nome: hoje.nomeRotina,
           fichaId: hoje.fichaId,
-        });
+        };
       } else if (hoje.fichaId) {
-        setTreinoHoje({
+        nextTreinoHoje = {
           status: 'pendente',
           nome: hoje.nomeRotina,
           fichaId: hoje.fichaId,
-        });
+        };
       } else if (hoje.treinoPdfId) {
-        setTreinoHoje({ status: 'pendente', nome: 'Treino PDF' });
+        nextTreinoHoje = { status: 'pendente', nome: 'Treino PDF' };
       } else {
-        setTreinoHoje({ status: 'pendente', nome: hoje.nomeRotina });
+        nextTreinoHoje = { status: 'pendente', nome: hoje.nomeRotina };
       }
+      setTreinoHoje(nextTreinoHoje);
 
+      let nextAgua = { id: null as string | null, copos: 0, ml_por_copo: 250 };
       if (aguaResult.data) {
-        setAgua({
+        nextAgua = {
           id: aguaResult.data.id,
           copos: aguaResult.data.copos,
           ml_por_copo: aguaResult.data.ml_por_copo,
-        });
+        };
+        setAgua(nextAgua);
       }
+
+      setDashboardAlunoCache({
+        userId: uid,
+        userName: resolvedName,
+        userAvatar: resolvedAvatar,
+        coachId: coachIdValue,
+        coachInfo: nextCoachInfo,
+        coachContactAvailable: coachExtrasEnabled,
+        coachPendings: { mensagens: 0, feedbacks: 0 },
+        incompleteData:
+          profile.role === 'aluno' &&
+          !!profile.first_access_completed &&
+          !profile.date_of_birth,
+        kpis: nextKpis,
+        diasSemana: weekDays,
+        weekOffset: 0,
+        treinoHoje: nextTreinoHoje,
+        planoNutricao: null,
+        agua: nextAgua,
+        parceiros: [],
+        availableWorkouts: [],
+      });
 
       loadSecondaryDashboardData(uid, coachIdValue, coachExtrasEnabled);
     } catch (err) {
@@ -623,7 +707,8 @@ export default function AlunoDashboardPage() {
 
       const todayJS = new Date().getDay();
       if (!useDateOverride && dayOfWeek === todayJS) {
-        void fetchDashboard();
+        invalidateDashboardAlunoCache(userId);
+        void fetchDashboard({ force: true });
       }
 
       setEditingDay(null);
@@ -727,6 +812,7 @@ export default function AlunoDashboardPage() {
             userName={userName}
             avatarUrl={userAvatar}
             showNotificationBadge={coachPendings.feedbacks > 0 || coachPendings.mensagens > 0}
+            chatNaoLidas={chatNaoLidas}
             agua={{ atual: agua.copos, meta: metaCopos }}
             dieta={{
               atual: planoNutricao?.refeicoesConcluidas ?? 0,
@@ -773,7 +859,7 @@ export default function AlunoDashboardPage() {
             <CoachCard
               coachNome={coachInfo.nome}
               coachAvatar={coachInfo.avatar}
-              mensagensPendentes={coachPendings.mensagens}
+              mensagensPendentes={chatNaoLidas}
               feedbacksPendentes={coachPendings.feedbacks}
             />
           </div>
