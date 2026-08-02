@@ -10,12 +10,16 @@ interface WorkoutPrescriptionSummaryProps {
   items: ExercicioFichaItem[];
   isMobile?: boolean;
   className?: string;
+  hideWhenEmpty?: boolean;
+  variant?: "row" | "stats";
 }
 
 export function WorkoutPrescriptionSummary({
   items,
   isMobile = false,
   className,
+  hideWhenEmpty = true,
+  variant = "row",
 }: WorkoutPrescriptionSummaryProps) {
   const stats = useMemo(() => {
     let exerciseCount = 0;
@@ -37,7 +41,35 @@ export function WorkoutPrescriptionSummary({
     return { exerciseCount, totalSets };
   }, [items]);
 
-  if (stats.exerciseCount === 0) return null;
+  if (stats.exerciseCount === 0 && hideWhenEmpty) return null;
+
+  if (variant === "stats") {
+    return (
+      <div
+        className={cn(
+          "grid grid-cols-2 rounded-2xl border border-border-subtle bg-surface-1 px-5 py-4",
+          className,
+        )}
+      >
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+            Exercícios
+          </p>
+          <p className="text-2xl font-extrabold text-text-primary tabular-nums leading-none">
+            {stats.exerciseCount}
+          </p>
+        </div>
+        <div className="border-l border-border-divider pl-5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+            Séries totais
+          </p>
+          <p className="text-2xl font-extrabold text-text-primary tabular-nums leading-none">
+            {stats.totalSets}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -51,7 +83,7 @@ export function WorkoutPrescriptionSummary({
         <Barbell size={16} className="text-brand" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-text-primary leading-tight">
+        <p className="font-semibold text-text-primary leading-tight tabular-nums">
           {stats.exerciseCount} {stats.exerciseCount === 1 ? "exercício" : "exercícios"}
           <span className="text-text-tertiary font-normal"> · </span>
           {stats.totalSets} {stats.totalSets === 1 ? "série" : "séries"} prescritas

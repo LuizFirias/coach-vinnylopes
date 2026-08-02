@@ -29,7 +29,7 @@
      Paleta AURON (SKILL.md) — navy escuro, NÃO preto puro
      ═══════════════════════════════════════════════════════════ */
   --surface-0:        #080c14;   /* page bg — navy azulado (dashboard) */
-  --surface-1:        #111827;   /* card — alinhado ao dash do aluno */
+  --surface-1:        #0d0b14;   /* card/sidebar — roxo escuro neutro (família brand) */
   --surface-2:        #1e1e1e;   /* elevated / input bg */
   --surface-3:        #222222;   /* overlay / divisor */
   --surface-4:        #282828;   /* borda input */
@@ -377,6 +377,7 @@ html[data-theme="light"] {
 html[data-theme="dark"],
 html.dark {
   color-scheme: dark;
+  --surface-1: #0d0b14; /* roxo escuro neutro — alinha sidebar/cards ao brand */
 }
 
 html[data-theme="light"] {

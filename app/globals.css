@@ -1018,6 +1018,166 @@ html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-
   cursor: pointer;
 }
 
+/* Formulário agrupado estilo Wellhub — inputs sem caixa própria (tokens do tema) */
+.coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 14px !important;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-primary) !important;
+}
+
+.coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+.coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.coach-app-typography .field-flat-input select {
+  padding-right: 0 !important;
+}
+
+.coach-app-typography .field-flat-input :is(input, textarea, select)::placeholder {
+  color: var(--text-disabled) !important;
+  opacity: 1;
+}
+
+.coach-app-typography .field-flat-input input[type="date"] {
+  color-scheme: inherit;
+}
+
+html[data-theme="light"] .coach-app-typography .field-flat-input input[type="date"],
+html:not([data-theme="dark"]):not(.dark) .coach-app-typography .field-flat-input input[type="date"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] .coach-app-typography .field-flat-input input[type="date"],
+html.dark .coach-app-typography .field-flat-input input[type="date"] {
+  color-scheme: dark;
+}
+
+/* Listas coach (alunos/treinos): light = branco; dark = corpo roxo + cabeçalho branco */
+html[data-theme="dark"] .alunos-table-shell,
+html.dark .alunos-table-shell,
+html[data-theme="dark"] .coach-data-table-shell,
+html.dark .coach-data-table-shell {
+  background: var(--surface-1) !important;
+}
+
+html[data-theme="dark"] .alunos-table-head,
+html.dark .alunos-table-head,
+html[data-theme="dark"] .coach-data-table-head,
+html.dark .coach-data-table-head {
+  background: #ffffff !important;
+}
+
+html[data-theme="dark"] .alunos-table-head th,
+html.dark .alunos-table-head th,
+html[data-theme="dark"] .coach-data-table-head th,
+html.dark .coach-data-table-head th {
+  color: #6b7280 !important;
+}
+
+/* Divisores da tabela — mais suaves (evita linha clara que destoa) */
+.coach-data-table-shell :is(thead tr, tbody tr, tbody td) {
+  border-color: color-mix(in srgb, var(--border-divider) 35%, transparent) !important;
+}
+
+html[data-theme="dark"] .coach-data-table-shell :is(thead tr, tbody tr, tbody td),
+html.dark .coach-data-table-shell :is(thead tr, tbody tr, tbody td) {
+  border-color: color-mix(in srgb, var(--border-divider) 45%, transparent) !important;
+}
+
+/* Nova ficha: roxo um pouco mais claro nesta tela */
+.nova-ficha-screen {
+  --brand-primary: #a855f7;
+  --brand-hover: #c084fc;
+  --brand-pressed: #9333ea;
+  --brand-subtle: rgba(168, 85, 247, 0.12);
+  --brand-border: rgba(168, 85, 247, 0.28);
+  --btn-primary-bg: linear-gradient(135deg, #d8b4fe 0%, #a855f7 50%, #9333ea 100%);
+  --btn-primary-shadow: 0 4px 20px rgba(168, 85, 247, 0.40);
+  --btn-primary-shadow-hover: 0 6px 28px rgba(168, 85, 247, 0.55);
+  --color-gold: var(--brand-primary);
+  --gold-default: var(--brand-primary);
+}
+
+/* Listas coach (alunos/treinos): busca + tabela em ~metade, centralizado */
+.alunos-list-panel,
+.coach-list-panel {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .alunos-list-panel,
+  .coach-list-panel {
+    width: 50%;
+    max-width: 720px;
+  }
+}
+
+/* KPIs da lista: brilho interno sutil (neutro, sem tint) */
+.alunos-kpi-card,
+.coach-list-kpi-card {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 22px rgba(147, 51, 234, 0.05);
+}
+
+html[data-theme="dark"] .alunos-kpi-card,
+html.dark .alunos-kpi-card,
+html[data-theme="dark"] .coach-list-kpi-card,
+html.dark .coach-list-kpi-card {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 28px rgba(147, 51, 234, 0.14);
+}
+
+/* Sidebar: labels de grupo */
+.sidebar-group-label {
+  color: rgba(147, 51, 234, 0.4);
+}
+
+/* Light: ícones, nomes e labels no tom brand (mesmo da sessão ativa) */
+html[data-theme="light"] .sidebar-group-label {
+  color: var(--brand-primary);
+  opacity: 0.55;
+}
+
+html[data-theme="light"] .sidebar-nav-link--idle {
+  color: var(--brand-primary);
+}
+
+html[data-theme="light"] .sidebar-nav-link--idle:hover {
+  color: var(--brand-hover);
+}
+
+html[data-theme="light"] .sidebar-nav-link--active {
+  color: var(--brand-primary);
+}
+
 .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
   textarea

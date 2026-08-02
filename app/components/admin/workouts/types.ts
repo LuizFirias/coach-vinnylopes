@@ -9,6 +9,8 @@ export interface WorkoutPlan {
   criado_em: string;
   tipo: "digital" | "pdf";
   exercicios_count: number;
+  /** Nomes para preview estilo Hevy (lista truncada no card). */
+  exercicio_nomes?: string[];
   pdf_url?: string;
   ultima_execucao?: string | null;
   configuracao?: { exercicios?: unknown[] } | null;

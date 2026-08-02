@@ -88,7 +88,7 @@ export function KanbanWorkoutBuilderSheet({
     void (async () => {
       const { data } = await supabaseClient
         .from("exercicios_biblioteca")
-        .select("id, nome, grupo_muscular, tipo_exercicio, video_url")
+        .select("id, nome, grupo_muscular, tipo_exercicio, equipamento, video_url")
         .order("nome", { ascending: true });
       setCatalog((data as LibraryExercise[]) || []);
       setLoadingCatalog(false);

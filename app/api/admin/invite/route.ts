@@ -63,11 +63,12 @@ export async function POST(req: Request) {
     const dateOfBirth = body?.date_of_birth ? String(body.date_of_birth) : null;
     const objetivo = body?.objetivo ? String(body.objetivo) : null;
     const tipoPlano = body?.tipo_plano ? String(body.tipo_plano) : null;
+    const dataInicio = body?.data_inicio ? String(body.data_inicio) : null;
     const dataExpiracao = body?.data_expiracao ? String(body.data_expiracao) : null;
     const whatsapp = body?.whatsapp ? String(body.whatsapp).trim() : null;
     const valorPlano = body?.valor_plano != null ? Number(body.valor_plano) : null;
 
-    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName, dateOfBirth, objetivo, tipoPlano, dataExpiracao, whatsapp, valorPlano });
+    console.log("[INVITE] 📨 Dados recebidos:", { email, fullName, dateOfBirth, objetivo, tipoPlano, dataInicio, dataExpiracao, whatsapp, valorPlano });
 
     if (!email || !fullName) {
       return NextResponse.json({ error: "Nome e e-mail são obrigatórios" }, { status: 400 });
@@ -201,9 +202,10 @@ export async function POST(req: Request) {
         date_of_birth: dateOfBirth || null,
         objetivo: objetivo || null,
         tipo_plano: tipoPlano || null,
-        data_inicio: new Date().toISOString().slice(0, 10),
+        data_inicio: dataInicio || new Date().toISOString().slice(0, 10),
         data_expiracao: dataExpiracao || null,
         valor_plano: valorPlano,
+        whatsapp: whatsapp || null,
       }, {
         onConflict: "id",
         ignoreDuplicates: false

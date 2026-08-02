@@ -239,10 +239,10 @@ export default function Sidebar() {
         href={m.href}
         title={!isExpanded ? m.name : undefined}
         className={cn(
-          "flex items-center gap-2.5 px-2.5 h-9 transition-all group relative",
+          "sidebar-nav-link flex items-center gap-2.5 px-2.5 h-9 transition-all group relative",
           isActive
-            ? "bg-brand/12 text-text-primary font-medium border-l-2 border-brand rounded-r-lg rounded-l-none"
-            : "text-text-disabled hover:text-brand hover:bg-brand/5 rounded-lg",
+            ? "sidebar-nav-link--active bg-brand/10 text-brand font-semibold border-l-2 border-brand rounded-r-lg rounded-l-none"
+            : "sidebar-nav-link--idle text-text-disabled hover:text-brand hover:bg-brand/5 rounded-lg",
           isExpanded ? "justify-start" : "justify-center"
         )}
       >
@@ -256,7 +256,13 @@ export default function Sidebar() {
         )}
 
         {!isExpanded && (
-          <div className="absolute left-full ml-4 px-2 py-1 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] tracking-wider rounded border-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100 shadow-xl">
+          <div
+            className="absolute left-full ml-4 px-2 py-1 backdrop-blur-xl text-white text-[10px] font-medium tracking-wider rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100"
+            style={{
+              background: '#1a1033',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            }}
+          >
             {m.name}
           </div>
         )}
@@ -268,8 +274,12 @@ export default function Sidebar() {
     <>
       {/* Sidebar for Desktop */}
       <aside
-        style={{ width: isExpanded ? '240px' : '80px' }}
-        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r border-border-subtle flex-col py-3 px-3 items-stretch z-60 shadow-2xl transition-[width] duration-300 overflow-hidden"
+        style={{
+          width: isExpanded ? '240px' : '80px',
+          borderRightColor: 'rgba(147,51,234,0.12)',
+          boxShadow: '4px 0 24px rgba(0,0,0,0.3)',
+        }}
+        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r flex-col py-3 px-3 items-stretch z-60 transition-[width] duration-300 overflow-hidden"
       >
         <div className="flex flex-col items-center gap-2 mb-3 px-2 relative shrink-0">
           <Link href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
@@ -289,7 +299,8 @@ export default function Sidebar() {
           <button
             onClick={toggleSidebar}
             className={cn(
-              "w-6 h-6 rounded-md border-0 bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-brand transition-colors shrink-0",
+              "w-6 h-6 rounded-md border-0 flex items-center justify-center transition-colors shrink-0",
+              "bg-brand/10 text-brand hover:bg-brand/20 hover:text-brand-hover",
               isExpanded ? "absolute right-1 top-1/2 -translate-y-1/2" : "mt-0.5"
             )}
             title={isExpanded ? "Recolher menu" : "Expandir menu"}
@@ -311,17 +322,7 @@ export default function Sidebar() {
                 style={{ marginTop: groupIdx === 0 ? 0 : 20 }}
               >
                 {isExpanded && (
-                  <div
-                    className="px-2.5"
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 500,
-                      letterSpacing: '1.5px',
-                      textTransform: 'uppercase',
-                      color: '#3a3a3a',
-                      marginBottom: 8,
-                    }}
-                  >
+                  <div className="sidebar-group-label px-2.5 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px]">
                     {group.label}
                   </div>
                 )}
@@ -335,15 +336,19 @@ export default function Sidebar() {
           {showPlanIndicator && planIndicator && (
             <div
               className={cn(
-                "text-[11px] px-4 py-3 border-t border-border-subtle",
+                "text-[11px] px-4 py-3",
                 planIndicator.isActive ? "text-text-tertiary" : "text-danger",
               )}
+              style={{ borderTop: '1px solid rgba(147,51,234,0.10)' }}
             >
               {planIndicator.label} · {planIndicator.studentCount}/{planIndicator.studentLimit} alunos
             </div>
           )}
 
-          <div className="pt-2.5 pb-1 flex flex-col gap-1.5 border-t border-border-subtle">
+          <div
+            className="pt-2.5 pb-1 flex flex-col gap-1.5"
+            style={{ borderTop: '1px solid rgba(147,51,234,0.10)' }}
+          >
             {isExpanded && user && (
               <div className="flex flex-col min-w-0 px-2 py-0.5">
                 <span className="text-[8px] font-semibold text-text-tertiary uppercase tracking-[0.06em] mb-0.5">

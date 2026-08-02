@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     const { data: coachProfile } = await adminClient
       .from("profiles")
-      .select("subscription_active, account_type, role")
+      .select("subscription_active, account_type, role, whatsapp")
       .eq("id", coachId)
       .maybeSingle();
 
@@ -69,23 +69,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "indisponível" }, { status: 403 });
     }
 
-    const {
-      data: { user: coachUser },
-      error,
-    } = await adminClient.auth.admin.getUserById(coachId);
+    let phone = (coachProfile?.whatsapp || "").replace(/\D/g, "");
 
-    if (error || !coachUser) {
-      console.error("[COACH_WHATSAPP] Error fetching coach user from Auth:", error?.message);
-      return NextResponse.json({ whatsapp: "556781232717" });
+    if (!phone) {
+      const {
+        data: { user: coachUser },
+        error,
+      } = await adminClient.auth.admin.getUserById(coachId);
+
+      if (error || !coachUser) {
+        console.error("[COACH_WHATSAPP] Error fetching coach user from Auth:", error?.message);
+        return NextResponse.json({ whatsapp: "556781232717" });
+      }
+
+      phone = (
+        coachUser.phone ||
+        coachUser.user_metadata?.phone ||
+        coachUser.user_metadata?.whatsapp ||
+        ""
+      ).replace(/\D/g, "");
     }
-
-    let phone =
-      coachUser.phone ||
-      coachUser.user_metadata?.phone ||
-      coachUser.user_metadata?.whatsapp ||
-      "";
-
-    phone = phone.replace(/\D/g, "");
 
     if (!phone) {
       phone = "556781232717";

@@ -74,10 +74,10 @@ function timeAgo(dateStr: string | null | undefined): string | null {
 }
 
 const AVATAR_COLORS = [
-  "from-amber-500/50 to-amber-700/30",
-  "from-orange-500/50 to-orange-700/30",
-  "from-yellow-500/50 to-yellow-700/30",
-  "from-brand/50 to-brand/20",
+  "from-amber-400/70 to-amber-600/40",
+  "from-orange-400/70 to-orange-600/40",
+  "from-sky-400/70 to-sky-600/40",
+  "from-brand/60 to-brand/30",
 ];
 
 function avatarGrad(name: string): string {
@@ -272,93 +272,107 @@ export default function AdminAlunosPage() {
           <div className="flex flex-col gap-5">
 
             {/* ── Stats Bar / Metrics Cards ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
                 { label: "Ativos", value: ativosCount, dotColor: "bg-success" },
                 { label: "Pendentes", value: pendentesCount, dotColor: "bg-warning" },
                 { label: "Vencendo em breve", value: alertasVencendoEmBreve, dotColor: "bg-danger" },
                 { label: "Inativos", value: inativosCount, dotColor: "bg-text-disabled" },
               ].map(({ label, value, dotColor }) => (
-                <div key={label} className={cn(
-                  "bg-surface-1 rounded-lg p-4 border-0 flex flex-col justify-center h-20",
-                  label === "Inativos" ? "shadow-md" : "shadow-sm"
-                )}>
-                  <div className="flex items-center gap-1.5 leading-none">
-                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
-                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
+                <div
+                  key={label}
+                  className="alunos-kpi-card relative overflow-hidden rounded-xl p-4 border border-border-subtle bg-surface-1 flex flex-col justify-center h-20"
+                >
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.03)_42%,transparent_68%)]"
+                  />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/20"
+                  />
+                  <div className="relative z-10 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 leading-none">
+                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
+                      <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
+                    </div>
+                    <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums lining-nums leading-none">{value}</span>
                   </div>
-                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums lining-nums leading-none">{value}</span>
                 </div>
               ))}
             </div>
 
-            {/* ── Filters and Search Line ── */}
-            <div className="bg-surface-1 border-0 rounded-lg p-2.5 flex flex-col lg:flex-row items-center justify-between gap-3 shadow-sm">
-              <div className="relative w-full lg:max-w-[280px]">
-                <MagnifyingGlass
-                  size={12}
-                  className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-[var(--filter-placeholder)]"
-                />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Localizar por nome ou e-mail..."
-                  aria-label="Buscar alunos"
-                  style={{ touchAction: "manipulation" }}
-                  className="filter-control filter-control-search filter-control-compact w-full shadow-sm"
-                />
-              </div>
+            {/* Busca + grade — metade da largura disponível, centralizado */}
+            <div className="alunos-list-panel flex flex-col gap-5">
 
-              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto lg:justify-end">
-                {/* Status Filter — segmented control (largura igual no mobile) */}
-                <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 bg-[var(--tab-track-bg)] border-0 rounded-md p-1 h-8.5">
-                  {(['todos', 'ativos', 'pendentes', 'inativos'] as const).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setStatusFilter(status)}
-                      style={{ touchAction: 'manipulation' }}
-                      aria-pressed={statusFilter === status}
-                      className={cn(
-                        "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-[8px] transition-all h-6.5 flex items-center justify-center",
-                        statusFilter === status
-                          ? "bg-[var(--tab-active-bg)] border-0 text-[var(--tab-active-text)] shadow-sm"
-                          : "bg-transparent text-[var(--tab-inactive-text)] hover:text-text-primary"
-                      )}
-                    >
-                      {status}
-                    </button>
-                  ))}
+            {/* ── Filters and Search — padrão flat (sem caixa cinza nos inputs) ── */}
+            <div className="field-flat-input bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4 px-4 py-3.5">
+                <div className="relative w-full lg:flex-1 lg:max-w-sm pl-6">
+                  <MagnifyingGlass
+                    size={14}
+                    className="pointer-events-none absolute left-0 top-1/2 z-10 -translate-y-1/2 text-text-disabled"
+                  />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Localizar por nome ou e-mail..."
+                    aria-label="Buscar alunos"
+                    style={{ touchAction: "manipulation" }}
+                    className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled"
+                  />
                 </div>
 
-                {/* Botão Filtros (abre modal) + reset — mesma linha e altura */}
-                <div className="flex items-center gap-2 sm:gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setFiltersOpen(true)}
-                    style={{ touchAction: 'manipulation' }}
-                    aria-haspopup="dialog"
-                    className="relative flex h-8.5 items-center gap-1.5 rounded-md border-0 bg-[var(--filter-bg)] hover:bg-[var(--filter-bg-focus)] px-3 text-[12px] font-semibold text-[var(--filter-text)] transition-colors cursor-pointer"
-                  >
-                    <SlidersHorizontal size={14} />
-                    Filtros
-                    {activeFilterCount > 0 && (
-                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold text-text-on-brand tabular-nums">
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </button>
+                <div className="hidden lg:block w-px h-7 bg-border-divider shrink-0" />
 
-                  {/* Reset filters */}
-                  <button
-                    onClick={handleResetFilters}
-                    style={{ touchAction: 'manipulation' }}
-                    aria-label="Limpar filtros"
-                    className="w-8.5 h-8.5 shrink-0 flex items-center justify-center bg-[var(--filter-bg)] hover:bg-[var(--filter-bg-focus)] border-0 text-text-secondary hover:text-text-primary rounded-md transition-colors"
-                    title="Limpar filtros"
-                  >
-                    <ArrowCounterClockwise size={13} />
-                  </button>
+                <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto lg:justify-end lg:ml-auto">
+                  <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 rounded-lg p-1 h-9 bg-brand-subtle/60">
+                    {(["todos", "ativos", "pendentes", "inativos"] as const).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setStatusFilter(status)}
+                        style={{ touchAction: "manipulation" }}
+                        aria-pressed={statusFilter === status}
+                        className={cn(
+                          "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-7 flex items-center justify-center border-0 cursor-pointer",
+                          statusFilter === status
+                            ? "bg-brand/20 text-brand shadow-sm"
+                            : "bg-transparent text-text-tertiary hover:text-text-primary"
+                        )}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 sm:gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setFiltersOpen(true)}
+                      style={{ touchAction: "manipulation" }}
+                      aria-haspopup="dialog"
+                      className="relative flex h-9 items-center gap-1.5 rounded-lg border border-border-subtle bg-transparent hover:bg-brand/5 px-3 text-[12px] font-semibold text-text-secondary hover:text-brand transition-colors cursor-pointer"
+                    >
+                      <SlidersHorizontal size={14} />
+                      Filtros
+                      {activeFilterCount > 0 && (
+                        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold text-text-on-brand tabular-nums">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleResetFilters}
+                      style={{ touchAction: "manipulation" }}
+                      aria-label="Limpar filtros"
+                      className="w-9 h-9 shrink-0 flex items-center justify-center border border-border-subtle bg-transparent hover:bg-brand/5 text-text-secondary hover:text-brand rounded-lg transition-colors cursor-pointer"
+                      title="Limpar filtros"
+                    >
+                      <ArrowCounterClockwise size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -382,7 +396,7 @@ export default function AdminAlunosPage() {
                 </div>
               </div>
             ) : isMobile ? (
-              <div className="bg-surface-1 border-0 rounded-xl p-3 shadow-sm divide-y divide-[color:var(--list-row-divider)]">
+              <div className="bg-surface-1 border border-border-subtle rounded-2xl p-3 divide-y divide-border-divider">
                 {processedRows.map((row) => {
                   const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
                   const isAtivo = row.status_pagamento === "pago";
@@ -444,17 +458,17 @@ export default function AdminAlunosPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
+              <div className="alunos-table-shell border border-border-subtle rounded-2xl overflow-hidden bg-surface-2">
                 <div className="overflow-x-auto scrollbar-hide">
                   <table className="w-full border-collapse text-left">
                     <thead>
-                      <tr className="border-b border-divider bg-surface-2/40">
+                      <tr className="alunos-table-head border-b border-border-divider bg-surface-2">
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Status</th>
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Plano</th>
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Vencimento</th>
                         <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Última Atividade</th>
-                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase text-right">Ação</th>
+                        <th className="p-3 pr-16 text-[10px] font-bold tracking-wider text-text-tertiary uppercase text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -574,7 +588,7 @@ export default function AdminAlunosPage() {
                             </td>
 
                             {/* Link action */}
-                            <td className="p-3 text-right">
+                            <td className="p-3 pr-10 text-right">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -603,6 +617,8 @@ export default function AdminAlunosPage() {
               </div>
             )}
 
+            </div>
+
           </div>
         )}
 
@@ -623,10 +639,10 @@ export default function AdminAlunosPage() {
             className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(16px+env(safe-area-inset-bottom))] animate-sheet-up sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2"
           >
             <div
-              className="mx-auto w-full max-w-sm rounded-xl bg-surface-1 shadow-lg overflow-hidden"
+              className="mx-auto w-full max-w-sm rounded-2xl bg-surface-1 border border-border-subtle shadow-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-divider">
+              <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border-divider">
                 <p id="filtros-modal-title" className="text-sm font-bold text-text-primary">
                   Filtros
                 </p>
@@ -634,18 +650,18 @@ export default function AdminAlunosPage() {
                   type="button"
                   onClick={() => setFiltersOpen(false)}
                   aria-label="Fechar filtros"
-                  style={{ touchAction: 'manipulation' }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-text-primary hover:bg-surface-2 active:scale-95"
+                  style={{ touchAction: "manipulation" }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-text-primary hover:bg-brand/5 active:scale-95 border-0 bg-transparent cursor-pointer"
                 >
                   <X size={16} weight="bold" />
                 </button>
               </div>
 
-              <div className="flex flex-col gap-4 px-4 py-4">
-                <div className="flex flex-col gap-1.5">
+              <div className="field-flat-input flex flex-col">
+                <div className="px-5 py-3.5 border-b border-border-divider">
                   <label
                     htmlFor="filtro-plano"
-                    className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary"
+                    className="block text-[11px] text-text-tertiary mb-1"
                   >
                     Plano
                   </label>
@@ -653,8 +669,8 @@ export default function AdminAlunosPage() {
                     id="filtro-plano"
                     value={planoFilter}
                     onChange={(e) => setPlanoFilter(e.target.value as any)}
-                    className="filter-control w-full h-11 rounded-[10px] font-medium focus:outline-none appearance-none transition-all duration-150 cursor-pointer"
-                    style={{ touchAction: 'manipulation' }}
+                    className="w-full bg-transparent border-0 outline-none text-sm text-text-primary appearance-none cursor-pointer p-0"
+                    style={{ touchAction: "manipulation" }}
                   >
                     <option value="todos">Todos os planos</option>
                     {mergedPlans(planosPersonalizados).map((p) => (
@@ -663,10 +679,10 @@ export default function AdminAlunosPage() {
                   </select>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
+                <div className="px-5 py-3.5">
                   <label
                     htmlFor="filtro-ordenacao"
-                    className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary"
+                    className="block text-[11px] text-text-tertiary mb-1"
                   >
                     Ordenar por
                   </label>
@@ -674,8 +690,8 @@ export default function AdminAlunosPage() {
                     id="filtro-ordenacao"
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value as any)}
-                    className="filter-control w-full h-11 rounded-[10px] font-medium focus:outline-none appearance-none transition-all duration-150 cursor-pointer"
-                    style={{ touchAction: 'manipulation' }}
+                    className="w-full bg-transparent border-0 outline-none text-sm text-text-primary appearance-none cursor-pointer p-0"
+                    style={{ touchAction: "manipulation" }}
                   >
                     <option value="atividade">Última atividade</option>
                     <option value="recentes">Mais recentes</option>

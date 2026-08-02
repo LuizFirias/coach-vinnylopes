@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DotsSixVertical, DotsThree, PencilSimple, Trash, Copy } from "@phosphor-icons/react";
+import { DotsSixVertical, DotsThree, Trash, Copy, Play, Barbell } from "@phosphor-icons/react";
 import { RestBadge } from "./RestBadge";
 import { SetRow, SetsTableHeader } from "./SetRow";
 import { getColunasPorTipo, showPesoColumn } from "./exerciseColumns";
@@ -51,24 +51,35 @@ export function ExerciseCard({
     : baseCols;
   const showPeso = showPesoColumn(exercicio.tipo_exercicio);
 
+  const hasVideo = Boolean(exercicio.video_url?.trim());
+
   return (
     <div
       className={cn(
-        "bg-surface-1 border-0 shadow-sm rounded-xl overflow-hidden transition-opacity",
+        "bg-surface-1 border border-border-subtle rounded-xl overflow-hidden transition-opacity",
         isDragging && "opacity-95 border-brand/50"
       )}
     >
-      <div className="flex items-center justify-between gap-1.5 px-3 py-2 bg-surface-2/40 border-b border-divider">
-        <div className="flex items-center gap-1 min-w-0 flex-1">
-          <button
-            type="button"
-            className="shrink-0 p-0.5 cursor-grab active:cursor-grabbing text-text-muted touch-none select-none"
-            title="Arrastar para reordenar"
-            aria-label="Arrastar para reordenar"
-            {...dragHandleProps}
-          >
-            <DotsSixVertical size={15} />
-          </button>
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-divider">
+        <button
+          type="button"
+          className="shrink-0 p-0.5 cursor-grab active:cursor-grabbing text-text-muted touch-none select-none"
+          title="Arrastar para reordenar"
+          aria-label="Arrastar para reordenar"
+          {...dragHandleProps}
+        >
+          <DotsSixVertical size={15} />
+        </button>
+
+        <span className="shrink-0 w-9 h-9 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center">
+          {hasVideo ? (
+            <Play size={14} weight="fill" className="text-brand" />
+          ) : (
+            <Barbell size={14} className="text-brand" />
+          )}
+        </span>
+
+        <div className="flex items-center min-w-0 flex-1">
           {isMobile ? (
             <textarea
               value={exercicio.nome}
@@ -85,20 +96,13 @@ export function ExerciseCard({
             />
           )}
         </div>
+
         <div className="flex items-center gap-1 shrink-0 relative">
           <RestBadge
             descanso={exercicio.descanso}
             onChange={(d) => onUpdate(exIndex, { descanso: d })}
             compact={isMobile}
           />
-          <button
-            type="button"
-            onClick={() => setShowObservation((v) => !v)}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:text-brand hover:bg-brand/5 transition-colors"
-            title="Observação para o aluno"
-          >
-            <PencilSimple size={14} />
-          </button>
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -114,7 +118,7 @@ export function ExerciseCard({
                 onClick={() => { setShowObservation(true); setMenuOpen(false); }}
                 className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-2"
               >
-                Editar
+                Observação
               </button>
               {onDuplicate && (
                 <button
@@ -137,6 +141,16 @@ export function ExerciseCard({
           )}
         </div>
       </div>
+
+      {exercicio.imagem_url && (
+        <div className="overflow-hidden border-b border-divider">
+          <img
+            src={exercicio.imagem_url}
+            alt={`Demonstração de ${exercicio.nome}`}
+            className="w-full h-40 object-cover"
+          />
+        </div>
+      )}
 
       <div className="px-3 py-2.5 space-y-0.5 overflow-x-auto">
         <div className="min-w-[min(100%,340px)]">

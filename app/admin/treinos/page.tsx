@@ -30,6 +30,7 @@ import { WorkoutsTable, WorkoutsEmptyState } from '@/app/components/admin/workou
 import { WorkoutsMobileList } from '@/app/components/admin/workouts/WorkoutsMobileList';
 import { StudentsWithoutWorkoutAlert } from '@/app/components/admin/workouts/StudentsWithoutWorkoutAlert';
 import { DeleteWorkoutModal } from '@/app/components/admin/workouts/DeleteWorkoutModal';
+import { extractExerciseNames } from '@/app/components/admin/workouts/workoutFormat';
 
 interface Aluno {
   id: string;
@@ -81,7 +82,7 @@ export default function TreinosPage() {
       // (JWT por request). Promise.all paraleliza round-trips reais; não compartilham
       // a mesma sessão Postgres — o pool (Supavisor) atende em paralelo.
       const listSelectWithCount =
-        'id, aluno_id, nome_rotina, ativo, criado_em, exercicios_count';
+        'id, aluno_id, nome_rotina, ativo, criado_em, exercicios_count, configuracao';
       const listSelectLegacy =
         'id, aluno_id, nome_rotina, ativo, criado_em, configuracao';
 
@@ -184,10 +185,11 @@ export default function TreinosPage() {
 
       digitalData.forEach((f) => {
         const student = profilesById.get(f.aluno_id);
+        const exercicioNomes = extractExerciseNames(f.configuracao);
         const exCount =
           typeof f.exercicios_count === 'number'
             ? f.exercicios_count
-            : f.configuracao?.exercicios?.length || 0;
+            : exercicioNomes.length || f.configuracao?.exercicios?.length || 0;
 
         if (f.ativo) {
           activeCount++;
@@ -210,6 +212,7 @@ export default function TreinosPage() {
           criado_em: f.criado_em,
           tipo: 'digital',
           exercicios_count: exCount,
+          exercicio_nomes: exercicioNomes,
           ultima_execucao: lastExecByFicha.get(f.id) ?? null,
           configuracao: null,
         });
@@ -413,7 +416,7 @@ export default function TreinosPage() {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
 
         {/* ── Page Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 py-4 border-b border-divider">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 py-2">
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
             <button
               onClick={() => router.push('/admin/treinos/nova-ficha')}
@@ -469,19 +472,32 @@ export default function TreinosPage() {
           <div className="flex flex-col gap-6">
 
             {/* ── Metrics Cards Row ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
                 { label: "Fichas Digitais Ativas", value: fichasAtivas, dotColor: "bg-brand" },
                 { label: "Prescrições (Mês)", value: fichasCriadasMes, dotColor: "bg-brand" },
                 { label: "Alunos Atendidos", value: alunosAtendidos, dotColor: "bg-success" },
                 { label: "Execuções (30d)", value: treinosExecutados, dotColor: "bg-warning" },
               ].map(({ label, value, dotColor }) => (
-                <div key={label} className="bg-surface-1 rounded-lg p-4 border-0 shadow-sm flex flex-col justify-center h-20">
-                  <div className="flex items-center gap-1.5 leading-none">
-                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
-                    <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
+                <div
+                  key={label}
+                  className="coach-list-kpi-card relative overflow-hidden rounded-xl p-4 border border-border-subtle bg-surface-1 flex flex-col justify-center h-20"
+                >
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.03)_42%,transparent_68%)]"
+                  />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/20"
+                  />
+                  <div className="relative z-10 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 leading-none">
+                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
+                      <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
+                    </div>
+                    <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums lining-nums leading-none">{value}</span>
                   </div>
-                  <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums lining-nums leading-none">{value}</span>
                 </div>
               ))}
             </div>
@@ -550,71 +566,80 @@ export default function TreinosPage() {
                 </Card>
               )}
 
-              {/* Search & Filters */}
-              <div className="bg-surface-1 border-0 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                  <div className="relative w-full sm:max-w-xs">
-                    <MagnifyingGlass
-                      size={12}
-                      className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-[var(--filter-placeholder)]"
-                    />
-                    <input
-                      type="search"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Buscar por rotina ou aluno..."
-                      aria-label="Buscar treinos"
-                      style={{ touchAction: "manipulation" }}
-                      className="filter-control filter-control-search filter-control-compact w-full shadow-sm"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 bg-surface-2 border-0 rounded-lg p-1">
-                      {(['todas', 'ativas', 'inativas'] as const).map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => setStatusFilter(status)}
-                          className={cn(
-                            "px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded transition-all",
-                            statusFilter === status
-                              ? "bg-brand text-text-on-brand shadow-sm"
-                              : "text-text-secondary hover:text-text-primary"
-                          )}
-                        >
-                          {status}
-                        </button>
-                      ))}
+              {/* Busca + tabela — metade da largura, centralizado */}
+              <div className="coach-list-panel flex flex-col gap-5">
+                {/* Search & Filters — padrão flat */}
+                <div className="field-flat-input bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3.5">
+                    <div className="relative w-full sm:flex-1 sm:max-w-sm pl-6">
+                      <MagnifyingGlass
+                        size={14}
+                        className="pointer-events-none absolute left-0 top-1/2 z-10 -translate-y-1/2 text-text-disabled"
+                      />
+                      <input
+                        type="search"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Buscar por rotina ou aluno..."
+                        aria-label="Buscar treinos"
+                        style={{ touchAction: "manipulation" }}
+                        className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled"
+                      />
                     </div>
 
-                    <button
-                      onClick={handleResetFilters}
-                      className="p-2 bg-surface-2 hover:bg-surface-3 border-0 text-text-secondary hover:text-text-primary rounded-lg transition-colors"
-                      title="Resetar busca"
-                    >
-                      <ArrowCounterClockwise size={13} />
-                    </button>
+                    <div className="hidden sm:block w-px h-7 bg-border-divider/40 shrink-0" />
+
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto sm:ml-auto sm:justify-end">
+                      <div className="grid grid-cols-3 sm:flex sm:items-center gap-1 rounded-lg p-1 h-9 bg-brand-subtle/60 flex-1 sm:flex-initial">
+                        {(['todas', 'ativas', 'inativas'] as const).map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            style={{ touchAction: "manipulation" }}
+                            aria-pressed={statusFilter === status}
+                            className={cn(
+                              "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-7 flex items-center justify-center border-0 cursor-pointer",
+                              statusFilter === status
+                                ? "bg-brand/20 text-brand shadow-sm"
+                                : "bg-transparent text-text-tertiary hover:text-text-primary"
+                            )}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={handleResetFilters}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-subtle bg-transparent text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors cursor-pointer"
+                        title="Resetar busca"
+                      >
+                        <ArrowCounterClockwise size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-              {/* Table / Mobile cards */}
-              <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
-                {processedRoutines.length === 0 ? (
-                  <WorkoutsEmptyState />
-                ) : isMobile ? (
-                  <WorkoutsMobileList
-                    plans={processedRoutines}
-                    onView={handleViewWorkout}
-                    onEdit={handleEditWorkout}
-                    onDelete={setDeleteTarget}
-                  />
-                ) : (
-                  <WorkoutsTable
-                    plans={processedRoutines}
-                    onView={handleViewWorkout}
-                    onEdit={handleEditWorkout}
-                    onDelete={setDeleteTarget}
-                  />
-                )}
+                {/* Table / Mobile cards */}
+                <div className="coach-data-table-shell border border-border-subtle rounded-2xl overflow-hidden bg-surface-2">
+                  {processedRoutines.length === 0 ? (
+                    <WorkoutsEmptyState />
+                  ) : isMobile ? (
+                    <WorkoutsMobileList
+                      plans={processedRoutines}
+                      onView={handleViewWorkout}
+                      onEdit={handleEditWorkout}
+                      onDelete={setDeleteTarget}
+                    />
+                  ) : (
+                    <WorkoutsTable
+                      plans={processedRoutines}
+                      onView={handleViewWorkout}
+                      onEdit={handleEditWorkout}
+                      onDelete={setDeleteTarget}
+                    />
+                  )}
+                </div>
               </div>
 
               <StudentsWithoutWorkoutAlert

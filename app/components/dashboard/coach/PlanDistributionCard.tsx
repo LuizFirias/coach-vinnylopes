@@ -182,7 +182,7 @@ export function PlanDistributionCard({
   if (visible.length === 0) {
     return (
       <div className={cn("h-full flex flex-col", className)}>
-        <div className="flex items-center justify-center mb-3 min-h-[52px]">{title}</div>
+        <div className="flex items-center justify-start mb-3 min-h-[52px]">{title}</div>
         <div className="flex-1 flex items-center justify-center text-xs text-text-tertiary">
           Nenhum plano ativo encontrado.
         </div>
@@ -193,10 +193,10 @@ export function PlanDistributionCard({
   if (collapsed) {
     return (
       <div className={cn("flex flex-col gap-3", className)}>
-        <div className="flex justify-end">{title}</div>
+        <div className="flex justify-start">{title}</div>
         <div className="relative flex items-center justify-center min-h-[140px]">
-          {donut}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2">{legend}</div>
+          <div className="-translate-y-2">{donut}</div>
+          <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+0.5rem)]">{legend}</div>
         </div>
       </div>
     );
@@ -204,17 +204,17 @@ export function PlanDistributionCard({
 
   return (
     <div className={cn("h-full min-h-[240px] flex flex-col", className)}>
-      {/* Título na faixa do KPI do MRR, à direita */}
-      <div className="flex items-start justify-end mb-3 min-h-[52px] pt-0.5">
+      {/* Título alinhado à esquerda, na faixa do KPI do MRR */}
+      <div className="flex items-start justify-start mb-3 min-h-[52px] pt-0.5">
         {title}
       </div>
 
-      {/* Donut no centro do espaço; legenda absoluta à direita (não desloca o centro) */}
+      {/* Donut centrado (ligeiramente acima); legenda absoluta à direita */}
       <div className="relative flex-1 min-h-0">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="pointer-events-auto">{donut}</div>
+          <div className="pointer-events-auto -translate-y-9">{donut}</div>
         </div>
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+        <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+2.25rem)] z-10">
           {legend}
         </div>
       </div>

@@ -597,7 +597,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     try {
       const { data } = await supabaseClient
         .from("exercicios_biblioteca")
-        .select("id, nome, grupo_muscular, tipo_exercicio, video_url")
+        .select("id, nome, grupo_muscular, tipo_exercicio, equipamento, video_url")
         .order("nome", { ascending: true });
       setExerciseCatalog((data as LibraryExercise[]) || []);
     } finally {

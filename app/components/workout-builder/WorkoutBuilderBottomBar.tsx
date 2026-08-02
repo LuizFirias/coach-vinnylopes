@@ -39,7 +39,7 @@ export function WorkoutBuilderBottomBar({
             type="button"
             onClick={onSave}
             disabled={saving || !canSave || !isDirty}
-            className="inline-flex items-center justify-center gap-1.5 h-11 px-5 w-full max-w-[220px] bg-brand text-text-on-brand rounded-lg text-xs font-semibold disabled:opacity-40"
+            className="btn-primary inline-flex items-center justify-center gap-1.5 h-11 px-5 w-full max-w-[220px] rounded-lg text-xs font-semibold disabled:opacity-40"
           >
             {saving ? (
               <CircleNotch size={16} className="animate-spin shrink-0" />

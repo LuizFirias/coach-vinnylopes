@@ -18,7 +18,7 @@ interface WorkoutRowProps {
 
 export function WorkoutRow({ plan, onView, onEdit, onDelete }: WorkoutRowProps) {
   return (
-    <tr className="hover:bg-surface-2/40 transition-colors">
+    <tr className="border-b border-border-divider/40 last:border-b-0 hover:bg-surface-2/40 transition-colors">
       <td className="p-3 font-bold text-text-primary">{plan.aluno_nome}</td>
       <td className="p-3">
         <span className="font-semibold text-text-secondary">{plan.nome_rotina}</span>
@@ -35,7 +35,7 @@ export function WorkoutRow({ plan, onView, onEdit, onDelete }: WorkoutRowProps) 
       <td className="p-3">
         <WorkoutCreatedAtCell plan={plan} />
       </td>
-      <td className="p-3 text-right">
+      <td className="p-3 pr-10 text-right">
         <WorkoutActions plan={plan} onView={onView} onEdit={onEdit} onDelete={onDelete} />
       </td>
     </tr>

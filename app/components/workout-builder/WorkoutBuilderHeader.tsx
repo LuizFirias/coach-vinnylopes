@@ -26,11 +26,6 @@ interface WorkoutBuilderHeaderProps {
   onOpenSettings?: () => void;
 }
 
-const selectCls =
-  "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 h-9";
-const inputCls =
-  "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 h-9";
-
 export function WorkoutBuilderHeader({
   isMobile,
   alunos,
@@ -92,26 +87,38 @@ export function WorkoutBuilderHeader({
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col sm:flex-row gap-2 min-w-0">
-          <select
-            value={alunoSelecionado}
-            onChange={(e) => onAlunoChange(e.target.value)}
-            className={cn(selectCls, "sm:flex-1")}
-          >
-            <option value="">Selecione o aluno...</option>
-            {alunos.map((aluno) => (
-              <option key={aluno.id} value={aluno.id}>
-                {aluno.coaching_reference}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={nomeRotina}
-            onChange={(e) => onRotinaChange(e.target.value)}
-            placeholder="Ex: Lower A"
-            className={cn(inputCls, "sm:flex-1")}
-          />
+        <div className="field-flat-input flex-1 min-w-0 rounded-2xl border border-border-subtle bg-surface-1 overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2">
+            <div className="px-4 py-2.5 sm:border-r sm:border-border-divider">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+                Aluno
+              </label>
+              <select
+                value={alunoSelecionado}
+                onChange={(e) => onAlunoChange(e.target.value)}
+                className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary appearance-none cursor-pointer p-0"
+              >
+                <option value="">Selecione o aluno...</option>
+                {alunos.map((aluno) => (
+                  <option key={aluno.id} value={aluno.id}>
+                    {aluno.coaching_reference}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="px-4 py-2.5 border-t border-border-divider sm:border-t-0">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+                Nome da rotina
+              </label>
+              <input
+                type="text"
+                value={nomeRotina}
+                onChange={(e) => onRotinaChange(e.target.value)}
+                placeholder="Ex: Lower A"
+                className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled p-0"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -130,7 +137,9 @@ export function WorkoutBuilderHeader({
             type="button"
             onClick={onSave}
             disabled={saving || !canSave || !isDirty}
-            className="inline-flex items-center gap-1.5 px-4 h-9 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity"
+            className={cn(
+              "btn-primary inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg disabled:opacity-40",
+            )}
           >
             {saving ? <CircleNotch size={14} className="animate-spin" /> : <FloppyDisk size={14} />}
             {saving ? "Salvando..." : "Salvar ficha"}

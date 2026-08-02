@@ -15,6 +15,7 @@ export interface ExercicioFicha {
   tipo_exercicio: string;
   descanso: string;
   video_url: string;
+  imagem_url?: string;
   observacoes: string;
   series: SerieDefinicao[];
   biset_parceiro_id?: string;

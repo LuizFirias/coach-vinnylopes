@@ -17,9 +17,6 @@ interface WorkoutBuilderSettingsSheetProps {
   onClose: () => void;
 }
 
-const fieldCls =
-  "w-full h-10 px-3 bg-surface-2 border border-input rounded-lg text-xs text-text-primary focus:outline-none focus:border-brand/40";
-
 export function WorkoutBuilderSettingsSheet({
   alunos,
   alunoSelecionado,
@@ -37,13 +34,16 @@ export function WorkoutBuilderSettingsSheet({
             <X size={18} />
           </button>
         </div>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Aluno</label>
+
+        <div className="field-flat-input rounded-2xl border border-border-subtle bg-surface-1 overflow-hidden mb-3">
+          <div className="px-4 py-3.5 border-b border-border-divider">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+              Aluno
+            </label>
             <select
               value={alunoSelecionado}
               onChange={(e) => onAlunoChange(e.target.value)}
-              className={fieldCls}
+              className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary appearance-none cursor-pointer p-0"
             >
               <option value="">Selecione o aluno...</option>
               {alunos.map((a) => (
@@ -51,24 +51,27 @@ export function WorkoutBuilderSettingsSheet({
               ))}
             </select>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Rotina</label>
+          <div className="px-4 py-3.5">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+              Nome da rotina
+            </label>
             <input
               type="text"
               value={nomeRotina}
               onChange={(e) => onRotinaChange(e.target.value)}
               placeholder="Ex: Lower A"
-              className={fieldCls}
+              className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled p-0"
             />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={cn("w-full h-10 bg-brand text-text-on-brand rounded-lg text-xs font-semibold mt-2")}
-          >
-            Aplicar
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn("btn-primary w-full h-10 rounded-lg text-xs font-semibold")}
+        >
+          Aplicar
+        </button>
       </div>
     </div>
   );

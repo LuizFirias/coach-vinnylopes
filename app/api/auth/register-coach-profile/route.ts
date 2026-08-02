@@ -31,6 +31,10 @@ export async function POST(req: Request) {
     const cleanInsta = (instagram || "").replace("@", "").trim();
     const { accountType, studentLimit } = await applyInviteCode(inviteCode);
 
+    const whatsappRaw =
+      user.user_metadata?.phone || user.user_metadata?.whatsapp || user.phone || "";
+    const whatsapp = String(whatsappRaw).replace(/\D/g, "") || null;
+
     const { error: profileError } = await adminClient
       .from("profiles")
       .upsert({
@@ -42,6 +46,7 @@ export async function POST(req: Request) {
         coaching_reference: cleanInsta,
         account_type: accountType,
         student_limit: studentLimit,
+        whatsapp,
         atualizado_em: new Date().toISOString(),
       });
 

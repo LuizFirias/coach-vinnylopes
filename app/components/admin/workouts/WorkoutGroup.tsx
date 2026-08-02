@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
-import type { WorkoutGroup } from "./types";
-import { WorkoutRow } from "./WorkoutRow";
-import type { WorkoutPlan } from "./types";
+import type { WorkoutGroup, WorkoutPlan } from "./types";
 import {
+  StudentCreateFichaButton,
   StudentWorkoutsEyeButton,
   StudentWorkoutsModal,
+  WORKOUT_ACTION_GAP,
 } from "./StudentWorkoutsModal";
 
 interface WorkoutGroupBlockProps {
@@ -18,31 +18,22 @@ interface WorkoutGroupBlockProps {
   onDelete: (plan: WorkoutPlan) => void;
 }
 
+const slot = "w-16 shrink-0 flex items-center justify-center";
+
 export function WorkoutGroupBlock({ group, onView, onEdit, onDelete }: WorkoutGroupBlockProps) {
   const [modalOpen, setModalOpen] = useState(false);
-  const hasMultiple = group.plans.length > 1;
-
-  if (!hasMultiple) {
-    return (
-      <WorkoutRow
-        plan={group.plans[0]}
-        onView={onView}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
-    );
-  }
-
   const initial = group.studentName.charAt(0).toUpperCase();
   const avatarSrc = group.avatarUrl
     ? getPublicStorageUrl("avatars", group.avatarUrl)
     : null;
+  const fichaLabel =
+    group.plans.length === 1 ? "1 ficha" : `${group.plans.length} fichas`;
 
   return (
     <>
-      <tr className="bg-surface-0">
-        <td colSpan={7} className="p-0 border-b border-divider">
-          <div className="w-full flex items-center gap-2.5 px-3 py-2.5">
+      <tr className="hover:bg-surface-2/40 transition-colors">
+        <td className="p-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div
               className={cn(
                 "w-7 h-7 rounded-md bg-gradient-to-br flex items-center justify-center font-bold text-[10px] text-white shrink-0 overflow-hidden",
@@ -55,13 +46,25 @@ export function WorkoutGroupBlock({ group, onView, onEdit, onDelete }: WorkoutGr
                 initial
               )}
             </div>
-            <span className="flex-1 text-xs font-semibold text-text-primary truncate">
+            <span className="text-xs font-semibold text-text-primary truncate">
               {group.studentName}
             </span>
-            <span className="text-[11px] text-text-tertiary shrink-0">
-              {group.plans.length} fichas
+          </div>
+        </td>
+        <td className="py-3 pl-3" style={{ paddingRight: WORKOUT_ACTION_GAP }}>
+          <div
+            className="flex items-center justify-end"
+            style={{ gap: WORKOUT_ACTION_GAP }}
+          >
+            <span className={cn(slot, "text-[11px] text-text-tertiary whitespace-nowrap")}>
+              {fichaLabel}
             </span>
-            <StudentWorkoutsEyeButton onClick={() => setModalOpen(true)} />
+            <span className={slot}>
+              <StudentWorkoutsEyeButton onClick={() => setModalOpen(true)} />
+            </span>
+            <span className={slot}>
+              <StudentCreateFichaButton studentId={group.studentId} />
+            </span>
           </div>
         </td>
       </tr>

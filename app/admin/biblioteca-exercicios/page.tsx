@@ -25,6 +25,7 @@ import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { CANONICAL_MUSCLE_GROUPS } from "@/lib/constants/muscle-groups";
+import { CANONICAL_EQUIPMENTS } from "@/lib/constants/equipment";
 import { textEquals, textIncludes } from "@/lib/utils/textNormalize";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 
@@ -45,10 +46,7 @@ interface Exercicio {
 
 const GRUPOS_MUSCULARES = [...CANONICAL_MUSCLE_GROUPS];
 
-const EQUIPAMENTOS = [
-  "Nenhum", "Banda de Resistência", "Banda de Suspensão", "Barra",
-  "Disco de Peso", "Haltere", "Kettlebell", "Máquina", "Outro",
-];
+const EQUIPAMENTOS = [...CANONICAL_EQUIPMENTS];
 
 const TIPOS_EXERCICIO = [
   "Peso & Repetições", "Repetições", "Peso Corporal com Peso Acrescido",

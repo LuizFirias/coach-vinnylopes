@@ -5,10 +5,11 @@ import { cn } from "@/lib/utils/cn";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
 import { groupWorkoutsByStudent } from "@/lib/utils/workoutGrouping";
 import type { WorkoutGroup, WorkoutPlan } from "./types";
-import { WorkoutCardMobile } from "./WorkoutCardMobile";
 import {
+  StudentCreateFichaButton,
   StudentWorkoutsEyeButton,
   StudentWorkoutsModal,
+  WORKOUT_ACTION_GAP,
 } from "./StudentWorkoutsModal";
 
 interface WorkoutsMobileListProps {
@@ -30,22 +31,12 @@ function MobileWorkoutGroup({
   onDelete: (plan: WorkoutPlan) => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const hasMultiple = group.plans.length > 1;
   const initial = group.studentName.charAt(0).toUpperCase();
   const avatarSrc = group.avatarUrl
     ? getPublicStorageUrl("avatars", group.avatarUrl)
     : null;
-
-  if (!hasMultiple) {
-    return (
-      <WorkoutCardMobile
-        plan={group.plans[0]}
-        onView={onView}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
-    );
-  }
+  const fichaLabel =
+    group.plans.length === 1 ? "1 ficha" : `${group.plans.length} fichas`;
 
   return (
     <>
@@ -65,9 +56,12 @@ function MobileWorkoutGroup({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-text-primary truncate">{group.studentName}</p>
-            <p className="text-[10px] text-text-tertiary">{group.plans.length} fichas</p>
+            <p className="text-[10px] text-text-tertiary">{fichaLabel}</p>
           </div>
-          <StudentWorkoutsEyeButton onClick={() => setModalOpen(true)} />
+          <div className="flex items-center shrink-0" style={{ gap: WORKOUT_ACTION_GAP }}>
+            <StudentWorkoutsEyeButton onClick={() => setModalOpen(true)} />
+            <StudentCreateFichaButton studentId={group.studentId} />
+          </div>
         </div>
       </div>
       {modalOpen && (

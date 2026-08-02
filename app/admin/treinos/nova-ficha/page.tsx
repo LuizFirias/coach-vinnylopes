@@ -7,8 +7,6 @@ import {
   Plus,
   Trash,
   X,
-  MagnifyingGlass,
-  CaretRight,
   Barbell,
   WarningCircle,
   CircleNotch,
@@ -17,13 +15,17 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
-import { textIncludes } from "@/lib/utils/textNormalize";
 import { readReturnUrl } from "@/lib/utils/adminNav";
 import { WorkoutBuilderHeader } from "@/app/components/workout-builder/WorkoutBuilderHeader";
 import { WorkoutBuilderBottomBar } from "@/app/components/workout-builder/WorkoutBuilderBottomBar";
 import { WorkoutBuilderSettingsSheet } from "@/app/components/workout-builder/WorkoutBuilderSettingsSheet";
 import { ExerciseList } from "@/app/components/workout-builder/ExerciseList";
 import { WorkoutPrescriptionSummary } from "@/app/components/workout-builder/WorkoutPrescriptionSummary";
+import {
+  ExerciseLibraryModal,
+  type LibraryExercise,
+} from "@/app/components/workout-builder/ExerciseLibraryModal";
+import { LibraryPanel } from "@/app/components/workout-builder/LibraryPanel";
 import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
 import { TIPOS_EXERCICIO } from "@/app/components/workout-builder/exerciseColumns";
 import type { ExercicioFichaItem } from "@/lib/utils/biset";
@@ -35,6 +37,7 @@ import {
   validateBiSetGroup,
   isBiSetFichaItem,
 } from "@/lib/utils/biset";
+import { CANONICAL_EQUIPMENTS } from "@/lib/constants/equipment";
 
 interface Aluno {
   id: string;
@@ -47,10 +50,11 @@ interface Exercicio {
   nome: string;
   grupo_muscular: string;
   tipo_exercicio?: string;
+  equipamento?: string;
   video_url?: string;
 }
 
-const EQUIPAMENTOS = ["Nenhum", "Banda de Resistência", "Banda de Suspensão", "Barra", "Disco de Peso", "Haltere", "Kettlebell", "Máquina", "Outro"];
+const EQUIPAMENTOS = [...CANONICAL_EQUIPMENTS];
 
 const inputCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors h-10";
 const selectCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 transition-colors appearance-none h-10";
@@ -97,11 +101,9 @@ export default function NovaFichaCoachPage() {
   const [modalExercicio, setModalExercicio] = useState(false);
   const [modalNovoExercicio, setModalNovoExercicio] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(new Set());
   const [novoExercicioForm, setNovoExercicioForm] = useState({
     nome: "", grupo_muscular: "", descricao: "", video_url: "", equipamento: "", tipo_exercicio: "",
   });
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -146,7 +148,7 @@ export default function NovaFichaCoachPage() {
       setAlunos(alunosData);
 
       const { data: exerciciosData } = await supabaseClient
-        .from("exercicios_biblioteca").select("id, nome, grupo_muscular, tipo_exercicio, video_url")
+        .from("exercicios_biblioteca").select("id, nome, grupo_muscular, tipo_exercicio, equipamento, video_url")
         .order("nome", { ascending: true });
       setExerciciosCatalogo(exerciciosData || []);
     } catch (err) {
@@ -194,29 +196,11 @@ export default function NovaFichaCoachPage() {
     setModalExercicio(false);
   };
 
-  const toggleSelectExercise = (id: string) => {
-    setSelectedExerciseIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleAddSelectedExercises = () => {
-    if (selectedExerciseIds.size === 0) {
-      setModalExercicio(false);
-      return;
-    }
-    const novos: ExercicioFicha[] = [];
-    selectedExerciseIds.forEach((id) => {
-      const ex = exerciciosCatalogo.find((e) => e.id === id);
-      if (ex) novos.push(exercicioFromCatalog(ex));
-    });
+  const handleAddFromLibrary = (selected: LibraryExercise[]) => {
+    const novos = selected.map((ex) => exercicioFromCatalog(ex as Exercicio));
     setExerciciosFicha((prev) => [...prev, ...novos]);
     markDirty();
-    setSelectedExerciseIds(new Set());
-    setModalExercicio(false);
+    if (isMobile) setModalExercicio(false);
   };
 
 
@@ -426,11 +410,6 @@ export default function NovaFichaCoachPage() {
     markDirty();
   };
 
-  const filteredExercicios = exerciciosCatalogo.filter((ex) =>
-    textIncludes(ex.nome, searchTerm) ||
-    textIncludes(ex.grupo_muscular, searchTerm)
-  );
-
   const criarNovoExercicio = async () => {
     setErroValidacao(null);
     const { nome, grupo_muscular, equipamento, tipo_exercicio, video_url } = novoExercicioForm;
@@ -615,122 +594,211 @@ export default function NovaFichaCoachPage() {
 
   const canSave = !!alunoSelecionado && !!nomeRotina.trim() && exerciciosFicha.length > 0;
 
+  const existingExerciseIds = new Set(
+    exerciciosFicha.flatMap((item) =>
+      isBiSetFichaItem(item)
+        ? ([item.exercicioA.exercicio_id, item.exercicioB?.exercicio_id].filter(
+            Boolean,
+          ) as string[])
+        : [item.id],
+    ),
+  );
+
+  const exerciseListProps = {
+    items: exerciciosFicha,
+    catalog: exerciciosCatalogo,
+    onReorder: handleReorder,
+    onUpdateSimple: atualizarExercicio,
+    onDeleteSimple: removerExercicioSimple,
+    onDuplicateSimple: duplicarExercicio,
+    onAddSetSimple: adicionarSerie,
+    onUpdateSerieSimple: atualizarSerie,
+    onDeleteSerieSimple: removerSerie,
+    onUpdateBiSetDescanso: atualizarBiSetDescanso,
+    onUpdateBiSetHalf: atualizarBiSetHalf,
+    onUpdateBiSetSerie: atualizarBiSetSerie,
+    onAddBiSetSerie: adicionarSerieBiSet,
+    onRemoveBiSetSerie: removerSerieBiSet,
+    onSelectBiSetPartner: selecionarParceiroBiSet,
+    onSwapBiSetPartner: trocarParceiroBiSet,
+    onUndoBiSet: desfazerBiSet,
+    onDeleteBiSet: removerGrupoBiSet,
+  };
+
+  const headerShared = {
+    alunos,
+    alunoSelecionado,
+    nomeRotina,
+    saving,
+    exporting,
+    canSave,
+    isDirty,
+    onBack: goBack,
+    onAlunoChange: (id: string) => {
+      setAlunoSelecionado(id);
+      markDirty();
+    },
+    onRotinaChange: (n: string) => {
+      setNomeRotina(n);
+      markDirty();
+    },
+    onSave: handleSalvarFicha,
+    onOpenSettings: () => setSettingsOpen(true),
+  };
+
   return (
     <div
       className={cn(
-        "min-h-screen bg-surface-0 lg:pl-28",
-        isMobile
-          ? "pb-[calc(5rem+env(safe-area-inset-bottom))]"
-          : "pb-12 p-4 md:p-6"
+        "nova-ficha-screen min-h-screen bg-surface-0 lg:pl-28",
+        isMobile ? "pb-[calc(5rem+env(safe-area-inset-bottom))]" : "pb-0",
       )}
     >
-      <div className="max-w-4xl mx-auto px-4 md:px-0">
-        <WorkoutBuilderHeader
-          isMobile={isMobile}
-          alunos={alunos}
-          alunoSelecionado={alunoSelecionado}
-          nomeRotina={nomeRotina}
-          saving={saving}
-          exporting={exporting}
-          canSave={canSave}
-          isDirty={isDirty}
-          onBack={goBack}
-          onAlunoChange={(id) => { setAlunoSelecionado(id); markDirty(); }}
-          onRotinaChange={(n) => { setNomeRotina(n); markDirty(); }}
-          onSave={handleSalvarFicha}
-          onExportPdf={!isMobile ? handleExportarPDF : undefined}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
-
-        {dragHint && (
-          <div className="mb-3 px-3 py-2 bg-brand-subtle border border-brand-border rounded-lg text-xs text-brand text-center">
-            {dragHint}
-          </div>
-        )}
-
-        {bisetToast && (
-          <div className="mb-3 px-3 py-2.5 bg-[#1a2d4a] border-l-[3px] border-brand rounded-lg text-xs text-text-primary">
-            {bisetToast}
-          </div>
-        )}
-
-        <WorkoutPrescriptionSummary
-          items={exerciciosFicha}
-          isMobile={isMobile}
-          className="mb-4"
-        />
-
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-primary">
-            Exercícios <span className="text-brand">({exerciciosFicha.length})</span>
-          </h2>
-          {!isMobile && (
-            <button
-              type="button"
-              onClick={() => setModalExercicio(true)}
-              className="inline-flex items-center gap-1.5 px-3 h-8 bg-surface-1 border-0 text-text-secondary rounded-lg text-xs font-semibold hover:text-brand hover:border-brand/30"
+      {!isMobile ? (
+        <div className="flex h-screen overflow-hidden justify-center">
+          <div
+            className="flex w-full gap-6 p-6 overflow-hidden"
+            style={{ maxWidth: 1400 }}
+          >
+            <div
+              className="flex flex-col overflow-hidden"
+              style={{ flex: 1, minWidth: 0, maxWidth: 760 }}
             >
-              <Plus size={14} weight="bold" /> Adicionar exercício
-            </button>
-          )}
+              <div className="shrink-0 pb-4">
+                <WorkoutBuilderHeader
+                  {...headerShared}
+                  isMobile={false}
+                  onExportPdf={handleExportarPDF}
+                />
+
+                {dragHint && (
+                  <div className="mt-3 px-3 py-2 bg-brand-subtle border border-brand-border rounded-lg text-xs text-brand text-center">
+                    {dragHint}
+                  </div>
+                )}
+                {bisetToast && (
+                  <div className="mt-3 px-3 py-2.5 bg-[#1a2d4a] border-l-[3px] border-brand rounded-lg text-xs text-text-primary">
+                    {bisetToast}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-4">
+                  <h2 className="text-sm font-semibold text-text-primary">
+                    Exercícios{" "}
+                    <span className="text-brand">({exerciciosFicha.length})</span>
+                  </h2>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {exerciciosFicha.length === 0 ? (
+                  <div
+                    className="border border-dashed border-divider rounded-xl p-10 flex flex-col items-center text-center"
+                    style={{ background: "rgba(255,255,255,0.02)" }}
+                  >
+                    <Barbell size={40} className="text-text-disabled mb-3" />
+                    <h3 className="text-sm font-semibold text-text-primary mb-1">
+                      Nenhum exercício na ficha
+                    </h3>
+                    <p className="text-xs text-text-tertiary">
+                      Clique em um exercício na biblioteca ao lado para adicionar.
+                    </p>
+                  </div>
+                ) : (
+                  <ExerciseList {...exerciseListProps} />
+                )}
+              </div>
+            </div>
+
+            <div
+              className="shrink-0 flex flex-col gap-4 overflow-hidden"
+              style={{ width: 480 }}
+            >
+              <WorkoutPrescriptionSummary
+                items={exerciciosFicha}
+                isMobile={false}
+                hideWhenEmpty={false}
+                variant="stats"
+                className="shrink-0 shadow-sm"
+              />
+
+              <div className="flex-1 min-h-0 rounded-2xl border border-border-subtle shadow-sm overflow-hidden flex flex-col">
+                <LibraryPanel
+                  catalog={exerciciosCatalogo}
+                  existingIds={existingExerciseIds}
+                  onAdd={handleAddFromLibrary}
+                  onCreateNew={() => setModalNovoExercicio(true)}
+                />
+              </div>
+            </div>
+          </div>
         </div>
+      ) : (
+        <div className="max-w-4xl mx-auto px-4 md:px-0 pb-[calc(5rem+env(safe-area-inset-bottom))]">
+          <WorkoutBuilderHeader {...headerShared} isMobile={true} />
 
-        {exerciciosFicha.length === 0 ? (
-          <div className="bg-surface-1 border border-dashed border-divider rounded-xl p-10 flex flex-col items-center text-center">
-            <Barbell size={40} className="text-text-disabled mb-3" />
-            <h3 className="text-sm font-semibold text-text-primary mb-1">Nenhum exercício na ficha</h3>
-            <p className="text-xs text-text-tertiary mb-5">Adicione exercícios da biblioteca para montar o treino.</p>
-            <button
-              type="button"
-              onClick={() => setModalExercicio(true)}
-              className="px-5 h-9 bg-brand text-text-on-brand rounded-lg text-xs font-semibold"
-            >
-              Abrir biblioteca
-            </button>
-          </div>
-        ) : (
-          <>
-          <ExerciseList
+          {dragHint && (
+            <div className="mb-3 px-3 py-2 bg-brand-subtle border border-brand-border rounded-lg text-xs text-brand text-center">
+              {dragHint}
+            </div>
+          )}
+          {bisetToast && (
+            <div className="mb-3 px-3 py-2.5 bg-[#1a2d4a] border-l-[3px] border-brand rounded-lg text-xs text-text-primary">
+              {bisetToast}
+            </div>
+          )}
+
+          <WorkoutPrescriptionSummary
             items={exerciciosFicha}
-            catalog={exerciciosCatalogo}
-            onReorder={handleReorder}
-            onUpdateSimple={atualizarExercicio}
-            onDeleteSimple={removerExercicioSimple}
-            onDuplicateSimple={duplicarExercicio}
-            onAddSetSimple={adicionarSerie}
-            onUpdateSerieSimple={atualizarSerie}
-            onDeleteSerieSimple={removerSerie}
-            onUpdateBiSetDescanso={atualizarBiSetDescanso}
-            onUpdateBiSetHalf={atualizarBiSetHalf}
-            onUpdateBiSetSerie={atualizarBiSetSerie}
-            onAddBiSetSerie={adicionarSerieBiSet}
-            onRemoveBiSetSerie={removerSerieBiSet}
-            onSelectBiSetPartner={selecionarParceiroBiSet}
-            onSwapBiSetPartner={trocarParceiroBiSet}
-            onUndoBiSet={desfazerBiSet}
-            onDeleteBiSet={removerGrupoBiSet}
+            isMobile={true}
+            className="mb-4"
           />
-            <button
-              type="button"
-              onClick={() => setModalExercicio(true)}
-              className="mt-3 mb-1 w-full h-11 inline-flex items-center justify-center gap-1.5 border border-dashed border-brand/40 rounded-xl text-brand text-xs font-semibold"
-            >
-              <Plus size={14} weight="bold" />
-              Adicionar exercício
-            </button>
-          </>
-        )}
-      </div>
 
-      {isMobile && (
-        <WorkoutBuilderBottomBar
-          saving={saving}
-          exporting={exporting}
-          canSave={canSave}
-          isDirty={isDirty}
-          onSave={handleSalvarFicha}
-          onExportPdf={handleExportarPDF}
-        />
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-text-primary">
+              Exercícios <span className="text-brand">({exerciciosFicha.length})</span>
+            </h2>
+          </div>
+
+          {exerciciosFicha.length === 0 ? (
+            <div className="bg-surface-1 border border-dashed border-divider rounded-xl p-10 flex flex-col items-center text-center">
+              <Barbell size={40} className="text-text-disabled mb-3" />
+              <h3 className="text-sm font-semibold text-text-primary mb-1">
+                Nenhum exercício na ficha
+              </h3>
+              <p className="text-xs text-text-tertiary mb-5">
+                Adicione exercícios da biblioteca para montar o treino.
+              </p>
+              <button
+                type="button"
+                onClick={() => setModalExercicio(true)}
+                className="btn-primary px-5 h-9 rounded-lg text-xs font-semibold"
+              >
+                Abrir biblioteca
+              </button>
+            </div>
+          ) : (
+            <>
+              <ExerciseList {...exerciseListProps} />
+              <button
+                type="button"
+                onClick={() => setModalExercicio(true)}
+                className="mt-3 mb-1 w-full h-11 inline-flex items-center justify-center gap-1.5 border border-dashed border-brand/40 rounded-xl text-brand text-xs font-semibold"
+              >
+                <Plus size={14} weight="bold" />
+                Adicionar exercício
+              </button>
+            </>
+          )}
+
+          <WorkoutBuilderBottomBar
+            saving={saving}
+            exporting={exporting}
+            canSave={canSave}
+            isDirty={isDirty}
+            onSave={handleSalvarFicha}
+            onExportPdf={handleExportarPDF}
+          />
+        </div>
       )}
 
       {settingsOpen && (
@@ -738,96 +806,43 @@ export default function NovaFichaCoachPage() {
           alunos={alunos}
           alunoSelecionado={alunoSelecionado}
           nomeRotina={nomeRotina}
-          onAlunoChange={(id) => { setAlunoSelecionado(id); markDirty(); }}
-          onRotinaChange={(n) => { setNomeRotina(n); markDirty(); }}
+          onAlunoChange={(id) => {
+            setAlunoSelecionado(id);
+            markDirty();
+          }}
+          onRotinaChange={(n) => {
+            setNomeRotina(n);
+            markDirty();
+          }}
           onClose={() => setSettingsOpen(false)}
         />
       )}
 
-      {/* Modal biblioteca */}
-      {modalExercicio && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-surface-0/80 backdrop-blur-sm">
-          <div className="bg-surface-1 border-0 shadow-2xl w-full max-w-xl rounded-xl overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-4 border-b border-divider flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-text-primary">Biblioteca</h3>
-                <p className="text-[10px] text-text-tertiary">Selecione exercícios para adicionar</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setModalExercicio(false); setModalNovoExercicio(true); }}
-                  className="px-2.5 h-8 bg-brand text-text-on-brand rounded-lg text-xs font-semibold"
-                >
-                  + Novo
-                </button>
-                <button type="button" onClick={() => setModalExercicio(false)} className="w-8 h-8 bg-surface-3 rounded-lg flex items-center justify-center">
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="relative">
-                <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary w-3.5 h-3.5" />
-                <input
-                  type="text"
-                  placeholder="Filtrar por nome ou grupo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-10 pl-9 pr-4 bg-surface-2 border-0 rounded-lg text-xs"
-                />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1.5">
-              {filteredExercicios.map((ex) => {
-                const isSelected = selectedExerciseIds.has(ex.id);
-                return (
-                  <button
-                    key={ex.id}
-                    type="button"
-                    onClick={() => toggleSelectExercise(ex.id)}
-                    className={cn(
-                      "w-full flex items-center justify-between p-3 rounded-lg border text-left",
-                      isSelected ? "border-brand bg-brand/5" : "border-transparent bg-surface-2"
-                    )}
-                  >
-                    <div>
-                      <p className={cn("text-xs font-bold", isSelected ? "text-brand" : "text-text-primary")}>{ex.nome}</p>
-                      <p className="text-[9px] uppercase text-text-tertiary">{ex.grupo_muscular}</p>
-                    </div>
-                    {isSelected ? (
-                      <span className="w-4 h-4 rounded-full bg-brand text-[9px] text-text-on-brand flex items-center justify-center">✓</span>
-                    ) : (
-                      <CaretRight size={14} className="text-text-tertiary" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="p-4 border-t border-divider flex justify-end gap-2">
-              <button type="button" onClick={() => { setSelectedExerciseIds(new Set()); setModalExercicio(false); }} className="px-4 py-2 text-xs font-semibold rounded-lg bg-surface-3">
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleAddSelectedExercises}
-                disabled={selectedExerciseIds.size === 0}
-                className="px-4 py-2 bg-brand disabled:opacity-40 text-text-on-brand rounded-lg text-xs font-semibold"
-              >
-                Adicionar ({selectedExerciseIds.size})
-              </button>
-            </div>
-          </div>
-        </div>
+      {isMobile && modalExercicio && (
+        <ExerciseLibraryModal
+          catalog={exerciciosCatalogo}
+          existingIds={existingExerciseIds}
+          onClose={() => setModalExercicio(false)}
+          onAdd={handleAddFromLibrary}
+          onCreateNew={() => {
+            setModalExercicio(false);
+            setModalNovoExercicio(true);
+          }}
+        />
       )}
 
-      {/* Modal novo exercício */}
       {modalNovoExercicio && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-surface-0/80 backdrop-blur-sm">
           <div className="bg-surface-1 border-0 w-full max-w-lg rounded-xl max-h-[85vh] flex flex-col">
             <div className="p-4 border-b border-divider flex justify-between items-center">
               <h3 className="text-sm font-bold">Criar exercício</h3>
-              <button type="button" onClick={() => { setModalNovoExercicio(false); setErroValidacao(null); }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalNovoExercicio(false);
+                  setErroValidacao(null);
+                }}
+              >
                 <X size={16} />
               </button>
             </div>
@@ -840,30 +855,90 @@ export default function NovaFichaCoachPage() {
               )}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-text-tertiary">Nome *</label>
-                <input type="text" value={novoExercicioForm.nome} onChange={(e) => setNovoExercicioForm({ ...novoExercicioForm, nome: e.target.value })} className={inputCls} />
+                <input
+                  type="text"
+                  value={novoExercicioForm.nome}
+                  onChange={(e) =>
+                    setNovoExercicioForm({ ...novoExercicioForm, nome: e.target.value })
+                  }
+                  className={inputCls}
+                />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-text-tertiary">Grupo muscular *</label>
-                <input type="text" value={novoExercicioForm.grupo_muscular} onChange={(e) => setNovoExercicioForm({ ...novoExercicioForm, grupo_muscular: e.target.value })} className={inputCls} placeholder="Ex: Peito Médio" />
+                <label className="text-[10px] font-bold uppercase text-text-tertiary">
+                  Grupo muscular *
+                </label>
+                <input
+                  type="text"
+                  value={novoExercicioForm.grupo_muscular}
+                  onChange={(e) =>
+                    setNovoExercicioForm({
+                      ...novoExercicioForm,
+                      grupo_muscular: e.target.value,
+                    })
+                  }
+                  className={inputCls}
+                  placeholder="Ex: Peito Médio"
+                />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-text-tertiary">Equipamento *</label>
-                <select value={novoExercicioForm.equipamento} onChange={(e) => setNovoExercicioForm({ ...novoExercicioForm, equipamento: e.target.value })} className={selectCls}>
+                <label className="text-[10px] font-bold uppercase text-text-tertiary">
+                  Equipamento *
+                </label>
+                <select
+                  value={novoExercicioForm.equipamento}
+                  onChange={(e) =>
+                    setNovoExercicioForm({
+                      ...novoExercicioForm,
+                      equipamento: e.target.value,
+                    })
+                  }
+                  className={selectCls}
+                >
                   <option value="">Selecione...</option>
-                  {EQUIPAMENTOS.map((eq) => <option key={eq} value={eq}>{eq}</option>)}
+                  {EQUIPAMENTOS.map((eq) => (
+                    <option key={eq} value={eq}>
+                      {eq}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-text-tertiary">Tipo *</label>
-                <select value={novoExercicioForm.tipo_exercicio} onChange={(e) => setNovoExercicioForm({ ...novoExercicioForm, tipo_exercicio: e.target.value })} className={selectCls}>
+                <select
+                  value={novoExercicioForm.tipo_exercicio}
+                  onChange={(e) =>
+                    setNovoExercicioForm({
+                      ...novoExercicioForm,
+                      tipo_exercicio: e.target.value,
+                    })
+                  }
+                  className={selectCls}
+                >
                   <option value="">Selecione...</option>
-                  {TIPOS_EXERCICIO.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {TIPOS_EXERCICIO.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
             <div className="p-4 border-t flex gap-2">
-              <button type="button" onClick={() => setModalNovoExercicio(false)} className="flex-1 h-9 bg-surface-3 rounded-lg text-xs font-semibold">Cancelar</button>
-              <button type="button" onClick={criarNovoExercicio} className="flex-1 h-9 bg-brand text-text-on-brand rounded-lg text-xs font-semibold">Criar e adicionar</button>
+              <button
+                type="button"
+                onClick={() => setModalNovoExercicio(false)}
+                className="flex-1 h-9 bg-surface-3 rounded-lg text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={criarNovoExercicio}
+                className="flex-1 h-9 bg-brand text-text-on-brand rounded-lg text-xs font-semibold"
+              >
+                Criar e adicionar
+              </button>
             </div>
           </div>
         </div>

@@ -1,7 +1,43 @@
+import { isBiSetFichaItem, type ExercicioFichaItem } from "@/lib/utils/biset";
+import type { WorkoutPlan } from "./types";
+
 export function formatLastExecution(dateStr: string | null | undefined): string {
   if (!dateStr) return "Nunca";
   const formatted = timeAgo(dateStr);
   return formatted ?? "Nunca";
+}
+
+/** Nomes dos exercícios a partir de configuracao.exercicios (inclui bi-set). */
+export function extractExerciseNames(
+  configuracao: { exercicios?: unknown[] } | null | undefined,
+): string[] {
+  const items = configuracao?.exercicios;
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((raw) => {
+      const ex = raw as ExercicioFichaItem;
+      if (isBiSetFichaItem(ex)) {
+        const a = ex.exercicioA?.nome?.trim();
+        const b = ex.exercicioB?.nome?.trim();
+        if (a && b) return `${a} + ${b}`;
+        return a || b || "";
+      }
+      const nome = ex.nome?.trim();
+      return nome || "";
+    })
+    .filter(Boolean);
+}
+
+/** Linha estilo Hevy: "Agachamento, Leg press, Extensora..." */
+export function formatExerciseNamesLine(plan: WorkoutPlan): string {
+  if (plan.tipo === "pdf") return "Plano em PDF";
+  const names = plan.exercicio_nomes?.filter(Boolean) ?? [];
+  if (names.length > 0) return names.join(", ");
+  if (plan.exercicios_count > 0) {
+    return `${plan.exercicios_count} ${plan.exercicios_count === 1 ? "exercício" : "exercícios"}`;
+  }
+  return "Sem exercícios";
 }
 
 export function timeAgo(dateStr: string | null | undefined): string | null {
