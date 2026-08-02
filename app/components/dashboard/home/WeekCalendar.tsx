@@ -97,6 +97,8 @@ interface WeekCalendarProps {
   /** Controla o modo edição de fora (ex.: fechar junto com o picker) */
   editModeExternal?: boolean;
   onEditModeChange?: (editing: boolean) => void;
+  /** Só a grade de dias — sem header, footer ou margem (ex.: login marketing) */
+  daysOnly?: boolean;
 }
 
 export function WeekCalendar({
@@ -109,6 +111,7 @@ export function WeekCalendar({
   onEditDay,
   editModeExternal,
   onEditModeChange,
+  daysOnly = false,
 }: WeekCalendarProps) {
   const [editModeInternal, setEditModeInternal] = useState(false);
   const isEditing = editModeExternal ?? editModeInternal;
@@ -163,7 +166,7 @@ export function WeekCalendar({
 
   return (
     <>
-      {isEditing && (
+      {isEditing && !daysOnly && (
         <motion.button
           type="button"
           aria-label="Sair do modo edição"
@@ -183,23 +186,25 @@ export function WeekCalendar({
       )}
 
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={daysOnly ? false : { opacity: 0, y: 16 }}
         animate={{
           opacity: 1,
           y: 0,
           scale: isEditing ? 1.035 : 1,
         }}
         transition={{
-          delay: isEditing ? 0 : 0.15,
+          delay: isEditing || daysOnly ? 0 : 0.15,
           type: 'spring',
           stiffness: 280,
           damping: 22,
         }}
         className={cn(
-          'relative mx-4 origin-center',
+          'relative origin-center',
+          daysOnly ? 'mx-0' : 'mx-4',
           isEditing ? 'z-50' : 'z-10',
         )}
       >
+      {!daysOnly && (
       <div className="mb-2 flex items-center justify-between">
         <button
           id="btn-semana-anterior"
@@ -237,6 +242,7 @@ export function WeekCalendar({
           <CaretRight className="h-4 w-4 dashboard-text-subtle" />
         </button>
       </div>
+      )}
 
       <div className="grid grid-cols-7 gap-1.5">
         {diasSemana.map((dia) => {
@@ -350,7 +356,7 @@ export function WeekCalendar({
         })}
       </div>
 
-      {selectedDia && (
+      {!daysOnly && selectedDia && (
         <div className="mt-0.2 border-t border-[var(--dash-card-border)] pt-1.5">
           <p className="text-[9px] font-medium leading-tight dashboard-text-subtle">
             {selectedDia.isOff ? (

@@ -11,13 +11,12 @@ import {
   EyeSlash, 
   ShieldCheck, 
   ChatCircle, 
-  Barbell, 
-  ChartLine,
   ArrowRight,
   Check
 } from "@phosphor-icons/react";
 import PWAInstall from "./components/PWAInstall";
 import DumbbellLoader from "./components/DumbbellLoader";
+import { LoginFloatingCards } from "@/app/components/marketing/LoginFloatingCards";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
@@ -391,133 +390,52 @@ function LoginForm() {
         />
       </div>
 
-      {/* Lado Esquerdo - Hero Panel (Desktop) */}
-      <div className="hidden lg:flex lg:w-[50%] lg:h-auto flex-col justify-between p-12 bg-surface-1 border-r border-border-subtle relative overflow-hidden select-none">
-        {/* Fundo com Imagem e Gradientes */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center" 
-          style={{ 
-            backgroundImage: `url('/images/auth/auron-login-hero.webp')`,
-            backgroundColor: 'var(--color-surface-0)'
-          }} 
+      {/* Lado Esquerdo — mockups transparentes + cards flutuantes (Desktop) */}
+      <div
+        className="hidden lg:flex lg:w-[50%] lg:min-h-dvh items-center justify-center relative overflow-hidden select-none border-r border-black/5"
+        style={{
+          background: 'linear-gradient(160deg, #faf5ff 0%, #f5f5f7 60%, #ffffff 100%)',
+        }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(80% 70% at 40% 30%, rgba(147,51,234,0.10), transparent 70%)',
+          }}
         />
-        {/* Overlay escuro/azulado */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/40 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-subtle/10 via-transparent to-transparent pointer-events-none" />
 
-        {/* Logo / Marca — texto branco: painel sempre sobre imagem escura */}
-        <div className="relative z-10 flex items-center gap-2">
-          <Image
-            src="/images/logo.webp"
-            alt="Logo Auronfit"
-            width={32}
-            height={32}
-            className="w-8 h-8 object-contain"
-          />
-          <span
-            className="font-bold text-xs lg:text-sm tracking-widest uppercase font-display"
-            style={{ color: '#F3F4F6' }}
-          >
-            AURONFIT
-          </span>
-        </div>
+        <Image
+          src="/images/auth/auron-login-hero.webp"
+          alt="Auronfit em laptop, tablet e celular"
+          fill
+          priority
+          sizes="50vw"
+          className="object-contain object-center p-2 xl:p-4 scale-[1.35]"
+        />
 
-        {/* Headline e Proposições de Valor */}
-        <div className="relative z-10 max-w-md lg:my-auto mt-2 lg:mt-0 space-y-6">
-          <div className="space-y-2 lg:space-y-3">
-            <h2
-              className="text-base sm:text-xl lg:text-2xl xl:text-3xl font-extrabold tracking-tight font-display leading-tight"
-              style={{ color: '#F9FAFB' }}
-            >
-              Sua consultoria conectada à evolução dos seus alunos.
-            </h2>
-            <p
-              className="text-[10px] sm:text-xs leading-relaxed hidden sm:block lg:block"
-              style={{ color: 'rgba(243,244,246,0.75)' }}
-            >
-              Gerencie treinos, nutrição, progresso, feedbacks e cobranças in uma única plataforma.
-            </p>
-          </div>
-
-          {/* Pontos de valor - Ocultados em mobile para otimizar espaço */}
-          <div
-            className="space-y-4 pt-6 border-t hidden lg:block"
-            style={{ borderColor: 'rgba(255,255,255,0.15)' }}
-          >
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/20 border border-brand/30 flex items-center justify-center text-[#c084fc]">
-                <Barbell className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-bold font-display" style={{ color: '#F3F4F6' }}>
-                  Seus alunos recebem tudo em um lugar
-                </p>
-                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(243,244,246,0.65)' }}>
-                  Treinos, PDFs de nutrição e execuções guiadas, sem precisar de WhatsApp ou planilha.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/20 border border-brand/30 flex items-center justify-center text-[#c084fc]">
-                <ChartLine className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-bold font-display" style={{ color: '#F3F4F6' }}>
-                  Evolução que você mostra, não só sente
-                </p>
-                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(243,244,246,0.65)' }}>
-                  Histórico de cargas, medidas e fotos organizados automaticamente.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand/20 border border-brand/30 flex items-center justify-center text-[#c084fc]">
-                <ChatCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-bold font-display" style={{ color: '#F3F4F6' }}>
-                  Nunca perca um feedback de aluno
-                </p>
-                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(243,244,246,0.65)' }}>
-                  Caixa integrada com alertas de dor e dúvidas, tudo em um painel.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Rodapé do Hero - Ocultado em mobile */}
-        <div className="relative z-10 hidden lg:block">
-          <p
-            className="text-[9px] uppercase tracking-widest leading-none"
-            style={{ color: 'rgba(243,244,246,0.45)' }}
-          >
-            AURON conecta quem prescreve com quem evolui.
-          </p>
-        </div>
+        <LoginFloatingCards className="absolute inset-0 z-10 w-full h-full" />
       </div>
 
       {/* Lado Direito - Form Panel */}
       <div
-        className="flex flex-1 flex-col items-center w-full max-w-lg lg:max-w-none mx-auto relative z-10 px-6 py-6 sm:py-8 md:px-12 lg:px-16 lg:justify-center lg:min-h-screen"
+        className="flex flex-1 flex-col items-center justify-center w-full max-w-lg lg:max-w-none mx-auto relative z-10 px-6 py-4 sm:py-6 md:px-12 lg:px-16 lg:min-h-dvh"
         style={{
           background: 'linear-gradient(160deg, #faf5ff 0%, #f5f5f7 60%, #ffffff 100%)',
         }}
       >
         
         {/* Logo */}
-        <div className="flex flex-col items-center text-center mb-4 sm:mb-6 lg:mb-8">
+        <div className="flex flex-col items-center text-center mb-3 sm:mb-4 lg:mb-5">
           {!logoFailed ? (
             <Image
-              src="/images/logo.webp"
+              src="/images/logo-elo.webp"
               alt="Auronfit"
-              width={200}
-              height={70}
+              width={96}
+              height={96}
               priority
               onError={() => setLogoFailed(true)}
-              className="w-36 lg:w-48 h-auto drop-shadow-2xl animate-fade-in"
+              className="w-12 h-12 lg:w-14 lg:h-14 object-contain drop-shadow-2xl animate-fade-in"
             />
           ) : (
             <div className="flex items-center gap-2 mb-2">

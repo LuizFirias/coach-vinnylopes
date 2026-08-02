@@ -196,8 +196,8 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
             Sem dados suficientes para gerar gráfico.
           </div>
         ) : (
-          <div className="relative h-full w-full">
-            {/* Eixo Y fixo — não rola com os meses */}
+          <div className="relative h-full w-full overflow-hidden">
+            {/* Eixo Y fixo — zona exclusiva (barras nunca entram aqui) */}
             <div
               className="pointer-events-none absolute inset-y-0 left-0 z-10"
               style={{ width: Y_AXIS_WIDTH }}
@@ -224,11 +224,11 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
               </ResponsiveContainer>
             </div>
 
-            {/* Barras + meses + grid — rolagem horizontal */}
+            {/* Barras + meses + grid — começa após o eixo Y (não há overlap) */}
             <div
               ref={scrollRef}
-              className="h-full w-full overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-              style={{ paddingLeft: Y_AXIS_WIDTH }}
+              className="absolute inset-y-0 right-0 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              style={{ left: Y_AXIS_WIDTH }}
             >
               <div
                 ref={chartRootRef}
