@@ -31,8 +31,8 @@ function GradientPlayIcon({ size = 22 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <defs>
         <linearGradient id={gradId} x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#c084fc" />
-          <stop offset="55%" stopColor="#9333ea" />
+          <stop offset="0%" stopColor="#9B4DD4" />
+          <stop offset="55%" stopColor="#751BB4" />
           <stop offset="100%" stopColor="#7e22ce" />
         </linearGradient>
       </defs>
@@ -144,7 +144,7 @@ function HalfPreview({
                 borderBottom: "1.5px solid transparent",
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderBottomColor = "rgba(147,51,234,0.45)";
+                e.currentTarget.style.borderBottomColor = "rgba(117, 27, 180,0.45)";
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderBottomColor = "transparent";
@@ -163,7 +163,7 @@ function HalfPreview({
               className="mx-auto w-5 h-5 rounded-[4px] flex items-center justify-center transition-colors disabled:opacity-30"
               style={
                 serie.completado
-                  ? { background: "#9333ea", border: "1.5px solid #9333ea", color: "#fff" }
+                  ? { background: "#751BB4", border: "1.5px solid #751BB4", color: "#fff" }
                   : { background: "transparent", border: "1.5px solid rgba(0,0,0,0.2)" }
               }
             >
@@ -204,7 +204,7 @@ export function BiSetGroupPreviewCard({
     <div
       className="rounded-[14px] px-4 py-3.5"
       style={{
-        background: "#ffffff",
+        background: "var(--surface-1)",
         border: "1px solid rgba(0,0,0,0.08)",
         boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
       }}

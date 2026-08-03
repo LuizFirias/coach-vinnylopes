@@ -8,6 +8,7 @@ type Props = {
   label: string;
   description?: string;
   emphasized?: boolean;
+  className?: string;
 };
 
 export function AvailabilityToggle({
@@ -16,12 +17,14 @@ export function AvailabilityToggle({
   label,
   description,
   emphasized,
+  className,
 }: Props) {
   return (
     <div
       className={cn(
         "flex items-start gap-3 rounded-xl p-4",
         emphasized ? "bg-brand/5" : "bg-surface-2",
+        className,
       )}
     >
       <div className="flex-1 min-w-0">

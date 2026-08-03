@@ -30,10 +30,12 @@ export function MuscleDistributionRadar({
   const fillOpacity = hasData ? 0.25 : 0.05;
   const strokeWidth = hasData ? 1.5 : 1;
 
+  const chartHeight = isDesktop ? 320 : 288;
+
   return (
-    <div className={isDesktop ? "max-w-[480px] mx-auto w-full" : "w-full"}>
-      <div className={isDesktop ? "h-80" : "h-72"}>
-        <ResponsiveContainer width="100%" height="100%">
+    <div className={isDesktop ? "max-w-[480px] mx-auto w-full min-w-0" : "w-full min-w-0"}>
+      <div style={{ height: chartHeight, minHeight: chartHeight, minWidth: 0 }}>
+        <ResponsiveContainer width="100%" height={chartHeight} debounce={50} minWidth={0}>
           <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
             <PolarGrid stroke="#1e1e1e" />
             <PolarAngleAxis dataKey="subject" tick={{ fill: axisColor, fontSize: 11 }} />
@@ -41,11 +43,11 @@ export function MuscleDistributionRadar({
             <Radar
               name="Atual"
               dataKey="value"
-              stroke={hasData ? "#9333ea" : "rgba(147, 51, 234, 0.2)"}
-              fill="#9333ea"
+              stroke={hasData ? "#751BB4" : "rgba(117, 27, 180, 0.2)"}
+              fill="#751BB4"
               fillOpacity={fillOpacity}
               strokeWidth={strokeWidth}
-              dot={hasData ? { r: 3, fill: "#9333ea" } : false}
+              dot={hasData ? { r: 3, fill: "#751BB4" } : false}
             />
           </RadarChart>
         </ResponsiveContainer>

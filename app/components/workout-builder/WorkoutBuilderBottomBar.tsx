@@ -8,6 +8,7 @@ interface WorkoutBuilderBottomBarProps {
   exporting?: boolean;
   canSave: boolean;
   isDirty: boolean;
+  saveLabel?: string;
   onSave: () => void;
   onExportPdf?: () => void;
 }
@@ -20,6 +21,7 @@ export function WorkoutBuilderBottomBar({
   exporting = false,
   canSave,
   isDirty,
+  saveLabel = "Salvar ficha",
   onSave,
   onExportPdf,
 }: WorkoutBuilderBottomBarProps) {
@@ -46,7 +48,7 @@ export function WorkoutBuilderBottomBar({
             ) : (
               <FloppyDisk size={16} className="shrink-0" />
             )}
-            <span className="truncate">{saving ? "Salvando..." : "Salvar ficha"}</span>
+            <span className="truncate">{saving ? "Salvando..." : saveLabel}</span>
           </button>
         </div>
 

@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils/cn";
 
 const GROUP_COLORS: Record<string, string> = {
-  Core: "#9333ea",
+  Core: "#751BB4",
   Costas: "#39c75a",
   Pernas: "#f59e0b",
   Ombros: "#7a8aab",
@@ -60,7 +60,7 @@ export function MuscleGroupSetsTable({
             <div className="flex items-center gap-2.5 min-w-0">
               <span
                 className="w-1.5 h-1.5 rounded-[3px] shrink-0"
-                style={{ backgroundColor: GROUP_COLORS[row.name] ?? "#9333ea" }}
+                style={{ backgroundColor: GROUP_COLORS[row.name] ?? "#751BB4" }}
                 aria-hidden
               />
               <span className={cn("font-medium text-text-primary", isDesktop ? "text-sm" : "text-[13px]")}>

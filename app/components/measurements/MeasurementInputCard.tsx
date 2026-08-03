@@ -107,8 +107,8 @@ export function MeasurementInputCard({
             borderRadius: 10,
             border: 'none',
             background:
-              'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-            boxShadow: '0 3px 10px rgba(147,51,234,0.35)',
+              'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
+            boxShadow: '0 3px 10px rgba(117, 27, 180,0.35)',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',

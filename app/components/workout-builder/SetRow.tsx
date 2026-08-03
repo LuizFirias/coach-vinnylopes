@@ -16,13 +16,14 @@ interface SetRowProps {
 }
 
 const cellInputCls =
-  "w-full h-8 bg-transparent border-0 text-center text-sm font-medium text-text-primary placeholder:text-text-disabled focus:outline-none focus:text-brand tabular-nums lining-nums";
+  "serie-metric-input w-full h-8 bg-transparent border-0 text-center text-sm font-medium text-text-primary placeholder:text-text-disabled focus:outline-none focus:text-brand tabular-nums lining-nums shadow-none";
 
 function gridTemplate(colunas: ColunaSerie[], showPeso: boolean): string {
   const metricCols = colunas.map(() => "minmax(0,1fr)").join(" ");
   const parts = ["1.5rem", metricCols];
   if (showPeso) parts.push("minmax(2.5rem,1fr)");
-  parts.push("2.25rem", "minmax(2.5rem,1.1fr)", "1.25rem");
+  // Espaço ~10% antes de Téc (empurra a coluna para a direita)
+  parts.push("10%", "2.25rem", "minmax(2.5rem,1.1fr)", "1.25rem");
   return parts.join(" ");
 }
 
@@ -38,7 +39,7 @@ export function SetRow({
 
   return (
     <div
-      className="grid gap-1 items-center py-1 border-b border-divider/30 last:border-0"
+      className="grid gap-1 items-center py-1 border-b border-border-divider/40 last:border-0"
       style={{ gridTemplateColumns: gridTemplate(colunas, showPeso) }}
     >
       <div className="flex items-center justify-center text-xs font-bold text-text-muted tabular-nums lining-nums">
@@ -91,6 +92,8 @@ export function SetRow({
         />
       )}
 
+      <span aria-hidden className="block" />
+
       <TechniqueCell
         type="technique"
         value={serie.tecnica ?? ""}
@@ -125,7 +128,7 @@ export function SetsTableHeader({
 }) {
   return (
     <div
-      className="grid gap-1 px-0 pb-1 border-b border-divider/60"
+      className="grid gap-1 px-0 pb-1 border-b border-border-divider/50"
       style={{ gridTemplateColumns: gridTemplate(colunas, showPeso) }}
     >
       <span className="text-[10px] font-semibold text-text-muted uppercase text-center">#</span>
@@ -140,6 +143,7 @@ export function SetsTableHeader({
       {showPeso && (
         <span className="text-[10px] font-semibold text-text-muted uppercase text-center">kg</span>
       )}
+      <span aria-hidden className="block" />
       <span className="text-[10px] font-semibold text-brand/80 uppercase text-center">Téc</span>
       <span className="text-[10px] font-semibold text-brand/80 uppercase text-center">Extra</span>
       <span />

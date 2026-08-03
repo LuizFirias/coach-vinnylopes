@@ -55,20 +55,13 @@ export async function exportAvatarCrop(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas não disponível");
 
-  ctx.fillStyle = "#0d0d0d";
-  ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-
-  ctx.beginPath();
-  ctx.arc(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-
-  // Desenha a região da imagem que cobre o círculo
+  // Exporta QUADRADO preenchido (sem máscara circular).
+  // O círculo fica só no CSS (rounded-full) — evita auréola preta do JPEG
+  // (JPEG não tem transparência; o fill antigo #0d0d0d vazava nas bordas).
   const sx = srcCenterX - srcRadius;
   const sy = srcCenterY - srcRadius;
   const sSize = srcRadius * 2;
 
-  // Clamp leve para evitar sampling fora (browsers lidam, mas ajuda qualidade)
   void displayW;
   void displayH;
 

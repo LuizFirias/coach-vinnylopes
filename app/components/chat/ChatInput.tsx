@@ -118,7 +118,7 @@ export function ChatInput({ conversaId, onSent }: ChatInputProps) {
           borderRadius: '50%',
           border: 'none',
           background: hasText
-            ? 'linear-gradient(135deg, #c084fc, #9333ea, #7e22ce)'
+            ? 'linear-gradient(135deg, #c084fc, #751BB4, #7e22ce)'
             : 'var(--filter-bg, #ebebf0)',
           color: hasText ? '#fff' : '#bbb',
           display: 'flex',

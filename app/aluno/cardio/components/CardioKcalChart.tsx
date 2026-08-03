@@ -40,8 +40,8 @@ export function CardioKcalChart({ data }: CardioKcalChartProps) {
         <p className="mt-0.5 text-[11px] text-text-tertiary">Últimas 8 semanas</p>
       </div>
 
-      <div className="h-32">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-32 min-w-0" style={{ minHeight: 128 }}>
+        <ResponsiveContainer width="100%" height={128} debounce={50} minWidth={0}>
           <AreaChart data={data} margin={{ top: 5, right: 5, left: -28, bottom: 0 }}>
             <defs>
               <linearGradient id="cardioKcalFill" x1="0" y1="0" x2="0" y2="1">
@@ -64,7 +64,7 @@ export function CardioKcalChart({ data }: CardioKcalChartProps) {
             <Tooltip
               cursor={false}
               contentStyle={{
-                backgroundColor: isLight ? '#ffffff' : '#1F1F23',
+                backgroundColor: isLight ? '#F7F7F7' : '#141414',
                 border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid #27272A',
                 borderRadius: '6px',
                 padding: '6px',

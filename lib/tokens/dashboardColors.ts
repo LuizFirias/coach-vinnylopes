@@ -1,29 +1,29 @@
 /**
  * Cores usadas em strings JS (SVG stroke, inline styles).
  * Preferir var(--cal-*) / var(--brand-*) em CSS quando possível.
- * Valores alinhados a app/design-tokens.css (SKILL.md AURON).
+ * Valores alinhados a app/design-tokens.css (60-30-10).
  */
 export const dashboardColors = {
-  bgDeep: '#080C14',
-  bgHero: '#0F1829',
-  bgCard: '#111827',
-  bgCardHover: '#1A2336',
-  accent: '#9333ea', // var(--brand-primary)
-  accentLight: '#a855f7', // var(--brand-hover)
-  accentGlow: '#9333ea33',
+  bgDeep: '#000000',
+  bgHero: '#141414',
+  bgCard: '#141414',
+  bgCardHover: '#222222',
+  accent: '#751BB4', // var(--brand-primary)
+  accentLight: '#8B2FD4', // var(--brand-hover)
+  accentGlow: '#751BB433',
   success: '#39c75a',
   warning: '#F59E0B',
   danger: '#e05555',
   streak: '#F97316',
-  textPrimary: '#D8DCE6',
-  textSecondary: '#9CA3AF',
-  textMuted: '#4B5563',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#A1A1AA',
+  textMuted: '#737373',
   /** var(--cal-done) */
   calDone: '#39c75a',
   /** var(--cal-missed) */
   calMissed: '#e05555',
   /** var(--cal-today) */
-  calToday: '#9333ea',
+  calToday: '#751BB4',
   /** var(--cal-upcoming) */
   calUpcoming: '#7a8aab',
   /** var(--cal-rest) */

@@ -47,7 +47,7 @@ export function WorkoutPrescriptionSummary({
     return (
       <div
         className={cn(
-          "grid grid-cols-2 rounded-2xl border border-border-subtle bg-surface-1 px-5 py-4",
+          "grid grid-cols-2 rounded-2xl border-0 bg-surface-1 px-5 py-4",
           className,
         )}
       >
@@ -79,7 +79,7 @@ export function WorkoutPrescriptionSummary({
         className
       )}
     >
-      <div className="w-8 h-8 shrink-0 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center">
+      <div className="w-8 h-8 shrink-0 flex items-center justify-center">
         <Barbell size={16} className="text-brand" />
       </div>
       <div className="flex-1 min-w-0">

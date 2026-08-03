@@ -27,7 +27,7 @@ export function VideoPlayerCard({
       <button
         type="button"
         onClick={() => setPlayerOpen(true)}
-        className="mx-4 mt-4 w-[calc(100%-2rem)] overflow-hidden rounded-[14px] border border-[#1F2937] bg-[#111827] text-left transition-opacity active:opacity-90"
+        className="mx-4 mt-4 w-[calc(100%-2rem)] overflow-hidden rounded-[14px] border-0 bg-surface-1 text-left transition-opacity active:opacity-90"
       >
         <div className="relative h-[180px] w-full">
           <Image

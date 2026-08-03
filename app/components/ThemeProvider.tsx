@@ -35,7 +35,7 @@ export function applyTheme(theme: Theme) {
   if (metaTheme) {
     metaTheme.setAttribute(
       'content',
-      theme === 'light' ? '#FAFAFA' : '#09090B',
+      theme === 'light' ? '#FFFFFF' : '#000000',
     );
   }
 }

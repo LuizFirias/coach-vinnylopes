@@ -25,75 +25,75 @@
 
 :root {
   /* ═══════════════════════════════════════════════════════════
-     SURFACES (background layers — do mais escuro pro mais claro)
-     Paleta AURON (SKILL.md) — navy escuro, NÃO preto puro
+     SURFACES — 60-30-10 neutros (dark base)
+     Page 60% · Card 30% · Input/elevação · Accent ≤10%
      ═══════════════════════════════════════════════════════════ */
-  --surface-0:        #080c14;   /* page bg — navy azulado (dashboard) */
-  --surface-1:        #0d0b14;   /* card/sidebar — roxo escuro neutro (família brand) */
-  --surface-2:        #1e1e1e;   /* elevated / input bg */
-  --surface-3:        #222222;   /* overlay / divisor */
-  --surface-4:        #282828;   /* borda input */
+  --surface-0:        #000000;   /* page bg (60%) */
+  --surface-1:        #141414;   /* card (30%) */
+  --surface-2:        #222222;   /* input / elevação — NÃO card */
+  --surface-3:        #2A2A2A;   /* overlay / divisor */
+  --surface-4:        #333333;   /* borda input */
 
   /* ═══════════════════════════════════════════════════════════
      TEXT
      ═══════════════════════════════════════════════════════════ */
-  --text-primary:     #D8DCE6;   /* off-white suave — menos vibrante que #FAFAFA */
-  --text-secondary:   #A1A1AA;   /* --color-text-secondary */
-  --text-tertiary:    #71717A;   /* --color-text-muted */
-  --text-disabled:    #52525B;
+  --text-primary:     #FFFFFF;
+  --text-secondary:   #A1A1AA;
+  --text-tertiary:    #8A8A8A;
+  --text-disabled:    #737373;
 
   /* ═══════════════════════════════════════════════════════════
      BORDERS
      ═══════════════════════════════════════════════════════════ */
-  --border-subtle:    #27272A;   /* --color-border-subtle */
-  --border-default:   #3F3F46;   /* --color-border-default */
-  --border-strong:    #52525B;   /* --color-border-strong */
+  --border-subtle:    #2A2A2A;
+  --border-default:   #3F3F46;
+  --border-strong:    #52525B;
 
-  /* Bordas semânticas — cards sem outline branco; separação só por surface */
+  /* Bordas semânticas — cards sem outline; separação só por surface */
   --border-card:        transparent;
   --border-card-hover:  rgba(255, 255, 255, 0.06);
-  --border-input:       #282828;                   /* input — sólido (toque) */
-  --border-divider:     #2A2A32;                   /* divisor interno (mais claro que #1a1a1a) */
-  --border-accent:      rgba(147, 51, 234, 0.40);  /* destaque / foco */
+  --border-input:       transparent;               /* contraste via surface-2 */
+  --border-divider:     #2A2A2A;
+  --border-accent:      rgba(117, 27, 180, 0.40);
 
   /* ═══════════════════════════════════════════════════════════
-     BRAND (roxo AURON — uso ≤10% da tela)
+     BRAND / ACCENT (≤10% — sidebar, CTAs, foco)
      ═══════════════════════════════════════════════════════════ */
-  --brand-primary:    #9333ea;
-  --brand-hover:      #a855f7;
-  --brand-pressed:    #7e22ce;
-  --brand-subtle:     rgba(147, 51, 234, 0.10);
-  --brand-border:     rgba(147, 51, 234, 0.20);
-  --surface-card-light: #faf5ff;  /* fundo de card no light mode */
+  --brand-primary:    #751BB4;
+  --brand-hover:      #8B2FD4;
+  --brand-pressed:    #5E158F;
+  --brand-subtle:     rgba(117, 27, 180, 0.10);
+  --brand-border:     rgba(117, 27, 180, 0.20);
+  --surface-card-light: #F7F7F7;
 
   /* Texto sobre a marca */
-  --text-on-brand:    #FAFAFA;
+  --text-on-brand:    #FFFFFF;
 
   /* ═══════════════════════════════════════════════════════════
      CALENDÁRIO / STATUS DE TREINO
      ═══════════════════════════════════════════════════════════ */
-  --cal-done:         #39c75a;   /* treino feito */
-  --cal-missed:       #e05555;   /* treino não feito */
-  --cal-today:        #9333ea;   /* dia atual (= brand) */
-  --cal-upcoming:     #7a8aab;   /* treino futuro */
-  --cal-rest:         #444444;   /* descanso / muted */
+  --cal-done:         #39c75a;
+  --cal-missed:       #e05555;
+  --cal-today:        #751BB4;
+  --cal-upcoming:     #7a8aab;
+  --cal-rest:         #444444;
 
   /* ═══════════════════════════════════════════════════════════
      SEMANTIC COLORS (estado, nunca decoração)
      ═══════════════════════════════════════════════════════════ */
-  --success:          #39c75a;   /* PR, série ok, streak */
+  --success:          #39c75a;
   --success-subtle:   rgba(57, 199, 90, 0.10);
   --success-border:   rgba(57, 199, 90, 0.20);
 
-  --warning:          #F59E0B;   /* deload, atenção */
+  --warning:          #F59E0B;
   --warning-subtle:   rgba(245, 158, 11, 0.10);
   --warning-border:   rgba(245, 158, 11, 0.20);
 
-  --danger:           #e05555;   /* erro, exclusão */
+  --danger:           #e05555;
   --danger-subtle:    rgba(224, 85, 85, 0.10);
   --danger-border:    rgba(224, 85, 85, 0.20);
 
-  --info:             #38BDF8;   /* info, recovery, sync */
+  --info:             #38BDF8;
   --info-subtle:      rgba(56, 189, 248, 0.10);
   --info-border:      rgba(56, 189, 248, 0.20);
 
@@ -105,16 +105,16 @@
   --elev-2:           0 4px 12px rgba(0, 0, 0, 0.45);
   --elev-3:           0 12px 32px rgba(0, 0, 0, 0.55);
 
-  --glow-brand:       0 0 24px rgba(147, 51, 234, 0.22);
+  --glow-brand:       0 0 24px rgba(117, 27, 180, 0.22);
   --glow-success:     0 0 24px rgba(57, 199, 90, 0.24);
   --pr-glow:          0 0 20px rgba(57, 199, 90, 0.32);
 
-  --focus-ring:       0 0 0 2px rgba(147, 51, 234, 0.50);
+  --focus-ring:       0 0 0 2px rgba(117, 27, 180, 0.50);
 
   /* Botão primário — gradiente + glow */
-  --btn-primary-bg: linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%);
-  --btn-primary-shadow: 0 4px 20px rgba(147, 51, 234, 0.45);
-  --btn-primary-shadow-hover: 0 6px 28px rgba(147, 51, 234, 0.60);
+  --btn-primary-bg: linear-gradient(135deg, #9B4DD4 0%, #751BB4 55%, #5E158F 100%);
+  --btn-primary-shadow: 0 4px 20px rgba(117, 27, 180, 0.45);
+  --btn-primary-shadow-hover: 0 6px 28px rgba(117, 27, 180, 0.60);
 
   /* ═══════════════════════════════════════════════════════════
      TYPOGRAPHY
@@ -216,8 +216,8 @@
   --nav-height:       64px;
   --nav-safe-area:    env(safe-area-inset-bottom, 0px);
   --tap-min:          44px;
-  /* BottomNav — fundo sólido por tema (SVG student + barra coach) */
-  --nav-bg:           #1a1033;
+  /* BottomNav — fundo sólido por tema */
+  --nav-bg:           #141414;
   --nav-border:       rgba(255, 255, 255, 0.08);
   --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.45);
 
@@ -259,9 +259,9 @@
      ═══════════════════════════════════════════════════════════ */
   --filter-bg:            var(--surface-2);
   --filter-bg-focus:      var(--surface-3);
-  --filter-border:        var(--border-input);
+  --filter-border:        transparent;
   --filter-border-focus:  var(--brand-primary);
-  --filter-ring:          rgba(147, 51, 234, 0.30);
+  --filter-ring:          rgba(117, 27, 180, 0.30);
   --filter-text:          var(--text-primary);
   --filter-placeholder:   var(--text-disabled);
 
@@ -270,57 +270,58 @@
   --tab-active-text:      var(--text-primary);
   --tab-inactive-text:    var(--text-secondary);
 
-  /* Mobile aluno shell (theme-aware — evita hex inline) */
-  --mobile-page-bg-solid: #080c14;
-  --mobile-page-bg: radial-gradient(120% 100% at 50% 0%, #0A1628 0%, #080c14 60%);
-  --mobile-card-bg: #111827;
-  --mobile-card-border: rgba(41, 48, 61, 0.8);
-  --mobile-card-border-soft: rgba(41, 48, 61, 0.5);
-  --mobile-card-border-faint: rgba(41, 48, 61, 0.4);
-  --mobile-card-border-subtle: rgba(41, 48, 61, 0.24);
+  /* Mobile aluno shell (theme-aware) */
+  --mobile-page-bg-solid: #000000;
+  --mobile-page-bg: #000000;
+  --mobile-card-bg: #141414;
+  --mobile-card-border: transparent;
+  --mobile-card-border-soft: transparent;
+  --mobile-card-border-faint: transparent;
+  --mobile-card-border-subtle: transparent;
   --mobile-card-shadow: none;
-  --mobile-empty-bg: #111827;
-  --mobile-empty-border: rgba(41, 48, 61, 0.5);
-  --mobile-secondary-bg: #0D1829;
-  --theme-color-meta: #080c14;
+  --mobile-empty-bg: #141414;
+  --mobile-empty-border: transparent;
+  --mobile-secondary-bg: #141414;
+  --theme-color-meta: #000000;
 
-  /* Divisor entre linhas de listas de cards (alunos etc.)
-     Dark: roxo sutil; Light: invisível — o espaçamento separa os itens. */
-  --list-row-divider: rgba(147, 51, 234, 0.40);
+  /* Divisor entre linhas de listas de cards */
+  --list-row-divider: rgba(117, 27, 180, 0.35);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LIGHT THEME — tema oficial (default); dark fica como opção
+   LIGHT THEME — 60-30-10 neutros
+   Page #FFF · Card #F7F7F7 · Input #E8E8E8 · Accent #751BB4
    ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] {
-  --surface-0:        #FAFAFA;
-  --surface-1:        #F4F4F5;
-  --surface-2:        #FFFFFF;
-  --surface-3:        #E4E4E7;
-  --surface-4:        #D4D4D8;
+  color-scheme: light;
+  --surface-0:        #FFFFFF;
+  --surface-1:        #F7F7F7;
+  --surface-2:        #E8E8E8;
+  --surface-3:        #DEDEDE;
+  --surface-4:        #D4D4D4;
 
   --text-primary:     #09090B;
   --text-secondary:   #52525B;
-  --text-tertiary:    #888888;   /* contraste mínimo sobre fundo branco (BottomNav) */
+  --text-tertiary:    #888888;
   --text-disabled:    #A1A1AA;
 
-  --nav-bg:           #1a1033;
-  --nav-border:       rgba(255, 255, 255, 0.08);
-  --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.28);
+  --nav-bg:           #FFFFFF;
+  --nav-border:       rgba(0, 0, 0, 0.08);
+  --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.08);
 
-  --border-subtle:    #E4E4E7;
-  --border-default:   #D4D4D8;
+  --border-subtle:    #E8E8E8;
+  --border-default:   #D4D4D4;
   --border-strong:    #A1A1AA;
 
   --border-card:        transparent;
-  --border-card-hover:  rgba(0, 0, 0, 0.08);
-  --border-input:       #D4D4D8;
-  --border-divider:     #E4E4E7;
-  --border-accent:      rgba(147, 51, 234, 0.40);
+  --border-card-hover:  rgba(0, 0, 0, 0.06);
+  --border-input:       transparent;
+  --border-divider:     #E8E8E8;
+  --border-accent:      rgba(117, 27, 180, 0.40);
 
-  --brand-subtle:     rgba(147, 51, 234, 0.08);
-  --brand-border:     rgba(147, 51, 234, 0.20);
-  --surface-card-light: #faf5ff;
+  --brand-subtle:     rgba(117, 27, 180, 0.08);
+  --brand-border:     rgba(117, 27, 180, 0.20);
+  --surface-card-light: #F7F7F7;
 
   --success-subtle:   rgba(57, 199, 90, 0.10);
   --success-border:   rgba(57, 199, 90, 0.22);
@@ -335,41 +336,41 @@ html[data-theme="light"] {
   --elev-2:           0 4px 12px rgba(0, 0, 0, 0.08);
   --elev-3:           0 12px 32px rgba(0, 0, 0, 0.12);
 
-  --glow-brand:       0 0 24px rgba(147, 51, 234, 0.16);
+  --glow-brand:       0 0 24px rgba(117, 27, 180, 0.16);
   --glow-success:     0 0 24px rgba(57, 199, 90, 0.18);
   --pr-glow:          0 0 20px rgba(57, 199, 90, 0.22);
 
-  --focus-ring:       0 0 0 2px rgba(147, 51, 234, 0.40);
+  --focus-ring:       0 0 0 2px rgba(117, 27, 180, 0.40);
 
   --color-gold-muted: var(--brand-subtle);
   --color-border-gold: var(--brand-border);
 
-  /* Filtros / busca — cinza neutro sem borda + tab lavanda */
-  --filter-bg:            #ebebf0;
-  --filter-bg-focus:      #e4e4ea;
+  /* Filtros / busca — cinza de input */
+  --filter-bg:            #E8E8E8;
+  --filter-bg-focus:      #DEDEDE;
   --filter-border:        transparent;
   --filter-border-focus:  transparent;
   --filter-ring:          transparent;
   --filter-text:          #444444;
-  --filter-placeholder:   #b0b0b8;
+  --filter-placeholder:   #A1A1AA;
 
   --tab-track-bg:         transparent;
-  --tab-active-bg:        #e9d8fd;
-  --tab-active-text:      #7e22ce;
+  --tab-active-bg:        rgba(117, 27, 180, 0.12);
+  --tab-active-text:      #751BB4;
   --tab-inactive-text:    #999999;
 
-  --mobile-page-bg-solid: #ffffff;
-  --mobile-page-bg: linear-gradient(180deg, #ffffff 0%, var(--surface-1) 100%);
-  --mobile-card-bg: #ffffff;
-  --mobile-card-border: rgba(0, 0, 0, 0.08);
-  --mobile-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --mobile-empty-bg: #f9f9fb;
-  --mobile-empty-border: rgba(0, 0, 0, 0.06);
-  --mobile-card-border-soft: var(--border-subtle);
-  --mobile-card-border-faint: var(--border-subtle);
-  --mobile-card-border-subtle: var(--border-subtle);
-  --mobile-secondary-bg: var(--surface-1);
-  --theme-color-meta: var(--surface-0);
+  --mobile-page-bg-solid: #FFFFFF;
+  --mobile-page-bg: #FFFFFF;
+  --mobile-card-bg: #F7F7F7;
+  --mobile-card-border: transparent;
+  --mobile-card-shadow: none;
+  --mobile-empty-bg: #F7F7F7;
+  --mobile-empty-border: transparent;
+  --mobile-card-border-soft: transparent;
+  --mobile-card-border-faint: transparent;
+  --mobile-card-border-subtle: transparent;
+  --mobile-secondary-bg: #F7F7F7;
+  --theme-color-meta: #FFFFFF;
 
   --list-row-divider: transparent;
 }
@@ -377,11 +378,16 @@ html[data-theme="light"] {
 html[data-theme="dark"],
 html.dark {
   color-scheme: dark;
-  --surface-1: #0d0b14; /* roxo escuro neutro — alinha sidebar/cards ao brand */
-}
-
-html[data-theme="light"] {
-  color-scheme: light;
+  --surface-0: #000000;
+  --surface-1: #141414;
+  --surface-2: #222222;
+  --surface-3: #2A2A2A;
+  --surface-4: #333333;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #8A8A8A;
+  --text-disabled: #737373;
+  --theme-color-meta: #000000;
 }
 
 /* ══════════════════════════════════════════════════════════════

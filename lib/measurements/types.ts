@@ -52,7 +52,7 @@ export const MEASUREMENT_COLORS = {
   input: '#1e1e1e',
   inputBorder: '#282828',
   chartBg: '#0f0f0f',
-  primary: '#9333ea',
+  primary: '#751BB4',
   deltaDown: '#39c75a',
   deltaUp: '#e05555',
   text: '#ffffff',

@@ -71,13 +71,13 @@ export function DashboardHeader({
           </Link>
           <Link
             href="/admin/treinos/nova-ficha"
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 bg-[rgba(117, 27, 180,0.12)] text-text-primary text-xs font-semibold transition-all hover:bg-[rgba(117, 27, 180,0.18)] active:scale-95"
           >
             Criar treino
           </Link>
           <Link
             href="/admin/relatorios"
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 bg-[rgba(117, 27, 180,0.12)] text-text-primary text-xs font-semibold transition-all hover:bg-[rgba(117, 27, 180,0.18)] active:scale-95"
           >
             <ChartBar size={13} /> Relatórios
           </Link>

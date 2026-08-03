@@ -12,6 +12,7 @@ interface WorkoutBuilderSettingsSheetProps {
   alunos: AlunoOption[];
   alunoSelecionado: string;
   nomeRotina: string;
+  alunoLocked?: boolean;
   onAlunoChange: (id: string) => void;
   onRotinaChange: (nome: string) => void;
   onClose: () => void;
@@ -21,10 +22,14 @@ export function WorkoutBuilderSettingsSheet({
   alunos,
   alunoSelecionado,
   nomeRotina,
+  alunoLocked = false,
   onAlunoChange,
   onRotinaChange,
   onClose,
 }: WorkoutBuilderSettingsSheetProps) {
+  const alunoLabel =
+    alunos.find((a) => a.id === alunoSelecionado)?.coaching_reference || "Sem aluno";
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-surface-1 border-0 rounded-t-2xl w-full max-w-lg p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -35,21 +40,25 @@ export function WorkoutBuilderSettingsSheet({
           </button>
         </div>
 
-        <div className="field-flat-input rounded-2xl border border-border-subtle bg-surface-1 overflow-hidden mb-3">
+        <div className="field-flat-input rounded-2xl border-0 bg-surface-2/50 overflow-hidden mb-3">
           <div className="px-4 py-3.5 border-b border-border-divider">
             <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
               Aluno
             </label>
-            <select
-              value={alunoSelecionado}
-              onChange={(e) => onAlunoChange(e.target.value)}
-              className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary appearance-none cursor-pointer p-0"
-            >
-              <option value="">Selecione o aluno...</option>
-              {alunos.map((a) => (
-                <option key={a.id} value={a.id}>{a.coaching_reference}</option>
-              ))}
-            </select>
+            {alunoLocked ? (
+              <p className="text-sm text-text-primary truncate">{alunoLabel}</p>
+            ) : (
+              <select
+                value={alunoSelecionado}
+                onChange={(e) => onAlunoChange(e.target.value)}
+                className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary appearance-none cursor-pointer p-0"
+              >
+                <option value="">Selecione o aluno...</option>
+                {alunos.map((a) => (
+                  <option key={a.id} value={a.id}>{a.coaching_reference}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="px-4 py-3.5">
             <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">

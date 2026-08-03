@@ -18,6 +18,9 @@ interface WorkoutBuilderHeaderProps {
   exporting: boolean;
   canSave: boolean;
   isDirty: boolean;
+  /** Em edição, o aluno não pode ser trocado */
+  alunoLocked?: boolean;
+  saveLabel?: string;
   onBack: () => void;
   onAlunoChange: (id: string) => void;
   onRotinaChange: (nome: string) => void;
@@ -35,6 +38,8 @@ export function WorkoutBuilderHeader({
   exporting,
   canSave,
   isDirty,
+  alunoLocked = false,
+  saveLabel = "Salvar ficha",
   onBack,
   onAlunoChange,
   onRotinaChange,
@@ -47,7 +52,7 @@ export function WorkoutBuilderHeader({
 
   if (isMobile) {
     return (
-      <div className="sticky top-0 z-20 bg-surface-0 border-b border-divider px-4 py-3 flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <button
             type="button"
@@ -58,7 +63,7 @@ export function WorkoutBuilderHeader({
           </button>
           <button type="button" onClick={onOpenSettings} className="min-w-0 text-left flex-1">
             <p className="text-sm font-bold text-text-primary truncate">
-              {nomeRotina || "Nova ficha"}
+              {nomeRotina || (alunoLocked ? "Editar ficha" : "Nova ficha")}
             </p>
             <p className="text-[11px] text-text-secondary truncate">{alunoLabel}</p>
           </button>
@@ -75,7 +80,7 @@ export function WorkoutBuilderHeader({
   }
 
   return (
-    <div className="sticky top-0 z-20 bg-surface-0 border-b border-divider px-4 md:px-0 py-3 mb-4">
+    <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 md:px-0 py-3 mb-4">
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="flex items-center gap-3 shrink-0">
           <button
@@ -87,24 +92,28 @@ export function WorkoutBuilderHeader({
           </button>
         </div>
 
-        <div className="field-flat-input flex-1 min-w-0 rounded-2xl border border-border-subtle bg-surface-1 overflow-hidden">
+        <div className="field-flat-input flex-1 min-w-0 rounded-2xl border-0 bg-surface-1 overflow-hidden">
           <div className="grid grid-cols-1 sm:grid-cols-2">
             <div className="px-4 py-2.5 sm:border-r sm:border-border-divider">
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
                 Aluno
               </label>
-              <select
-                value={alunoSelecionado}
-                onChange={(e) => onAlunoChange(e.target.value)}
-                className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary appearance-none cursor-pointer p-0"
-              >
-                <option value="">Selecione o aluno...</option>
-                {alunos.map((aluno) => (
-                  <option key={aluno.id} value={aluno.id}>
-                    {aluno.coaching_reference}
-                  </option>
-                ))}
-              </select>
+              {alunoLocked ? (
+                <p className="text-sm text-text-primary truncate">{alunoLabel}</p>
+              ) : (
+                <select
+                  value={alunoSelecionado}
+                  onChange={(e) => onAlunoChange(e.target.value)}
+                  className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary appearance-none cursor-pointer p-0"
+                >
+                  <option value="">Selecione o aluno...</option>
+                  {alunos.map((aluno) => (
+                    <option key={aluno.id} value={aluno.id}>
+                      {aluno.coaching_reference}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="px-4 py-2.5 border-t border-border-divider sm:border-t-0">
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
@@ -142,7 +151,7 @@ export function WorkoutBuilderHeader({
             )}
           >
             {saving ? <CircleNotch size={14} className="animate-spin" /> : <FloppyDisk size={14} />}
-            {saving ? "Salvando..." : "Salvar ficha"}
+            {saving ? "Salvando..." : saveLabel}
           </button>
         </div>
       </div>

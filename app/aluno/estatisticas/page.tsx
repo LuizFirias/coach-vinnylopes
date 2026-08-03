@@ -549,7 +549,7 @@ export default function EstatisticasPage() {
         className="min-h-screen pb-32 text-text-primary mobile-page-bg"
       >
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'transparent' }}>
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
@@ -607,7 +607,7 @@ export default function EstatisticasPage() {
             >
               <div
                 className="flex justify-between items-center px-4 py-3 border-b"
-                style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+                style={{ background: 'var(--surface-2)', borderColor: 'transparent' }}
               >
                 <span className="text-xs font-semibold text-text-tertiary">Músculo</span>
                 <span className="text-xs font-semibold text-text-tertiary">Séries</span>
@@ -641,7 +641,7 @@ export default function EstatisticasPage() {
         className="min-h-screen pb-32 text-text-primary mobile-page-bg"
       >
         <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'transparent' }}>
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
@@ -663,7 +663,7 @@ export default function EstatisticasPage() {
               <div key={idx} className="flex items-center gap-4 py-3 border-b border-divider/50 last:border-b-0">
                 <div
                   className="w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0"
-                  style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+                  style={{ background: 'var(--surface-2)', borderColor: 'transparent' }}
                 >
                   <span className="text-lg">🏋️</span>
                 </div>
@@ -704,7 +704,7 @@ export default function EstatisticasPage() {
       >
         <div className="max-w-lg mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(41,48,61,0.8)' }}>
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'transparent' }}>
             <button
               onClick={() => setScreen('main')}
               className="w-9 h-9 rounded-full border flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
@@ -726,8 +726,8 @@ export default function EstatisticasPage() {
             </div>
 
             {/* Bar chart — last 12 months */}
-            <div className="w-full h-40">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full min-w-0" style={{ height: 160, minHeight: 160 }}>
+              <ResponsiveContainer width="100%" height={160} debounce={50} minWidth={0}>
                 <BarChart data={monthlyBarData} margin={{ top: 5, right: 0, left: -30, bottom: 5 }}>
                   <XAxis dataKey="label" stroke="var(--color-text-tertiary)" fontSize={9} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--color-text-tertiary)" fontSize={9} tickLine={false} axisLine={false} />
@@ -830,8 +830,8 @@ export default function EstatisticasPage() {
             {/* Muscle Distribution (Radar) */}
             <div>
               <p className="text-xs font-semibold text-text-tertiary mb-3">Distribuição Muscular</p>
-              <div className="w-full h-64">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="w-full min-w-0" style={{ height: 256, minHeight: 256 }}>
+                <ResponsiveContainer width="100%" height={256} debounce={50} minWidth={0}>
                   <RadarChart cx="50%" cy="50%" outerRadius="75%" data={monthRadarData}>
                     <PolarGrid stroke="var(--color-border-subtle)" />
                     <PolarAngleAxis dataKey="subject" stroke="var(--color-text-secondary)" fontSize={10} />
@@ -860,7 +860,7 @@ export default function EstatisticasPage() {
                         <span className="text-sm text-text-primary">{muscle}</span>
                         <span className="text-sm font-bold text-text-primary">{sets}</span>
                       </div>
-                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#0D1829' }}>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
                         <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${Math.round((sets / maxGroupSets) * 100)}%` }} />
                       </div>
                     </div>
@@ -880,7 +880,7 @@ export default function EstatisticasPage() {
                   <div key={idx} className="flex items-center gap-4 py-3 border-b border-divider/50 last:border-b-0">
                     <div
                       className="w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0"
-                      style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+                      style={{ background: 'var(--surface-2)', borderColor: 'transparent' }}
                     >
                       <span className="text-lg">🏋️</span>
                     </div>

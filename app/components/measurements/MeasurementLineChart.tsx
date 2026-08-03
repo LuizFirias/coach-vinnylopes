@@ -90,7 +90,7 @@ export function MeasurementLineChart({
             <polyline
               points={points}
               fill="none"
-              stroke="#9333ea"
+              stroke="#751BB4"
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -101,7 +101,7 @@ export function MeasurementLineChart({
                 cx={toX(data.length - 1)}
                 cy={toY(lastPoint.value)}
                 r={3}
-                fill="#9333ea"
+                fill="#751BB4"
               />
             )}
           </svg>

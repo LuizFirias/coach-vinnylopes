@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils/cn";
-import { getPublicStorageUrl } from "@/lib/storageUrls";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import { groupWorkoutsByStudent } from "@/lib/utils/workoutGrouping";
 import type { WorkoutGroup, WorkoutPlan } from "./types";
 import {
@@ -31,10 +30,6 @@ function MobileWorkoutGroup({
   onDelete: (plan: WorkoutPlan) => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const initial = group.studentName.charAt(0).toUpperCase();
-  const avatarSrc = group.avatarUrl
-    ? getPublicStorageUrl("avatars", group.avatarUrl)
-    : null;
   const fichaLabel =
     group.plans.length === 1 ? "1 ficha" : `${group.plans.length} fichas`;
 
@@ -42,18 +37,11 @@ function MobileWorkoutGroup({
     <>
       <div className="border-0 rounded-xl overflow-hidden">
         <div className="w-full flex items-center gap-2.5 px-3.5 py-3 bg-surface-2/60">
-          <div
-            className={cn(
-              "w-7 h-7 rounded-md bg-gradient-to-br flex items-center justify-center font-bold text-[10px] text-white shrink-0 overflow-hidden",
-              group.avatarColor,
-            )}
-          >
-            {avatarSrc ? (
-              <img src={avatarSrc} alt={group.studentName} className="w-full h-full object-cover" />
-            ) : (
-              initial
-            )}
-          </div>
+          <StudentAvatar
+            name={group.studentName}
+            avatarUrl={group.avatarUrl}
+            colorClassName={group.avatarColor}
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-text-primary truncate">{group.studentName}</p>
             <p className="text-[10px] text-text-tertiary">{fichaLabel}</p>

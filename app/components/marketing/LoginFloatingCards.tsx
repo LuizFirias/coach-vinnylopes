@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Barbell } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
@@ -10,6 +10,7 @@ import { WorkoutCard } from '@/app/components/dashboard/home/WorkoutCard';
 import type { DiaSemana } from '@/app/components/dashboard/home/WeekCalendar';
 import { dashboardColors } from '@/lib/tokens/dashboardColors';
 import { getTodayBrazil } from '@/lib/dateUtils';
+import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 
 interface LoginFloatingCardsProps {
   className?: string;
@@ -133,7 +134,7 @@ function LoginWeekDays({ dias, today }: { dias: DiaSemana[]; today: string }) {
             style={
               dia.isHoje
                 ? {
-                    backgroundColor: 'rgba(147, 51, 234, 0.18)',
+                    backgroundColor: 'rgba(117, 27, 180, 0.18)',
                     border: `1.5px solid ${dashboardColors.calToday}`,
                   }
                 : {
@@ -212,6 +213,15 @@ function FloatSlot({
 
 export function LoginFloatingCards({ className }: LoginFloatingCardsProps) {
   const { dias, today } = useMemo(() => buildDemoWeek(), []);
+  const isBelowDesktop = useBreakpoint('tablet');
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  // Parent usa `hidden lg:flex` — não montar enquanto display:none (Recharts 0×0).
+  if (!hydrated || isBelowDesktop) return null;
 
   return (
     <div

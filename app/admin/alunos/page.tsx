@@ -18,10 +18,10 @@ import {
   Warning,
   X
 } from "@phosphor-icons/react";
-import { getPublicStorageUrl } from "@/lib/storageUrls";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { StudentsEmptyState } from "@/app/components/admin/students/StudentsEmptyState";
 import { MobileListRow } from "@/app/components/MobileListRow";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 import { textIncludes } from "@/lib/utils/textNormalize";
@@ -71,6 +71,17 @@ function timeAgo(dateStr: string | null | undefined): string | null {
   if (days === 1) return "ontem";
   if (days < 30) return `${days} dias atrás`;
   return `${Math.floor(days / 30)} meses atrás`;
+}
+
+/** Ex.: 28/set — dia + mês abreviado (pt-BR) */
+function formatVencimentoCurto(dataExpiracao: string | Date): string {
+  const d =
+    typeof dataExpiracao === "string" && /^\d{4}-\d{2}-\d{2}/.test(dataExpiracao)
+      ? new Date(`${dataExpiracao.slice(0, 10)}T12:00:00`)
+      : new Date(dataExpiracao);
+  const dia = d.getDate();
+  const mes = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").trim();
+  return `${dia}/${mes}`;
 }
 
 const AVATAR_COLORS = [
@@ -451,10 +462,7 @@ export default function AdminAlunosPage() {
                   );
                 })}
                 {rows.length < 5 && (
-                  <StudentsEmptyState
-                    variant="grow"
-                    onAddStudent={() => router.push("/admin/alunos/novo")}
-                  />
+                  <StudentsEmptyState variant="grow" />
                 )}
               </div>
             ) : (
@@ -463,12 +471,13 @@ export default function AdminAlunosPage() {
                   <table className="w-full border-collapse text-left">
                     <thead>
                       <tr className="alunos-table-head border-b border-border-divider bg-surface-2">
-                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
-                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Status</th>
-                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Plano</th>
-                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Vencimento</th>
-                        <th className="p-3 text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Última Atividade</th>
-                        <th className="p-3 pr-16 text-[10px] font-bold tracking-wider text-text-tertiary uppercase text-right">Ação</th>
+                        {/* Ajuste fino por coluna: edite o <th> e o <td> correspondente abaixo (mesmo nome de classe). */}
+                        <th className="alunos-col-aluno py-3 pl-3 pr-2 text-left text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
+                        <th className="alunos-col-status py-3 px-1 text-center text-[10px] font-bold tracking-wider text-text-tertiary uppercase -translate-x-3">Status</th>
+                        <th className="alunos-col-plano py-3 px-1 text-center text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Plano</th>
+                        <th className="alunos-col-vencimento py-3 px-1 text-center text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Vencimento</th>
+                        <th className="alunos-col-atividade py-3 px-2 text-left text-[10px] font-bold tracking-wider text-text-tertiary uppercase translate-x-3">Última Atividade</th>
+                        <th className="alunos-col-acao py-3 pl-2 pr-4 text-right text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Ação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -495,19 +504,15 @@ export default function AdminAlunosPage() {
                               alerta === 'vencido' && "bg-danger/5 hover:bg-danger/10"
                             )}
                           >
-                            {/* Avatar & Name */}
-                            <td className="p-3">
-                              <div className="flex items-center gap-3">
-                                <div className={cn(
-                                  "w-7 h-7 rounded-full bg-gradient-to-br flex items-center justify-center font-bold text-[10px] text-white overflow-hidden shrink-0",
-                                  isArquivado ? "grayscale" : avatarGrad(name)
-                                )}>
-                                  {row.avatar_url ? (
-                                    <img src={getPublicStorageUrl('avatars', row.avatar_url) || ""} alt={name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    name[0].toUpperCase()
-                                  )}
-                                </div>
+                            {/* Coluna Aluno — classe: alunos-col-aluno */}
+                            <td className="alunos-col-aluno py-3 pl-3 pr-2 text-left">
+                              <div className="flex items-center gap-2.5">
+                                <StudentAvatar
+                                  name={name}
+                                  avatarUrl={row.avatar_url}
+                                  colorClassName={avatarGrad(name)}
+                                  className={isArquivado ? "grayscale" : undefined}
+                                />
                                 <div className="flex flex-col min-w-0">
                                   <span className="text-xs font-bold text-text-primary leading-tight truncate">
                                     {name}
@@ -519,10 +524,10 @@ export default function AdminAlunosPage() {
                               </div>
                             </td>
 
-                            {/* Status Badge */}
-                            <td className="p-3">
+                            {/* Coluna Status — classe: alunos-col-status ( -translate-x-* move a coluna p/ esquerda ) */}
+                            <td className="alunos-col-status py-3 px-1 text-center -translate-x-3">
                               <span className={cn(
-                                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                                "inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                                 isArquivado
                                   ? "bg-surface-3 text-text-disabled border-transparent"
                                   : isActive
@@ -537,58 +542,56 @@ export default function AdminAlunosPage() {
                               </span>
                             </td>
 
-                            {/* Plan Type */}
-                            <td className="p-3 text-xs text-text-secondary capitalize font-medium">
+                            {/* Coluna Plano — classe: alunos-col-plano */}
+                            <td className="alunos-col-plano py-3 px-1 text-center text-xs text-text-secondary capitalize font-medium">
                               {planDisplayName(row.tipo_plano, planosPersonalizados)}
                             </td>
 
-                            {/* Expiration date with alerts */}
-                            <td className="p-3 text-xs">
+                            {/* Coluna Vencimento — classe: alunos-col-vencimento */}
+                            <td className="alunos-col-vencimento py-3 px-1 text-center text-xs">
                               {expiration ? (
-                                <div className="flex items-center gap-1.5">
-                                  {alerta === 'semana' && <Warning size={12} className="text-warning shrink-0" />}
-                                  <div className="flex flex-col">
-                                    <span className={cn(
-                                      "font-medium",
-                                      alerta === 'vencido' && "text-danger font-semibold",
-                                      alerta === 'semana' && "text-warning font-semibold",
-                                      alerta === 'mes' && "text-amber-500 font-semibold",
-                                      !alerta && "text-text-secondary"
-                                    )}>
-                                      {expiration.toLocaleDateString('pt-BR')}
-                                    </span>
-                                    {alerta === 'vencido' && dias !== null && (
-                                      <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vencido há {Math.abs(dias)}d</span>
-                                    )}
-                                    {alerta === 'semana' && dias !== null && (
-                                      <span className="text-[9px] text-warning/80 leading-none mt-0.5">Vence em {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
-                                    )}
-                                    {alerta === 'mes' && dias !== null && (
-                                      <span className="text-[9px] text-amber-500/80 leading-none mt-0.5">{dias}d restantes</span>
-                                    )}
-                                  </div>
+                                <div className="inline-flex flex-col items-center">
+                                  <span className={cn(
+                                    "inline-flex items-center justify-center gap-1 font-medium",
+                                    alerta === 'vencido' && "text-danger font-semibold",
+                                    alerta === 'semana' && "text-warning font-semibold",
+                                    alerta === 'mes' && "text-amber-500 font-semibold",
+                                    !alerta && "text-text-secondary"
+                                  )}>
+                                    {formatVencimentoCurto(row.data_expiracao!)}
+                                    {alerta === 'semana' && <Warning size={12} className="text-warning shrink-0" />}
+                                  </span>
+                                  {alerta === 'vencido' && dias !== null && (
+                                    <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vencido há {Math.abs(dias)}d</span>
+                                  )}
+                                  {alerta === 'semana' && dias !== null && (
+                                    <span className="text-[9px] text-warning/80 leading-none mt-0.5">Vence em {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
+                                  )}
+                                  {alerta === 'mes' && dias !== null && (
+                                    <span className="text-[9px] text-amber-500/80 leading-none mt-0.5">{dias}d restantes</span>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-text-tertiary">—</span>
                               )}
                             </td>
 
-                            {/* Last Activity checkin */}
-                            <td className="p-3 text-xs text-text-secondary font-medium">
+                            {/* Coluna Última Atividade — classe: alunos-col-atividade ( translate-x-* move a coluna p/ direita ) */}
+                            <td className="alunos-col-atividade py-3 px-2 text-left text-xs text-text-secondary font-medium translate-x-3">
                               {row.ultimo_checkin ? (
-                                <div className="flex items-center gap-1">
-                                  <Clock size={11} className="text-text-tertiary" />
+                                <span className="inline-flex items-center gap-1">
                                   <span>{timeAgo(row.ultimo_checkin)}</span>
-                                </div>
+                                  <Clock size={11} className="text-text-tertiary shrink-0" />
+                                </span>
                               ) : (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-2 border-0 text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
+                                <span className="text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
                                   Sem registros
                                 </span>
                               )}
                             </td>
 
-                            {/* Link action */}
-                            <td className="p-3 pr-10 text-right">
+                            {/* Coluna Ação — classe: alunos-col-acao */}
+                            <td className="alunos-col-acao py-3 pl-2 pr-4 text-right">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -608,10 +611,7 @@ export default function AdminAlunosPage() {
                 </div>
                 {rows.length < 5 && (
                   <div className="px-3 pb-3 border-t border-[color:var(--list-row-divider)]">
-                    <StudentsEmptyState
-                      variant="grow"
-                      onAddStudent={() => router.push("/admin/alunos/novo")}
-                    />
+                    <StudentsEmptyState variant="grow" />
                   </div>
                 )}
               </div>

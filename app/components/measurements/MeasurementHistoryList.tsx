@@ -50,7 +50,7 @@ export function MeasurementHistoryList({
               touchAction: 'manipulation',
               fontSize: 11,
               fontWeight: 500,
-              color: '#9333ea',
+              color: '#751BB4',
               background: 'none',
               border: 'none',
               cursor: 'pointer',

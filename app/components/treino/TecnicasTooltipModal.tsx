@@ -23,19 +23,19 @@ export function TecnicasTooltipModal({ open, onClose }: TecnicasTooltipModalProp
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-[20px] border border-[#1F2937] bg-[#111827] p-6"
+        className="w-full max-w-md rounded-[20px] border-0 bg-surface-1 p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-4 text-base font-bold text-white">Técnicas de execução</h3>
+        <h3 className="mb-4 text-base font-bold text-text-primary">Técnicas de execução</h3>
         <div className="flex flex-col gap-4">
           {TECNICAS.map((t) => (
             <div key={t.sigla} className="flex items-start gap-3">
-              <span className="min-w-9 rounded-md bg-[#1D3461] px-2 py-1 text-center text-xs font-bold text-blue-500">
+              <span className="min-w-9 rounded-md bg-brand-subtle px-2 py-1 text-center text-xs font-bold text-brand">
                 {t.sigla}
               </span>
               <div>
-                <p className="text-sm font-semibold text-white">{t.nome}</p>
-                <p className="text-xs text-gray-500">{t.desc}</p>
+                <p className="text-sm font-semibold text-text-primary">{t.nome}</p>
+                <p className="text-xs text-text-tertiary">{t.desc}</p>
               </div>
             </div>
           ))}
@@ -43,7 +43,7 @@ export function TecnicasTooltipModal({ open, onClose }: TecnicasTooltipModalProp
         <button
           type="button"
           onClick={onClose}
-          className="mt-5 w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white"
+          className="mt-5 w-full rounded-xl bg-brand py-3 text-sm font-bold text-text-on-brand"
         >
           Entendi
         </button>

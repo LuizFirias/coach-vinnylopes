@@ -8,27 +8,18 @@ import {
   Trash,
   X,
   PencilSimple,
+  CaretRight,
 } from "@phosphor-icons/react";
 import { RestBadge } from "./RestBadge";
 import { SetRow, SetsTableHeader } from "./SetRow";
-import { BiSetPartnerPicker } from "./BiSetPartnerPicker";
 import { getColunasPorTipo, showPesoColumn } from "./exerciseColumns";
 import type { BiSetGroupFicha } from "@/lib/utils/biset";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 
-interface CatalogExercise {
-  id: string;
-  nome: string;
-  grupo_muscular: string;
-  tipo_exercicio?: string;
-  video_url?: string;
-}
-
 interface BiSetGroupCardProps {
   group: BiSetGroupFicha;
   groupIndex: number;
-  catalog: CatalogExercise[];
   dragHandleProps?: {
     onPointerDown?: (e: React.PointerEvent) => void;
   };
@@ -38,8 +29,8 @@ interface BiSetGroupCardProps {
   onUpdateSerie: (half: "a" | "b", serieIndex: number, field: string, value: unknown) => void;
   onAddSerie: () => void;
   onRemoveSerie: (serieIndex: number) => void;
-  onSelectPartner: (ex: CatalogExercise) => void;
   onSwapPartner: () => void;
+  onRequestPickPartner: () => void;
   onUndoBiSet: () => void;
   onDelete: () => void;
 }
@@ -47,7 +38,6 @@ interface BiSetGroupCardProps {
 export function BiSetGroupCard({
   group,
   groupIndex,
-  catalog,
   dragHandleProps,
   isDragging,
   onUpdateDescanso,
@@ -55,8 +45,8 @@ export function BiSetGroupCard({
   onUpdateSerie,
   onAddSerie,
   onRemoveSerie,
-  onSelectPartner,
   onSwapPartner,
+  onRequestPickPartner,
   onUndoBiSet,
   onDelete,
 }: BiSetGroupCardProps) {
@@ -106,12 +96,12 @@ export function BiSetGroupCard({
     <>
       <div
         className={cn(
-          "bg-surface-1 border border-brand rounded-[14px] overflow-hidden transition-opacity",
-          isDragging && "opacity-95 shadow-elev-3"
+          "bg-surface-1 border-0 rounded-[14px] overflow-hidden transition-opacity",
+          isDragging && "opacity-95 ring-1 ring-brand/40 shadow-elev-3"
         )}
       >
         {/* Exercício A */}
-        <div className="px-3.5 py-2.5 border-b border-divider/50">
+        <div className="px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-1.5 mb-2">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <button
@@ -123,24 +113,18 @@ export function BiSetGroupCard({
               >
                 <DotsSixVertical size={15} />
               </button>
-              <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider text-brand bg-[#1a2d4a] rounded px-1.5 py-0.5">
+              <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider text-brand">
                 BI-SET
               </span>
-              {isMobile ? (
-                <textarea
-                  value={halfA.nome}
-                  onChange={(e) => onUpdateHalf("a", { nome: e.target.value })}
-                  rows={2}
-                  className="flex-1 min-w-0 text-[11px] font-semibold text-text-primary bg-transparent border-none p-0 focus:outline-none resize-none leading-[14px]"
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={halfA.nome}
-                  onChange={(e) => onUpdateHalf("a", { nome: e.target.value })}
-                  className="flex-1 min-w-0 text-sm font-semibold text-text-primary bg-transparent border-none p-0 focus:outline-none"
-                />
-              )}
+              <p
+                className={cn(
+                  "min-w-0 flex-1 font-semibold text-text-primary truncate",
+                  isMobile ? "text-[11px] leading-snug whitespace-normal break-words" : "text-sm",
+                )}
+                title={halfA.nome}
+              >
+                {halfA.nome}
+              </p>
             </div>
             <div className="flex items-center gap-0.5 shrink-0 relative">
               <button
@@ -167,7 +151,7 @@ export function BiSetGroupCard({
                   >
                     Remover Bi-Set
                   </button>
-                  <div className="h-px bg-[#222222] my-1" />
+                  <div className="h-px bg-border-divider my-1" />
                   <button
                     type="button"
                     onClick={() => { onDelete(); setMenuAOpen(false); }}
@@ -197,41 +181,45 @@ export function BiSetGroupCard({
               value={halfA.observacoes}
               onChange={(e) => onUpdateHalf("a", { observacoes: e.target.value })}
               placeholder="Observação para o aluno (A)..."
-              className="w-full mt-2 px-0 py-2 bg-transparent border-b border-divider text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
+              className="w-full mt-2 px-0 py-2 bg-transparent border-0 border-b border-border-divider text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
               rows={2}
             />
           )}
         </div>
 
-        {/* Exercício B ou picker */}
+        {/* Exercício B ou CTA para biblioteca */}
         {!isComplete ? (
           <div className="px-3.5 pb-3.5">
-            <BiSetPartnerPicker
-              catalog={catalog}
-              excludeIds={[halfA.exercicio_id]}
-              onSelect={onSelectPartner}
-            />
+            <button
+              type="button"
+              onClick={onRequestPickPartner}
+              className="w-full mt-1 rounded-xl bg-brand/10 px-3.5 py-3 flex items-center justify-between gap-3 text-left hover:bg-brand/15 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-brand">
+                  + Selecionar exercício B
+                </p>
+                <p className="text-[11px] text-text-tertiary mt-0.5">
+                  Escolha na biblioteca ao lado
+                </p>
+              </div>
+              <CaretRight size={16} className="text-brand shrink-0" />
+            </button>
           </div>
         ) : (
-          <div className="mx-3.5 mb-3.5 mt-1 rounded-[10px] bg-[#0f0f0f] border-0 p-3">
+          <div className="mx-3.5 mb-3.5 mt-1 rounded-[10px] bg-surface-2/60 border-0 p-3">
             <div className="flex items-center justify-between gap-1.5 mb-2">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <ArrowDown size={14} className="text-brand shrink-0" />
-                {isMobile ? (
-                  <textarea
-                    value={halfB!.nome}
-                    onChange={(e) => onUpdateHalf("b", { nome: e.target.value })}
-                    rows={2}
-                    className="flex-1 min-w-0 text-[11px] font-semibold text-text-primary bg-transparent border-none p-0 focus:outline-none resize-none leading-[14px]"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={halfB!.nome}
-                    onChange={(e) => onUpdateHalf("b", { nome: e.target.value })}
-                    className="flex-1 min-w-0 text-sm font-semibold text-text-primary bg-transparent border-none p-0 focus:outline-none"
-                  />
-                )}
+                <p
+                  className={cn(
+                    "min-w-0 flex-1 font-semibold text-text-primary truncate",
+                    isMobile ? "text-[11px] leading-snug whitespace-normal break-words" : "text-sm",
+                  )}
+                  title={halfB!.nome}
+                >
+                  {halfB!.nome}
+                </p>
               </div>
               <div className="flex items-center gap-0.5 shrink-0 relative">
                 <button
@@ -274,7 +262,7 @@ export function BiSetGroupCard({
                 value={halfB!.observacoes}
                 onChange={(e) => onUpdateHalf("b", { observacoes: e.target.value })}
                 placeholder="Observação para o aluno (B)..."
-                className="w-full mt-2 px-0 py-2 bg-transparent border-b border-divider text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
+                className="w-full mt-2 px-0 py-2 bg-transparent border-0 border-b border-border-divider text-xs text-text-secondary focus:outline-none resize-none min-h-[44px]"
                 rows={2}
               />
             )}
@@ -323,7 +311,7 @@ export function BiSetGroupCard({
               <button
                 type="button"
                 onClick={() => { setShowUndoModal(false); onUndoBiSet(); }}
-                className="flex-1 h-10 rounded-lg bg-[#1e1e1e] border-0 text-xs font-semibold text-text-primary"
+                className="flex-1 h-10 rounded-lg bg-surface-2 border-0 text-xs font-semibold text-text-primary"
               >
                 Desfazer Bi-Set
               </button>

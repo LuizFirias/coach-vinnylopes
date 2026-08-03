@@ -40,7 +40,7 @@ const OPTIONAL_STYLE: CSSProperties = {
   fontSize: 10,
 };
 
-const INPUT_BG = '#ebebf0';
+const INPUT_BG = 'var(--surface-2)';
 const INPUT_BG_FOCUS = '#e4e4ea';
 
 const inputStyle: CSSProperties = {
@@ -156,7 +156,7 @@ export function CardioForm({
             size={14}
             weight="bold"
             className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
-            style={{ color: '#9333ea' }}
+            style={{ color: '#751BB4' }}
             aria-hidden
           />
         </button>
@@ -288,8 +288,8 @@ export function CardioForm({
           height: 48,
           borderRadius: 12,
           border: 'none',
-          background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-          boxShadow: '0 4px 16px rgba(147,51,234,0.35)',
+          background: 'var(--btn-primary-bg)',
+          boxShadow: '0 4px 16px rgba(117, 27, 180,0.35)',
           color: '#fff',
           fontSize: 15,
           fontWeight: 600,

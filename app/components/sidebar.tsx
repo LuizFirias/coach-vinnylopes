@@ -2,13 +2,10 @@
 
 import { useState, useEffect, type ComponentType } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
-import { getPlanLabel } from '@/lib/subscriptions/plans';
-import { fetchSubscriptionStatusCached } from '@/lib/subscriptions/statusClientCache';
 import {
   Barbell,
   ForkKnife,
@@ -30,7 +27,7 @@ import {
   ChatCircle,
   ChartBar,
   CaretLeft,
-  CaretRight
+  CaretRight,
 } from '@phosphor-icons/react';
 
 type IconComponent = ComponentType<{ size?: number | string; weight?: 'fill' | 'regular'; className?: string }>;
@@ -99,87 +96,37 @@ function resolveCoachGroups(isSuperAdmin: boolean): { label: string; items: Menu
     .filter((group) => group.items.length > 0);
 }
 
-type PlanIndicatorState = {
-  show: boolean;
-  label: string;
-  studentCount: number;
-  studentLimit: number;
-  isActive: boolean;
-};
-
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const { userRole, loading, user } = useAuth();
   const pathname = usePathname();
 
   const [isExpanded, setIsExpanded] = useState(true);
-  const [planIndicator, setPlanIndicator] = useState<PlanIndicatorState | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-expanded');
     const expanded = saved !== 'false';
     setIsExpanded(expanded);
-    document.documentElement.style.setProperty('--sidebar-width', expanded ? '240px' : '80px');
+    document.documentElement.style.setProperty('--sidebar-width', expanded ? '155px' : '54px');
   }, []);
-
-  useEffect(() => {
-    if (!user || userRole === 'aluno' || userRole === 'super_admin' || !userRole) {
-      setPlanIndicator(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const { data: sessionData } = await supabaseClient.auth.getSession();
-        const token = sessionData.session?.access_token;
-        if (!token) return;
-
-        const resData = await fetchSubscriptionStatusCached(token);
-        if (!resData || cancelled) return;
-
-        const data = resData;
-
-        const accountType = data.accountType as string | undefined;
-        if (
-          data.isSuperAdmin ||
-          accountType === 'teste' ||
-          accountType === 'parceiro' ||
-          data.studentLimit == null
-        ) {
-          setPlanIndicator({ show: false, label: '', studentCount: 0, studentLimit: 0, isActive: true });
-          return;
-        }
-
-        const label =
-          data.currentPlan?.label ||
-          getPlanLabel(data.planTier) ||
-          'AuronFit';
-
-        setPlanIndicator({
-          show: true,
-          label,
-          studentCount: data.activeStudentCount ?? 0,
-          studentLimit: data.studentLimit,
-          isActive: data.isActive !== false,
-        });
-      } catch {
-        if (!cancelled) setPlanIndicator(null);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, userRole]);
 
   const toggleSidebar = () => {
     const next = !isExpanded;
     setIsExpanded(next);
     localStorage.setItem('sidebar-expanded', String(next));
-    document.documentElement.style.setProperty('--sidebar-width', next ? '240px' : '80px');
+    document.documentElement.style.setProperty('--sidebar-width', next ? '155px' : '54px');
   };
+
+  const collapseButton = (
+    <button
+      type="button"
+      onClick={toggleSidebar}
+      className="sidebar-collapse-btn w-5 h-5 border-0 bg-transparent flex items-center justify-center shrink-0 p-0 opacity-70 hover:opacity-100 transition-opacity"
+      title={isExpanded ? 'Recolher menu' : 'Expandir menu'}
+    >
+      {isExpanded ? <CaretLeft size={12} weight="bold" /> : <CaretRight size={12} weight="bold" />}
+    </button>
+  );
 
   // Ocultar em rotas públicas ou enquanto carrega
   if (
@@ -206,8 +153,6 @@ export default function Sidebar() {
   const flatMobileItems = isAluno
     ? alunoMenuItems
     : coachGroups.flatMap((g) => g.items);
-
-  const showPlanIndicator = Boolean(isExpanded && planIndicator?.show);
 
   const renderNavLink = (m: MenuItem, opts?: { onNavigate?: () => void; mobile?: boolean }) => {
     const Icon = m.icon;
@@ -239,18 +184,18 @@ export default function Sidebar() {
         href={m.href}
         title={!isExpanded ? m.name : undefined}
         className={cn(
-          "sidebar-nav-link flex items-center gap-2.5 px-2.5 h-9 transition-all group relative",
+          "sidebar-nav-link flex items-center gap-2 px-1.5 h-8 transition-all group relative",
           isActive
-            ? "sidebar-nav-link--active bg-brand/10 text-brand font-semibold border-l-2 border-brand rounded-r-lg rounded-l-none"
-            : "sidebar-nav-link--idle text-text-disabled hover:text-brand hover:bg-brand/5 rounded-lg",
+            ? "sidebar-nav-link--active bg-white/15 text-white font-semibold border-l-2 border-white rounded-r-lg rounded-l-none"
+            : "sidebar-nav-link--idle text-white/85 hover:text-white hover:bg-white/10 rounded-lg",
           isExpanded ? "justify-start" : "justify-center"
         )}
       >
         {isActive && !isExpanded && <div className="absolute left-0 w-1 h-4 bg-brand rounded-r-full" />}
-        <Icon size={15} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
+        <Icon size={14} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
 
         {isExpanded && (
-          <span className="text-[11px] font-medium tracking-wide truncate">
+          <span className="text-[10px] font-semibold tracking-wide truncate">
             {m.name}
           </span>
         )}
@@ -259,7 +204,7 @@ export default function Sidebar() {
           <div
             className="absolute left-full ml-4 px-2 py-1 backdrop-blur-xl text-white text-[10px] font-medium tracking-wider rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100"
             style={{
-              background: '#1a1033',
+              background: '#141414',
               boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
             }}
           >
@@ -275,43 +220,37 @@ export default function Sidebar() {
       {/* Sidebar for Desktop */}
       <aside
         style={{
-          width: isExpanded ? '240px' : '80px',
-          borderRightColor: 'rgba(147,51,234,0.12)',
-          boxShadow: '4px 0 24px rgba(0,0,0,0.3)',
+          width: isExpanded ? '155px' : '54px',
         }}
-        className="hidden lg:flex fixed left-0 top-0 h-full min-h-0 bg-surface-1 border-r flex-col py-3 px-3 items-stretch z-60 transition-[width] duration-300 overflow-hidden"
+        className="auron-sidebar hidden lg:flex fixed left-0 top-0 h-full min-h-0 border-r flex-col py-2 px-1.5 items-stretch z-60 transition-[width] duration-300 overflow-hidden"
       >
-        <div className="flex flex-col items-center gap-2 mb-3 px-2 relative shrink-0">
-          <Link href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'} className="flex items-center justify-center group cursor-pointer">
-            <Image
-              src="/images/logo-elo.webp"
-              alt="Auronfit"
-              width={isExpanded ? 56 : 48}
-              height={isExpanded ? 56 : 48}
-              className={cn(
-                "object-contain group-hover:scale-105 transition-transform",
-                isExpanded ? "w-14 h-14" : "w-12 h-12"
-              )}
-              priority
-            />
-          </Link>
+        {isExpanded ? (
+          <div className="flex items-center justify-center mb-3 shrink-0 px-1">
+            <Link
+              href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'}
+              className="flex items-center justify-center group cursor-pointer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/logo-auron-nome.svg"
+                alt="Auron"
+                width={100}
+                height={11}
+                className="h-[25px] w-auto max-w-[112px] object-contain group-hover:opacity-90 transition-opacity"
+              />
+            </Link>
+          </div>
+        ) : null}
 
-          <button
-            onClick={toggleSidebar}
-            className={cn(
-              "w-6 h-6 rounded-md border-0 flex items-center justify-center transition-colors shrink-0",
-              "bg-brand/10 text-brand hover:bg-brand/20 hover:text-brand-hover",
-              isExpanded ? "absolute right-1 top-1/2 -translate-y-1/2" : "mt-0.5"
-            )}
-            title={isExpanded ? "Recolher menu" : "Expandir menu"}
-          >
-            {isExpanded ? <CaretLeft size={13} /> : <CaretRight size={13} />}
-          </button>
-        </div>
-
-        <nav className="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex flex-col flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {isAluno ? (
             <div className="flex flex-col gap-0.5">
+              <div className={cn(
+                'flex items-center mb-1.5 px-1',
+                isExpanded ? 'justify-end' : 'justify-center'
+              )}>
+                {collapseButton}
+              </div>
               {alunoMenuItems.map((m) => renderNavLink(m))}
             </div>
           ) : (
@@ -319,11 +258,21 @@ export default function Sidebar() {
               <div
                 key={group.label}
                 className="flex flex-col gap-0.5"
-                style={{ marginTop: groupIdx === 0 ? 0 : 20 }}
+                style={{ marginTop: groupIdx === 0 ? 0 : 16 }}
               >
-                {isExpanded && (
-                  <div className="sidebar-group-label px-2.5 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px]">
-                    {group.label}
+                {(isExpanded || groupIdx === 0) && (
+                  <div
+                    className={cn(
+                      'flex items-center mb-1.5 px-1 min-h-5',
+                      isExpanded ? 'justify-between gap-1' : 'justify-center'
+                    )}
+                  >
+                    {isExpanded && (
+                      <div className="sidebar-group-label text-[9px] font-semibold uppercase tracking-[1.2px] truncate">
+                        {group.label}
+                      </div>
+                    )}
+                    {groupIdx === 0 && collapseButton}
                   </div>
                 )}
                 {group.items.map((m) => renderNavLink(m))}
@@ -333,45 +282,19 @@ export default function Sidebar() {
         </nav>
 
         <div className="mt-auto shrink-0">
-          {showPlanIndicator && planIndicator && (
-            <div
-              className={cn(
-                "text-[11px] px-4 py-3",
-                planIndicator.isActive ? "text-text-tertiary" : "text-danger",
-              )}
-              style={{ borderTop: '1px solid rgba(147,51,234,0.10)' }}
-            >
-              {planIndicator.label} · {planIndicator.studentCount}/{planIndicator.studentLimit} alunos
-            </div>
-          )}
-
-          <div
-            className="pt-2.5 pb-1 flex flex-col gap-1.5"
-            style={{ borderTop: '1px solid rgba(147,51,234,0.10)' }}
-          >
-            {isExpanded && user && (
-              <div className="flex flex-col min-w-0 px-2 py-0.5">
-                <span className="text-[8px] font-semibold text-text-tertiary uppercase tracking-[0.06em] mb-0.5">
-                  Acesso
-                </span>
-                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wide truncate">
-                  {userRole?.replace('_', ' ') || 'Aluno'}
-                </span>
-              </div>
-            )}
-
+          <div className="pt-2 pb-0.5 flex flex-col gap-1 border-t border-white/15">
             <button
               onClick={async () => {
                 try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
                 localStorage.clear();
                 window.location.href = '/login';
               }}
-              className={`w-full h-9 rounded-lg flex items-center gap-2.5 text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group ${isExpanded ? 'px-3 justify-start' : 'justify-center'}`}
+              className={`sidebar-logout w-full h-8 rounded-lg flex items-center gap-2 transition-all group ${isExpanded ? 'px-1.5 justify-start' : 'justify-center'}`}
               title="Sair"
             >
-              <SignOut size={15} className="shrink-0" />
+              <SignOut size={14} className="shrink-0" />
               {isExpanded && (
-                <span className="text-[11px] font-semibold tracking-wide">Sair</span>
+                <span className="text-[10px] font-semibold tracking-wide">Sair</span>
               )}
             </button>
           </div>
@@ -398,41 +321,31 @@ export default function Sidebar() {
 
       {/* Drawer Menu - Mobile Only */}
       <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
-        <div className="p-6 pb-4 flex items-center justify-between">
-          <div className="w-[72px] h-[72px] rounded-lg flex items-center justify-center overflow-hidden">
-            <Image
-              src="/images/logo-elo.webp"
-              alt="Auronfit"
-              width={64}
-              height={64}
-              className="object-contain w-16 h-16"
-              priority
+        <div className="p-6 pb-4 flex items-center justify-between gap-3">
+          <Link
+            href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'}
+            className="flex items-center min-w-0"
+            onClick={() => setOpen(false)}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo-auron-nome.svg"
+              alt="Auron"
+              width={110}
+              height={12}
+              className="h-[16px] w-auto max-w-[120px] object-contain object-left"
             />
-          </div>
+          </Link>
           <button
             onClick={() => setOpen(false)}
-            className="w-10 h-10 flex items-center justify-center bg-surface-1 text-text-secondary hover:text-brand rounded-lg transition-all"
+            className="w-10 h-10 shrink-0 flex items-center justify-center bg-surface-1 text-text-secondary hover:text-brand rounded-lg transition-all"
             aria-label="Fechar"
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="px-5 mt-3 mb-6">
-           <div className="p-4 bg-surface-1 rounded-lg border-0 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center border-0">
-                 <User size={15} className="text-brand" />
-              </div>
-              <div className="flex flex-col">
-                 <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mb-1">Acesso</span>
-                 <span className="text-[9px] text-text-primary uppercase tracking-wide">
-                    {userRole?.replace('_', ' ') || 'Carregando...'}
-                 </span>
-              </div>
-           </div>
-        </div>
-
-        <nav className="px-4 flex flex-col gap-1.5 overflow-y-auto max-h-[60vh]">
+        <nav className="px-4 mt-3 mb-6 flex flex-col gap-1.5 overflow-y-auto max-h-[60vh]">
           {flatMobileItems.map((m) => renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }))}
         </nav>
 

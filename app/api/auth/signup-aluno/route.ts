@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         subject: "Bem-vindo ao Auronfit | Painel do Aluno",
         html: `
           <div style="background-color: #09090B; color: #FAFAFA; font-family: sans-serif; padding: 40px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #9333ea; font-size: 28px; margin-bottom: 16px;">Bem-vindo ao Auronfit, ${fullName}!</h1>
+            <h1 style="color: #751BB4; font-size: 28px; margin-bottom: 16px;">Bem-vindo ao Auronfit, ${fullName}!</h1>
             <p style="font-size: 16px; line-height: 1.5; color: #A1A1AA;">Sua conta de aluno/atleta foi criada com sucesso.</p>
             
             <div style="background-color: #111113; padding: 20px; border: 1px solid #27272A; border-radius: 8px; margin: 24px 0;">

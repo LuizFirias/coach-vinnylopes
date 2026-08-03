@@ -50,15 +50,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             leftIcon && 'pl-9',
             rightElement && 'pr-10',
             'text-[16px] font-medium text-text-primary',
-            'placeholder:text-text-disabled placeholder:font-normal',
+            'placeholder:text-text-disabled placeholder:font-normal placeholder:text-[12px]',
             'rounded-[10px]',
             'bg-surface-2',
-            'border border-input',
+            'border-0',
             'transition-all duration-150',
             'focus:outline-none',
-            'focus:border-brand',
             'focus:ring-1 focus:ring-brand/30',
-            error && 'border-danger focus:border-danger focus:ring-danger/30',
+            error && 'ring-1 ring-danger/40 focus:ring-danger/40',
             className
           )}
           style={{ fontSize: '16px', touchAction: 'manipulation' }}

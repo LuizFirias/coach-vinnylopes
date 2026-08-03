@@ -669,8 +669,8 @@ export default function NovoAlunoPage() {
               disabled={!canSubmit}
               className="h-10 px-6 rounded-[10px] border-0 text-text-on-brand text-[13px] font-semibold transition-opacity"
               style={{
-                background: "linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)",
-                boxShadow: "0 3px 12px rgba(147,51,234,0.35)",
+                background: "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                boxShadow: "0 3px 12px rgba(117, 27, 180,0.35)",
                 cursor: canSubmit ? "pointer" : "not-allowed",
                 opacity: canSubmit ? 1 : 0.5,
               }}

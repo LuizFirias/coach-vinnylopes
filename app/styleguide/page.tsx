@@ -14,6 +14,7 @@ import {
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 import { GlassPanel, GLASS_VARIANT_META } from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils/cn';
@@ -32,18 +33,28 @@ const SECTIONS = [
 
 type Swatch = { name: string; token: string; value: string; note?: string };
 
-const SURFACES: Swatch[] = [
-  { name: 'Surface 0', token: '--surface-0', value: '#080c14', note: 'Page bg — navy' },
-  { name: 'Surface 1', token: '--surface-1', value: '#111827', note: 'Card padrão (coach + aluno)' },
-  { name: 'Surface 2', token: '--surface-2', value: '#1e1e1e', note: 'Input / elevação — NÃO card' },
-  { name: 'Surface 3', token: '--surface-3', value: '#222222', note: 'Overlay / Divisor' },
-  { name: 'Surface 4', token: '--surface-4', value: '#282828', note: 'Borda input' },
+/** Neutros 60-30-10 — dark (page / card / input) */
+const SURFACES_DARK: Swatch[] = [
+  { name: 'Surface 0', token: '--surface-0', value: '#000000', note: 'Page bg (60%)' },
+  { name: 'Surface 1', token: '--surface-1', value: '#141414', note: 'Card (30%)' },
+  { name: 'Surface 2', token: '--surface-2', value: '#222222', note: 'Input / elevação — NÃO card' },
+  { name: 'Surface 3', token: '--surface-3', value: '#2A2A2A', note: 'Overlay / divisor' },
+  { name: 'Surface 4', token: '--surface-4', value: '#333333', note: 'Borda input' },
+];
+
+/** Neutros 60-30-10 — light (page / card / input) */
+const SURFACES_LIGHT: Swatch[] = [
+  { name: 'Surface 0', token: '--surface-0', value: '#FFFFFF', note: 'Page bg (60%)' },
+  { name: 'Surface 1', token: '--surface-1', value: '#F7F7F7', note: 'Card (30%) — mais claro que input' },
+  { name: 'Surface 2', token: '--surface-2', value: '#E8E8E8', note: 'Input / elevação — contraste sobre card' },
+  { name: 'Surface 3', token: '--surface-3', value: '#DEDEDE', note: 'Overlay / divisor' },
+  { name: 'Surface 4', token: '--surface-4', value: '#D4D4D4', note: 'Borda input' },
 ];
 
 const BRAND: Swatch[] = [
-  { name: 'Brand', token: '--brand-primary', value: '#9333ea' },
-  { name: 'Hover', token: '--brand-hover', value: '#a855f7' },
-  { name: 'Pressed', token: '--brand-pressed', value: '#7e22ce' },
+  { name: 'Brand / Accent', token: '--brand-primary', value: '#751BB4', note: '≤10% — sidebar, CTAs, foco' },
+  { name: 'Hover', token: '--brand-hover', value: '#8B2FD4' },
+  { name: 'Pressed', token: '--brand-pressed', value: '#5E158F' },
 ];
 
 const SEMANTIC: Swatch[] = [
@@ -53,17 +64,24 @@ const SEMANTIC: Swatch[] = [
   { name: 'Info', token: '--info', value: '#38BDF8', note: 'Info / sync' },
 ];
 
-const TEXT: Swatch[] = [
-  { name: 'Primary', token: '--text-primary', value: '#D8DCE6' },
+const TEXT_DARK: Swatch[] = [
+  { name: 'Primary', token: '--text-primary', value: '#FFFFFF' },
   { name: 'Secondary', token: '--text-secondary', value: '#A1A1AA' },
   { name: 'Tertiary', token: '--text-tertiary', value: '#71717A' },
   { name: 'Disabled', token: '--text-disabled', value: '#52525B' },
 ];
 
+const TEXT_LIGHT: Swatch[] = [
+  { name: 'Primary', token: '--text-primary', value: '#09090B' },
+  { name: 'Secondary', token: '--text-secondary', value: '#52525B' },
+  { name: 'Tertiary', token: '--text-tertiary', value: '#888888' },
+  { name: 'Disabled', token: '--text-disabled', value: '#A1A1AA' },
+];
+
 const AURON_CAL: Swatch[] = [
   { name: 'Done', token: '--cal-done', value: '#39c75a', note: 'Treino feito' },
   { name: 'Missed', token: '--cal-missed', value: '#e05555', note: 'Não realizado' },
-  { name: 'Today', token: '--cal-today', value: '#9333ea', note: 'Dia atual' },
+  { name: 'Today', token: '--cal-today', value: '#751BB4', note: 'Dia atual' },
   { name: 'Upcoming', token: '--cal-upcoming', value: '#7a8aab', note: 'Futuro' },
   { name: 'Rest / muted', token: '--cal-rest', value: '#444444', note: 'Descanso' },
 ];
@@ -143,6 +161,8 @@ function SwatchCard({
 export default function StyleguidePage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [active, setActive] = useState('brand');
+  const [demoSelect, setDemoSelect] = useState('200');
+  const [demoUf, setDemoUf] = useState('SP');
 
   const copy = async (text: string) => {
     try {
@@ -208,7 +228,7 @@ export default function StyleguidePage() {
                 className="absolute inset-0 opacity-40 pointer-events-none"
                 style={{
                   background:
-                    'radial-gradient(80% 60% at 10% 0%, rgba(147, 51, 234,0.25), transparent 60%)',
+                    'radial-gradient(80% 60% at 10% 0%, rgba(117, 27, 180,0.25), transparent 60%)',
                 }}
               />
               <div className="relative">
@@ -236,23 +256,37 @@ export default function StyleguidePage() {
           <section>
             <SectionTitle id="colors">Cores</SectionTitle>
             <p className="text-sm text-text-secondary mb-6 max-w-2xl">
-              Fonte de verdade: <code className="text-xs text-brand">app/design-tokens.css</code>.
+              Neutros 60-30-10 (page / card / input) + accent ≤10% em{" "}
+              <code className="text-xs text-brand">app/design-tokens.css</code> — escopo global.
               Clique em um swatch para copiar o token CSS.
             </p>
 
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
-              Surfaces
+              Surfaces — Dark
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-8">
-              {SURFACES.map((s) => (
-                <SwatchCard key={s.token} swatch={s} onCopy={copy} />
+              {SURFACES_DARK.map((s) => (
+                <SwatchCard key={`dark-${s.token}`} swatch={s} onCopy={copy} />
               ))}
             </div>
 
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
-              Brand
+              Surfaces — Light
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+            <p className="text-[12px] text-text-secondary mb-3 max-w-2xl leading-relaxed">
+              Card (#F7F7F7) fica um passo acima do page branco; input (#E8E8E8) um passo abaixo do card —
+              evita card e campo com o mesmo cinza.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-8">
+              {SURFACES_LIGHT.map((s) => (
+                <SwatchCard key={`light-${s.token}`} swatch={s} onCopy={copy} />
+              ))}
+            </div>
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
+              Brand / accent
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
               {BRAND.map((s) => (
                 <SwatchCard key={s.token} swatch={s} onCopy={copy} />
               ))}
@@ -268,11 +302,20 @@ export default function StyleguidePage() {
             </div>
 
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
-              Texto
+              Texto — Dark
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {TEXT_DARK.map((s) => (
+                <SwatchCard key={`text-dark-${s.token}`} swatch={s} onCopy={copy} />
+              ))}
+            </div>
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
+              Texto — Light
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-              {TEXT.map((s) => (
-                <SwatchCard key={s.token} swatch={s} onCopy={copy} />
+              {TEXT_LIGHT.map((s) => (
+                <SwatchCard key={`text-light-${s.token}`} swatch={s} onCopy={copy} />
               ))}
             </div>
 
@@ -418,7 +461,7 @@ export default function StyleguidePage() {
             </div>
             <div
               className="mt-4 rounded-xl bg-surface-1 border border-brand-border p-5"
-              style={{ boxShadow: '0 0 24px rgba(147, 51, 234, 0.22)' }}
+              style={{ boxShadow: '0 0 24px rgba(117, 27, 180, 0.22)' }}
             >
               <p className="text-sm font-semibold text-brand">glow-brand</p>
               <p className="text-[10px] font-mono text-text-tertiary mt-1">
@@ -483,9 +526,18 @@ export default function StyleguidePage() {
             </div>
 
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
-              Inputs
+              Inputs &amp; Selects
             </p>
-            <div className="grid sm:grid-cols-2 gap-4 mb-8 max-w-2xl">
+            <p className="text-[12px] text-text-secondary mb-4 max-w-2xl leading-relaxed">
+              Componentes: <code className="text-brand font-mono text-[11px]">Input</code>
+              {' '}e <code className="text-brand font-mono text-[11px]">Select</code>
+              {' '}em <code className="font-mono text-[11px]">components/ui/</code>.
+              Tokens theme-aware — funcionam em <strong className="text-text-primary font-medium">dark e light</strong>.
+              Listas abrem como painel custom (nunca <code className="font-mono text-[11px]">&lt;select&gt;</code> nativo
+              estilizado). Sem contorno branco/preto: <code className="font-mono text-[11px]">border-0</code>,
+              contraste por <code className="font-mono text-[11px]">surface-2</code> sobre o card.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4 mb-4 max-w-2xl">
               <Input
                 label="Busca"
                 placeholder="Localizar..."
@@ -502,18 +554,68 @@ export default function StyleguidePage() {
                 placeholder="seu_usuario"
                 helperText="Aparece no rodapé das imagens"
               />
+              <Select
+                label="Faixa de preço"
+                value={demoSelect}
+                onChange={setDemoSelect}
+                placeholder="Não exibir"
+                options={[
+                  { value: '', label: 'Não exibir' },
+                  { value: '150', label: 'A partir de R$ 150' },
+                  { value: '200', label: 'A partir de R$ 200' },
+                  { value: '300', label: 'A partir de R$ 300' },
+                ]}
+              />
+              <Select
+                label="UF"
+                value={demoUf}
+                onChange={setDemoUf}
+                placeholder="—"
+                options={[
+                  { value: '', label: '—' },
+                  { value: 'SP', label: 'SP' },
+                  { value: 'RJ', label: 'RJ' },
+                  { value: 'MG', label: 'MG' },
+                ]}
+              />
             </div>
+            <ul className="mb-8 max-w-2xl space-y-1.5 text-[12px] text-text-secondary leading-relaxed list-disc pl-4">
+              <li>
+                <strong className="text-text-primary font-medium">Campo:</strong>{' '}
+                <code className="font-mono text-[11px]">h-11</code>,{' '}
+                <code className="font-mono text-[11px]">rounded-[10px]</code>,{' '}
+                <code className="font-mono text-[11px]">bg-surface-2</code>, sem borda de contorno.
+                Placeholder ~12px, texto do valor 13–14px.
+              </li>
+              <li>
+                <strong className="text-text-primary font-medium">Lista:</strong>{' '}
+                painel <code className="font-mono text-[11px]">rounded-xl</code> + sombra,
+                opção ativa <code className="font-mono text-[11px]">text-brand bg-brand/10</code> + check.
+                Reutilize <code className="font-mono text-[11px]">selectListboxClassName</code> /
+                <code className="font-mono text-[11px]">selectOptionClassName</code> em autocompletes.
+              </li>
+              <li>
+                <strong className="text-text-primary font-medium">Dark:</strong>{' '}
+                card <code className="font-mono text-[11px]">#141414</code>, input{' '}
+                <code className="font-mono text-[11px]">#222222</code> (surface-2).
+              </li>
+              <li>
+                <strong className="text-text-primary font-medium">Light:</strong>{' '}
+                card <code className="font-mono text-[11px]">#F7F7F7</code>, input{' '}
+                <code className="font-mono text-[11px]">#E8E8E8</code> — campo sempre um tom
+                mais escuro que o card.
+              </li>
+            </ul>
 
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary mb-3">
-              Cards — fill padrão #111827
+              Cards — Dark #141414 · Light #F7F7F7
             </p>
             <p className="text-[12px] text-text-secondary mb-3 max-w-2xl leading-relaxed">
-              Todo card de conteúdo (coach e aluno) usa{' '}
+              Todo card de conteúdo usa{' '}
               <code className="text-brand font-mono text-[11px]">bg-surface-1</code>
-              {' '}(= <code className="text-brand font-mono text-[11px]">#111827</code>
-              ). Contraste page↔card vem de surface-0 → surface-1. Não usar{' '}
-              <code className="font-mono text-[11px] text-danger">#141414</code>,{' '}
-              <code className="font-mono text-[11px] text-danger">#1e1e1e</code> nem{' '}
+              {' '}(dark <code className="font-mono text-[11px]">#141414</code>, light{' '}
+              <code className="font-mono text-[11px]">#F7F7F7</code>).
+              Contraste page↔card: black/white → surface-1. Não usar{' '}
               <code className="font-mono text-[11px] text-danger">bg-surface-2</code> como
               fundo de card — surface-2 fica para inputs e elevação interna.
             </p>
@@ -521,7 +623,7 @@ export default function StyleguidePage() {
               <Card>
                 <p className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1">Default</p>
                 <p className="text-sm font-semibold">Card padrão</p>
-                <p className="text-[10px] font-mono text-text-disabled mt-2">bg-surface-1 · #111827</p>
+                <p className="text-[10px] font-mono text-text-disabled mt-2">bg-surface-1 · #141414 / #F7F7F7</p>
               </Card>
               <Card variant="primary">
                 <p className="text-[10px] uppercase tracking-wider text-brand mb-1">Primary</p>
@@ -602,7 +704,7 @@ export default function StyleguidePage() {
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
               {[
-                { label: 'Volume', value: '12.4k', unit: 'kg', color: '#9333ea' },
+                { label: 'Volume', value: '12.4k', unit: 'kg', color: '#751BB4' },
                 { label: 'Peso', value: '83.0', unit: 'kg', color: '#39c75a' },
                 { label: 'Treinos', value: '14', unit: '', color: '#F59E0B' },
                 { label: 'Streak', value: '5', unit: 'sem', color: '#F97316' },
@@ -665,7 +767,7 @@ export default function StyleguidePage() {
               {[
                 { c: '#39c75a', label: 'done' },
                 { c: '#e05555', label: 'missed' },
-                { c: '#9333ea', label: 'today' },
+                { c: '#751BB4', label: 'today' },
                 { c: '#7a8aab', label: 'upcoming' },
               ].map((i) => (
                 <div key={i.label} className="flex flex-col items-center gap-1">
@@ -763,9 +865,21 @@ export default function StyleguidePage() {
                 },
                 {
                   ok: false,
-                  title: 'Card com #141414, #1e1e1e ou surface-2',
+                  title: 'Card com surface-2 / tom de input',
                   detail:
-                    'Cinza antigo / input como fundo de card — use surface-2 só em campos e chips internos',
+                    'Nunca usar o cinza de input como fundo de card — dark card #141414, light #F7F7F7; surface-2 só em campos e chips',
+                },
+                {
+                  ok: true,
+                  title: 'Input + Select do design system',
+                  detail:
+                    'Usar components/ui/Input e Select — tokens surface/text (dark+light), border-0, lista custom com selectListboxClassName. Nunca <select> nativo para UI estilizada',
+                },
+                {
+                  ok: false,
+                  title: 'Lista de select com outline ou fundo cinza fora do token',
+                  detail:
+                    'Painel = surface-2 + sombra + opção ativa brand/10 — mesmo padrão de especialidades / descanso',
                 },
               ].map((r) => (
                 <div

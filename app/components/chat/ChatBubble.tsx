@@ -21,11 +21,11 @@ export function ChatBubble({ texto, enviada_em, minha, lida }: ChatBubbleProps) 
           padding: '8px 12px',
           borderRadius: minha ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
           background: minha
-            ? 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)'
+            ? 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)'
             : 'var(--filter-bg, #ebebf0)',
           color: minha ? '#fff' : 'var(--text-primary, #1a1a1a)',
           boxShadow: minha
-            ? '0 2px 8px rgba(147,51,234,0.25)'
+            ? '0 2px 8px rgba(117, 27, 180,0.25)'
             : '0 1px 2px rgba(0,0,0,0.05)',
         }}
       >

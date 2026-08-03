@@ -29,8 +29,9 @@ import {
 } from "@phosphor-icons/react";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
-import { SubscriptionBadge } from "@/app/components/SubscriptionBadge";
+import { PlanUsageCard } from "@/app/components/profile/PlanUsageCard";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import { isAccessGranted } from "@/lib/subscriptions/display";
@@ -59,7 +60,6 @@ import { PhotoGalleryUploader } from "@/app/components/coach-profile/PhotoGaller
 import { PublicProfilePreviewCard } from "@/app/components/coach-profile/PublicProfilePreviewCard";
 import { CityAutocomplete } from "@/app/components/coach-profile/CityAutocomplete";
 import { AvatarCropModal } from "@/app/components/profile/AvatarCropModal";
-import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 
 function SettingsRow({
   icon: Icon,
@@ -77,8 +77,8 @@ function SettingsRow({
   danger?: boolean;
 }) {
   const className = cn(
-    "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-divider last:border-b-0 touch-manipulation",
-    danger ? "text-danger hover:text-danger/80" : "hover:bg-surface-2/60",
+    "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors touch-manipulation",
+    danger ? "text-danger hover:text-danger/80" : "hover:bg-surface-2/40",
   );
 
   const content = (
@@ -133,9 +133,9 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border-0 bg-surface-1 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-divider bg-surface-2/50">
-        <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-tertiary">
+    <div className="rounded-xl bg-surface-1 overflow-hidden">
+      <div className="px-4 py-2.5">
+        <span className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
           {title}
         </span>
       </div>
@@ -146,7 +146,6 @@ function SettingsSection({
 
 export default function CoachPerfilPage() {
   const router = useRouter();
-  const isMobile = useBreakpoint("mobile");
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -161,11 +160,11 @@ export default function CoachPerfilPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [mercadoNotice, setMercadoNotice] = useState<string | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [planName, setPlanName] = useState("AuronFit");
   const [studentUsage, setStudentUsage] = useState<string | null>(null);
   const [activeStudents, setActiveStudents] = useState<number | null>(null);
+  const [studentLimit, setStudentLimit] = useState<number | null>(null);
   const [coachSinceYear, setCoachSinceYear] = useState<number | null>(null);
   const [publicForm, setPublicForm] = useState<CoachPublicProfileForm>(EMPTY_PUBLIC_PROFILE);
   const [certDraft, setCertDraft] = useState("");
@@ -250,25 +249,34 @@ export default function CoachPerfilPage() {
 
       if (profileData?.role === "super_admin") {
         setSubscriptionActive(true);
-        setSubscriptionStatus("authorized");
         setPlanName("Super Admin");
         setStudentUsage(null);
+        setStudentLimit(null);
         setActiveStudents(statusJson?.activeStudentCount ?? null);
       } else if (statusJson) {
         setSubscriptionActive(statusJson.isActive);
-        setSubscriptionStatus(statusJson.subscription?.status ?? null);
         setPlanName(
           statusJson.currentPlan?.label ??
             (statusJson.planTier ? getPlanLabel(statusJson.planTier) : "AuronFit"),
         );
         setActiveStudents(statusJson.activeStudentCount ?? null);
-        if (statusJson.studentLimit != null) {
+        const limit = statusJson.studentLimit ?? null;
+        const accountType = statusJson.accountType as string | undefined;
+        const hidePlan =
+          statusJson.isSuperAdmin ||
+          accountType === "teste" ||
+          accountType === "parceiro" ||
+          limit == null;
+        setStudentLimit(hidePlan ? null : limit);
+        if (limit != null) {
           setStudentUsage(
             formatStudentUsage(
               statusJson.activeStudentCount,
-              statusJson.studentLimit,
+              limit,
             ),
           );
+        } else {
+          setStudentUsage(null);
         }
       } else {
         const { data: subData } = await supabaseClient
@@ -287,7 +295,6 @@ export default function CoachPerfilPage() {
             )
           : hasActiveAccess(profileData ?? {});
         setSubscriptionActive(active);
-        setSubscriptionStatus(subData?.status ?? null);
       }
     } catch (err: any) {
       setError(err.message || "Erro ao carregar perfil");
@@ -510,7 +517,7 @@ export default function CoachPerfilPage() {
       email.length > 22 ? `${email.slice(0, 20)}…` : email;
 
     return (
-      <div className="min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
+      <div className="perfil-page min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
         <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
           <div className="px-4 max-w-2xl mx-auto pt-4 pb-3 flex items-center gap-3">
             <button
@@ -521,7 +528,7 @@ export default function CoachPerfilPage() {
               <CaretLeft size={16} />
               Voltar
             </button>
-            <h1 className="flex-1 text-lg font-bold text-text-primary tracking-tight">
+            <h1 className="perfil-page-heading flex-1 text-lg font-bold tracking-tight">
               Configurações
             </h1>
           </div>
@@ -529,15 +536,21 @@ export default function CoachPerfilPage() {
 
         <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4 pt-4">
           <SettingsSection title="Assinatura">
-            <div className="px-4 py-3 border-b border-divider">
-              <SubscriptionBadge
-                planName={planName}
-                status={subscriptionStatus}
-                isActive={subscriptionActive}
-                studentUsage={studentUsage}
-                size="sm"
-              />
-            </div>
+            {studentLimit != null ? (
+              <div className="px-3 pb-3">
+                <PlanUsageCard
+                  planLabel={planName}
+                  studentCount={activeStudents ?? 0}
+                  studentLimit={studentLimit}
+                  isActive={subscriptionActive}
+                />
+              </div>
+            ) : (
+              <div className="px-4 py-3 text-xs text-text-secondary">
+                {planName}
+                {studentUsage ? ` · ${studentUsage}` : null}
+              </div>
+            )}
             <SettingsRow
               icon={CreditCard}
               label="Gerenciar assinatura"
@@ -582,10 +595,10 @@ export default function CoachPerfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pb-12 lg:pl-28">
+    <div className="perfil-page min-h-screen bg-surface-0 pb-24 lg:pb-12 lg:pl-28">
       <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
         <div className="px-4 max-w-[min(1200px,96vw)] mx-auto pt-3 pb-4 flex items-center justify-between gap-3">
-          <h1 className="min-w-0 text-xl md:text-2xl font-extrabold tracking-tight text-text-primary font-display">
+          <h1 className="perfil-page-heading min-w-0 text-xl md:text-2xl font-extrabold tracking-tight font-display">
             Olá, <span className="text-brand">{primeiroNome}</span>
           </h1>
           {headerActions}
@@ -612,29 +625,39 @@ export default function CoachPerfilPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
-            <div className="lg:sticky lg:top-28 space-y-3">
+            {/* Desktop: mesma linha do topo que Identidade */}
+            <aside className="hidden lg:block lg:sticky lg:top-16 self-start space-y-3">
               <PublicProfilePreviewCard
                 form={publicForm}
                 fullName={fullName}
                 avatarUrl={avatarUrl}
                 activeStudents={activeStudents}
                 coachSinceYear={coachSinceYear}
-                compact={isMobile}
               />
-              {!isMobile && (
-                <p className="text-[10px] text-text-tertiary px-1">
-                  Preview ao vivo do card público no Mercado
-                </p>
-              )}
-            </div>
+              <p className="text-[10px] text-text-tertiary px-1">
+                Preview ao vivo do card público no Mercado
+              </p>
+            </aside>
 
             <form
               onSubmit={(e) => void handleSave(e)}
-              className="flex flex-col gap-5"
+              className="flex flex-col gap-5 min-w-0"
             >
+              {/* Mobile: imediatamente acima de Identidade */}
+              <div className="lg:hidden">
+                <PublicProfilePreviewCard
+                  form={publicForm}
+                  fullName={fullName}
+                  avatarUrl={avatarUrl}
+                  activeStudents={activeStudents}
+                  coachSinceYear={coachSinceYear}
+                  compact
+                />
+              </div>
+
               {/* Identidade */}
-              <Card className="rounded-xl border-0 p-5 space-y-4">
-                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-4">
+                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Identidade
                 </h3>
                 <div className="flex items-center gap-4">
@@ -700,8 +723,8 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Profissional */}
-              <Card className="rounded-xl border-0 p-5 space-y-4">
-                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-4">
+                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Perfil profissional
                 </h3>
                 <Input
@@ -716,7 +739,7 @@ export default function CoachPerfilPage() {
                 <div className="flex flex-col gap-1.5">
                   <label
                     htmlFor="bio"
-                    className="text-xs font-medium text-text-secondary"
+                    className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary"
                   >
                     Bio / Sobre mim
                   </label>
@@ -727,9 +750,9 @@ export default function CoachPerfilPage() {
                     rows={4}
                     onChange={(e) => patchPublic("bio", e.target.value)}
                     placeholder="Conte sua abordagem, experiência e para quem você trabalha…"
-                    className="w-full rounded-md px-3 py-2.5 text-xs bg-surface-2 border-0 text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-0 focus:shadow-none resize-y min-h-[96px]"
+                    className="w-full min-h-[96px] resize-y rounded-[10px] bg-surface-2 border-0 px-3.5 pt-3.5 pb-3 text-[16px] font-medium text-text-primary placeholder:text-text-disabled placeholder:font-normal placeholder:text-[12px] focus:outline-none focus:ring-1 focus:ring-brand/30"
                   />
-                  <p className="text-xs text-text-tertiary">
+                  <p id="bio-helper" className="text-[12px] text-text-tertiary leading-tight">
                     {publicForm.bio.length}/500
                   </p>
                 </div>
@@ -754,7 +777,7 @@ export default function CoachPerfilPage() {
                   placeholder="Ex: 8"
                 />
                 <div>
-                  <p className="text-xs font-medium text-text-secondary mb-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary mb-2">
                     Certificações / formação
                   </p>
                   <div className="flex gap-2">
@@ -768,12 +791,12 @@ export default function CoachPerfilPage() {
                         }
                       }}
                       placeholder="Ex: Pós em Fisiologia — USP"
-                      className="flex-1 h-10 rounded-md px-3 text-xs bg-surface-2 border-0 text-text-primary"
+                      className="flex-1 h-11 rounded-[10px] px-3.5 text-sm bg-surface-2 border-0 text-text-primary placeholder:text-text-disabled"
                     />
                     <button
                       type="button"
                       onClick={addCertification}
-                      className="h-10 w-10 rounded-lg border-0 text-brand flex items-center justify-center touch-manipulation"
+                      className="h-11 w-11 rounded-lg border-0 text-brand flex items-center justify-center touch-manipulation"
                       aria-label="Adicionar"
                     >
                       <Plus size={16} weight="bold" />
@@ -808,8 +831,8 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Especialidades */}
-              <Card className="rounded-xl border-0 p-5 space-y-3">
-                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
+                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Especialidades
                 </h3>
                 <SpecialtyTagSelector
@@ -819,12 +842,12 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Atendimento */}
-              <Card className="rounded-xl border-0 p-5 space-y-4">
-                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-4">
+                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Atendimento
                 </h3>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-text-secondary">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                     Modalidade
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -851,32 +874,21 @@ export default function CoachPerfilPage() {
                   onCityChange={(city) => patchPublic("city", city)}
                   onStateChange={(state) => patchPublic("state", state)}
                 />
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="price"
-                    className="text-xs font-medium text-text-secondary"
-                  >
-                    Faixa de preço (opcional)
-                  </label>
-                  <select
-                    id="price"
-                    value={publicForm.priceDisplay}
-                    onChange={(e) => patchPublic("priceDisplay", e.target.value)}
-                    className="h-10 w-full rounded-md px-3 text-xs bg-surface-2 border-0 text-text-primary"
-                  >
-                    <option value="">Não exibir</option>
-                    {PRICE_PRESETS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Select
+                  label="Faixa de preço (opcional)"
+                  value={publicForm.priceDisplay}
+                  onChange={(v) => patchPublic("priceDisplay", v)}
+                  placeholder="Não exibir"
+                  options={[
+                    { value: "", label: "Não exibir" },
+                    ...PRICE_PRESETS.map((p) => ({ value: p, label: p })),
+                  ]}
+                />
               </Card>
 
               {/* Galeria */}
-              <Card className="rounded-xl border-0 p-5 space-y-3">
-                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
+                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Galeria e capa
                 </h3>
                 <div className="rounded-lg border-0 bg-surface-1 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
@@ -899,8 +911,8 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Redes */}
-              <Card className="rounded-xl border-0 p-5 space-y-3">
-                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
+                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Redes
                 </h3>
                 <Input
@@ -923,8 +935,8 @@ export default function CoachPerfilPage() {
               </Card>
 
               {/* Mercado */}
-              <Card className="rounded-xl border-0 p-5 space-y-3">
-                <h3 className="text-[10px] font-semibold text-text-tertiary uppercase tracking-[1.5px]">
+              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
+                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Mercado
                 </h3>
                 <AvailabilityToggle
@@ -962,7 +974,7 @@ export default function CoachPerfilPage() {
             "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-8",
             "w-14 h-14 rounded-full bg-brand text-text-on-brand",
             "flex items-center justify-center touch-manipulation overflow-hidden",
-            "shadow-[0_8px_28px_rgba(147, 51, 234,0.45)]",
+            "shadow-[0_8px_28px_rgba(117, 27, 180,0.45)]",
             "transition-all duration-200 active:scale-95",
             "disabled:opacity-60",
           )}

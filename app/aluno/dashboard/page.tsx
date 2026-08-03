@@ -925,8 +925,10 @@ export default function AlunoDashboardPage() {
             mlPorCopo={agua.ml_por_copo}
             metaCopos={metaCopos}
             saving={savingAgua}
-            onAdd={() => updateAgua(1)}
-            onRemove={() => updateAgua(-1)}
+            onToggleCup={(index) => {
+              const newCopos = index < agua.copos ? index : index + 1;
+              void updateAgua(newCopos - agua.copos);
+            }}
           />
 
           {parceiros.length > 0 && coachContactAvailable && (

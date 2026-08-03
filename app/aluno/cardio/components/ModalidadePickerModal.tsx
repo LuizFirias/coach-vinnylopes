@@ -38,7 +38,7 @@ export function ModalidadePickerModal({
             onClick={onClose}
             aria-label="Fechar"
             className="flex h-8 w-8 items-center justify-center rounded-lg touch-manipulation"
-            style={{ background: '#ebebf0', color: '#888', border: 'none' }}
+            style={{ background: 'var(--surface-2)', color: 'var(--text-tertiary)', border: 'none' }}
           >
             <X size={15} />
           </button>
@@ -50,14 +50,14 @@ export function ModalidadePickerModal({
               {gi > 0 && (
                 <div
                   className="mx-3 my-2 h-px"
-                  style={{ background: 'rgba(147, 51, 234, 0.18)' }}
+                  style={{ background: 'rgba(117, 27, 180, 0.18)' }}
                   aria-hidden
                 />
               )}
 
               <p
                 className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-[0.08em]"
-                style={{ color: '#9333ea' }}
+                style={{ color: '#751BB4' }}
               >
                 {grupo.grupo}
               </p>
@@ -76,8 +76,8 @@ export function ModalidadePickerModal({
                       className={cn(
                         'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors touch-manipulation',
                         selected
-                          ? 'bg-[rgba(147,51,234,0.10)] text-brand'
-                          : 'text-[#1a1a1a] hover:bg-[#f5f5f7]',
+                          ? 'bg-[rgba(117, 27, 180,0.10)] text-brand'
+                          : 'text-text-primary hover:bg-surface-0',
                       )}
                     >
                       <span

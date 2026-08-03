@@ -382,11 +382,11 @@ function LoginForm() {
       <div className="fixed inset-0 overflow-hidden pointer-events-none hidden md:block">
         <div
           className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full blur-[120px]"
-          style={{ background: 'rgba(147,51,234,0.08)' }}
+          style={{ background: 'rgba(117, 27, 180,0.08)' }}
         />
         <div
           className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] rounded-full blur-[120px]"
-          style={{ background: 'rgba(147,51,234,0.06)' }}
+          style={{ background: 'rgba(117, 27, 180,0.06)' }}
         />
       </div>
 
@@ -401,7 +401,7 @@ function LoginForm() {
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(80% 70% at 40% 30%, rgba(147,51,234,0.10), transparent 70%)',
+              'radial-gradient(80% 70% at 40% 30%, rgba(117, 27, 180,0.10), transparent 70%)',
           }}
         />
 
@@ -452,7 +452,7 @@ function LoginForm() {
               role="tablist"
               aria-label="Tipo de acesso"
               className="relative z-50 mb-5 flex w-full gap-1 rounded-full p-1"
-              style={{ background: 'rgba(147,51,234,0.08)' }}
+              style={{ background: 'rgba(117, 27, 180,0.08)' }}
             >
               {(['coach', 'aluno'] as const).map((tab) => (
                 <button
@@ -545,8 +545,8 @@ function LoginForm() {
                       disabled={recoveryLoading}
                       className="w-full h-11 rounded-[10px] font-semibold text-white flex items-center justify-center gap-2 transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
-                        background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-                        boxShadow: '0 4px 20px rgba(147,51,234,0.40)',
+                        background: 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
+                        boxShadow: '0 4px 20px rgba(117, 27, 180,0.40)',
                         fontSize: '15px',
                       }}
                     >
@@ -654,7 +654,7 @@ function LoginForm() {
                       disabled={loading}
                       onClick={() => { setMode("recovery"); setRecoveryEmail(email); }}
                       className="text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
-                      style={{ color: '#9333ea' }}
+                      style={{ color: '#751BB4' }}
                     >
                       Recuperar senha
                     </button>
@@ -731,8 +731,8 @@ function LoginForm() {
                     disabled={loading}
                     className="w-full h-11 rounded-[10px] font-semibold text-white flex items-center justify-center gap-2 transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
-                      background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-                      boxShadow: '0 4px 20px rgba(147,51,234,0.40)',
+                      background: 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
+                      boxShadow: '0 4px 20px rgba(117, 27, 180,0.40)',
                       fontSize: '15px',
                     }}
                   >
@@ -754,8 +754,8 @@ function LoginForm() {
                       href={roleTab === "coach" ? "/signup/coach" : "/signup/aluno"}
                       className="block w-full rounded-[10px] py-3 text-[14px] font-semibold transition-all duration-150 hover:opacity-80 touch-manipulation"
                       style={{
-                        border: '1.5px solid #9333ea',
-                        color: '#9333ea',
+                        border: '1.5px solid #751BB4',
+                        color: '#751BB4',
                         background: 'transparent',
                       }}
                     >

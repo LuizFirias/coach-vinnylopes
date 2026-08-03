@@ -814,7 +814,7 @@ function FichaContent() {
                   <div className="flex-1 min-w-0">
                     <h3
                       className="font-semibold leading-tight mb-1"
-                      style={{ fontSize: 15, color: '#9333ea' }}
+                      style={{ fontSize: 15, color: '#751BB4' }}
                     >
                       {toTitleCase(exercicio.nome)}
                     </h3>
@@ -836,9 +836,9 @@ function FichaContent() {
                       onClick={() => iniciarExercicio(exIdx)}
                       className="rounded-[8px] px-3 py-1.5 text-[11px] font-semibold flex-shrink-0"
                       style={{
-                        background: 'linear-gradient(135deg, #c084fc, #9333ea, #7e22ce)',
+                        background: 'var(--btn-primary-bg)',
                         color: '#fff',
-                        boxShadow: '0 2px 6px rgba(147,51,234,0.3)',
+                        boxShadow: '0 2px 6px rgba(117, 27, 180,0.3)',
                       }}
                     >
                       Executar
@@ -951,8 +951,8 @@ function FichaContent() {
                                 background: serie.completado
                                   ? 'rgba(57,199,90,0.06)'
                                   : sIdx % 2 === 0
-                                    ? '#ffffff'
-                                    : '#f9f9fb',
+                                    ? 'var(--surface-1)'
+                                    : 'var(--surface-2)',
                               }}
                             >
                               {/* SET */}
@@ -1021,7 +1021,7 @@ function FichaContent() {
                                 style={{
                                   fontSize: 12,
                                   fontWeight: 600,
-                                  color: '#9333ea',
+                                  color: '#751BB4',
                                   textAlign: 'center',
                                   fontVariantNumeric: 'tabular-nums',
                                   fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
@@ -1060,12 +1060,12 @@ function FichaContent() {
                                     onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
                                     style={{
                                       padding: '2px 4px',
-                                      background: 'rgba(147,51,234,0.06)',
-                                      border: '1px solid rgba(147,51,234,0.15)',
+                                      background: 'rgba(117, 27, 180,0.06)',
+                                      border: '1px solid rgba(117, 27, 180,0.15)',
                                       borderRadius: 4,
                                       fontSize: 8,
                                       fontWeight: 700,
-                                      color: '#9333ea',
+                                      color: '#751BB4',
                                       textTransform: 'uppercase',
                                     }}
                                   >

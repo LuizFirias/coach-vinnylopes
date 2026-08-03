@@ -60,7 +60,7 @@ export function StudentHealthTable({
   const rows = students.slice(0, limit);
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-0.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+    <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-0.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
       <div className="flex items-center justify-end gap-4 mb-1.5">
         <Link
           href="/admin/alunos"

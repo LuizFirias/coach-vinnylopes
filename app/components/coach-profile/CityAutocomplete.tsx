@@ -3,6 +3,12 @@
 import { useMemo, useState } from "react";
 import { BR_CITIES, BR_STATES } from "@/lib/coach/publicProfile";
 import { Input } from "@/components/ui/Input";
+import {
+  Select,
+  selectListboxClassName,
+  selectOptionClassName,
+} from "@/components/ui/Select";
+import { Check } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
@@ -29,6 +35,14 @@ export function CityAutocomplete({
     }).slice(0, 8);
   }, [city, state]);
 
+  const stateOptions = useMemo(
+    () => [
+      { value: "", label: "—" },
+      ...BR_STATES.map((uf) => ({ value: uf, label: uf })),
+    ],
+    [],
+  );
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[1fr_88px] gap-3">
       <div className="relative">
@@ -46,49 +60,54 @@ export function CityAutocomplete({
           autoComplete="off"
         />
         {open && suggestions.length > 0 && (
-          <ul className="absolute z-20 mt-1 w-full rounded-lg border-0 bg-surface-1 shadow-lg overflow-hidden">
-            {suggestions.map((s) => (
-              <li key={`${s.city}-${s.state}`}>
-                <button
-                  type="button"
-                  className="w-full text-left px-3 py-2.5 text-xs text-text-primary hover:bg-surface-2 touch-manipulation"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    onCityChange(s.city);
-                    onStateChange(s.state);
-                    setOpen(false);
-                  }}
-                >
-                  {s.city}
-                  <span className="text-text-tertiary"> · {s.state}</span>
-                </button>
-              </li>
-            ))}
+          <ul
+            role="listbox"
+            aria-label="Sugestões de cidade"
+            className={cn(selectListboxClassName, "mt-1")}
+          >
+            {suggestions.map((s) => {
+              const active = s.city === city && s.state === state;
+              return (
+                <li key={`${s.city}-${s.state}`}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    className={selectOptionClassName(active)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      onCityChange(s.city);
+                      onStateChange(s.state);
+                      setOpen(false);
+                    }}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded",
+                        active ? "bg-brand text-text-on-brand" : "bg-surface-1",
+                      )}
+                    >
+                      {active && <Check size={10} weight="bold" />}
+                    </span>
+                    <span className="flex-1 min-w-0 truncate">{s.city}</span>
+                    <span className="shrink-0 text-[11px] text-text-tertiary">
+                      {s.state}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="state" className="text-xs font-medium text-text-secondary">
-          UF
-        </label>
-        <select
-          id="state"
-          value={state}
-          onChange={(e) => onStateChange(e.target.value)}
-          className={cn(
-            "h-10 w-full rounded-md px-2 text-xs",
-            "bg-surface-2 border-0 text-text-primary",
-            "focus:outline-none focus:ring-0 focus:shadow-none",
-          )}
-        >
-          <option value="">—</option>
-          {BR_STATES.map((uf) => (
-            <option key={uf} value={uf}>
-              {uf}
-            </option>
-          ))}
-        </select>
-      </div>
+
+      <Select
+        label="UF"
+        value={state}
+        onChange={onStateChange}
+        options={stateOptions}
+        placeholder="—"
+      />
     </div>
   );
 }

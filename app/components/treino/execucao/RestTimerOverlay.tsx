@@ -92,7 +92,7 @@ export function RestTimerOverlay({
               cy={center}
               r={radius}
               fill="none"
-              stroke="#9333ea"
+              stroke="#751BB4"
               strokeWidth={6}
               strokeDasharray={circumference}
               strokeDashoffset={expired ? 0 : dashOffset}

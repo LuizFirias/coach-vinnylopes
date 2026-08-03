@@ -11,10 +11,10 @@ import {
   CartesianGrid,
   Cell,
   Rectangle,
-  ResponsiveContainer,
 } from "recharts";
 import { GlassPanel, DASHBOARD_KPI_GLASS } from "@/components/ui/GlassPanel";
 import { useTheme } from "@/app/components/ThemeProvider";
+import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { formatCurrency } from "@/lib/utils/format";
 
 export interface MrrChartDatum {
@@ -45,6 +45,8 @@ const AXIS_TICK = { fill: "rgba(255,255,255,0.88)", fontSize: 10, fontWeight: 60
 const Y_AXIS_WIDTH = 52;
 const BAR_STEP = 40;
 const BAR_SIZE = 12;
+const CHART_H_MOBILE = 168;
+const CHART_H_DESKTOP = 196;
 
 /** Passos “bonitos” (múltiplos de 50) que crescem com a receita. */
 const STEP_CANDIDATES = [50, 100, 150, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 50000];
@@ -131,7 +133,7 @@ function MrrFaturamentoTooltip({
     >
       <p
         className="text-[10px] font-bold leading-none mb-1"
-        style={{ color: isLight ? "#09090B" : "#FAFAFA" }}
+        style={{ color: isLight ? "#09090B" : "#FFFFFF" }}
       >
         {label}
       </p>
@@ -146,13 +148,28 @@ function MrrFaturamentoTooltip({
 export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardProps) {
   const { theme } = useTheme();
   const isLight = theme === "light";
+  const isMobile = useBreakpoint("mobile");
+  const chartHeight = isMobile ? CHART_H_MOBILE : CHART_H_DESKTOP;
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const chartRootRef = useRef<HTMLDivElement | null>(null);
+  const [scrollWidth, setScrollWidth] = useState(0);
 
   const { domainMax: yDomainMax, ticks: yTicks } = useMemo(() => {
     const max = Math.max(0, ...chartData.map((d) => d.receita));
     return niceYAxis(max);
   }, [chartData]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const measure = () => setScrollWidth(el.clientWidth);
+    measure();
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [chartData.length]);
 
   useEffect(() => {
     if (!scrollRef.current || chartData.length === 0) return;
@@ -170,7 +187,8 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
     scrollRef.current.scrollTo({ left: targetScrollLeft, behavior: "smooth" });
   }, [chartData]);
 
-  const chartWidth = Math.max(chartData.length * BAR_STEP, 280);
+  const chartWidth = Math.max(chartData.length * BAR_STEP, scrollWidth, 280);
+  const canRenderChart = chartHeight > 0 && chartWidth > 0 && scrollWidth > 0;
 
   return (
     <GlassPanel
@@ -190,20 +208,25 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
         </div>
       </div>
 
-      <div className="h-[168px] md:h-[196px]">
+      <div style={{ height: chartHeight, minHeight: chartHeight, minWidth: 0 }}>
         {chartData.length === 0 ? (
           <div className="coach-mrr-empty h-full flex items-center justify-center text-xs">
             Sem dados suficientes para gerar gráfico.
           </div>
         ) : (
-          <div className="relative h-full w-full overflow-hidden">
+          <div
+            className="relative w-full overflow-hidden"
+            style={{ height: chartHeight, minWidth: 0 }}
+          >
             {/* Eixo Y fixo — zona exclusiva (barras nunca entram aqui) */}
             <div
               className="pointer-events-none absolute inset-y-0 left-0 z-10"
-              style={{ width: Y_AXIS_WIDTH }}
+              style={{ width: Y_AXIS_WIDTH, height: chartHeight }}
             >
-              <ResponsiveContainer width="100%" height="100%">
+              {canRenderChart && (
                 <BarChart
+                  width={Y_AXIS_WIDTH}
+                  height={chartHeight}
                   data={chartData}
                   margin={{ top: 8, right: 0, left: 0, bottom: 28 }}
                 >
@@ -221,21 +244,23 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                   <XAxis dataKey="mes" hide />
                   <Bar dataKey="receita" hide />
                 </BarChart>
-              </ResponsiveContainer>
+              )}
             </div>
 
             {/* Barras + meses + grid — começa após o eixo Y (não há overlap) */}
             <div
               ref={scrollRef}
               className="absolute inset-y-0 right-0 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-              style={{ left: Y_AXIS_WIDTH }}
+              style={{ left: Y_AXIS_WIDTH, height: chartHeight, minWidth: 0 }}
             >
               <div
                 ref={chartRootRef}
-                style={{ width: chartWidth, minWidth: "100%", height: "100%" }}
+                style={{ width: chartWidth, height: chartHeight, minWidth: 0 }}
               >
-                <ResponsiveContainer width="100%" height="100%">
+                {canRenderChart && (
                   <BarChart
+                    width={chartWidth}
+                    height={chartHeight}
                     data={chartData}
                     margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
                   >
@@ -287,7 +312,7 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
+                )}
               </div>
             </div>
           </div>

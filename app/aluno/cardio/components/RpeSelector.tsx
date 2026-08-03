@@ -37,7 +37,7 @@ export function RpeSelector({ value, onChange }: RpeSelectorProps) {
                 height: 36,
                 borderRadius: 8,
                 border: 'none',
-                background: ativo ? '#9333ea' : '#ebebf0',
+                background: ativo ? 'var(--brand-primary)' : 'var(--surface-2)',
                 color: ativo ? '#fff' : '#555',
                 fontSize: 13,
                 fontWeight: ativo ? 700 : 400,

@@ -195,7 +195,7 @@ export function PlanDistributionCard({
       <div className={cn("flex flex-col gap-3", className)}>
         <div className="flex justify-start">{title}</div>
         <div className="relative flex items-center justify-center min-h-[140px]">
-          <div className="-translate-y-2">{donut}</div>
+          <div className="-translate-x-[20%] -translate-y-2">{donut}</div>
           <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+0.5rem)]">{legend}</div>
         </div>
       </div>
@@ -212,7 +212,7 @@ export function PlanDistributionCard({
       {/* Donut centrado (ligeiramente acima); legenda absoluta à direita */}
       <div className="relative flex-1 min-h-0">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="pointer-events-auto -translate-y-9">{donut}</div>
+          <div className="pointer-events-auto -translate-x-[20%] -translate-y-9">{donut}</div>
         </div>
         <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+2.25rem)] z-10">
           {legend}

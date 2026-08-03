@@ -73,8 +73,8 @@ export default function PWAInstall() {
           <div
             className="flex h-12 w-12 items-center justify-center rounded-2xl"
             style={{
-              background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-              boxShadow: '0 3px 10px rgba(147,51,234,0.35)',
+              background: 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
+              boxShadow: '0 3px 10px rgba(117, 27, 180,0.35)',
             }}
           >
             <DeviceMobile className="text-white" size={24} weight="bold" />
@@ -102,19 +102,19 @@ export default function PWAInstall() {
           {platform === 'ios' ? (
             <>
               <Step n={1}>
-                Toque no ícone de <span style={{ color: '#9333ea', fontWeight: 600 }}>Compartilhar</span> na barra inferior.
+                Toque no ícone de <span style={{ color: '#751BB4', fontWeight: 600 }}>Compartilhar</span> na barra inferior.
               </Step>
               <Step n={2}>
-                Role para baixo e selecione <span style={{ color: '#9333ea', fontWeight: 600 }}>&quot;Adicionar à Tela de Início&quot;</span>.
+                Role para baixo e selecione <span style={{ color: '#751BB4', fontWeight: 600 }}>&quot;Adicionar à Tela de Início&quot;</span>.
               </Step>
             </>
           ) : (
             <>
               <Step n={1}>
-                Toque nos <span style={{ color: '#9333ea', fontWeight: 600 }}>três pontos (⋮)</span> no canto superior do navegador.
+                Toque nos <span style={{ color: '#751BB4', fontWeight: 600 }}>três pontos (⋮)</span> no canto superior do navegador.
               </Step>
               <Step n={2}>
-                Selecione <span style={{ color: '#9333ea', fontWeight: 600 }}>&quot;Instalar aplicativo&quot;</span> ou <span style={{ color: '#9333ea', fontWeight: 600 }}>&quot;Adicionar à tela inicial&quot;</span>.
+                Selecione <span style={{ color: '#751BB4', fontWeight: 600 }}>&quot;Instalar aplicativo&quot;</span> ou <span style={{ color: '#751BB4', fontWeight: 600 }}>&quot;Adicionar à tela inicial&quot;</span>.
               </Step>
             </>
           )}
@@ -125,8 +125,8 @@ export default function PWAInstall() {
           onClick={() => setShow(false)}
           className="mt-4 w-full rounded-[10px] py-3 text-[10px] font-semibold uppercase tracking-[0.2em] transition-opacity active:opacity-90"
           style={{
-            background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-            boxShadow: '0 3px 10px rgba(147,51,234,0.35)',
+            background: 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
+            boxShadow: '0 3px 10px rgba(117, 27, 180,0.35)',
             color: '#fff',
             border: 'none',
             cursor: 'pointer',

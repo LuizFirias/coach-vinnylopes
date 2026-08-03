@@ -219,8 +219,8 @@ export default function CardioPage() {
               onClick={() => abrirForm()}
               className="inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2 text-[13px] font-semibold text-white touch-manipulation"
               style={{
-                background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-                boxShadow: '0 3px 10px rgba(147,51,234,0.30)',
+                background: 'var(--btn-primary-bg)',
+                boxShadow: '0 3px 10px rgba(117, 27, 180,0.30)',
               }}
             >
               <Plus size={12} weight="bold" /> Nova sessão
@@ -259,7 +259,7 @@ export default function CardioPage() {
                   height: 32,
                   borderRadius: 8,
                   border: 'none',
-                  background: '#ebebf0',
+                  background: 'var(--surface-2)',
                   color: '#888',
                   display: 'flex',
                   alignItems: 'center',

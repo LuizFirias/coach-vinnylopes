@@ -93,8 +93,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
       style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
     >
       <div
-        className="px-4 py-2.5 border-b"
-        style={{ background: '#0D1829', borderColor: 'rgba(41,48,61,0.8)' }}
+        className="px-4 py-2.5 border-b border-divider bg-surface-2"
       >
         <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">{title}</span>
       </div>
@@ -589,7 +588,7 @@ export default function AlunoPerfil() {
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
                       profile.sexo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
-                    style={profile.sexo === opt.value ? undefined : { background: '#0D1829' }}
+                    style={profile.sexo === opt.value ? undefined : { background: 'var(--surface-2)' }}
                   >
                     {opt.label}
                   </button>
@@ -628,7 +627,7 @@ export default function AlunoPerfil() {
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
                       profile.objetivo === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
-                    style={profile.objetivo === opt.value ? undefined : { background: '#0D1829' }}
+                    style={profile.objetivo === opt.value ? undefined : { background: 'var(--surface-2)' }}
                   >
                     {opt.label}
                   </button>
@@ -664,7 +663,7 @@ export default function AlunoPerfil() {
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
                       profile.unidade_peso === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
-                    style={profile.unidade_peso === opt.value ? undefined : { background: '#0D1829' }}
+                    style={profile.unidade_peso === opt.value ? undefined : { background: 'var(--surface-2)' }}
                   >
                     {opt.label}
                   </button>
@@ -700,7 +699,7 @@ export default function AlunoPerfil() {
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
                       profile.unidade_medida === opt.value ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
-                    style={profile.unidade_medida === opt.value ? undefined : { background: '#0D1829' }}
+                    style={profile.unidade_medida === opt.value ? undefined : { background: 'var(--surface-2)' }}
                   >
                     {opt.label}
                   </button>
@@ -733,7 +732,7 @@ export default function AlunoPerfil() {
                       'px-4 py-3 rounded-xl text-sm font-medium transition-all border',
                       profile.incremento_peso_padrao === opt ? 'bg-brand text-text-on-brand border-brand' : 'text-text-primary border-border-default hover:border-brand'
                     )}
-                    style={profile.incremento_peso_padrao === opt ? undefined : { background: '#0D1829' }}
+                    style={profile.incremento_peso_padrao === opt ? undefined : { background: 'var(--surface-2)' }}
                   >
                     {opt} {profile.unidade_peso}
                   </button>
@@ -751,7 +750,7 @@ export default function AlunoPerfil() {
         
         {deleteConfirmOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl" style={{ background: '#0D1829' }}>
+            <div className="border border-border-default rounded-2xl p-6 max-w-sm w-full shadow-xl bg-surface-1">
               <div className="w-12 h-12 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-4">
                 <Warning className="w-6 h-6 text-danger" />
               </div>

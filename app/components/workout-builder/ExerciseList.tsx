@@ -8,17 +8,8 @@ import type { ExercicioFichaItem } from "@/lib/utils/biset";
 import { isBiSetFichaItem } from "@/lib/utils/biset";
 import { cn } from "@/lib/utils/cn";
 
-interface CatalogExercise {
-  id: string;
-  nome: string;
-  grupo_muscular: string;
-  tipo_exercicio?: string;
-  video_url?: string;
-}
-
 interface ExerciseListProps {
   items: ExercicioFichaItem[];
-  catalog: CatalogExercise[];
   onReorder: (fromIndex: number, toIndex: number) => void;
   onUpdateSimple: (index: number, patch: Partial<ExercicioFicha>) => void;
   onDeleteSimple: (index: number) => void;
@@ -31,8 +22,8 @@ interface ExerciseListProps {
   onUpdateBiSetSerie: (index: number, half: "a" | "b", serieIndex: number, field: string, value: unknown) => void;
   onAddBiSetSerie: (index: number) => void;
   onRemoveBiSetSerie: (index: number, serieIndex: number) => void;
-  onSelectBiSetPartner: (index: number, ex: CatalogExercise) => void;
   onSwapBiSetPartner: (index: number) => void;
+  onRequestBiSetPartnerPick: (index: number) => void;
   onUndoBiSet: (index: number) => void;
   onDeleteBiSet: (index: number) => void;
   onBiSetSerieToast?: () => void;
@@ -113,7 +104,6 @@ function overIndexFromMidpoints(
 
 export function ExerciseList({
   items,
-  catalog,
   onReorder,
   onUpdateSimple,
   onDeleteSimple,
@@ -126,8 +116,8 @@ export function ExerciseList({
   onUpdateBiSetSerie,
   onAddBiSetSerie,
   onRemoveBiSetSerie,
-  onSelectBiSetPartner,
   onSwapBiSetPartner,
+  onRequestBiSetPartnerPick,
   onUndoBiSet,
   onDeleteBiSet,
 }: ExerciseListProps) {
@@ -315,7 +305,6 @@ export function ExerciseList({
                 <BiSetGroupCard
                   group={item}
                   groupIndex={exIndex}
-                  catalog={catalog}
                   isDragging={isActive}
                   dragHandleProps={{
                     onPointerDown: (e) => startPointer(exIndex, e),
@@ -327,8 +316,8 @@ export function ExerciseList({
                   }
                   onAddSerie={() => onAddBiSetSerie(exIndex)}
                   onRemoveSerie={(sIdx) => onRemoveBiSetSerie(exIndex, sIdx)}
-                  onSelectPartner={(ex) => onSelectBiSetPartner(exIndex, ex)}
                   onSwapPartner={() => onSwapBiSetPartner(exIndex)}
+                  onRequestPickPartner={() => onRequestBiSetPartnerPick(exIndex)}
                   onUndoBiSet={() => onUndoBiSet(exIndex)}
                   onDelete={() => onDeleteBiSet(exIndex)}
                 />

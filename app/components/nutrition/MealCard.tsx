@@ -145,7 +145,7 @@ export function MealCard({
                       </summary>
                       <div
                         className="mt-1 flex flex-col gap-1 pl-2"
-                        style={{ borderLeft: "1px solid rgba(147,51,234,0.20)" }}
+                        style={{ borderLeft: "1px solid rgba(117, 27, 180,0.20)" }}
                       >
                         {food.substitutions.map((sub, subIdx) => {
                           const qty = formatFoodQuantityDisplay(
@@ -193,8 +193,8 @@ export function MealCard({
               className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[10px] text-sm font-semibold text-white disabled:opacity-50"
               style={{
                 background:
-                  "linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)",
-                boxShadow: "0 3px 10px rgba(147,51,234,0.30)",
+                  "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                boxShadow: "0 3px 10px rgba(117, 27, 180,0.30)",
                 border: "none",
               }}
             >

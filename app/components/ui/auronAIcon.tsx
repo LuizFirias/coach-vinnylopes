@@ -30,7 +30,7 @@ export function AuronAIcon({
       <defs>
         <linearGradient id="auron-a-grad" x1="12" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#c084fc"/>
-          <stop offset="100%" stopColor="#9333ea"/>
+          <stop offset="100%" stopColor="#751BB4"/>
         </linearGradient>
       </defs>
       <path

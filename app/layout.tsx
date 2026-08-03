@@ -27,7 +27,7 @@ const themeInitScript = `
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#FAFAFA' : '#09090B');
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#FFFFFF' : '#000000');
   } catch (e) {
     document.documentElement.setAttribute('data-theme', 'light');
     document.documentElement.classList.remove('dark');
@@ -91,8 +91,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
-    { media: '(prefers-color-scheme: dark)', color: '#09090B' },
+    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -121,7 +121,7 @@ export default function RootLayout({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'var(--surface-0, #080c14)',
+            background: 'var(--surface-0, #000000)',
             pointerEvents: 'none',
           }}
           aria-hidden
@@ -134,7 +134,7 @@ export default function RootLayout({
               <defs>
                 <linearGradient id="auronBootGrad" x1="50" y1="0" x2="50" y2="47" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#c084fc" />
-                  <stop offset="100%" stopColor="#9333ea" />
+                  <stop offset="100%" stopColor="#751BB4" />
                 </linearGradient>
               </defs>
               <path d="M 37,0 L 23.5,0 C 10.5,0 0,10.5 0,23.5 C 0,36.5 10.5,47 23.5,47 L 37,47 L 37,36 L 23.5,36 C 16.6,36 11,30.4 11,23.5 C 11,16.6 16.6,11 23.5,11 L 37,11 Z" fill="url(#auronBootGrad)" />

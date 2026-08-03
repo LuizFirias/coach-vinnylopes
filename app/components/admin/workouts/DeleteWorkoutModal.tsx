@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import type { WorkoutPlan } from "./types";
 
 interface DeleteWorkoutModalProps {
@@ -10,8 +11,24 @@ interface DeleteWorkoutModalProps {
 }
 
 export function DeleteWorkoutModal({ plan, loading, onConfirm, onCancel }: DeleteWorkoutModalProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || loading) return;
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      onCancel();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [loading, onCancel]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Excluir ficha"
+    >
       <div className="bg-surface-1 border-0 rounded-2xl w-full max-w-md overflow-hidden shadow-elev-3 p-5">
         <h3 className="text-sm font-bold text-text-primary mb-2">Excluir ficha</h3>
         <p className="text-xs text-text-secondary leading-relaxed mb-5">

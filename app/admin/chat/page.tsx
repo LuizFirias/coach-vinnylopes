@@ -76,7 +76,7 @@ export default function ChatCoachPage() {
   return (
     <div
       className="min-h-screen pb-24 lg:pb-8"
-      style={{ background: 'var(--mobile-page-bg-solid, #ffffff)' }}
+      style={{ background: 'var(--surface-0)' }}
     >
       <div
         className="px-4 py-5"

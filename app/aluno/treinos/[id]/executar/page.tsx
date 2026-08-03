@@ -144,9 +144,9 @@ function GradientPlayIcon({ size = 22 }: { size?: number }) {
     >
       <defs>
         <linearGradient id={gradId} x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#c084fc" />
-          <stop offset="55%" stopColor="#9333ea" />
-          <stop offset="100%" stopColor="#7e22ce" />
+          <stop offset="0%" stopColor="#9B4DD4" />
+          <stop offset="55%" stopColor="#751BB4" />
+          <stop offset="100%" stopColor="#5E158F" />
         </linearGradient>
       </defs>
       <path d="M8.2 5.1a1 1 0 0 1 1.55-.83l9.1 5.9a1 1 0 0 1 0 1.66l-9.1 5.9A1 1 0 0 1 8 16.9V7.1a1 1 0 0 1 .2-.99Z" fill={`url(#${gradId})`} />
@@ -246,8 +246,8 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
         background: serie.completado
           ? 'rgba(57,199,90,0.06)'
           : idx % 2 === 0
-            ? '#ffffff'
-            : '#f9f9fb',
+            ? 'var(--surface-1)'
+            : 'var(--surface-2)',
       }}
     >
       <div className="flex justify-center">
@@ -259,7 +259,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
             minWidth: 22,
             ...(serie.completado
               ? { background: '#39c75a', color: '#fff' }
-              : { background: '#ebebf0', color: '#888' }),
+              : { background: 'var(--surface-2)', color: '#888' }),
           }}
         >
           {idx + 1}
@@ -300,7 +300,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
             borderBottom: '1.5px solid transparent',
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderBottomColor = 'rgba(147,51,234,0.45)';
+            e.currentTarget.style.borderBottomColor = 'rgba(117, 27, 180,0.45)';
           }}
           onBlur={(e) => {
             e.currentTarget.style.borderBottomColor = 'transparent';
@@ -338,7 +338,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
             width: 28,
             height: 28,
             ...(serie.completado
-              ? { background: '#9333ea', border: '1.5px solid #9333ea', color: '#fff' }
+              ? { background: '#751BB4', border: '1.5px solid #751BB4', color: '#fff' }
               : { background: 'transparent', border: '1.5px solid rgba(0,0,0,0.2)', color: '#888' }),
           }}
         >
@@ -382,7 +382,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
         <div className="flex-1 min-w-0">
           <h3
             className="font-semibold leading-tight mb-1"
-            style={{ fontSize: 15, color: '#9333ea' }}
+            style={{ fontSize: 15, color: '#751BB4' }}
           >
             {toTitleCase(exercicio.nome)}
           </h3>
@@ -395,7 +395,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
             src={exercicio.gif_url}
             alt={exercicio.nome}
             className="rounded-lg object-cover flex-shrink-0"
-            style={{ width: 48, height: 48, background: '#f5f5f7' }}
+            style={{ width: 48, height: 48, background: 'var(--surface-0)' }}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
@@ -421,7 +421,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
       {exercicio.observacoes && (
         <div
           className="mx-4 my-3 px-2.5 py-2 rounded-lg"
-          style={{ background: '#f5f5f7' }}
+          style={{ background: 'var(--surface-0)' }}
         >
           <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: '#888' }}>
             Observações
@@ -1324,7 +1324,7 @@ export default function ExecucaoTreinoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f5f5f7' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--surface-0)' }}>
         <DumbbellLoader text="Preparando treino..." />
       </div>
     );
@@ -1385,7 +1385,7 @@ export default function ExecucaoTreinoPage() {
   return (
     <div
       className={cn('min-h-screen', treinoIniciado ? 'pb-4' : 'pb-28')}
-      style={{ background: '#ffffff' }}
+      style={{ background: 'var(--surface-0)' }}
     >
 
       {/* ── Header sticky (mobile + treino em andamento) ── */}
@@ -1395,8 +1395,8 @@ export default function ExecucaoTreinoPage() {
           !treinoIniciado && 'lg:hidden'
         )}
         style={{
-          background: 'rgba(255,255,255,0.95)',
-          borderBottom: '1px solid rgba(0,0,0,0.07)',
+          background: 'color-mix(in srgb, var(--surface-0) 95%, transparent)',
+          borderBottom: '1px solid var(--border-divider)',
         }}
       >
         <div className="flex items-center gap-3 px-4 py-3 max-w-[1100px] mx-auto">
@@ -1433,7 +1433,7 @@ export default function ExecucaoTreinoPage() {
                 onClick={() => setShowConfirmAbandon(true)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0"
                 style={{
-                  background: '#ebebf0',
+                  background: 'var(--surface-2)',
                   border: '1px solid rgba(0,0,0,0.08)',
                   color: '#555',
                 }}
@@ -1444,7 +1444,7 @@ export default function ExecucaoTreinoPage() {
               <div className="text-right">
                 <p
                   className="font-mono tabular-nums lining-nums text-sm font-bold leading-none"
-                  style={{ color: '#9333ea' }}
+                  style={{ color: '#751BB4' }}
                 >
                   {formatDuration(elapsed)}
                 </p>
@@ -1471,7 +1471,7 @@ export default function ExecucaoTreinoPage() {
               <div
                 className="rounded-[14px] p-6"
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--surface-1)',
                   border: '1px solid rgba(0,0,0,0.08)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 }}
@@ -1496,8 +1496,8 @@ export default function ExecucaoTreinoPage() {
                   onClick={iniciarTreino}
                   className="w-full min-h-14 mt-5 rounded-xl font-bold text-[15px] text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
                   style={{
-                    background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-                    boxShadow: '0 4px 16px rgba(147,51,234,0.40)',
+                    background: 'var(--btn-primary-bg)',
+                    boxShadow: '0 4px 16px rgba(117, 27, 180,0.40)',
                   }}
                 >
                   <Lightning size={18} weight="fill" />
@@ -1517,8 +1517,8 @@ export default function ExecucaoTreinoPage() {
                   onClick={iniciarTreino}
                   className="w-full min-h-12 rounded-xl font-bold text-[15px] text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
                   style={{
-                    background: 'linear-gradient(135deg, #c084fc 0%, #9333ea 55%, #7e22ce 100%)',
-                    boxShadow: '0 4px 16px rgba(147,51,234,0.40)',
+                    background: 'var(--btn-primary-bg)',
+                    boxShadow: '0 4px 16px rgba(117, 27, 180,0.40)',
                   }}
                 >
                   <Lightning size={18} weight="fill" />
@@ -1604,13 +1604,13 @@ export default function ExecucaoTreinoPage() {
       {/* ── Rest Timer: bottom bar (só quando o modal de exercício está fechado) ── */}
       {restActive && modalBlockIdx === null && (
         <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-8px_32px_rgba(0,0,0,0.08)]"
-          style={{ background: '#ffffff', borderTop: '1px solid rgba(0,0,0,0.08)' }}
+          style={{ background: 'var(--surface-1)', borderTop: '1px solid rgba(0,0,0,0.08)' }}
         >
           <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center gap-2">
             <button
               onClick={() => restAddSecs(-15)}
               className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
-              style={{ background: '#ebebf0', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
+              style={{ background: 'var(--surface-2)', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
             >
               −15
             </button>
@@ -1633,7 +1633,7 @@ export default function ExecucaoTreinoPage() {
             <button
               onClick={() => restAddSecs(15)}
               className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
-              style={{ background: '#ebebf0', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
+              style={{ background: 'var(--surface-2)', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
             >
               +15
             </button>
@@ -1794,7 +1794,7 @@ export default function ExecucaoTreinoPage() {
       {modalEx && modalSerie && (
         <div
           className="fixed inset-0 z-50 flex flex-col lg:max-w-[640px] lg:mx-auto lg:left-1/2 lg:-translate-x-1/2"
-          style={{ background: '#f5f5f7' }}
+          style={{ background: 'var(--surface-0)' }}
         >
           {restActive && (
             <RestTimerOverlay
@@ -1814,7 +1814,7 @@ export default function ExecucaoTreinoPage() {
           {bisetTransitionName && (
             <div
               className="absolute inset-0 z-[55] flex flex-col items-center justify-center animate-in fade-in duration-300"
-              style={{ background: '#f5f5f7' }}
+              style={{ background: 'var(--surface-0)' }}
             >
               <p className="text-brand text-2xl font-bold">↓</p>
               <p className="text-xl font-bold mt-1" style={{ color: '#1a1a1a' }}>{bisetTransitionName}</p>
@@ -1822,7 +1822,7 @@ export default function ExecucaoTreinoPage() {
             </div>
           )}
 
-          <div className="w-full h-0.5 flex-shrink-0" style={{ background: '#ebebf0' }}>
+          <div className="w-full h-0.5 flex-shrink-0" style={{ background: 'var(--surface-2)' }}>
             <div
               className="h-full bg-brand transition-all duration-300"
               style={{ width: `${((modalRodadaIdx + 1) / modalTotalRodadas) * 100}%` }}
@@ -1840,7 +1840,7 @@ export default function ExecucaoTreinoPage() {
               type="button"
               onClick={() => setModalBlockIdx(null)}
               className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
-              style={{ background: '#ebebf0', color: '#555' }}
+              style={{ background: 'var(--surface-2)', color: '#555' }}
               aria-label="Fechar execução"
             >
               <X size={20} />
@@ -1869,7 +1869,7 @@ export default function ExecucaoTreinoPage() {
             {modalIsBiSet && modalPartnerEx && bisetFase === 'a' && (
               <div
                 className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] border-brand"
-                style={{ background: '#faf5ff' }}
+                style={{ background: 'var(--brand-subtle)' }}
               >
                 <p className="text-xs" style={{ color: '#555' }}>
                   ↓ Em seguida: {modalPartnerEx.nome} · {modalPartnerEx.series[modalRodadaIdx]?.reps} reps
@@ -1883,7 +1883,7 @@ export default function ExecucaoTreinoPage() {
             {modalIsBiSet && bisetFase === 'b' && modalBlock?.kind === 'biset' && (
               <div
                 className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] border-brand"
-                style={{ background: '#faf5ff' }}
+                style={{ background: 'var(--brand-subtle)' }}
               >
                 <p className="text-xs" style={{ color: '#555' }}>
                   ⊙ Após esta série: {formatRestTime(modalBlock.descanso)} de descanso
@@ -1898,7 +1898,7 @@ export default function ExecucaoTreinoPage() {
                   onClick={() => setDemoImg(modalEx.gif_url!)}
                   className="w-full h-11 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
                   style={{
-                    background: '#ffffff',
+                    background: 'var(--surface-1)',
                     border: '1px solid rgba(0,0,0,0.08)',
                     color: '#555',
                   }}
@@ -1914,7 +1914,7 @@ export default function ExecucaoTreinoPage() {
               <div
                 className="rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center"
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--surface-1)',
                   border: '1px solid rgba(0,0,0,0.08)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 }}
@@ -1936,7 +1936,7 @@ export default function ExecucaoTreinoPage() {
               <div
                 className="rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center justify-center"
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--surface-1)',
                   border: '1px solid rgba(0,0,0,0.08)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 }}
@@ -1980,9 +1980,9 @@ export default function ExecucaoTreinoPage() {
                       hasTecnica ? "cursor-pointer" : "cursor-default"
                     )}
                     style={{
-                      background: expanded ? 'rgba(147,51,234,0.05)' : '#ffffff',
+                      background: expanded ? 'rgba(117, 27, 180,0.05)' : 'var(--surface-1)',
                       border: expanded
-                        ? '1px solid rgba(147,51,234,0.2)'
+                        ? '1px solid rgba(117, 27, 180,0.2)'
                         : '1px solid rgba(0,0,0,0.08)',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                     }}
@@ -1995,7 +1995,7 @@ export default function ExecucaoTreinoPage() {
                       {hasTecnica && (
                         <Info
                           size={12}
-                          style={{ color: expanded ? '#9333ea' : '#bbb' }}
+                          style={{ color: expanded ? '#751BB4' : '#bbb' }}
                           weight={expanded ? 'fill' : 'regular'}
                           aria-hidden
                         />
@@ -2014,7 +2014,7 @@ export default function ExecucaoTreinoPage() {
                         color: !hasTecnica
                           ? '#bbb'
                           : expanded
-                            ? '#9333ea'
+                            ? '#751BB4'
                             : '#1a1a1a',
                       }}
                     >
@@ -2051,7 +2051,7 @@ export default function ExecucaoTreinoPage() {
                     setModalCargaStr(String(newVal));
                   }}
                   className="w-11 h-11 rounded-[10px] flex items-center justify-center text-xl font-bold transition-colors active:scale-95 shrink-0"
-                  style={{ background: '#ebebf0', color: '#555' }}
+                  style={{ background: 'var(--surface-2)', color: '#555' }}
                   aria-label="Diminuir carga"
                 >
                   <Minus size={18} weight="bold" />
@@ -2060,7 +2060,7 @@ export default function ExecucaoTreinoPage() {
                 <div
                   className="flex-1 h-12 rounded-[12px] flex items-center justify-center"
                   style={{
-                    background: '#ffffff',
+                    background: 'var(--surface-1)',
                     border: '1px solid rgba(0,0,0,0.10)',
                   }}
                 >
@@ -2096,8 +2096,8 @@ export default function ExecucaoTreinoPage() {
                   }}
                   className="w-11 h-11 rounded-[10px] flex items-center justify-center text-xl font-bold text-white transition-colors active:scale-95 shrink-0"
                   style={{
-                    background: 'linear-gradient(135deg, #c084fc, #9333ea, #7e22ce)',
-                    boxShadow: '0 2px 8px rgba(147,51,234,0.35)',
+                    background: 'var(--btn-primary-bg)',
+                    boxShadow: '0 2px 8px rgba(117, 27, 180,0.35)',
                   }}
                   aria-label="Aumentar carga"
                 >
@@ -2117,7 +2117,7 @@ export default function ExecucaoTreinoPage() {
                       setModalCargaStr(String(newVal));
                     }}
                     className="min-h-11 rounded-[8px] text-[13px] font-semibold tabular-nums lining-nums transition-colors active:scale-95"
-                    style={{ background: '#ebebf0', color: '#555' }}
+                    style={{ background: 'var(--surface-2)', color: '#555' }}
                   >
                     {inc}
                   </button>
@@ -2138,7 +2138,7 @@ export default function ExecucaoTreinoPage() {
                 >
                   Histórico de Séries
                 </p>
-                <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: '#9333ea' }}>
+                <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: '#751BB4' }}>
                   {showSeriesHistory ? "Ocultar" : "Mostrar"}
                   <CaretDown
                     size={14}
@@ -2151,7 +2151,7 @@ export default function ExecucaoTreinoPage() {
                 <div
                   className="rounded-[12px] overflow-hidden"
                   style={{
-                    background: '#ffffff',
+                    background: 'var(--surface-1)',
                     border: '1px solid rgba(0,0,0,0.08)',
                     borderRadius: 12,
                     padding: '10px 0',
@@ -2198,7 +2198,7 @@ export default function ExecucaoTreinoPage() {
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
                                       className="w-14 h-7 bg-transparent px-1 text-right font-kpi tabular-nums lining-nums focus:outline-none"
                                       style={{
-                                        borderBottom: '1.5px solid rgba(147,51,234,0.3)',
+                                        borderBottom: '1.5px solid rgba(117, 27, 180,0.3)',
                                         color: '#1a1a1a',
                                         fontSize: '12px',
                                         fontWeight: 500,
@@ -2260,7 +2260,7 @@ export default function ExecucaoTreinoPage() {
                           background: s.completado
                             ? 'rgba(57,199,90,0.05)'
                             : isAtual
-                              ? 'rgba(147,51,234,0.05)'
+                              ? 'rgba(117, 27, 180,0.05)'
                               : undefined,
                         }}
                       >
@@ -2279,8 +2279,8 @@ export default function ExecucaoTreinoPage() {
                             ...(s.completado
                               ? { background: '#39c75a', color: '#fff' }
                               : isAtual
-                                ? { background: '#9333ea', color: '#fff' }
-                                : { background: '#ebebf0', color: '#888' }),
+                                ? { background: '#751BB4', color: '#fff' }
+                                : { background: 'var(--surface-2)', color: '#888' }),
                           }}
                         >
                           {idx + 1}
@@ -2329,7 +2329,7 @@ export default function ExecucaoTreinoPage() {
                               color: '#1a1a1a',
                               textAlign: 'right',
                               fontVariantNumeric: 'tabular-nums',
-                              borderBottom: '1.5px solid rgba(147,51,234,0.3)',
+                              borderBottom: '1.5px solid rgba(117, 27, 180,0.3)',
                               height: 24,
                             }}
                           />
@@ -2339,7 +2339,7 @@ export default function ExecucaoTreinoPage() {
                           style={{
                             fontSize: 12,
                             fontWeight: 600,
-                            color: '#9333ea',
+                            color: '#751BB4',
                             textAlign: 'center',
                             fontVariantNumeric: 'tabular-nums',
                             fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
@@ -2396,7 +2396,7 @@ export default function ExecucaoTreinoPage() {
           <div
             className="absolute bottom-0 left-0 right-0 px-4 pt-3 flex flex-col gap-1.5 pb-[calc(1rem+env(safe-area-inset-bottom))]"
             style={{
-              background: 'linear-gradient(to top, #f5f5f7 60%, rgba(245,245,247,0.85) 85%, transparent)',
+              background: 'linear-gradient(to top, var(--surface-0) 60%, color-mix(in srgb, var(--surface-0) 85%, transparent) 85%, transparent)',
             }}
           >
             <button
@@ -2405,8 +2405,8 @@ export default function ExecucaoTreinoPage() {
               disabled={restActive || bisetFase === 'transicao'}
               className="w-full min-h-[52px] rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-40"
               style={{
-                background: 'linear-gradient(135deg, #c084fc, #9333ea, #7e22ce)',
-                boxShadow: '0 4px 16px rgba(147,51,234,0.40)',
+                background: 'var(--btn-primary-bg)',
+                boxShadow: '0 4px 16px rgba(117, 27, 180,0.40)',
               }}
             >
               <Check size={18} weight="bold" />

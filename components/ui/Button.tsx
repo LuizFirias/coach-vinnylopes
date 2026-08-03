@@ -17,9 +17,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-btn-primary text-text-on-brand shadow-btn-glow hover:shadow-btn-glow-hover hover:opacity-90 active:opacity-80',
+    'bg-brand text-text-on-brand shadow-btn-glow hover:shadow-btn-glow-hover hover:bg-brand-hover active:bg-brand-pressed',
   'primary-capsule':
-    'bg-btn-primary text-text-on-brand shadow-btn-glow hover:shadow-btn-glow-hover hover:opacity-90 active:opacity-80 overflow-hidden p-0',
+    'bg-brand text-text-on-brand shadow-btn-glow hover:shadow-btn-glow-hover hover:bg-brand-hover active:bg-brand-pressed overflow-hidden p-0',
   secondary:
     'bg-surface-3 text-text-primary border border-border hover:bg-surface-2',
   ghost:

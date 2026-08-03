@@ -180,7 +180,7 @@ export function CoachCardioTab({ alunoId }: CoachCardioTabProps) {
           Prescrições
         </h4>
         {loading ? (
-          <div className="flex items-center justify-center rounded-xl border-0 bg-[var(--dash-card,#111827)] p-8">
+          <div className="flex items-center justify-center rounded-xl border-0 bg-[var(--dash-card,var(--surface-1))] p-8">
             <DumbbellLoader size={36} variant="inline" />
           </div>
         ) : prescricoes.length === 0 ? (

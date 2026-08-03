@@ -71,7 +71,7 @@ export function StudentTechniqueCard({
         className,
       )}
       style={{
-        background: "#ffffff",
+        background: "var(--surface-1)",
         border: "1px solid rgba(0,0,0,0.08)",
         boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
       }}
@@ -81,7 +81,7 @@ export function StudentTechniqueCard({
       <div
         className="w-1 shrink-0"
         style={{
-          background: "linear-gradient(180deg, #c084fc 0%, #9333ea 100%)",
+          background: "var(--btn-primary-bg)",
         }}
         aria-hidden
       />

@@ -98,7 +98,7 @@ export default function AlunoTreinosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f5f5f7' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--surface-0)' }}>
         <DumbbellLoader text="Carregando treinos..." />
       </div>
     );
@@ -108,7 +108,7 @@ export default function AlunoTreinosPage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen pb-24" style={{ background: '#f5f5f7' }}>
+      <div className="min-h-screen pb-24" style={{ background: 'var(--surface-0)' }}>
         <div className="px-4 pt-6 pb-4 max-w-[680px] mx-auto lg:pt-10 lg:pb-6">
           <h1
             className="text-[22px] lg:text-[26px] font-extrabold tracking-tight"
@@ -181,14 +181,14 @@ export default function AlunoTreinosPage() {
                     onClick={() => void openPdf(pdf)}
                     className="w-full text-left p-3.5 rounded-[12px] transition-all active:scale-[0.99] flex items-center gap-3 group min-h-16"
                     style={{
-                      background: '#ffffff',
+                      background: 'var(--surface-1)',
                       border: '1px solid rgba(0,0,0,0.08)',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                     }}
                   >
                     <div
                       className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0"
-                      style={{ background: '#ebebf0', color: '#555' }}
+                      style={{ background: 'var(--surface-2)', color: '#555' }}
                     >
                       <FileText size={18} />
                     </div>
@@ -202,7 +202,7 @@ export default function AlunoTreinosPage() {
                     </div>
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: '#ebebf0', color: '#bbb' }}
+                      style={{ background: 'var(--surface-2)', color: '#bbb' }}
                     >
                       <MagnifyingGlass size={14} />
                     </div>

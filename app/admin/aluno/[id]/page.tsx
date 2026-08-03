@@ -1363,7 +1363,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               <img src={avatarUrl} alt={profileName} className="w-full h-full object-cover" />
             </div>
           ) : (
-            <div className="w-11 h-11 rounded-full bg-[#1e1e1e] border-0 flex items-center justify-center font-bold text-sm text-white shrink-0">
+            <div className="w-11 h-11 rounded-full bg-surface-2 border-0 flex items-center justify-center font-bold text-sm text-white shrink-0">
               {profileName[0]?.toUpperCase() || "?"}
             </div>
           )}
@@ -1544,8 +1544,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
                     {/* Radar Chart (Distribuição Muscular) (Desktop span 12, Mobile span 12) */}
                     <div className="md:col-span-12 flex flex-col gap-3">
-                      <div className="w-full h-56 bg-surface-1 border-0 rounded-xl p-2 flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
+                      <div className="w-full min-w-0 bg-surface-1 border-0 rounded-xl p-2 flex items-center justify-center" style={{ height: 224, minHeight: 224 }}>
+                        <ResponsiveContainer width="100%" height={208} debounce={50} minWidth={0}>
                           <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData30}>
                             <PolarGrid stroke="var(--color-border-subtle)" />
                             <PolarAngleAxis dataKey="subject" stroke="var(--color-text-secondary)" fontSize={9} />
@@ -1615,7 +1615,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               {/* Treino Ativo Card — resumo mínimo (link para Kanban/ficha) */}
               <div className="bg-surface-1 border-0 rounded-2xl p-5 flex flex-col gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 bg-[#1e1e1e] border-0 rounded-xl flex items-center justify-center shrink-0 text-[#7a8aab]">
+                  <div className="w-10 h-10 bg-surface-2 border-0 rounded-xl flex items-center justify-center shrink-0 text-[#7a8aab]">
                     <Barbell size={20} />
                   </div>
                   <div className="min-w-0">
@@ -1643,7 +1643,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         ),
                       )
                     }
-                    className="w-full text-center text-[11px] font-semibold text-[#9333ea] hover:opacity-80 py-2 border-0 rounded-lg"
+                    className="w-full text-center text-[11px] font-semibold text-brand hover:opacity-80 py-2 border-0 rounded-lg"
                   >
                     Ver ficha completa
                   </button>
@@ -1711,7 +1711,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   <button
                     type="button"
                     onClick={() => setTreinoPdfOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-0 bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-0 bg-surface-2 text-[11px] font-semibold text-white hover:bg-surface-3 transition-colors"
                   >
                     <UploadSimple size={12} />
                     Enviar PDF
@@ -1739,9 +1739,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                     />
                     <div className={cn(
                       "flex items-center justify-center gap-2 min-h-20 rounded-lg border border-dashed transition-all",
-                      pdfFile ? "border-[#9333ea]/50 bg-[#9333ea]/5" : "border-transparent bg-surface-1 hover:border-[#9333ea]/40"
+                      pdfFile ? "border-brand/50 bg-brand/5" : "border-transparent bg-surface-1 hover:border-brand/40"
                     )}>
-                      <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-[#9333ea]" : "text-[#7a8aab]")} />
+                      <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-brand" : "text-[#7a8aab]")} />
                       <span className={cn("text-xs text-center px-4 truncate max-w-full", pdfFile ? "text-white font-medium" : "text-[#7a8aab]")}>
                         {pdfFile ? pdfFile.name : "Clique ou arraste o PDF do treino"}
                       </span>
@@ -1758,7 +1758,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                               <span className="text-xs text-[#7a8aab] truncate font-medium">{t.nome_arquivo}</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <a href={t.url_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-[#9333ea] hover:underline font-semibold">
+                              <a href={t.url_pdf} target="_blank" rel="noopener noreferrer" className="text-xs text-brand hover:underline font-semibold">
                                 Visualizar
                               </a>
                               <button type="button" onClick={() => handleDeleteTreino(t.id, t.original_url_pdf || t.url_pdf)} className="text-text-disabled hover:text-danger transition-colors">
@@ -1930,7 +1930,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         substituted: 'bg-brand/10 text-brand border-brand/20',
                         partial: 'bg-warning/10 text-warning border-warning/20',
                         skipped: 'bg-danger/10 text-danger border-danger/20',
-                        pending: 'bg-[#1e1e1e] text-[#7a8aab] border-transparent'
+                        pending: 'bg-surface-2 text-[#7a8aab] border-transparent'
                       };
 
                       return (
@@ -1985,7 +1985,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <button
                   type="button"
                   onClick={() => setUploadNutritionOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-0 bg-[#1e1e1e] text-[11px] font-semibold text-white hover:bg-[#232323] transition-colors shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-0 bg-surface-2 text-[11px] font-semibold text-white hover:bg-surface-3 transition-colors shrink-0"
                 >
                   <UploadSimple size={12} />
                   Enviar PDF
@@ -2009,7 +2009,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                               href={p.pdf_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-[#9333ea] hover:underline font-semibold"
+                              className="text-xs text-brand hover:underline font-semibold"
                             >
                               Abrir
                             </a>

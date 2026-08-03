@@ -58,7 +58,7 @@ export function ChatWindow({
         </Link>
         <div
           className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #c084fc, #9333ea)' }}
+          style={{ background: 'linear-gradient(135deg, #c084fc, #751BB4)' }}
         >
           {avatarUrl ? (
             <Image

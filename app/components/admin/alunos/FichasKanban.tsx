@@ -180,7 +180,7 @@ export function FichasKanban({
             key={ficha.id}
             className={cn(
               "flex flex-col rounded-xl border bg-surface-1 transition-colors",
-              isColOver ? "border-[#9333ea]/50" : "border-transparent",
+              isColOver ? "border-brand/50" : "border-transparent",
               dragColId === ficha.id && "opacity-60",
             )}
             onDragOver={(e) => {
@@ -229,7 +229,7 @@ export function FichasKanban({
                 <button
                   type="button"
                   onClick={() => onPreviewFicha(ficha)}
-                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-white hover:bg-[#1e1e1e] flex items-center justify-center"
+                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-white hover:bg-surface-2 flex items-center justify-center"
                   title="Visualizar"
                 >
                   <Eye size={13} />
@@ -244,7 +244,7 @@ export function FichasKanban({
                       ),
                     )
                   }
-                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-white hover:bg-[#1e1e1e] flex items-center justify-center"
+                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-white hover:bg-surface-2 flex items-center justify-center"
                   title="Editar"
                 >
                   <PencilSimple size={13} />
@@ -252,7 +252,7 @@ export function FichasKanban({
                 <button
                   type="button"
                   onClick={() => onCloneFicha(ficha)}
-                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-white hover:bg-[#1e1e1e] flex items-center justify-center"
+                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-white hover:bg-surface-2 flex items-center justify-center"
                   title="Clonar"
                 >
                   <Copy size={13} />
@@ -260,7 +260,7 @@ export function FichasKanban({
                 <button
                   type="button"
                   onClick={() => onDeleteFicha(ficha.id)}
-                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-[#e05555] hover:bg-[#1e1e1e] flex items-center justify-center"
+                  className="w-7 h-7 rounded-md text-[#7a8aab] hover:text-[#e05555] hover:bg-surface-2 flex items-center justify-center"
                   title="Desativar"
                 >
                   <Trash size={13} />
@@ -305,7 +305,7 @@ export function FichasKanban({
                     className={cn(
                       "flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[#191919] cursor-grab active:cursor-grabbing",
                       isDragging && "opacity-40",
-                      isOverHere && "ring-1 ring-[#9333ea]/40",
+                      isOverHere && "ring-1 ring-brand/40",
                     )}
                   >
                     <DotsSixVertical

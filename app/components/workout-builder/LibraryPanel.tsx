@@ -17,6 +17,9 @@ import {
 type Props = {
   catalog: LibraryExercise[];
   existingIds?: Set<string>;
+  /** Em modo Bi-Set: destaca a biblioteca e só bloqueia o exercício A */
+  pickMode?: boolean;
+  pickExcludeId?: string | null;
   onAdd: (exercises: LibraryExercise[]) => void;
   onCreateNew?: () => void;
 };
@@ -26,6 +29,8 @@ type DropdownKey = "musculo" | "equipamento" | null;
 export function LibraryPanel({
   catalog,
   existingIds,
+  pickMode = false,
+  pickExcludeId = null,
   onAdd,
   onCreateNew,
 }: Props) {
@@ -73,15 +78,37 @@ export function LibraryPanel({
   };
 
   const handleClickExercise = (ex: LibraryExercise) => {
+    if (pickMode) {
+      if (pickExcludeId && ex.id === pickExcludeId) return;
+      onAdd([ex]);
+      return;
+    }
     if (existingIds?.has(ex.id)) return;
     onAdd([ex]);
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-surface-1">
-      <div className="relative z-30 shrink-0 px-4 pt-4 pb-3 border-b border-border-divider/40 flex flex-col gap-2 overflow-visible">
+    <div
+      className={cn(
+        "flex flex-col h-full overflow-hidden bg-surface-1 transition-shadow",
+        pickMode && "ring-2 ring-brand shadow-[0_0_48px_rgba(117, 27, 180,0.35)]",
+      )}
+    >
+      <div className="relative z-30 shrink-0 px-4 pt-4 pb-3 flex flex-col gap-2 overflow-visible">
+        {pickMode && (
+          <div className="rounded-lg bg-brand/15 px-3 py-2.5">
+            <p className="text-xs font-semibold text-brand">
+              Selecione o exercício B do Bi-Set
+            </p>
+            <p className="text-[11px] text-text-secondary mt-0.5">
+              Toque em um exercício da biblioteca
+            </p>
+          </div>
+        )}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-text-primary">Biblioteca</h3>
+          <h3 className="text-sm font-bold text-text-primary">
+            {pickMode ? "Exercício B" : "Biblioteca"}
+          </h3>
           {onCreateNew && (
             <button
               type="button"
@@ -157,7 +184,8 @@ export function LibraryPanel({
 
       <div className="flex-1 overflow-y-auto overscroll-contain px-3 pb-3 space-y-1">
         {filtered.map((ex) => {
-          const alreadyIn = existingIds?.has(ex.id);
+          const alreadyIn = !pickMode && existingIds?.has(ex.id);
+          const blocked = pickMode && pickExcludeId === ex.id;
           const hasVid = Boolean(ex.video_url?.trim());
 
           return (
@@ -165,10 +193,14 @@ export function LibraryPanel({
               key={ex.id}
               type="button"
               onClick={() => handleClickExercise(ex)}
-              disabled={alreadyIn}
+              disabled={alreadyIn || blocked}
               className={cn(
                 "w-full flex items-center gap-2.5 px-1.5 py-2 rounded-lg text-left transition-colors",
-                alreadyIn ? "opacity-40 cursor-not-allowed" : "hover:bg-brand/5",
+                alreadyIn || blocked
+                  ? "opacity-40 cursor-not-allowed"
+                  : pickMode
+                    ? "hover:bg-brand/15"
+                    : "hover:bg-brand/5",
               )}
             >
               <span
@@ -182,12 +214,11 @@ export function LibraryPanel({
                 <Plus size={12} weight="bold" />
               </span>
 
-              <span className="relative w-9 h-9 shrink-0 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center">
-                <Barbell size={16} className="text-text-disabled" />
-                {hasVid && (
-                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-brand text-text-on-brand flex items-center justify-center">
-                    <Play size={8} weight="fill" />
-                  </span>
+              <span className="relative w-9 h-9 shrink-0 flex items-center justify-center">
+                {hasVid ? (
+                  <Play size={16} weight="fill" className="text-brand" />
+                ) : (
+                  <Barbell size={16} className="text-text-disabled" />
                 )}
               </span>
 
@@ -198,6 +229,7 @@ export function LibraryPanel({
                 <p className="text-[10px] uppercase tracking-wide text-text-tertiary mt-0.5 truncate">
                   {ex.grupo_muscular}
                   {alreadyIn ? " · na ficha" : ""}
+                  {blocked ? " · exercício A" : ""}
                 </p>
               </div>
             </button>

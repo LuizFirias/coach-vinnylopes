@@ -60,14 +60,14 @@ export default function ChatAlunoRedirectPage() {
     return (
       <div
         className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6"
-        style={{ background: 'var(--mobile-page-bg-solid, #fff)' }}
+        style={{ background: 'var(--surface-0)' }}
       >
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center' }}>{erro}</p>
         <button
           type="button"
           onClick={() => router.push('/aluno/dashboard')}
           className="rounded-[10px] px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: '#9333ea' }}
+          style={{ background: '#751BB4' }}
         >
           Voltar ao início
         </button>
@@ -78,7 +78,7 @@ export default function ChatAlunoRedirectPage() {
   return (
     <div
       className="flex min-h-[60vh] items-center justify-center"
-      style={{ background: 'var(--mobile-page-bg-solid, #fff)' }}
+      style={{ background: 'var(--surface-0)' }}
     >
       <DumbbellLoader />
     </div>

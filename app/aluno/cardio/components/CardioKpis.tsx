@@ -15,7 +15,7 @@ const CARD_STYLE = {
 
 const KPIS = [
   { key: 'kcal', label: 'Kcal', unit: 'kcal', cor: '#e05555' },
-  { key: 'sessoes', label: 'Sessões', unit: 'sess.', cor: '#9333ea' },
+  { key: 'sessoes', label: 'Sessões', unit: 'sess.', cor: '#751BB4' },
   { key: 'media', label: 'Média', unit: 'min', cor: '#39c75a' },
 ] as const;
 

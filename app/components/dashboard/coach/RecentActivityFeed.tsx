@@ -27,7 +27,7 @@ export function RecentActivityFeed({
 
   return (
     <div
-      className={`rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] ${className ?? ""}`}
+      className={`rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] ${className ?? ""}`}
     >
       {showViewAll && activities.length > limit && (
         <div className="flex justify-end mb-3">

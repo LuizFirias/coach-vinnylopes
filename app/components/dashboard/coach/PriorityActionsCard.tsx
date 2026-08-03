@@ -35,7 +35,7 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
       <div
         style={{ fontFamily: 'Nunito, var(--font-sans), sans-serif' }}
         className={cn(
-          'relative w-full rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
+          'relative w-full rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           className,
         )}
       >
@@ -55,7 +55,7 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
       <div
         style={{ fontFamily: 'Nunito, var(--font-sans), sans-serif' }}
         className={cn(
-          'relative w-full rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-3 pt-2.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
+          'relative w-full rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-3 pt-2.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]',
           className,
         )}
       >

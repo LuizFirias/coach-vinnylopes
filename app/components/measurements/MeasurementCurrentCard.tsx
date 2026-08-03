@@ -80,7 +80,7 @@ export function MeasurementCurrentCard({
                 'mb-2.5 ml-1 font-bold',
                 isDesktop ? 'text-[28px]' : 'text-[20px]',
               )}
-              style={{ color: '#9333ea' }}
+              style={{ color: '#751BB4' }}
             >
               {unit}
             </span>

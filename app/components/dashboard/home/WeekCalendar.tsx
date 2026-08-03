@@ -302,10 +302,10 @@ export function WeekCalendar({
                 ],
                 !dia.isHoje && isSelected && [
                   'bg-[var(--dash-selected-day-bg)]',
-                  'border border-[rgba(147, 51, 234,0.2)]',
+                  'border border-[rgba(117, 27, 180,0.2)]',
                 ],
                 isEditing && isSelected && 'ring-1 ring-brand/50',
-                isPressing && 'shadow-[0_8px_24px_rgba(147,51,234,0.25)]',
+                isPressing && 'shadow-[0_8px_24px_rgba(117, 27, 180,0.25)]',
               )}
               style={
                 dia.isHoje
@@ -333,7 +333,7 @@ export function WeekCalendar({
               <span
                 className={cn(
                   'text-[9px] font-semibold uppercase tracking-wide leading-none',
-                  dia.isHoje ? 'text-white/70' : 'dashboard-text-subtle',
+                  dia.isHoje ? 'text-brand/80' : 'dashboard-text-subtle',
                 )}
               >
                 {dia.label}
@@ -342,7 +342,7 @@ export function WeekCalendar({
               <span
                 className={cn(
                   'text-[13px] font-bold leading-none tabular-nums lining-nums',
-                  dia.isHoje ? 'text-white' : 'dashboard-text',
+                  dia.isHoje ? 'text-brand' : 'dashboard-text',
                   isSelected && !dia.isHoje && 'text-brand',
                 )}
                 style={{ letterSpacing: 'var(--tracking-display, -0.02em)' }}

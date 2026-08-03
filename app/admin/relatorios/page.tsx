@@ -445,7 +445,7 @@ export default function RelatoriosPage() {
               {/* Mobile: cards de receita arrastáveis */}
               <div className="md:hidden -mx-1 overflow-x-auto overflow-y-visible px-1 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="flex gap-3 min-w-max">
-                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                     <div>
                       <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -475,7 +475,7 @@ export default function RelatoriosPage() {
 
                   <div
                     ref={receitaAcumuladaCardRef}
-                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
+                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
                   >
                     <div className="absolute top-0 right-0 w-24 h-24 bg-success/10 rounded-bl-[80px]" />
                     {receitaAcumuladaInfoOpen && (
@@ -526,7 +526,7 @@ export default function RelatoriosPage() {
               </div>
 
               {/* Desktop: receita total (mantém leitura original) */}
-              <div className="hidden md:flex rounded-xl border border-white/10 bg-[rgba(147,51,234,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex-col justify-between min-h-[140px]">
+              <div className="hidden md:flex rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex-col justify-between min-h-[140px]">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                 <div>
                   <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -595,9 +595,9 @@ export default function RelatoriosPage() {
                 ref={receitaMesScrollRef}
                 className="overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
-                <div style={{ width: `${receitaPorMes.length * 52}px`, height: '180px' }}>
+                <div style={{ width: `${Math.max(receitaPorMes.length * 52, 1)}px`, height: 180, minWidth: 0, minHeight: 180 }}>
                   <BarChart
-                    width={receitaPorMes.length * 52}
+                    width={Math.max(receitaPorMes.length * 52, 1)}
                     height={180}
                     data={receitaPorMes}
                     margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
@@ -618,8 +618,8 @@ export default function RelatoriosPage() {
                       {receitaPorMes.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.futuro ? 'rgba(147, 51, 234,0.25)' : '#9333ea'}
-                          stroke={entry.futuro ? 'rgba(147, 51, 234,0.5)' : 'none'}
+                          fill={entry.futuro ? 'rgba(117, 27, 180,0.25)' : '#751BB4'}
+                          stroke={entry.futuro ? 'rgba(117, 27, 180,0.5)' : 'none'}
                           strokeWidth={entry.futuro ? 1 : 0}
                         />
                       ))}
@@ -632,8 +632,8 @@ export default function RelatoriosPage() {
             {/* Charts por tipo de plano */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
-                <div className="flex-1 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full min-w-0" style={{ height: 220, minHeight: 220 }}>
+                  <ResponsiveContainer width="100%" height={220} debounce={50} minWidth={0}>
                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
                       <YAxis stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
@@ -648,7 +648,7 @@ export default function RelatoriosPage() {
                         {chartData.map((_, index) => (
                           <Cell
                             key={`cell-${index}`}
-                            fill={index === 0 ? '#9333ea' : index === 1 ? 'rgba(147, 51, 234,0.6)' : '#52525B'}
+                            fill={index === 0 ? '#751BB4' : index === 1 ? 'rgba(117, 27, 180,0.6)' : '#52525B'}
                           />
                         ))}
                       </Bar>
@@ -658,8 +658,8 @@ export default function RelatoriosPage() {
               </div>
 
               <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
-                <div className="flex-1 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full min-w-0" style={{ height: 220, minHeight: 220 }}>
+                  <ResponsiveContainer width="100%" height={220} debounce={50} minWidth={0}>
                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
                       <YAxis stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} />
@@ -669,7 +669,7 @@ export default function RelatoriosPage() {
                         labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
                         itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
                       />
-                      <Bar dataKey="alunos" name="Alunos" fill="#9333ea" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />} />
+                      <Bar dataKey="alunos" name="Alunos" fill="#751BB4" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

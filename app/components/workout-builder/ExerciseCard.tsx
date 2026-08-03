@@ -56,11 +56,11 @@ export function ExerciseCard({
   return (
     <div
       className={cn(
-        "bg-surface-1 border border-border-subtle rounded-xl overflow-hidden transition-opacity",
-        isDragging && "opacity-95 border-brand/50"
+        "bg-surface-1 border-0 rounded-xl overflow-hidden transition-opacity",
+        isDragging && "opacity-95 ring-1 ring-brand/40"
       )}
     >
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-divider">
+      <div className="flex items-center gap-2.5 px-4 py-3">
         <button
           type="button"
           className="shrink-0 p-0.5 cursor-grab active:cursor-grabbing text-text-muted touch-none select-none"
@@ -71,30 +71,24 @@ export function ExerciseCard({
           <DotsSixVertical size={15} />
         </button>
 
-        <span className="shrink-0 w-9 h-9 rounded-lg bg-brand-subtle border border-brand-border flex items-center justify-center">
+        <span className="shrink-0 w-9 h-9 flex items-center justify-center">
           {hasVideo ? (
-            <Play size={14} weight="fill" className="text-brand" />
+            <Play size={16} weight="fill" className="text-brand" />
           ) : (
-            <Barbell size={14} className="text-brand" />
+            <Barbell size={16} className="text-brand" />
           )}
         </span>
 
         <div className="flex items-center min-w-0 flex-1">
-          {isMobile ? (
-            <textarea
-              value={exercicio.nome}
-              onChange={(e) => onUpdate(exIndex, { nome: e.target.value })}
-              rows={2}
-              className="flex-1 min-w-0 h-7 max-h-7 text-[11px] font-semibold text-text-primary bg-transparent border-none p-0 focus:outline-none focus:ring-0 resize-none leading-[14px] whitespace-normal break-words overflow-y-auto"
-            />
-          ) : (
-            <input
-              type="text"
-              value={exercicio.nome}
-              onChange={(e) => onUpdate(exIndex, { nome: e.target.value })}
-              className="flex-1 min-w-0 text-sm font-semibold text-text-primary bg-transparent border-none p-0 focus:outline-none focus:ring-0"
-            />
-          )}
+          <p
+            className={cn(
+              "min-w-0 flex-1 font-semibold text-text-primary truncate",
+              isMobile ? "text-[11px] leading-snug whitespace-normal break-words" : "text-sm",
+            )}
+            title={exercicio.nome}
+          >
+            {exercicio.nome}
+          </p>
         </div>
 
         <div className="flex items-center gap-1 shrink-0 relative">
@@ -129,7 +123,7 @@ export function ExerciseCard({
                   <Copy size={14} /> Duplicar
                 </button>
               )}
-              <div className="h-px bg-[#222222] my-1" />
+              <div className="h-px bg-border-divider my-1" />
               <button
                 type="button"
                 onClick={() => { onDelete(exIndex); setMenuOpen(false); }}
@@ -143,7 +137,7 @@ export function ExerciseCard({
       </div>
 
       {exercicio.imagem_url && (
-        <div className="overflow-hidden border-b border-divider">
+        <div className="overflow-hidden">
           <img
             src={exercicio.imagem_url}
             alt={`Demonstração de ${exercicio.nome}`}
@@ -181,7 +175,7 @@ export function ExerciseCard({
               value={exercicio.observacoes}
               onChange={(e) => onUpdate(exIndex, { observacoes: e.target.value })}
               placeholder="Observação para o aluno..."
-              className="w-full mt-2 px-0 py-2 bg-transparent border-b border-divider text-xs text-text-secondary focus:outline-none focus:border-brand/40 resize-none min-h-[52px]"
+              className="w-full mt-2 px-0 py-2 bg-transparent border-0 border-b border-border-divider text-xs text-text-secondary focus:outline-none focus:border-brand/40 resize-none min-h-[52px]"
               rows={2}
             />
           )}

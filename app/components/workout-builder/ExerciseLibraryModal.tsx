@@ -26,6 +26,8 @@ export interface LibraryExercise {
 interface ExerciseLibraryModalProps {
   catalog: LibraryExercise[];
   existingIds?: Set<string>;
+  pickMode?: boolean;
+  pickExcludeId?: string | null;
   onClose: () => void;
   onAdd: (exercises: LibraryExercise[]) => void;
   onCreateNew?: () => void;
@@ -180,6 +182,8 @@ export function FiltroChip({
 export function ExerciseLibraryModal({
   catalog,
   existingIds,
+  pickMode = false,
+  pickExcludeId = null,
   onClose,
   onAdd,
   onCreateNew,
@@ -243,6 +247,12 @@ export function ExerciseLibraryModal({
   };
 
   const toggle = (id: string) => {
+    if (pickMode) {
+      if (pickExcludeId && id === pickExcludeId) return;
+      const ex = catalog.find((e) => e.id === id);
+      if (ex) onAdd([ex]);
+      return;
+    }
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -265,13 +275,25 @@ export function ExerciseLibraryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-surface-0/80 backdrop-blur-sm">
-      <div className="bg-surface-1 border border-border-subtle shadow-2xl w-full max-w-xl rounded-2xl flex flex-col max-h-[80vh]">
+    <div className={cn(
+      "fixed inset-0 z-[100] flex items-center justify-center px-4 backdrop-blur-sm",
+      pickMode ? "bg-black/75" : "bg-surface-0/80",
+    )}>
+      <div
+        className={cn(
+          "bg-surface-1 shadow-2xl w-full max-w-xl rounded-2xl flex flex-col max-h-[80vh] overflow-hidden",
+          pickMode ? "ring-2 ring-brand border-0" : "border-0",
+        )}
+      >
         <div className="p-4 border-b border-border-divider/40 flex items-center justify-between shrink-0 rounded-t-2xl">
           <div>
-            <h3 className="text-sm font-bold text-text-primary">Biblioteca</h3>
+            <h3 className="text-sm font-bold text-text-primary">
+              {pickMode ? "Exercício B do Bi-Set" : "Biblioteca"}
+            </h3>
             <p className="text-[10px] text-text-tertiary">
-              Selecione exercícios para adicionar
+              {pickMode
+                ? "Toque em um exercício para completar o par"
+                : "Selecione exercícios para adicionar"}
             </p>
           </div>
           <div className="flex items-center gap-1.5">
@@ -376,44 +398,47 @@ export function ExerciseLibraryModal({
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-4 space-y-2 rounded-b-none">
           {filtered.map((ex) => {
-            const isSelected = selectedIds.has(ex.id);
-            const alreadyIn = existingIds?.has(ex.id);
+            const isSelected = !pickMode && selectedIds.has(ex.id);
+            const alreadyIn = !pickMode && existingIds?.has(ex.id);
+            const blocked = pickMode && pickExcludeId === ex.id;
             const showPlayer = hasVideo(ex.video_url);
 
             return (
               <button
                 key={ex.id}
                 type="button"
-                onClick={() => toggle(ex.id)}
+                onClick={() => !blocked && toggle(ex.id)}
+                disabled={blocked}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border shadow-sm transition-colors text-left",
-                  isSelected
-                    ? "bg-white border-brand ring-1 ring-brand/30"
-                    : "bg-white border-black/6 hover:border-brand/25",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border-0 shadow-sm transition-colors text-left",
+                  blocked
+                    ? "bg-surface-2 opacity-40 cursor-not-allowed"
+                    : isSelected
+                      ? "bg-brand/10 ring-1 ring-brand/30"
+                      : "bg-surface-1 hover:bg-brand/5",
                 )}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-bold text-[#111827] truncate">
+                  <p className="text-[13px] font-bold text-text-primary truncate">
                     {ex.nome}
                   </p>
-                  <p className="text-[10px] uppercase tracking-wide text-[#6b7280] mt-0.5 truncate">
+                  <p className="text-[10px] uppercase tracking-wide text-text-tertiary mt-0.5 truncate">
                     {ex.grupo_muscular}
                     {alreadyIn ? " · na ficha" : ""}
+                    {blocked ? " · exercício A" : ""}
                   </p>
                 </div>
 
-                {/* Onde era a seta: indicador de vídeo */}
                 {showPlayer && (
                   <span
                     aria-hidden
                     title="Possui demonstração em vídeo"
-                    className="w-8 h-8 shrink-0 rounded-full bg-brand/10 text-brand flex items-center justify-center pointer-events-none select-none"
+                    className="w-8 h-8 shrink-0 rounded-full text-brand flex items-center justify-center pointer-events-none select-none"
                   >
                     <Play size={14} weight="fill" />
                   </span>
                 )}
 
-                {/* Onde era o player: check de seleção */}
                 {isSelected && (
                   <span className="w-5 h-5 shrink-0 rounded-full bg-brand text-[10px] text-text-on-brand flex items-center justify-center font-bold">
                     ✓
@@ -435,16 +460,18 @@ export function ExerciseLibraryModal({
             onClick={onClose}
             className="px-4 py-2 text-xs font-semibold rounded-lg bg-surface-3 text-text-secondary"
           >
-            Cancelar
+            {pickMode ? "Cancelar" : "Cancelar"}
           </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={selectedIds.size === 0}
-            className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
-          >
-            Adicionar ({selectedIds.size})
-          </button>
+          {!pickMode && (
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={selectedIds.size === 0}
+              className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
+            >
+              Adicionar ({selectedIds.size})
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -124,7 +124,7 @@ export function FichaHistoricoChart({
             style={{
               fontSize: 11,
               fontWeight: 600,
-              color: '#9333ea',
+              color: '#751BB4',
               marginLeft: 4,
             }}
           >
@@ -188,9 +188,9 @@ export function FichaHistoricoChart({
             <Line
               type="monotone"
               dataKey="value"
-              stroke="#9333ea"
+              stroke="#751BB4"
               strokeWidth={2}
-              dot={{ r: 3, fill: '#9333ea', strokeWidth: 0 }}
+              dot={{ r: 3, fill: '#751BB4', strokeWidth: 0 }}
               activeDot={{ r: 5 }}
             />
           </LineChart>
@@ -214,10 +214,10 @@ export function FichaHistoricoChart({
                 cursor: 'pointer',
                 touchAction: 'manipulation',
                 transition: 'all 0.15s',
-                background: active ? '#9333ea' : 'transparent',
+                background: active ? '#751BB4' : 'transparent',
                 color: active ? '#fff' : '#aaa',
                 border: active
-                  ? '1px solid #9333ea'
+                  ? '1px solid #751BB4'
                   : '1px solid rgba(0,0,0,0.12)',
               }}
             >

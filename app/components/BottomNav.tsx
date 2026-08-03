@@ -153,7 +153,7 @@ export default function BottomNav() {
                       )}
                       style={{
                         filter: isActive
-                          ? 'drop-shadow(0 2px 8px rgba(147, 51, 234,0.55))'
+                          ? 'drop-shadow(0 2px 8px rgba(117, 27, 180,0.55))'
                           : 'none',
                       }}
                     />

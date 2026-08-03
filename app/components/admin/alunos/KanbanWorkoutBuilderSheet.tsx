@@ -73,6 +73,7 @@ export function KanbanWorkoutBuilderSheet({
   const [items, setItems] = useState<ExercicioFichaItem[]>([]);
   const [catalog, setCatalog] = useState<LibraryExercise[]>([]);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [biSetPickIndex, setBiSetPickIndex] = useState<number | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export function KanbanWorkoutBuilderSheet({
     setItems([]);
     setError(null);
     setLibraryOpen(false);
+    setBiSetPickIndex(null);
     setLoadingCatalog(true);
     void (async () => {
       const { data } = await supabaseClient
@@ -119,8 +121,19 @@ export function KanbanWorkoutBuilderSheet({
   };
 
   const addFromLibrary = (selected: LibraryExercise[]) => {
+    if (biSetPickIndex != null && selected[0]) {
+      selecionarParceiroBiSet(biSetPickIndex, selected[0]);
+      setBiSetPickIndex(null);
+      setLibraryOpen(false);
+      return;
+    }
     setItems((prev) => [...prev, ...selected.map(exercicioFromCatalog)]);
     setLibraryOpen(false);
+  };
+
+  const startBiSetPartnerPick = (index: number) => {
+    setBiSetPickIndex(index);
+    setLibraryOpen(true);
   };
 
   const duplicarExercicio = (index: number) => {
@@ -146,6 +159,7 @@ export function KanbanWorkoutBuilderSheet({
       next[index] = simpleToBiSetGroup(item);
       return next;
     });
+    startBiSetPartnerPick(index);
   };
 
   const selecionarParceiroBiSet = (index: number, ex: LibraryExercise) => {
@@ -159,6 +173,8 @@ export function KanbanWorkoutBuilderSheet({
       };
       return next;
     });
+    setBiSetPickIndex(null);
+    setLibraryOpen(false);
   };
 
   const trocarParceiroBiSet = (index: number) => {
@@ -169,6 +185,7 @@ export function KanbanWorkoutBuilderSheet({
       next[index] = { ...item, exercicioB: null };
       return next;
     });
+    startBiSetPartnerPick(index);
   };
 
   const desfazerBiSet = (index: number) => {
@@ -179,6 +196,10 @@ export function KanbanWorkoutBuilderSheet({
       next.splice(index, 1, ...bisetGroupToSimples(item));
       return next;
     });
+    if (biSetPickIndex === index) {
+      setBiSetPickIndex(null);
+      setLibraryOpen(false);
+    }
   };
 
   const atualizarBiSetDescanso = (index: number, descanso: string) => {
@@ -399,7 +420,7 @@ export function KanbanWorkoutBuilderSheet({
   const canSave = !!nomeRotina.trim() && items.length > 0 && !saving;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0d0d0d]/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm">
       <div className="flex-1 flex flex-col min-h-0 max-w-[min(960px,96vw)] w-full mx-auto my-3 md:my-6 rounded-xl border-0 bg-surface-1 overflow-hidden">
         <div className="shrink-0 px-4 py-3 border-b border-divider flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -428,7 +449,7 @@ export function KanbanWorkoutBuilderSheet({
             <button
               type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-lg bg-[#1e1e1e] text-[#7a8aab] hover:text-white flex items-center justify-center"
+              className="w-9 h-9 rounded-lg bg-surface-2 text-text-secondary hover:text-text-primary flex items-center justify-center"
               aria-label="Fechar"
             >
               <X size={16} />
@@ -443,7 +464,7 @@ export function KanbanWorkoutBuilderSheet({
             </p>
           )}
           {bisetToast && (
-            <p className="text-xs text-white bg-[#1a2d4a] border-l-[3px] border-[#9333ea] rounded-lg px-3 py-2">
+            <p className="text-xs text-white bg-brand-subtle border-l-[3px] border-brand rounded-lg px-3 py-2">
               {bisetToast}
             </p>
           )}
@@ -453,13 +474,13 @@ export function KanbanWorkoutBuilderSheet({
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">
               Exercícios{" "}
-              <span className="text-[#9333ea]">({items.length})</span>
+              <span className="text-brand">({items.length})</span>
             </h3>
             <button
               type="button"
               onClick={() => setLibraryOpen(true)}
               disabled={loadingCatalog}
-              className="inline-flex items-center gap-1.5 px-3 h-8 border-0 bg-[#1e1e1e] text-[#7a8aab] rounded-lg text-xs font-semibold hover:text-[#9333ea] hover:border-[#9333ea]/40"
+              className="inline-flex items-center gap-1.5 px-3 h-8 border-0 bg-surface-2 text-text-secondary rounded-lg text-xs font-semibold hover:text-brand hover:border-brand/40"
             >
               <Plus size={14} weight="bold" /> Adicionar exercício
             </button>
@@ -474,7 +495,7 @@ export function KanbanWorkoutBuilderSheet({
               <button
                 type="button"
                 onClick={() => setLibraryOpen(true)}
-                className="px-4 h-9 bg-[#9333ea] text-white rounded-lg text-xs font-semibold"
+                className="px-4 h-9 bg-brand text-text-on-brand rounded-lg text-xs font-semibold"
               >
                 Abrir biblioteca
               </button>
@@ -482,7 +503,6 @@ export function KanbanWorkoutBuilderSheet({
           ) : (
             <ExerciseList
               items={items}
-              catalog={catalog}
               onReorder={handleReorder}
               onUpdateSimple={atualizarExercicio}
               onDeleteSimple={removerExercicioSimple}
@@ -495,8 +515,8 @@ export function KanbanWorkoutBuilderSheet({
               onUpdateBiSetSerie={atualizarBiSetSerie}
               onAddBiSetSerie={adicionarSerieBiSet}
               onRemoveBiSetSerie={removerSerieBiSet}
-              onSelectBiSetPartner={selecionarParceiroBiSet}
               onSwapBiSetPartner={trocarParceiroBiSet}
+              onRequestBiSetPartnerPick={startBiSetPartnerPick}
               onUndoBiSet={desfazerBiSet}
               onDeleteBiSet={removerExercicioSimple}
               onBiSetSerieToast={() =>
@@ -510,7 +530,24 @@ export function KanbanWorkoutBuilderSheet({
       {libraryOpen && (
         <ExerciseLibraryModal
           catalog={catalog}
-          onClose={() => setLibraryOpen(false)}
+          pickMode={biSetPickIndex != null}
+          pickExcludeId={(() => {
+            if (biSetPickIndex == null) return null;
+            const item = items[biSetPickIndex];
+            return item && isBiSetFichaItem(item)
+              ? item.exercicioA.exercicio_id
+              : null;
+          })()}
+          onClose={() => {
+            if (biSetPickIndex != null) {
+              const item = items[biSetPickIndex];
+              if (item && isBiSetFichaItem(item) && !item.exercicioB) {
+                desfazerBiSet(biSetPickIndex);
+              }
+              setBiSetPickIndex(null);
+            }
+            setLibraryOpen(false);
+          }}
           onAdd={addFromLibrary}
         />
       )}

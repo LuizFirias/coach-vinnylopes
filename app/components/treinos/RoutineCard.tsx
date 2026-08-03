@@ -36,9 +36,9 @@ export function RoutineCard({ routine, isDesktop = false }: RoutineCardProps) {
         "transition-all active:scale-[0.99]"
       )}
       style={{
-        background: "#ffffff",
-        border: "1px solid rgba(0,0,0,0.08)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+        background: "var(--surface-1)",
+        border: "1px solid transparent",
+        boxShadow: "none",
       }}
     >
       <AuronLinkIcon size={20} active className="shrink-0" />
@@ -46,28 +46,26 @@ export function RoutineCard({ routine, isDesktop = false }: RoutineCardProps) {
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "font-bold uppercase tracking-wide truncate",
+            "font-bold uppercase tracking-wide truncate text-text-primary",
             isDesktop ? "text-base" : "text-[13px]"
           )}
-          style={{ color: "#1a1a1a" }}
         >
           {routine.nome_rotina}
         </p>
         {exercisePreview ? (
           <p
-            className="mt-0.5 line-clamp-2 text-[11px] font-normal leading-snug truncate"
-            style={{ color: "#888" }}
+            className="mt-0.5 line-clamp-2 text-[11px] font-normal leading-snug truncate text-text-tertiary"
           >
             {exercisePreview}
           </p>
         ) : (
-          <p className="mt-0.5 text-[11px] font-normal" style={{ color: "#888" }}>
+          <p className="mt-0.5 text-[11px] font-normal text-text-tertiary">
             Sem exercícios
           </p>
         )}
       </div>
 
-      <CaretRight size={16} className="shrink-0" style={{ color: "#bbb" }} />
+      <CaretRight size={16} className="shrink-0 text-text-disabled" />
     </Link>
   );
 }

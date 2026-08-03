@@ -71,7 +71,7 @@ export default function ChatAlunoConversaPage() {
           type="button"
           onClick={() => router.push('/aluno/dashboard')}
           className="rounded-[10px] px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: '#9333ea' }}
+          style={{ background: 'var(--brand-primary)' }}
         >
           Voltar
         </button>
