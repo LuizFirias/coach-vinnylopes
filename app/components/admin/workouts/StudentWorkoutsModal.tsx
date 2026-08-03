@@ -212,10 +212,11 @@ export function StudentWorkoutsModal({
                                 ? ` • ${String(s.distancia_sugerida)}m`
                                 : ""}
                             </span>
-                            {(s.tecnica || s.tecnica_extra) && (
+                            {Boolean(s.tecnica || s.tecnica_extra) && (
                               <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/5 px-1 rounded">
                                 {[s.tecnica, s.tecnica_extra]
                                   .filter(Boolean)
+                                  .map(String)
                                   .join(" + ")}
                               </span>
                             )}
