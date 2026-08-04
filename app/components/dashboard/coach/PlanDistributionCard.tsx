@@ -11,6 +11,8 @@ interface PlanDistributionCardProps {
   plans: PlanDistributionItem[];
   totalStudents: number;
   collapsed?: boolean;
+  /** `start` alinha o donut à esquerda (ex.: Financeiro); default centraliza como na dashboard. */
+  align?: "center" | "start";
   className?: string;
 }
 
@@ -56,6 +58,7 @@ function annularSectorPath(
 export function PlanDistributionCard({
   plans,
   collapsed,
+  align = "center",
   className,
 }: PlanDistributionCardProps) {
   const colored = plans.map((p, i) => ({
@@ -195,7 +198,8 @@ export function PlanDistributionCard({
       <div className={cn("flex flex-col gap-3", className)}>
         <div className="flex justify-start">{title}</div>
         <div className="relative flex items-center justify-center min-h-[140px]">
-          <div className="-translate-x-[20%] -translate-y-2">{donut}</div>
+          {/* Mobile: 20% + 30% = 50% à esquerda */}
+          <div className="-translate-x-[50%] -translate-y-2">{donut}</div>
           <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+0.5rem)]">{legend}</div>
         </div>
       </div>
@@ -203,21 +207,38 @@ export function PlanDistributionCard({
   }
 
   return (
-    <div className={cn("h-full min-h-[240px] flex flex-col", className)}>
-      {/* Título alinhado à esquerda, na faixa do KPI do MRR */}
-      <div className="flex items-start justify-start mb-3 min-h-[52px] pt-0.5">
+    <div
+      className={cn(
+        "h-full flex flex-col",
+        align === "start" ? "min-h-0" : "min-h-[240px]",
+        className,
+      )}
+    >
+      {/* Título — na dashboard mantém faixa do KPI; no Financeiro fica compacto */}
+      <div
+        className={cn(
+          "flex items-start justify-start",
+          align === "start" ? "mb-2" : "mb-3 min-h-[52px] pt-0.5",
+        )}
+      >
         {title}
       </div>
 
-      {/* Donut centrado (ligeiramente acima); legenda absoluta à direita */}
-      <div className="relative flex-1 min-h-0">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="pointer-events-auto -translate-x-[20%] -translate-y-9">{donut}</div>
+      {align === "start" ? (
+        <div className="flex items-center justify-between gap-4">
+          <div className="shrink-0">{donut}</div>
+          <div className="shrink-0">{legend}</div>
         </div>
-        <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+2.25rem)] z-10">
-          {legend}
+      ) : (
+        <div className="relative flex-1 min-h-0">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="pointer-events-auto -translate-x-[20%] -translate-y-9">{donut}</div>
+          </div>
+          <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+2.25rem)] z-10">
+            {legend}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

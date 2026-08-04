@@ -19,13 +19,15 @@ interface MobileListRowProps {
  */
 export function MobileListRow({ name, badge, topRight, meta, className }: MobileListRowProps) {
   return (
-    <div className={cn("flex flex-col gap-1 py-3", className)}>
-      <div className="flex items-start justify-between gap-3 w-full">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <p className="font-semibold text-sm text-text-primary truncate">{name}</p>
+    <div className={cn("flex flex-col gap-0.5 py-2.5", className)}>
+      <div className="flex items-center justify-between gap-2 w-full">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <p className="font-semibold text-sm text-text-primary truncate leading-tight">{name}</p>
           {badge}
         </div>
-        {topRight && <div className="shrink-0 flex flex-col items-end gap-1">{topRight}</div>}
+        {topRight && (
+          <div className="shrink-0 flex items-center self-center">{topRight}</div>
+        )}
       </div>
       {meta && (
         <div className="flex items-center w-full flex-nowrap overflow-hidden gap-x-1 text-[11px] text-text-secondary leading-tight">

@@ -282,13 +282,13 @@ function CoachSignupForm() {
           <div className="flex flex-col items-center text-center">
             {!logoFailed ? (
               <Image
-                src="/images/logo.webp"
+                src="/images/logo-auron-nome-roxo.svg"
                 alt="Auronfit"
                 width={200}
-                height={70}
+                height={40}
                 priority
                 onError={() => setLogoFailed(true)}
-                className="w-36 lg:w-40 h-auto drop-shadow-2xl animate-fade-in"
+                className="w-40 lg:w-44 h-auto object-contain drop-shadow-2xl animate-fade-in"
               />
             ) : (
               <div className="flex items-center gap-2">

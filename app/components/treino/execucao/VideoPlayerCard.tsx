@@ -39,17 +39,17 @@ export function VideoPlayerCard({
           />
           <div className="absolute inset-0 bg-black/38" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600/90 shadow-lg shadow-blue-600/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand/90 shadow-lg shadow-[var(--btn-primary-shadow)]">
               <Play className="ml-0.5 h-5 w-5 text-white" weight="fill" />
             </div>
           </div>
         </div>
         <div className="flex flex-col gap-0.5 p-3">
-          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-blue-500">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand">
             <VideoCamera className="h-3.5 w-3.5" weight="fill" />
             Execução
           </p>
-          <p className="text-xs text-gray-500">Toque para ver a técnica correta</p>
+          <p className="text-xs text-text-tertiary">Toque para ver a técnica correta</p>
         </div>
       </button>
 

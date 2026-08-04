@@ -23,6 +23,7 @@ interface HeroHeaderProps {
   showNotificationBadge?: boolean;
   chatNaoLidas?: number;
   notificationsHref?: string;
+  onNotificationsClick?: () => void;
   agua: HabitData;
   dieta: HabitData;
   treinos: HabitData;
@@ -47,7 +48,15 @@ function HabitBar({
   dieta,
   treinos,
   cardio,
-}: Omit<HeroHeaderProps, 'userName' | 'avatarUrl' | 'showNotificationBadge' | 'chatNaoLidas' | 'notificationsHref'>) {
+}: Omit<
+  HeroHeaderProps,
+  | 'userName'
+  | 'avatarUrl'
+  | 'showNotificationBadge'
+  | 'chatNaoLidas'
+  | 'notificationsHref'
+  | 'onNotificationsClick'
+>) {
   const habits: { icon: Icon; label: string; value: string; done: boolean }[] = [
     {
       icon: Drop,
@@ -110,6 +119,7 @@ export function HeroHeader({
   showNotificationBadge,
   chatNaoLidas,
   notificationsHref = '/aluno/chat',
+  onNotificationsClick,
   agua,
   dieta,
   treinos,
@@ -168,6 +178,7 @@ export function HeroHeader({
             showNotificationBadge={showNotificationBadge}
             chatNaoLidas={chatNaoLidas}
             notificationsHref={notificationsHref}
+            onNotificationsClick={onNotificationsClick}
           />
         </div>
 

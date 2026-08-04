@@ -146,6 +146,11 @@ export function MeasurementsView({
             chartData={chartPoints}
             isDesktop={isDesktop}
             showChart={!isDesktop}
+            emptyChartMessage={
+              readOnly
+                ? 'O aluno deve registrar pelo menos 2 medidas para ver o gráfico'
+                : undefined
+            }
           />
 
           {!readOnly && onSubmitValue && dataRegistro && onDataRegistroChange && (
@@ -174,7 +179,15 @@ export function MeasurementsView({
 
         <div className="flex min-w-0 flex-col gap-5">
           {isDesktop && (
-            <MeasurementLineChart data={chartPoints} isDesktop />
+            <MeasurementLineChart
+              data={chartPoints}
+              isDesktop
+              emptyMessage={
+                readOnly
+                  ? 'O aluno deve registrar pelo menos 2 medidas para ver o gráfico'
+                  : undefined
+              }
+            />
           )}
 
           <div

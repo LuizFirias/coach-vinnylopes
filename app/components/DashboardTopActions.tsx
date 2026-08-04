@@ -60,7 +60,7 @@ export default function DashboardTopActions({
               ? 'bg-transparent text-text-tertiary hover:text-text-primary transition-colors'
               : 'mobile-icon-btn border',
         )}
-        aria-label={hasCount ? `Chat, ${chatNaoLidas} não lidas` : 'Chat e notificações'}
+        aria-label={hasCount ? `Notificações, ${chatNaoLidas} não lidas` : 'Notificações'}
       >
         <Bell size={iconSize} className="currentColor" />
         {hasCount ? (

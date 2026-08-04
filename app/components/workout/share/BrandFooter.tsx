@@ -1,4 +1,4 @@
-import { type ShareTheme, getShareThemeTokens } from '@/lib/utils/workoutShare';
+import { formatCoachHandle, type ShareTheme, getShareThemeTokens } from '@/lib/utils/workoutShare';
 
 interface BrandFooterProps {
   coachHandle: string;
@@ -40,7 +40,7 @@ export function BrandFooter({ coachHandle, theme = 'escuro' }: BrandFooterProps)
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        {coachHandle.trim() || '@auronfit'}
+        {coachHandle.trim() ? formatCoachHandle(coachHandle) : '@auronfit'}
       </p>
     </div>
   );

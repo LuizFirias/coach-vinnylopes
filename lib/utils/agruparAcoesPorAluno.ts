@@ -6,6 +6,8 @@ export type PriorityAction = {
   descricao: string;
   acao: string;
   link: string;
+  /** Default: navigate via link. cobrar_checkin / solicitar_fotos enviam notificação ao aluno. */
+  kind?: 'navigate' | 'cobrar_checkin' | 'solicitar_fotos';
 };
 
 export type AlunoComAcoes = {

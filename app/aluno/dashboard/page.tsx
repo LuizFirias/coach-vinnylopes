@@ -28,6 +28,9 @@ import {
   setDashboardAlunoCache,
 } from '@/lib/queries/dashboardAlunoCache';
 import { useNaoLidasRealtime } from '@/lib/chat/realtime';
+import { useNotificacoesNaoLidas } from '@/lib/notifications/realtime';
+import { NotificationsPanel } from '@/app/components/notifications/NotificationsPanel';
+import { AlunoObservacoesInbox } from '@/app/components/aluno/AlunoObservacoesInbox';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -126,6 +129,8 @@ export default function AlunoDashboardPage() {
   const [incompleteData, setIncompleteData] = useState(false);
 
   const chatNaoLidas = useNaoLidasRealtime(userId, 'aluno');
+  const notifNaoLidas = useNotificacoesNaoLidas(userId);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const [kpis, setKpis] = useState<KpisAluno | null>(null);
   const [checkinFeito, setCheckinFeito] = useState(false);
@@ -811,8 +816,13 @@ export default function AlunoDashboardPage() {
           <HeroHeader
             userName={userName}
             avatarUrl={userAvatar}
-            showNotificationBadge={coachPendings.feedbacks > 0 || coachPendings.mensagens > 0}
-            chatNaoLidas={chatNaoLidas}
+            showNotificationBadge={
+              notifNaoLidas > 0 ||
+              coachPendings.feedbacks > 0 ||
+              coachPendings.mensagens > 0
+            }
+            chatNaoLidas={chatNaoLidas + notifNaoLidas}
+            onNotificationsClick={() => setNotifOpen(true)}
             agua={{ atual: agua.copos, meta: metaCopos }}
             dieta={{
               atual: planoNutricao?.refeicoesConcluidas ?? 0,
@@ -821,6 +831,14 @@ export default function AlunoDashboardPage() {
             treinos={{ atual: treinosSemana, meta: metaSemana }}
             cardio={{ atual: cardioAtual, meta: cardioMeta }}
           />
+
+          {userId && (
+            <NotificationsPanel
+              open={notifOpen}
+              onClose={() => setNotifOpen(false)}
+              alunoId={userId}
+            />
+          )}
 
           <WorkoutCard
             status={treinoHoje?.status ?? 'sem-plano'}
@@ -864,6 +882,8 @@ export default function AlunoDashboardPage() {
             />
           </div>
         )}
+
+        {userId && <AlunoObservacoesInbox alunoId={userId} />}
 
         <WeekCalendar
           diasSemana={diasSemana}

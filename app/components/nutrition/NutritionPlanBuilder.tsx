@@ -18,6 +18,7 @@ import { NutritionFood, NutritionFoodCategory, NutritionMealType } from '@/lib/n
 import { formatFoodQuantityDisplay, isGramsOnlyLabel } from '@/lib/nutrition/portionDisplay';
 import { cn } from '@/lib/utils/cn';
 import { textIncludes } from '@/lib/utils/textNormalize';
+import { readReturnUrl } from '@/lib/utils/adminNav';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface NutritionPlanBuilderProps {
@@ -26,6 +27,9 @@ interface NutritionPlanBuilderProps {
 
 export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanBuilderProps) {
   const router = useRouter();
+  const goBack = () => {
+    router.push(readReturnUrl(window.location.search, '/admin/nutricao'));
+  };
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -401,7 +405,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
       setSuccess(status === 'active' ? 'Plano alimentar publicado com sucesso!' : 'Rascunho salvo com sucesso!');
       setTimeout(() => {
-        router.push('/admin/nutricao');
+        router.push(readReturnUrl(window.location.search, '/admin/nutricao'));
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'Erro ao salvar plano alimentar.');
@@ -440,7 +444,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         {/* Header */}
         <div className="flex items-center gap-4 py-6 border-b border-divider/50 mb-6">
           <button
-            onClick={() => router.push('/admin/nutricao')}
+            onClick={goBack}
             className="w-8 h-8 rounded-md bg-surface-2 border-0 hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -1077,7 +1081,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
               </Button>
 
               <Button
-                onClick={() => router.push('/admin/nutricao')}
+                onClick={goBack}
                 variant="ghost"
                 disabled={saving}
                 fullWidth

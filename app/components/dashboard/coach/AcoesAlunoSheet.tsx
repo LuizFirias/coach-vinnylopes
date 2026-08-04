@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from '@phosphor-icons/react';
-import { GlassPanel } from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils/cn';
+import { sendCoachNotification } from '@/lib/notifications/sendCoachNotification';
 import type { AlunoComAcoes, PriorityAction } from '@/lib/utils/agruparAcoesPorAluno';
 
 const DOT: Record<PriorityAction['tipo'], string> = {
@@ -17,10 +17,13 @@ const DOT: Record<PriorityAction['tipo'], string> = {
 type Props = {
   aluno: AlunoComAcoes;
   onClose: () => void;
+  onCheckinSent?: (message: string) => void;
 };
 
-export function AcoesAlunoSheet({ aluno, onClose }: Props) {
+export function AcoesAlunoSheet({ aluno, onClose, onCheckinSent }: Props) {
   const router = useRouter();
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -31,6 +34,71 @@ export function AcoesAlunoSheet({ aluno, onClose }: Props) {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
+  async function handleCobrarCheckin(acao: PriorityAction) {
+    if (sendingId) return;
+    setSendingId(acao.id);
+    setErrorMsg(null);
+    try {
+      const result = await sendCoachNotification(aluno.alunoId, 'checkin_reminder');
+      if (!result.ok) {
+        setErrorMsg(result.error);
+        return;
+      }
+
+      onClose();
+      onCheckinSent?.(
+        result.deduped
+          ? 'Check-in já solicitado (notificação ainda não lida)'
+          : 'Notificação de check-in enviada para o aluno',
+      );
+    } catch {
+      setErrorMsg('Não foi possível enviar a notificação.');
+    } finally {
+      setSendingId(null);
+    }
+  }
+
+  async function handleSolicitarFotos(acao: PriorityAction) {
+    if (sendingId) return;
+    setSendingId(acao.id);
+    setErrorMsg(null);
+    try {
+      const result = await sendCoachNotification(aluno.alunoId, 'photos_reminder');
+      if (!result.ok) {
+        setErrorMsg(result.error);
+        return;
+      }
+
+      onClose();
+      onCheckinSent?.(
+        result.deduped
+          ? 'Fotos já solicitadas (notificação ainda não lida)'
+          : 'Notificação de fotos enviada para o aluno',
+      );
+    } catch {
+      setErrorMsg('Não foi possível enviar a notificação.');
+    } finally {
+      setSendingId(null);
+    }
+  }
+
+  function handleAction(acao: PriorityAction) {
+    if (acao.kind === 'cobrar_checkin') {
+      void handleCobrarCheckin(acao);
+      return;
+    }
+    if (
+      acao.kind === 'solicitar_fotos' ||
+      acao.acao === 'Solicitar Fotos' ||
+      acao.acao === 'Solicitar Renovação'
+    ) {
+      void handleSolicitarFotos(acao);
+      return;
+    }
+    onClose();
+    router.push(acao.link);
+  }
+
   return (
     <>
       <div
@@ -40,20 +108,21 @@ export function AcoesAlunoSheet({ aluno, onClose }: Props) {
       />
 
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="acoes-sheet-title"
-        className={cn(
-          'fixed bottom-0 left-0 right-0 z-50 px-4 animate-sheet-up',
-          'pb-[calc(16px+env(safe-area-inset-bottom))]',
-        )}
+        className="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none"
+        aria-hidden={false}
       >
-        <GlassPanel
-          variant="brand-1"
-          className="relative mx-auto w-full max-w-lg"
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="acoes-sheet-title"
           onClick={(e) => e.stopPropagation()}
+          className={cn(
+            'pointer-events-auto relative w-full max-w-lg overflow-hidden rounded-2xl',
+            'bg-brand shadow-[0_20px_60px_rgba(147,51,234,0.45)]',
+            'animate-sheet-up',
+          )}
         >
-          <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-white/10">
+          <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-white/15">
             <div className="min-w-0">
               <p
                 id="acoes-sheet-title"
@@ -99,19 +168,21 @@ export function AcoesAlunoSheet({ aluno, onClose }: Props) {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    onClose();
-                    router.push(acao.link);
-                  }}
+                  disabled={sendingId === acao.id}
+                  onClick={() => handleAction(acao)}
                   style={{ touchAction: 'manipulation' }}
-                  className="text-[12px] font-semibold text-white ml-1 shrink-0 transition-opacity active:opacity-70"
+                  className="text-[12px] font-semibold text-white ml-1 shrink-0 transition-opacity active:opacity-70 disabled:opacity-50"
                 >
-                  {acao.acao} →
+                  {sendingId === acao.id ? 'Enviando…' : `${acao.acao} →`}
                 </button>
               </div>
             ))}
           </div>
-        </GlassPanel>
+
+          {errorMsg && (
+            <p className="px-4 pb-3 text-[11px] text-white/90 bg-black/10">{errorMsg}</p>
+          )}
+        </div>
       </div>
     </>
   );

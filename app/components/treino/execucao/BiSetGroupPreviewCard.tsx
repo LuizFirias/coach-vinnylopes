@@ -5,11 +5,14 @@ import { Check, Clock, ArrowDown } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 import type { WorkoutBlock } from "@/lib/utils/biset";
 import { formatRestTime } from "@/lib/utils/restTime";
+import { isPerSideLoadEquipment } from "@/lib/constants/equipment";
+import { CargaPorLadoInfoButton } from "@/app/components/treino/execucao/CargaPorLadoInfoModal";
 
 interface SeriePreview {
   ordem: number;
   peso_atual: number;
   reps: number | string;
+  reps_executadas?: number | string;
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
@@ -23,6 +26,19 @@ function toTitleCase(str: string) {
 function duasLetrasTenica(t?: string) {
   if (!t) return "";
   return t.length <= 3 ? t : t.slice(0, 2).toUpperCase();
+}
+
+function resolveRepsPreview(serie: SeriePreview): { abaixo: boolean } {
+  const exec = serie.reps_executadas;
+  const presc = serie.reps;
+  if (exec === undefined || exec === null || exec === "") {
+    return { abaixo: false };
+  }
+  const execNum = typeof exec === "string" ? parseFloat(exec) : exec;
+  const prescNum = typeof presc === "string" ? parseFloat(String(presc)) : presc;
+  return {
+    abaixo: !isNaN(execNum) && !isNaN(prescNum) && execNum < prescNum,
+  };
 }
 
 function GradientPlayIcon({ size = 22 }: { size?: number }) {
@@ -46,6 +62,7 @@ function GradientPlayIcon({ size = 22 }: { size?: number }) {
 
 interface HalfPreviewProps {
   nome: string;
+  equipamento?: string;
   series: SeriePreview[];
   showAnteriorCol: boolean;
   gridCols: string;
@@ -53,12 +70,15 @@ interface HalfPreviewProps {
   videoUrl?: string;
   treinoIniciado: boolean;
   onPesoChange: (ordem: number, peso: number) => void;
+  onRepsChange: (ordem: number, reps: number | string) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen?: (url: string) => void;
+  onCargaInfo?: () => void;
 }
 
 function HalfPreview({
   nome,
+  equipamento,
   series,
   showAnteriorCol,
   gridCols,
@@ -66,21 +86,32 @@ function HalfPreview({
   videoUrl,
   treinoIniciado,
   onPesoChange,
+  onRepsChange,
   onCheck,
   onVideoOpen,
+  onCargaInfo,
 }: HalfPreviewProps) {
   const all = series.every((s) => s.completado);
+  const showCargaInfo = isPerSideLoadEquipment(equipamento, nome);
   return (
     <div>
       <div className="flex items-start gap-3 pb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-bold leading-snug" style={{ color: "#1a1a1a" }}>
-            {toTitleCase(nome)}
-          </h3>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3
+              className="text-[14px] font-bold leading-snug truncate min-w-0"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {toTitleCase(nome)}
+            </h3>
+            {showCargaInfo && onCargaInfo && (
+              <CargaPorLadoInfoButton onClick={onCargaInfo} size={14} />
+            )}
+          </div>
           {showSemDescanso && (
             <div className="flex items-center gap-1.5 mt-1">
-              <Clock size={11} className="shrink-0" style={{ color: "#aaa" }} />
-              <p className="text-[11px]" style={{ color: "#aaa" }}>Sem descanso</p>
+              <Clock size={11} className="shrink-0" style={{ color: "var(--text-disabled)" }} />
+              <p className="text-[11px]" style={{ color: "var(--text-disabled)" }}>Sem descanso</p>
             </div>
           )}
         </div>
@@ -102,15 +133,15 @@ function HalfPreview({
       </div>
       <div className="pt-2" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
         <div className="grid items-center py-2 mb-0.5" style={{ gridTemplateColumns: gridCols, columnGap: "10px" }}>
-          <span className="text-[10px] font-semibold uppercase text-left" style={{ color: "#bbb" }}>Set</span>
+          <span className="text-[10px] font-semibold uppercase text-left" style={{ color: "var(--text-disabled)" }}>Set</span>
           {showAnteriorCol && (
-            <span className="text-[10px] font-semibold uppercase" style={{ color: "#bbb", paddingLeft: 4 }}>Ant.</span>
+            <span className="text-[10px] font-semibold uppercase" style={{ color: "var(--text-disabled)", paddingLeft: 4 }}>Ant.</span>
           )}
-          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>Peso</span>
-          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>Reps</span>
-          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>T1</span>
-          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "#bbb" }}>T2</span>
-          <span className="text-[10px] text-center" style={{ color: "#bbb" }}>✓</span>
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Peso</span>
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Reps</span>
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T1</span>
+          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T2</span>
+          <span className="text-[10px] text-center" style={{ color: "var(--text-disabled)" }}>✓</span>
         </div>
         {series.map((serie, idx) => (
           <div
@@ -122,9 +153,9 @@ function HalfPreview({
               borderBottom: "1px solid rgba(0,0,0,0.06)",
             }}
           >
-            <span className="text-center text-xs font-bold font-kpi" style={{ color: "#888" }}>{idx + 1}</span>
+            <span className="text-center text-xs font-bold font-sans" style={{ color: "var(--text-tertiary)" }}>{idx + 1}</span>
             {showAnteriorCol && (
-              <span className="text-[11px] font-kpi truncate" style={{ color: "#888", paddingLeft: 14 }}>
+              <span className="text-[11px] font-sans truncate" style={{ color: "var(--text-tertiary)", paddingLeft: 14 }}>
                 {serie.anterior || "—"}
               </span>
             )}
@@ -133,12 +164,12 @@ function HalfPreview({
               inputMode="decimal"
               value={serie.peso_atual || ""}
               onChange={(e) => onPesoChange(serie.ordem, parseFloat(e.target.value) || 0)}
-              className="w-full max-w-[40px] mx-auto bg-transparent border-0 text-center font-kpi tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+              className="w-full max-w-[40px] mx-auto bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
               style={{
                 height: 28,
                 fontSize: "15px",
-                color: "#666",
-                fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                color: "var(--text-secondary)",
+                fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
                 fontVariantNumeric: "tabular-nums lining-nums",
                 fontWeight: 400,
                 borderBottom: "1.5px solid transparent",
@@ -151,8 +182,52 @@ function HalfPreview({
               }}
               disabled={!treinoIniciado}
             />
-            <span className="text-center text-sm font-semibold font-kpi text-accent tabular-nums lining-nums">{serie.reps}</span>
-            <span className="text-center text-[11px]" style={{ color: "#888" }}>
+            {(() => {
+              const { abaixo } = resolveRepsPreview(serie);
+              return (
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={
+                    serie.reps_executadas !== undefined && serie.reps_executadas !== ""
+                      ? serie.reps_executadas
+                      : ""
+                  }
+                  placeholder={String(serie.reps)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    onRepsChange(serie.ordem, raw === "" ? "" : parseFloat(raw) || 0);
+                  }}
+                  disabled={!treinoIniciado}
+                  aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
+                  className={cn(
+                    "w-full max-w-[36px] mx-auto bg-transparent border-0 text-center font-sans",
+                    "tabular-nums lining-nums focus:outline-none disabled:opacity-50",
+                    "placeholder:text-text-secondary",
+                  )}
+                  style={{
+                    height: 28,
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                    fontVariantNumeric: "tabular-nums lining-nums",
+                    color: serie.completado
+                      ? "#39c75a"
+                      : abaixo
+                        ? "var(--warning)"
+                        : "var(--text-primary)",
+                    borderBottom: "1.5px solid transparent",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderBottomColor = "rgba(117,27,180,0.45)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderBottomColor = "transparent";
+                  }}
+                />
+              );
+            })()}
+            <span className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               {duasLetrasTenica(serie.tecnica) || "—"}
             </span>
             <span className="text-center text-[11px] text-accent">{serie.tecnica_extra || "—"}</span>
@@ -164,7 +239,7 @@ function HalfPreview({
               style={
                 serie.completado
                   ? { background: "#751BB4", border: "1.5px solid #751BB4", color: "#fff" }
-                  : { background: "transparent", border: "1.5px solid rgba(0,0,0,0.2)" }
+                  : { background: "transparent", border: "1.5px solid var(--border-default)" }
               }
             >
               {serie.completado && <Check size={12} weight="bold" color="#fff" />}
@@ -184,9 +259,12 @@ interface BiSetGroupPreviewCardProps {
   gridCols: string;
   onPesoChangeA: (ordem: number, peso: number) => void;
   onPesoChangeB: (ordem: number, peso: number) => void;
+  onRepsChangeA: (ordem: number, reps: number | string) => void;
+  onRepsChangeB: (ordem: number, reps: number | string) => void;
   onCheckA: (ordem: number) => void;
   onCheckB: (ordem: number) => void;
   onVideoOpen?: (url: string) => void;
+  onCargaInfo?: () => void;
 }
 
 export function BiSetGroupPreviewCard({
@@ -196,16 +274,19 @@ export function BiSetGroupPreviewCard({
   gridCols,
   onPesoChangeA,
   onPesoChangeB,
+  onRepsChangeA,
+  onRepsChangeB,
   onCheckA,
   onCheckB,
   onVideoOpen,
+  onCargaInfo,
 }: BiSetGroupPreviewCardProps) {
   return (
     <div
       className="rounded-[14px] px-4 py-3.5"
       style={{
         background: "var(--surface-1)",
-        border: "1px solid rgba(0,0,0,0.08)",
+        border: "1px solid var(--border-subtle)",
         boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
       }}
     >
@@ -215,6 +296,7 @@ export function BiSetGroupPreviewCard({
 
       <HalfPreview
         nome={block.exercicioA.nome}
+        equipamento={block.exercicioA.equipamento}
         series={block.exercicioA.series}
         showAnteriorCol={showAnteriorCol}
         gridCols={gridCols}
@@ -222,33 +304,38 @@ export function BiSetGroupPreviewCard({
         videoUrl={block.exercicioA.video_url}
         treinoIniciado={treinoIniciado}
         onPesoChange={onPesoChangeA}
+        onRepsChange={onRepsChangeA}
         onCheck={onCheckA}
         onVideoOpen={onVideoOpen}
+        onCargaInfo={onCargaInfo}
       />
 
       <div className="flex items-center justify-center gap-1.5 py-2 my-1">
         <ArrowDown size={12} className="text-brand" />
-        <span className="text-[11px]" style={{ color: "#aaa" }}>↓ imediatamente</span>
+        <span className="text-[11px]" style={{ color: "var(--text-disabled)" }}>↓ imediatamente</span>
       </div>
 
       <HalfPreview
         nome={block.exercicioB.nome}
+        equipamento={block.exercicioB.equipamento}
         series={block.exercicioB.series}
         showAnteriorCol={showAnteriorCol}
         gridCols={gridCols}
         videoUrl={block.exercicioB.video_url}
         treinoIniciado={treinoIniciado}
         onPesoChange={onPesoChangeB}
+        onRepsChange={onRepsChangeB}
         onCheck={onCheckB}
         onVideoOpen={onVideoOpen}
+        onCargaInfo={onCargaInfo}
       />
 
       <div
         className="flex items-center gap-1.5 mt-3 pt-3"
         style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}
       >
-        <Clock size={12} className="shrink-0" style={{ color: "#aaa" }} />
-        <p className="text-[11px] font-medium" style={{ color: "#aaa" }}>
+        <Clock size={12} className="shrink-0" style={{ color: "var(--text-disabled)" }} />
+        <p className="text-[11px] font-medium" style={{ color: "var(--text-disabled)" }}>
           Descanso após o par: {formatRestTime(block.descanso)}
         </p>
       </div>

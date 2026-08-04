@@ -528,6 +528,48 @@ h1, h2, h3, h4, h5, h6 {
   display: none;  /* Chrome, Safari and Opera */
 }
 
+/* Scrollbar das abas do perfil do aluno (Visão Geral / Treinos / …) */
+.aluno-tabs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-primary, #9333ea) transparent;
+  padding-bottom: 2px;
+}
+.aluno-tabs-scroll::-webkit-scrollbar {
+  height: 2px !important;
+  width: 2px !important;
+}
+.aluno-tabs-scroll::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.aluno-tabs-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.aluno-tabs-scroll::-webkit-scrollbar-thumb {
+  background: var(--brand-primary, #9333ea) !important;
+  border-radius: 999px;
+  border: none !important;
+  min-height: 0 !important;
+}
+
+/* Scrollbar horizontal fino + roxo (listas internas) */
+.scrollbar-brand-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-primary, #9333ea) transparent;
+}
+.scrollbar-brand-thin::-webkit-scrollbar {
+  height: 2px;
+  width: 2px;
+}
+.scrollbar-brand-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-brand-thin::-webkit-scrollbar-thumb {
+  background: var(--brand-primary, #9333ea);
+  border-radius: 999px;
+}
+
 /* Custom scrollbar styling */
 .scrollbar-thin {
   scrollbar-width: thin;

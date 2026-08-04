@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
-import { Info } from '@phosphor-icons/react';
+import { Info, X } from '@phosphor-icons/react';
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   ResponsiveContainer,
@@ -17,7 +21,23 @@ import {
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { cn } from '@/lib/utils/cn';
 import { GlassPanel, DASHBOARD_KPI_GLASS } from '@/components/ui/GlassPanel';
-import { fetchCoachCustomPlans, buildPlanDurationMap, type CoachPlan } from '@/lib/coachPlans';
+import { PlanDistributionCard } from '@/app/components/dashboard/coach/PlanDistributionCard';
+import {
+  fetchCoachCustomPlans,
+  buildPlanDurationMap,
+  mergedPlans,
+  type CoachPlan,
+} from '@/lib/coachPlans';
+import { dataCaixaISO } from '@/lib/financeiro/types';
+import { withReturnUrl } from '@/lib/utils/adminNav';
+
+type ContratoAtencao = {
+  id: string;
+  nome: string;
+  dataExpiracao: string;
+  dias: number; // negativo = já vencido
+  vencido: boolean;
+};
 
 function ChartActiveBar(props: any) {
   return (
@@ -48,6 +68,7 @@ function inicioDoCiclo(
 }
 
 export default function RelatoriosPage() {
+  const router = useRouter();
   const receitaMesScrollRef = useRef<HTMLDivElement | null>(null);
   const receitaAcumuladaCardRef = useRef<HTMLDivElement | null>(null);
   const receitaAcumuladaInfoBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -57,13 +78,15 @@ export default function RelatoriosPage() {
   const [ativos, setAtivos] = useState(0);
   const [inadimplentes, setInadimplentes] = useState(0);
   const [receitaTotal, setReceitaTotal] = useState<number | null>(null);
+  const [receitaMesVigente, setReceitaMesVigente] = useState<number | null>(null);
   const [receitaAcumuladaAno, setReceitaAcumuladaAno] = useState<number | null>(null);
   const [alunosSemValor, setAlunosSemValor] = useState(0);
-  const [receitaMensal, setReceitaMensal] = useState<number | null>(null);
-  const [receitaMulti, setReceitaMulti] = useState<number | null>(null);
   const [receitaPorPlano, setReceitaPorPlano] = useState<Record<string, number>>({});
-  const [alunosPorPlano, setAlunosPorPlano] = useState<Record<string, number>>({});
+  const [alunosPorPlano, setAlunosPorPlano] = useState<{ name: string; count: number }[]>([]);
+  const [planosCatalog, setPlanosCatalog] = useState<CoachPlan[]>([]);
   const [receitaPorMes, setReceitaPorMes] = useState<{ mes: string; receita: number; futuro: boolean }[]>([]);
+  const [contratosAtencao, setContratosAtencao] = useState<ContratoAtencao[]>([]);
+  const [contratosModalOpen, setContratosModalOpen] = useState(false);
   const [planoDigitalAtivos, setPlanoDigitalAtivos] = useState(0);
   const [alunosSemPlano, setAlunosSemPlano] = useState(0);
   const [checkinsNoPeriodo, setCheckinsNoPeriodo] = useState(0);
@@ -106,9 +129,13 @@ export default function RelatoriosPage() {
         if (alunosIds.length === 0) {
           setTotalAlunos(0); setAtivos(0); setInadimplentes(0);
           setReceitaTotal(0); setAlunosSemValor(0); setReceitaPorPlano({});
-          setAlunosPorPlano({}); setReceitaMensal(0); setReceitaMulti(0);
+          setAlunosPorPlano([]);
+          setPlanosCatalog(customPlans);
+          setReceitaMesVigente(0);
           setReceitaAcumuladaAno(0);
-          setReceitaPorMes([]); setLoading(false); return;
+          setReceitaPorMes([]);
+          setContratosAtencao([]);
+          setLoading(false); return;
         }
 
         // Apenas alunos não arquivados
@@ -162,27 +189,29 @@ export default function RelatoriosPage() {
           return acc;
         }, {});
 
-        const totalMensal = valores
-          .filter((row) => row.tipo_plano === 'mensal')
-          .reduce((acc, row) => acc + (row.valor_plano ?? 0), 0);
-
-        const totalMulti = valores
-          .filter((row) => row.tipo_plano === 'trimestral' || row.tipo_plano === 'semestral')
-          .reduce((acc, row) => acc + (row.valor_plano ?? 0), 0);
+        // Mesma lógica da dashboard: padrão + personalizados; slugs desconhecidos → "Outros"
+        const planosDoCoach = mergedPlans(customPlans);
+        const conhecidos = new Set(planosDoCoach.map((p) => p.slug));
+        const outrosCount = Object.entries(countsPlano)
+          .filter(([slug]) => !conhecidos.has(slug))
+          .reduce((acc, [, n]) => acc + n, 0);
+        const alunosPorPlanoList = [
+          ...planosDoCoach.map((p) => ({ name: p.nome, count: countsPlano[p.slug] || 0 })),
+          { name: 'Outros', count: outrosCount },
+        ];
 
         // Projeção & Receita por mês — série NORMALIZADA (valor rateado pela duração do plano).
         // Eixo X: início fixo em Jan/2026 (início da operação) até mês atual + 6 (projeção).
         const { data: historicoData } = await supabaseClient
           .from('profiles')
-          .select('valor_plano, data_inicio, data_expiracao, created_at, tipo_plano')
+          .select('id, coaching_reference, full_name, valor_plano, data_inicio, data_expiracao, created_at, tipo_plano')
           .eq('role', 'aluno')
           .neq('arquivado', true)
-          .not('valor_plano', 'is', null)
           .in('id', alunosIds);
 
         const { data: historicoFinanceiroData } = await supabaseClient
           .from('aluno_planos_historico')
-          .select('valor_plano, registrado_em, status_pagamento')
+          .select('valor_plano, registrado_em, data_pagamento, status_pagamento')
           .in('aluno_id', alunosIds)
           .eq('status_pagamento', 'pago');
 
@@ -194,10 +223,16 @@ export default function RelatoriosPage() {
         const mesMap: Record<string, number> = {};
         const receitaPagamentosAcumulada = (historicoFinanceiroData || [])
           .filter((row) => {
-            const d = new Date(row.registrado_em);
-            return !Number.isNaN(d.getTime()) && d.getFullYear() === anoAtual;
+            const iso = dataCaixaISO(row);
+            if (!iso) return false;
+            return Number(iso.slice(0, 4)) === anoAtual;
           })
           .reduce((acc, row) => acc + (row.valor_plano ?? 0), 0);
+        // Receita do mês vigente = valor rateado pela duração (ex.: trimestral 450 → 150/mês)
+        const receitaMesRateada = valores.reduce((acc, row) => {
+          const meses = duracaoMap[row.tipo_plano || 'mensal'] || 1;
+          return acc + (row.valor_plano ?? 0) / meses;
+        }, 0);
         const mesKeys: string[] = [];
         for (let d = new Date(rangeStart); d <= rangeEnd; d.setMonth(d.getMonth() + 1)) {
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -205,7 +240,16 @@ export default function RelatoriosPage() {
           mesKeys.push(key);
         }
 
-        for (const row of (historicoData || []) as { valor_plano: number; data_inicio: string | null; data_expiracao: string | null; created_at: string | null; tipo_plano: string | null }[]) {
+        for (const row of (historicoData || []) as {
+          id: string;
+          coaching_reference: string | null;
+          full_name: string | null;
+          valor_plano: number | null;
+          data_inicio: string | null;
+          data_expiracao: string | null;
+          created_at: string | null;
+          tipo_plano: string | null;
+        }[]) {
           const valor = row.valor_plano ?? 0;
           if (valor <= 0) continue;
           const meses = duracaoMap[row.tipo_plano || 'mensal'] || 1;
@@ -218,6 +262,31 @@ export default function RelatoriosPage() {
             if (key in mesMap) mesMap[key] += valorPorMes;
           }
         }
+
+        const contratos: ContratoAtencao[] = [];
+        for (const row of (historicoData || []) as {
+          id: string;
+          coaching_reference: string | null;
+          full_name: string | null;
+          data_expiracao: string | null;
+        }[]) {
+          if (!row.data_expiracao) continue;
+          const expiration = new Date(row.data_expiracao);
+          if (Number.isNaN(expiration.getTime())) continue;
+          const diffDays = Math.ceil(
+            (expiration.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24),
+          );
+          // Já vencidos OU a ≤ 10 dias do vencimento
+          if (diffDays > 10) continue;
+          contratos.push({
+            id: row.id,
+            nome: row.coaching_reference || row.full_name || 'Atleta',
+            dataExpiracao: row.data_expiracao,
+            dias: diffDays,
+            vencido: diffDays < 0,
+          });
+        }
+        contratos.sort((a, b) => a.dias - b.dias);
         const mesList = mesKeys.map((mes) => {
           const [ano, m] = mes.split('-');
           const label = new Date(Number(ano), Number(m) - 1, 1)
@@ -291,9 +360,12 @@ export default function RelatoriosPage() {
         setTotalAlunos(totalCount || 0); setAtivos(ativosCount || 0);
         setInadimplentes(inadimplenteCount || 0); setReceitaTotal(soma);
         setAlunosSemValor(semValor); setReceitaPorPlano(porPlano);
-        setAlunosPorPlano(countsPlano); setReceitaMensal(totalMensal); setReceitaMulti(totalMulti);
+        setAlunosPorPlano(alunosPorPlanoList);
+        setPlanosCatalog(customPlans);
+        setReceitaMesVigente(receitaMesRateada);
         setReceitaAcumuladaAno(receitaPagamentosAcumulada);
         setReceitaPorMes(mesList);
+        setContratosAtencao(contratos);
       } catch (err: any) {
         setError(err?.message || 'Erro ao carregar relatórios');
       } finally {
@@ -304,11 +376,39 @@ export default function RelatoriosPage() {
     fetchRelatorios();
   }, []);
 
-  const chartData = [
-    { name: 'Mensal', receita: receitaPorPlano.mensal || 0, alunos: alunosPorPlano.mensal || 0 },
-    { name: 'Trimestral', receita: receitaPorPlano.trimestral || 0, alunos: alunosPorPlano.trimestral || 0 },
-    { name: 'Semestral', receita: receitaPorPlano.semestral || 0, alunos: alunosPorPlano.semestral || 0 },
-  ];
+  const planosDoCoach = mergedPlans(planosCatalog);
+  const chartData = planosDoCoach
+    .map((p) => ({
+      name: p.nome,
+      receita: receitaPorPlano[p.slug] || 0,
+    }))
+    .filter((p) => p.receita > 0);
+
+  const lastRealizadoIdx = (() => {
+    for (let i = receitaPorMes.length - 1; i >= 0; i--) {
+      if (!receitaPorMes[i]?.futuro) return i;
+    }
+    return -1;
+  })();
+  const receitaLinhaData = receitaPorMes.map((d, i) => ({
+    mes: d.mes,
+    futuro: d.futuro,
+    receita: d.receita,
+    realizado: d.futuro ? null : d.receita,
+    projecao: d.futuro || i === lastRealizadoIdx ? d.receita : null,
+  }));
+  const receitaPorPlanoResumo = [
+    ...planosDoCoach.map((p) => ({
+      label: p.nome,
+      val: receitaPorPlano[p.slug] || 0,
+    })),
+    {
+      label: 'Outros',
+      val: Object.entries(receitaPorPlano)
+        .filter(([slug]) => !planosDoCoach.some((p) => p.slug === slug))
+        .reduce((acc, [, n]) => acc + n, 0),
+    },
+  ].filter((item) => item.val > 0);
 
   const tooltipStyle = {
     backgroundColor: '#1F1F23',
@@ -321,6 +421,31 @@ export default function RelatoriosPage() {
   const fmt = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const primeiroNome =
     coachName.trim().split(/\s+/).filter(Boolean)[0] || 'Coach';
+
+  /** Adesão: baixo vermelho → médio amarelo → alto verde */
+  const adesaoColorClass =
+    adesaoAlimentarMedia > 80
+      ? 'text-success'
+      : adesaoAlimentarMedia > 33
+        ? 'text-warning'
+        : 'text-danger';
+
+  /** Sem plano: 0 = bom (verde); até 33% dos ativos = amarelo; acima = vermelho */
+  const semPlanoColorClass = (() => {
+    if (alunosSemPlano === 0) return 'text-success';
+    if (ativos <= 0) return 'text-danger';
+    const ratioPct = (alunosSemPlano / ativos) * 100;
+    return ratioPct > 33 ? 'text-danger' : 'text-warning';
+  })();
+
+  useEffect(() => {
+    if (!contratosModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContratosModalOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [contratosModalOpen]);
 
   useEffect(() => {
     if (!receitaMesScrollRef.current || receitaPorMes.length === 0) return;
@@ -445,7 +570,28 @@ export default function RelatoriosPage() {
               {/* Mobile: cards de receita arrastáveis */}
               <div className="md:hidden -mx-1 overflow-x-auto overflow-y-visible px-1 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="flex gap-3 min-w-max">
-                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
+                    <div>
+                      <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
+                        Receita Mensal
+                      </p>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="coach-kpi-subtitle text-sm font-semibold">R$</span>
+                        <span className="coach-kpi-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none">
+                          {receitaMesVigente !== null
+                            ? receitaMesVigente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            : '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-text-tertiary mt-2 flex items-center gap-1.5">
+                      <span className="w-1 h-1 rounded-full bg-brand/80" />
+                      Planos ativos rateados neste mês (ex.: trimestral ÷ 3)
+                    </p>
+                  </div>
+
+                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                     <div>
                       <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -475,7 +621,7 @@ export default function RelatoriosPage() {
 
                   <div
                     ref={receitaAcumuladaCardRef}
-                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
+                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
                   >
                     <div className="absolute top-0 right-0 w-24 h-24 bg-success/10 rounded-bl-[80px]" />
                     {receitaAcumuladaInfoOpen && (
@@ -525,67 +671,78 @@ export default function RelatoriosPage() {
                 </div>
               </div>
 
-              {/* Desktop: receita total (mantém leitura original) */}
-              <div className="hidden md:flex rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] relative overflow-hidden flex-col justify-between min-h-[140px]">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
-                <div>
-                  <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
-                    Receita Total Bruta
-                  </p>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="coach-kpi-subtitle text-sm font-semibold">R$</span>
-                    <span className="coach-kpi-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none">
-                      {receitaTotal !== null ? receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
-                    </span>
-                  </div>
-                </div>
-                {alunosSemValor > 0 ? (
-                  <div className="mt-3 p-2 bg-brand-subtle/50 border border-brand-border/20 rounded-lg flex items-center gap-2">
-                    <span className="text-xs">⚠️</span>
-                    <p className="text-[10px] text-text-secondary leading-tight">
-                      {alunosSemValor} alunos pagos sem valor definido no perfil.
+              {/* Desktop: stack Receita Mensal → Bruta */}
+              <div className="hidden md:flex flex-col gap-4">
+                <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
+                  <div>
+                    <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
+                      Receita Mensal
                     </p>
-                  </div>
-                ) : (
-                  <p className="text-[9px] text-text-tertiary mt-2 flex items-center gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-text-disabled" />
-                    Baseado em status &quot;Pago&quot; e plano vigente
-                  </p>
-                )}
-              </div>
-
-              {/* Distribuição por plano */}
-              <div className="bg-surface-1 border-0 shadow-sm rounded-xl p-4 md:p-5 flex flex-col justify-between">
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'Mensal', count: alunosPorPlano.mensal || 0, color: 'bg-brand' },
-                    { label: 'Trimestral', count: alunosPorPlano.trimestral || 0, color: 'bg-brand/60' },
-                    { label: 'Semestral', count: alunosPorPlano.semestral || 0, color: 'bg-brand/30' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex flex-col justify-between p-2 bg-surface-1 border-0 rounded-lg">
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn('w-2 h-2 rounded-full shrink-0', item.color)} />
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-secondary truncate">{item.label}</span>
-                      </div>
-                      <span className="text-xs font-bold text-text-primary mt-2">
-                        {item.count} <span className="text-[9px] text-text-tertiary font-medium">UN</span>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="coach-kpi-subtitle text-sm font-semibold">R$</span>
+                      <span className="coach-kpi-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none">
+                        {receitaMesVigente !== null
+                          ? receitaMesVigente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          : '—'}
                       </span>
                     </div>
-                  ))}
+                  </div>
+                  <p className="text-[9px] text-text-tertiary mt-2 flex items-center gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-brand/80" />
+                    Planos ativos rateados neste mês (ex.: trimestral ÷ 3)
+                  </p>
                 </div>
+
+                <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
+                  <div>
+                    <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
+                      Receita Total Bruta
+                    </p>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="coach-kpi-subtitle text-sm font-semibold">R$</span>
+                      <span className="coach-kpi-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none">
+                        {receitaTotal !== null ? receitaTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  {alunosSemValor > 0 ? (
+                    <div className="mt-3 p-2 bg-brand-subtle/50 border border-brand-border/20 rounded-lg flex items-center gap-2">
+                      <span className="text-xs">⚠️</span>
+                      <p className="text-[10px] text-text-secondary leading-tight">
+                        {alunosSemValor} alunos pagos sem valor definido no perfil.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[9px] text-text-tertiary mt-2 flex items-center gap-1.5">
+                      <span className="w-1 h-1 rounded-full bg-text-disabled" />
+                      Baseado em status &quot;Pago&quot; e plano vigente
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Distribuição por plano — mesmo donut da dashboard */}
+              <div className="bg-surface-1 border-0 shadow-sm rounded-xl p-4 md:p-5">
+                <PlanDistributionCard
+                  plans={alunosPorPlano}
+                  totalStudents={ativos}
+                  align="start"
+                />
               </div>
             </div>
 
-            {/* Receita mensal — passado + projeção */}
+            {/* Receita mensal — passado + projeção (linha) */}
             <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
               <div className="mb-2 flex justify-end">
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
-                    <span className="w-2 h-2 rounded bg-brand/30 border border-brand/40 inline-block" />
+                    <span className="w-2 h-0.5 rounded bg-brand/40 inline-block border-t border-dashed border-brand/50" />
                     Projeção
                   </span>
                   <span className="flex items-center gap-1 text-[9px] text-text-tertiary font-bold uppercase">
-                    <span className="w-2 h-2 rounded bg-brand inline-block" />
+                    <span className="w-2 h-0.5 rounded bg-brand inline-block" />
                     Realizado
                   </span>
                 </div>
@@ -596,115 +753,131 @@ export default function RelatoriosPage() {
                 className="overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 <div style={{ width: `${Math.max(receitaPorMes.length * 52, 1)}px`, height: 180, minWidth: 0, minHeight: 180 }}>
-                  <BarChart
+                  <LineChart
                     width={Math.max(receitaPorMes.length * 52, 1)}
                     height={180}
-                    data={receitaPorMes}
+                    data={receitaLinhaData}
                     margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                   >
                     <XAxis dataKey="mes" stroke="#8e8e93" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
                     <YAxis stroke="#8e8e93" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} width={44} />
                     <Tooltip
+                      cursor={{ stroke: 'rgba(117, 27, 180,0.25)', strokeWidth: 1 }}
+                      contentStyle={tooltipStyle}
+                      itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
+                      labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
+                      formatter={(value: number, name: string) => [
+                        fmt(value),
+                        name === 'projecao' ? 'Projeção' : 'Realizado',
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="realizado"
+                      stroke="#751BB4"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: '#751BB4', strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: '#a855f7', strokeWidth: 0 }}
+                      connectNulls={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="projecao"
+                      stroke="rgba(117, 27, 180,0.45)"
+                      strokeWidth={2}
+                      strokeDasharray="5 4"
+                      dot={{ r: 3, fill: 'rgba(117, 27, 180,0.45)', strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: 'rgba(117, 27, 180,0.7)', strokeWidth: 0 }}
+                      connectNulls={false}
+                    />
+                  </LineChart>
+                </div>
+              </div>
+            </div>
+
+            {/* Contratos próximos do fim */}
+            <div
+              className={cn(
+                'rounded-xl px-4 py-3 flex items-center justify-between gap-3 min-h-[3.25rem]',
+                contratosAtencao.length > 0
+                  ? 'border border-warning/25 bg-warning/10'
+                  : 'border border-white/10 bg-surface-1',
+              )}
+            >
+              <p
+                className={cn(
+                  'text-[11px] font-bold uppercase tracking-wider',
+                  contratosAtencao.length > 0 ? 'text-warning' : 'text-text-secondary',
+                )}
+              >
+                Contratos próximos do fim
+              </p>
+              <button
+                type="button"
+                onClick={() => setContratosModalOpen(true)}
+                style={{ touchAction: 'manipulation' }}
+                className={cn(
+                  'shrink-0 text-[11px] font-semibold bg-transparent border-0 cursor-pointer transition-colors',
+                  contratosAtencao.length > 0
+                    ? 'text-warning hover:text-warning/80'
+                    : 'text-brand hover:text-brand-hover',
+                )}
+              >
+                Ver mais
+              </button>
+            </div>
+
+            {/* Receita por tipo de plano */}
+            <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-3 md:p-4">
+              <div className="w-full min-w-0" style={{ height: 160, minHeight: 160 }}>
+                <ResponsiveContainer width="100%" height={160} debounce={50} minWidth={0}>
+                  <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={4} />
+                    <YAxis stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
+                    <Tooltip
                       cursor={false}
                       contentStyle={tooltipStyle}
                       itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
                       labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
-                      formatter={(value: number, _name: string, props: any) => [
-                        fmt(value),
-                        props.payload.futuro ? 'Projeção' : 'Realizado',
-                      ]}
+                      formatter={(value: number) => [fmt(value), 'Receita']}
                     />
-                    <Bar dataKey="receita" radius={[2, 2, 0, 0]} barSize={18} activeBar={<ChartActiveBar />}>
-                      {receitaPorMes.map((entry, index) => (
+                    <Bar dataKey="receita" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />}>
+                      {chartData.map((_, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.futuro ? 'rgba(117, 27, 180,0.25)' : '#751BB4'}
-                          stroke={entry.futuro ? 'rgba(117, 27, 180,0.5)' : 'none'}
-                          strokeWidth={entry.futuro ? 1 : 0}
+                          fill={
+                            index === 0
+                              ? '#751BB4'
+                              : `rgba(117, 27, 180,${Math.max(0.25, 1 - index * 0.15)})`
+                          }
                         />
                       ))}
                     </Bar>
                   </BarChart>
-                </div>
+                </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Charts por tipo de plano */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
-                <div className="w-full min-w-0" style={{ height: 220, minHeight: 220 }}>
-                  <ResponsiveContainer width="100%" height={220} debounce={50} minWidth={0}>
-                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
-                      <YAxis stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
-                      <Tooltip
-                        cursor={false}
-                        contentStyle={tooltipStyle}
-                        itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
-                        labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
-                        formatter={(value: number) => [fmt(value), 'Receita']}
-                      />
-                      <Bar dataKey="receita" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />}>
-                        {chartData.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={index === 0 ? '#751BB4' : index === 1 ? 'rgba(117, 27, 180,0.6)' : '#52525B'}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5 h-[280px] flex flex-col justify-between">
-                <div className="w-full min-w-0" style={{ height: 220, minHeight: 220 }}>
-                  <ResponsiveContainer width="100%" height={220} debounce={50} minWidth={0}>
-                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="name" stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
-                      <YAxis stroke="#8e8e93" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} />
-                      <Tooltip
-                        cursor={false}
-                        contentStyle={tooltipStyle}
-                        labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
-                        itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
-                      />
-                      <Bar dataKey="alunos" name="Alunos" fill="#751BB4" radius={[2, 2, 0, 0]} barSize={26} activeBar={<ChartActiveBar />} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Financial summary */}
-            <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-4 md:p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    {[
-                      { label: 'Planos Mensais', val: receitaPorPlano.mensal || 0 },
-                      { label: 'Planos Trimestrais', val: receitaPorPlano.trimestral || 0 },
-                      { label: 'Planos Semestrais', val: receitaPorPlano.semestral || 0 },
-                    ].map(item => (
-                      <div key={item.label} className="flex justify-between items-center p-2.5 bg-surface-1 border-0 rounded-lg">
-                        <span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide">{item.label}</span>
-                        <span className="text-xs font-bold text-text-primary font-kpi tabular-nums lining-nums">{fmt(item.val)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center p-2.5 bg-brand-subtle/40 border border-brand-border/20 rounded-lg">
-                      <span className="text-[10px] font-bold text-brand uppercase tracking-wide">Recorrência Mensal</span>
-                      <span className="text-sm font-bold text-brand font-kpi tabular-nums lining-nums">{fmt(receitaMensal ?? 0)}</span>
+            {/* Receita por plano (escrito) — todos os planos com receita > 0 */}
+            <div className="bg-surface-1 border-0 shadow-sm rounded-lg p-3 md:p-4">
+              <div className="space-y-1">
+                {receitaPorPlanoResumo.length === 0 ? (
+                  <p className="text-[11px] text-text-tertiary py-1">Nenhuma receita por plano no momento.</p>
+                ) : (
+                  receitaPorPlanoResumo.map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex justify-between items-center px-2.5 py-2 rounded-lg"
+                    >
+                      <span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide">
+                        {item.label}
+                      </span>
+                      <span className="text-xs font-bold text-text-primary font-kpi tabular-nums lining-nums">
+                        {fmt(item.val)}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center p-2.5 bg-surface-1 border-0 rounded-lg">
-                      <span className="text-[10px] text-text-tertiary font-semibold uppercase tracking-wide">Receita LTV (Planos Longos)</span>
-                      <span className="text-xs font-bold text-text-primary font-kpi tabular-nums lining-nums">{fmt(receitaMulti ?? 0)}</span>
-                    </div>
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -713,7 +886,9 @@ export default function RelatoriosPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Adesão Alimentar Média</span>
-                  <span className="text-base font-bold text-success font-kpi tabular-nums lining-nums mt-1">{adesaoAlimentarMedia}%</span>
+                  <span className={cn('text-base font-bold font-kpi tabular-nums lining-nums mt-1', adesaoColorClass)}>
+                    {adesaoAlimentarMedia}%
+                  </span>
                 </div>
                 <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Planos Digitais Ativos</span>
@@ -721,7 +896,9 @@ export default function RelatoriosPage() {
                 </div>
                 <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Alunos Sem Plano</span>
-                  <span className="text-base font-bold text-warning font-kpi tabular-nums lining-nums mt-1">{alunosSemPlano}</span>
+                  <span className={cn('text-base font-bold font-kpi tabular-nums lining-nums mt-1', semPlanoColorClass)}>
+                    {alunosSemPlano}
+                  </span>
                 </div>
                 <div className="p-3 bg-surface-1 border-0 rounded-lg flex flex-col justify-center">
                   <span className="text-[8px] uppercase font-bold text-text-tertiary">Check-ins no Mês</span>
@@ -760,6 +937,90 @@ export default function RelatoriosPage() {
             </GlassPanel>
           </div>
         )}
+
+        {contratosModalOpen &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] animate-backdrop-in"
+                onClick={() => setContratosModalOpen(false)}
+                aria-hidden
+              />
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none">
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="contratos-modal-title"
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'pointer-events-auto relative w-full max-w-md rounded-2xl',
+                    'bg-brand shadow-[0_20px_60px_rgba(147,51,234,0.45)]',
+                    'animate-sheet-up max-h-[min(85vh,520px)] flex flex-col overflow-hidden',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-white/15 shrink-0">
+                    <div className="min-w-0">
+                      <p
+                        id="contratos-modal-title"
+                        className="text-[16px] font-bold text-white"
+                      >
+                        Contratos próximos do fim
+                      </p>
+                      <p className="text-[12px] text-white/70 mt-0.5">
+                        Vencidos e a vencer em até 10 dias
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setContratosModalOpen(false)}
+                      aria-label="Fechar"
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:text-white hover:bg-white/10 active:scale-95 border-0 bg-transparent cursor-pointer"
+                    >
+                      <X size={16} weight="bold" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+                    {contratosAtencao.length === 0 ? (
+                      <p className="text-[13px] text-white/70 py-6 text-center">
+                        Nenhum contrato vencido ou próximo do vencimento.
+                      </p>
+                    ) : (
+                      <ul className="flex flex-col divide-y divide-white/10">
+                        {contratosAtencao.map((aluno) => (
+                          <li
+                            key={aluno.id}
+                            className="py-3 flex items-center justify-between gap-3"
+                          >
+                            <span className="text-[14px] font-medium text-white truncate min-w-0">
+                              {aluno.nome}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setContratosModalOpen(false);
+                                router.push(
+                                  withReturnUrl(
+                                    `/admin/aluno/${aluno.id}?tab=financeiro&renovar=1`,
+                                    '/admin/relatorios',
+                                  ),
+                                );
+                              }}
+                              className="shrink-0 text-[12px] font-semibold text-white/90 hover:text-white underline-offset-2 hover:underline bg-transparent border-0 cursor-pointer"
+                            >
+                              Renovar
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>,
+            document.body,
+          )}
       </div>
     </div>
   );

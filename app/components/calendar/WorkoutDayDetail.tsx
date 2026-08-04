@@ -1,5 +1,7 @@
 "use client";
 
+import { Smiley } from "@phosphor-icons/react";
+
 interface WorkoutExercise {
   nome: string;
   sets: number;
@@ -12,6 +14,9 @@ export interface WorkoutSession {
   volumeTotal: number;
   totalSets: number;
   exercises: WorkoutExercise[];
+  /** Avaliação do termômetro pós-treino (dados_sessao) */
+  satisfacao?: string | null;
+  nivelDor?: number | null;
 }
 
 interface WorkoutDayDetailProps {
@@ -26,6 +31,12 @@ function estimateDuration(totalSets: number): string {
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return h > 0 ? `${h}h ${m}min` : `${m}min`;
+}
+
+function dorColor(nivel: number): string {
+  if (nivel <= 3) return "var(--success)";
+  if (nivel <= 6) return "var(--warning)";
+  return "var(--danger)";
 }
 
 export function WorkoutDayDetail({
@@ -60,56 +71,94 @@ export function WorkoutDayDetail({
 
   return (
     <div className={`flex flex-col gap-3 ${className ?? ""}`}>
-      {workouts.map((workout, idx) => (
-        <div
-          key={`${workout.data_conclusao}-${idx}`}
-          className="bg-surface-1 rounded-xl px-4 py-3.5"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <p className="text-[15px] font-semibold uppercase tracking-wide text-text-primary leading-snug">
-              {workout.nome_rotina}
-            </p>
-            <p className="text-[13px] text-text-secondary shrink-0 tabular-nums lining-nums">
-              {estimateDuration(workout.totalSets)}
-            </p>
-          </div>
-          <p className="text-[11px] text-text-muted mt-1">
-            {formatWorkoutDate(workout.data_conclusao)}
-          </p>
+      {workouts.map((workout, idx) => {
+        const hasFeedback = !!(workout.satisfacao || workout.nivelDor != null);
+        const color =
+          workout.nivelDor != null ? dorColor(workout.nivelDor) : undefined;
 
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mt-4 mb-2">
-            Exercícios
-          </p>
+        return (
+          <div
+            key={`${workout.data_conclusao}-${idx}`}
+            className="bg-surface-1 rounded-xl px-4 py-3.5"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-[15px] font-semibold uppercase tracking-wide text-text-primary leading-snug">
+                {workout.nome_rotina}
+              </p>
+              <p className="text-[13px] text-text-secondary shrink-0 tabular-nums lining-nums">
+                {estimateDuration(workout.totalSets)}
+              </p>
+            </div>
+            <p className="text-[11px] text-text-muted mt-1">
+              {formatWorkoutDate(workout.data_conclusao)}
+            </p>
 
-          <div className="border-t border-surface-2">
-            {workout.exercises.map((ex, exIdx) => (
-              <div
-                key={exIdx}
-                className="flex items-center justify-between gap-3 py-2.5 border-b border-surface-2 last:border-0"
-              >
-                <p className="text-[13px] font-medium text-text-primary leading-snug min-w-0">
-                  {ex.nome}
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted mt-4 mb-2">
+              Exercícios
+            </p>
+
+            <div className="border-t border-surface-2">
+              {workout.exercises.map((ex, exIdx) => (
+                <div
+                  key={exIdx}
+                  className="flex items-center justify-between gap-3 py-2.5 border-b border-surface-2 last:border-0"
+                >
+                  <p className="text-[13px] font-medium text-text-primary leading-snug min-w-0">
+                    {ex.nome}
+                  </p>
+                  <p className="text-[13px] text-text-secondary shrink-0 tabular-nums lining-nums">
+                    {ex.completedSets || ex.sets}{" "}
+                    {(ex.completedSets || ex.sets) === 1 ? "série" : "séries"}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-surface-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+                Volume total
+              </p>
+              <p className="text-[13px] font-semibold text-text-primary tabular-nums lining-nums">
+                {workout.volumeTotal > 0
+                  ? `${workout.volumeTotal.toLocaleString("pt-BR")} kg`
+                  : "0 kg"}
+              </p>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-surface-2 space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+                Feedback do aluno
+              </p>
+              {hasFeedback ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {workout.satisfacao ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-brand/10 border border-brand/20 px-2 py-1 text-[11px] font-semibold text-brand">
+                      <Smiley size={13} weight="fill" aria-hidden />
+                      {workout.satisfacao}
+                    </span>
+                  ) : null}
+                  {workout.nivelDor != null ? (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold border"
+                      style={{
+                        color,
+                        borderColor: `color-mix(in srgb, ${color} 35%, transparent)`,
+                        background: `color-mix(in srgb, ${color} 12%, transparent)`,
+                      }}
+                    >
+                      Dor {workout.nivelDor}/10
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-[11px] text-text-tertiary">
+                  Sem avaliação de satisfação/dor nesta sessão.
                 </p>
-                <p className="text-[13px] text-text-secondary shrink-0 tabular-nums lining-nums">
-                  {ex.completedSets || ex.sets}{" "}
-                  {(ex.completedSets || ex.sets) === 1 ? "série" : "séries"}
-                </p>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-
-          <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-surface-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
-              Volume total
-            </p>
-            <p className="text-[13px] font-semibold text-text-primary tabular-nums lining-nums">
-              {workout.volumeTotal > 0
-                ? `${workout.volumeTotal.toLocaleString("pt-BR")} kg`
-                : "0 kg"}
-            </p>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

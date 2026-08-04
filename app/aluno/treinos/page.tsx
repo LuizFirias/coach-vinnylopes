@@ -112,7 +112,7 @@ export default function AlunoTreinosPage() {
         <div className="px-4 pt-6 pb-4 max-w-[680px] mx-auto lg:pt-10 lg:pb-6">
           <h1
             className="text-[22px] lg:text-[26px] font-extrabold tracking-tight"
-            style={{ color: '#1a1a1a' }}
+            style={{ color: 'var(--text-primary)' }}
           >
             Minhas Rotinas
           </h1>
@@ -159,7 +159,7 @@ export default function AlunoTreinosPage() {
               </div>
 
               {fichas.length < 3 && (
-                <p className="text-xs text-center mt-4 lg:mt-6" style={{ color: '#999' }}>
+                <p className="text-xs text-center mt-4 lg:mt-6" style={{ color: 'var(--text-tertiary)' }}>
                   Seu coach pode adicionar mais rotinas ao seu plano
                 </p>
               )}
@@ -170,7 +170,7 @@ export default function AlunoTreinosPage() {
             <section>
               <p
                 className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-3 flex items-center gap-2"
-                style={{ color: '#888' }}
+                style={{ color: 'var(--text-tertiary)' }}
               >
                 Fichas PDF
               </p>
@@ -182,27 +182,27 @@ export default function AlunoTreinosPage() {
                     className="w-full text-left p-3.5 rounded-[12px] transition-all active:scale-[0.99] flex items-center gap-3 group min-h-16"
                     style={{
                       background: 'var(--surface-1)',
-                      border: '1px solid rgba(0,0,0,0.08)',
+                      border: '1px solid var(--border-subtle)',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                     }}
                   >
                     <div
                       className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0"
-                      style={{ background: 'var(--surface-2)', color: '#555' }}
+                      style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
                     >
                       <FileText size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: '#1a1a1a' }}>
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                         {pdf.nome_arquivo.replace('.pdf', '')}
                       </p>
-                      <p className="text-[11px] mt-0.5" style={{ color: '#888' }}>
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
                         Enviado em {new Date(pdf.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: 'var(--surface-2)', color: '#bbb' }}
+                      style={{ background: 'var(--surface-2)', color: 'var(--text-disabled)' }}
                     >
                       <MagnifyingGlass size={14} />
                     </div>
@@ -213,7 +213,7 @@ export default function AlunoTreinosPage() {
           )}
 
           {total === 0 && (
-            <p className="text-sm text-center py-16" style={{ color: '#999' }}>
+            <p className="text-sm text-center py-16" style={{ color: 'var(--text-tertiary)' }}>
               Nenhum treino ativo. Seu coach ainda não atribuiu uma rotina para o seu perfil.
             </p>
           )}

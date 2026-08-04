@@ -19,6 +19,7 @@ interface MeasurementCurrentCardProps {
   chartData: Array<{ date: string; value: number }>;
   isDesktop?: boolean;
   showChart?: boolean;
+  emptyChartMessage?: string;
 }
 
 export function MeasurementCurrentCard({
@@ -34,6 +35,7 @@ export function MeasurementCurrentCard({
   chartData,
   isDesktop = false,
   showChart = true,
+  emptyChartMessage,
 }: MeasurementCurrentCardProps) {
   const parts = value !== null ? splitValueParts(value) : null;
 
@@ -96,7 +98,13 @@ export function MeasurementCurrentCard({
         <DeltaLine delta={delta} label={deltaLabel} unit={unit} />
       </div>
 
-      {showChart && <MeasurementLineChart data={chartData} isDesktop={isDesktop} />}
+      {showChart && (
+        <MeasurementLineChart
+          data={chartData}
+          isDesktop={isDesktop}
+          emptyMessage={emptyChartMessage}
+        />
+      )}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus } from '@phosphor-icons/react';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { ChatList } from '@/app/components/chat/ChatList';
+import { NovoChatSheet } from '@/app/components/chat/NovoChatSheet';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getBootstrapProfile } from '@/lib/auth/bootstrapProfile';
 import {
@@ -18,6 +20,7 @@ export default function ChatCoachPage() {
   const [conversas, setConversas] = useState<ChatListItem[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState(false);
+  const [novoChatOpen, setNovoChatOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,8 +56,15 @@ export default function ChatCoachPage() {
     void load();
   }, [load]);
 
+  /** Lista principal: só conversas já iniciadas (padrão WhatsApp). */
+  const conversasAtivas = useMemo(
+    () => conversas.filter((c) => !c.pendingCreate),
+    [conversas],
+  );
+
   const handleSelect = async (item: ChatListItem) => {
     if (abrindo) return;
+    setNovoChatOpen(false);
     if (!item.pendingCreate) {
       router.push(`/admin/chat/${item.id}`);
       return;
@@ -79,15 +89,27 @@ export default function ChatCoachPage() {
       style={{ background: 'var(--surface-0)' }}
     >
       <div
-        className="px-4 py-5"
+        className="px-4 py-5 flex items-start justify-between gap-3"
         style={{ borderBottom: '1px solid var(--mobile-card-border, rgba(0,0,0,0.07))' }}
       >
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #1a1a1a)' }}>
-          Conversas
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary, #888)', marginTop: 4 }}>
-          Chat com seus alunos
-        </p>
+        <div className="min-w-0">
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #1a1a1a)' }}>
+            Conversas
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary, #888)', marginTop: 4 }}>
+            Chat com seus alunos
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setNovoChatOpen(true)}
+          aria-label="Novo chat"
+          title="Novo chat"
+          className="mt-0.5 p-1.5 rounded-lg shrink-0"
+          style={{ color: 'var(--text-primary, #1a1a1a)' }}
+        >
+          <Plus size={22} weight="bold" />
+        </button>
       </div>
 
       {loading ? (
@@ -99,11 +121,23 @@ export default function ChatCoachPage() {
           {erro}
         </p>
       ) : (
-        <ChatList conversas={conversas} onSelect={(item) => void handleSelect(item)} />
+        <ChatList
+          conversas={conversasAtivas}
+          onSelect={(item) => void handleSelect(item)}
+          emptyLabel="Nenhuma conversa ainda. Toque em + para iniciar."
+        />
+      )}
+
+      {novoChatOpen && (
+        <NovoChatSheet
+          alunos={conversas}
+          onClose={() => setNovoChatOpen(false)}
+          onSelect={(item) => void handleSelect(item)}
+        />
       )}
 
       {abrindo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/30">
           <DumbbellLoader />
         </div>
       )}

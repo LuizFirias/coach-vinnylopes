@@ -102,6 +102,25 @@ export function canonicalizeEquipment(raw: string | null | undefined): Canonical
   return "Outro";
 }
 
+/** Equipamentos em que a carga registrada é de um lado (não a soma dos dois). */
+export function isPerSideLoadEquipment(
+  equipamento: string | null | undefined,
+  exerciseName?: string | null,
+): boolean {
+  const eq = canonicalizeEquipment(equipamento);
+  if (eq === 'Haltere' || eq === 'Kettlebell') return true;
+
+  const name = normalizeText(exerciseName || '');
+  if (!name) return false;
+  return (
+    name.includes('halter') ||
+    name.includes('dumbbell') ||
+    name.includes('dumbell') ||
+    name.includes('kettlebell') ||
+    name.includes('kettle bell')
+  );
+}
+
 /** Opções do filtro/select (sempre a lista oficial). */
 export function listCanonicalEquipments(): readonly CanonicalEquipment[] {
   return CANONICAL_EQUIPMENTS;

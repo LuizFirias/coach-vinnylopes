@@ -5,14 +5,14 @@ import Link from 'next/link';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import {
-  FileArrowUp, Trash, MagnifyingGlass, User, Info, PlusCircle
+  FileArrowUp, Trash, MagnifyingGlass, User, Info, PlusCircle, AppleLogo
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
-import { MobileListRow } from '@/app/components/MobileListRow';
 import { cn } from '@/lib/utils/cn';
+import { withReturnUrl } from '@/lib/utils/adminNav';
 
 interface Aluno {
   id: string;
@@ -55,12 +55,12 @@ export default function NutricaoPage() {
       const session = await getSafeSession();
       const coachId = session?.user?.id;
       if (!coachId) {
-        setError('Sessão inválida. Faça login novamente.');
+        setError('SessÃ£o invÃ¡lida. FaÃ§a login novamente.');
         setFetchingData(false);
         return;
       }
 
-      // Estágio 1 em paralelo: vínculos + planos digitais
+      // EstÃ¡gio 1 em paralelo: vÃ­nculos + planos digitais
       const [
         { data: alunoLinks, error: linkError },
         { data: digitalPlansData, error: digitalPlansError },
@@ -87,7 +87,7 @@ export default function NutricaoPage() {
         return;
       }
 
-      // Estágio 2 em paralelo: perfis + check-ins dos alunos
+      // EstÃ¡gio 2 em paralelo: perfis + check-ins dos alunos
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const [
@@ -182,7 +182,7 @@ export default function NutricaoPage() {
       setStudentNutritionList(mappedList);
     } catch (err: any) {
       console.error(err);
-      setError('Erro ao carregar dados: ' + (err.message || 'Erro de conexão'));
+      setError('Erro ao carregar dados: ' + (err.message || 'Erro de conexÃ£o'));
     } finally {
       setFetchingData(false);
     }
@@ -196,7 +196,7 @@ export default function NutricaoPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== 'application/pdf') { setError('Por favor, selecione um arquivo PDF'); return; }
-    if (file.size > 50 * 1024 * 1024) { setError('Arquivo muito grande. Máximo 50MB'); return; }
+    if (file.size > 50 * 1024 * 1024) { setError('Arquivo muito grande. MÃ¡ximo 50MB'); return; }
     setSelectedFile(file);
     setError(null);
   };
@@ -212,7 +212,7 @@ export default function NutricaoPage() {
     setLoading(true);
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
-      if (!session) { setError('Sessão inválida'); return; }
+      if (!session) { setError('SessÃ£o invÃ¡lida'); return; }
 
       const formData = new FormData();
       formData.append('file', selectedFile);
@@ -253,6 +253,20 @@ export default function NutricaoPage() {
     .reduce((sum, s) => sum + s.adherence7d, 0);
   const avgAdherence = activeDigPlansCount > 0 ? Math.round(totalAdherenceSum / activeDigPlansCount) : 0;
 
+  /** AdesÃ£o: baixo vermelho â†’ mÃ©dio amarelo â†’ alto verde (mesmo padrÃ£o dos RelatÃ³rios) */
+  const adesaoColorClass =
+    avgAdherence > 80
+      ? 'text-success'
+      : avgAdherence > 33
+        ? 'text-warning'
+        : 'text-danger';
+  const adesaoDotClass =
+    avgAdherence > 80
+      ? 'bg-success'
+      : avgAdherence > 33
+        ? 'bg-warning'
+        : 'bg-danger';
+
   const filteredStudents = studentNutritionList.filter((student) => {
     const q = studentSearchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -271,12 +285,50 @@ export default function NutricaoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-28">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
+            {/* Título no topo */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h1 className="text-lg font-bold text-text-primary tracking-tight">Nutrição</h1>
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
+                <Link
+                  href={withReturnUrl('/admin/nutricao/novo-plano', '/admin/nutricao')}
+                  className="btn-primary inline-flex items-center justify-center gap-1.5 w-full sm:!w-auto px-3 h-9 !min-h-0 text-xs font-semibold rounded-lg !py-0"
+                >
+                  <PlusCircle size={14} weight="bold" /> Criar Plano Digital
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowPdfUpload((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 border-0 text-xs font-semibold rounded-lg transition-all active:scale-95",
+                    showPdfUpload
+                      ? "bg-brand/15 text-brand"
+                      : "bg-surface-2 hover:bg-surface-3 text-text-primary"
+                  )}
+                >
+                  <FileArrowUp size={14} /> Upload de PDF
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
+                <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
+                <div className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
+                {success}
+              </div>
+            )}
+
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="coach-list-kpi-card p-4 bg-surface-1 border border-border-subtle shadow-sm rounded-xl flex flex-col justify-center min-h-[5.5rem] h-auto">
+              <div className="coach-list-kpi-card px-4 pb-3.5 pt-2.5 bg-surface-1 border border-border-subtle shadow-sm rounded-xl flex flex-col justify-center min-h-[4.75rem] h-auto">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-brand" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Planos digitais ativos</span>
@@ -287,30 +339,30 @@ export default function NutricaoPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
+                <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-xl font-bold text-text-primary font-mono tabular-nums lining-nums leading-none">{activeDigPlansCount}</span>
                   <span className="text-[10px] text-text-secondary">ativo{activeDigPlansCount !== 1 ? 's' : ''}</span>
                 </div>
               </div>
 
-              <div className="coach-list-kpi-card p-4 bg-surface-1 border border-border-subtle shadow-sm rounded-xl flex flex-col justify-center min-h-[5.5rem] h-auto">
+              <div className="coach-list-kpi-card px-4 pb-3.5 pt-2.5 bg-surface-1 border border-border-subtle shadow-sm rounded-xl flex flex-col justify-center min-h-[4.75rem] h-auto">
                 <div className="flex items-center gap-1.5 leading-none relative group">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-success" />
+                  <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', adesaoDotClass)} />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Adesão Média</span>
-                  <Info size={11} className="text-text-disabled hover:text-success transition-colors cursor-help shrink-0" />
+                  <Info size={11} className={cn('text-text-disabled transition-colors cursor-help shrink-0 hover:opacity-80', adesaoColorClass)} />
                   <div className="absolute bottom-full mb-2 left-0 w-56 bg-surface-1 border-0 p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
                     <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
                       Média de check-ins marcados como <strong className="text-success">Feito</strong> nos últimos 7 dias pelos alunos que possuem plano digital ativo.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
-                  <span className="text-xl font-bold text-text-primary font-mono tabular-nums lining-nums leading-none">{avgAdherence}%</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className={cn('text-xl font-bold font-mono tabular-nums lining-nums leading-none', adesaoColorClass)}>{avgAdherence}%</span>
                   <span className="text-[10px] text-text-secondary">adesão à dieta</span>
                 </div>
               </div>
 
-              <div className="coach-list-kpi-card p-4 bg-surface-1 border border-border-subtle shadow-sm rounded-xl flex flex-col justify-center min-h-[5.5rem] h-auto">
+              <div className="coach-list-kpi-card px-4 pb-3.5 pt-2.5 bg-surface-1 border border-border-subtle shadow-sm rounded-xl flex flex-col justify-center min-h-[4.75rem] h-auto">
                 <div className="flex items-center gap-1.5 leading-none relative group">
                   <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-warning" />
                   <span className="text-[10px] uppercase font-semibold tracking-wider text-text-tertiary">Alunos sem plano</span>
@@ -321,7 +373,7 @@ export default function NutricaoPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
+                <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-xl font-bold text-text-primary font-mono tabular-nums lining-nums leading-none">{studentsWithoutPlan}</span>
                   <span className="text-[10px] text-text-secondary">aluno{studentsWithoutPlan !== 1 ? 's' : ''}</span>
                 </div>
@@ -329,7 +381,7 @@ export default function NutricaoPage() {
 
               <div
                 className={cn(
-                  "coach-list-kpi-card p-4 shadow-sm rounded-xl flex flex-col justify-center min-h-[5.5rem] h-auto border",
+                  "coach-list-kpi-card px-4 pb-3.5 pt-2.5 shadow-sm rounded-xl flex flex-col justify-center min-h-[4.75rem] h-auto border",
                   lowAdherenceCount >= 1
                     ? "bg-danger-subtle border-danger-border"
                     : "bg-surface-1 border-border-subtle"
@@ -360,7 +412,7 @@ export default function NutricaoPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
+                <div className="flex items-baseline gap-1 mt-1">
                   <span
                     className={cn(
                       "text-xl font-bold font-mono tabular-nums lining-nums leading-none",
@@ -381,50 +433,11 @@ export default function NutricaoPage() {
               </div>
             </div>
 
-            {/* Header actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h1 className="text-lg font-bold text-text-primary tracking-tight">Nutrição</h1>
-              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
-                <Link
-                  href="/admin/nutricao/novo-plano"
-                  className="btn-primary inline-flex items-center justify-center gap-1.5 w-full sm:!w-auto px-3 h-9 !min-h-0 text-xs font-semibold rounded-lg !py-0"
-                >
-                  <PlusCircle size={14} weight="bold" /> Criar Plano Digital
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setShowPdfUpload((v) => !v)}
-                  className={cn(
-                    "inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 border-0 text-xs font-semibold rounded-lg transition-all active:scale-95",
-                    showPdfUpload
-                      ? "bg-brand/15 text-brand"
-                      : "bg-surface-2 hover:bg-surface-3 text-text-primary"
-                  )}
-                >
-                  <FileArrowUp size={14} /> Upload de PDF
-                </button>
-              </div>
-            </div>
-
-            {/* Feedback Messages */}
-            {error && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
-                <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
-                <div className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
-                {success}
-              </div>
-            )}
-
-            {/* Acompanhamento Alimentar — full width (alinha com KPIs; mais colunas) */}
-            <div className="nutricao-acompanhamento-panel flex flex-col gap-5">
-              <div className="field-flat-input bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3.5">
-                  <div className="relative w-full sm:flex-1 sm:max-w-sm pl-6">
+            {/* Lista — cards no padrão do perfil do aluno */}
+            <div className="nutricao-acompanhamento-panel flex flex-col gap-3">
+              <div className="field-flat-input bg-surface-1 border-0 rounded-xl shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="relative w-full pl-6">
                     <MagnifyingGlass
                       size={14}
                       className="pointer-events-none absolute left-0 top-1/2 z-10 -translate-y-1/2 text-text-disabled"
@@ -443,160 +456,104 @@ export default function NutricaoPage() {
               </div>
 
               {filteredStudents.length === 0 ? (
-                <div className="text-center py-10 border border-dashed border-border-subtle rounded-2xl bg-surface-1">
+                <div className="text-center py-10 rounded-xl bg-surface-1 shadow-sm">
                   <User size={24} className="text-text-disabled mx-auto mb-1.5" />
                   <p className="text-xs font-semibold text-text-secondary">
                     {studentSearchQuery ? 'Nenhum aluno corresponde' : 'Nenhum aluno vinculado'}
                   </p>
                 </div>
               ) : (
-              <div className="coach-data-table-shell border border-border-subtle rounded-2xl overflow-hidden bg-surface-2">
-                <>
-                <div className="hidden md:block overflow-x-auto scrollbar-hide">
-                  <table className="w-full text-left border-collapse min-w-[600px] text-xs">
-                    <thead>
-                      <tr className="coach-data-table-head border-b border-border-divider/40 bg-surface-2">
-                        <th className="py-3 pl-8 pr-3 text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Aluno</th>
-                        <th className="py-3 px-3 text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Plano Ativo</th>
-                        <th className="py-3 px-3 text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Refeições Hoje</th>
-                        <th className="py-3 px-3 text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Adesão 7d</th>
-                        <th className="py-3 px-3 text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Último Check-in</th>
-                        <th className="py-3 px-3 text-[10px] uppercase font-bold tracking-wider text-text-tertiary">Status</th>
-                        <th className="py-3 pl-3 pr-8 text-[10px] uppercase font-bold tracking-wider text-text-tertiary text-right">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border-divider/40">
-                      {filteredStudents.map((student) => {
-                        const statusLabels = {
-                          'em-dia': 'Em dia',
-                          'atencao': 'Atenção',
-                          'sem-checkin': 'Sem check-in',
-                          'sem-plano': 'Sem plano'
-                        };
-                        const statusColors = {
-                          'em-dia': 'bg-success/10 text-success border-success/20',
-                          'atencao': 'bg-warning/10 text-warning border-warning/20',
-                          'sem-checkin': 'bg-danger/10 text-danger border-danger/20',
-                          'sem-plano': 'bg-surface-3 text-text-tertiary border-transparent'
-                        };
-
-                        return (
-                          <tr key={student.id} className="hover:bg-surface-2/30 transition-colors">
-                            <td className="py-2.5 pl-8 pr-3 font-bold text-text-primary">{student.name}</td>
-                            <td className="py-2.5 px-3 text-text-secondary">{student.planName}</td>
-                            <td className="py-2.5 px-3 font-mono text-text-secondary">{student.todayMeals}</td>
-                            <td className="py-2.5 px-3 font-mono font-bold text-text-secondary">{student.planName !== 'Sem plano' ? `${student.adherence7d}%` : '—'}</td>
-                            <td className="py-2.5 px-3 text-text-secondary">{student.lastCheckin}</td>
-                            <td className="py-2.5 px-3 relative group">
-                               <span className={cn(
-                                 "inline-flex px-1.5 py-0.5 border rounded text-[8px] font-bold uppercase tracking-wider cursor-help transition-all hover:scale-[1.03]",
-                                 statusColors[student.status]
-                               )}>
-                                 {statusLabels[student.status]}
-                               </span>
-                               
-                               {/* Status Tooltip */}
-                               <div className="absolute bottom-full mb-1 right-0 w-56 bg-surface-1 border-0 p-2.5 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-20">
-                                 <p className="text-[10px] text-text-secondary leading-normal normal-case font-medium">
-                                   {student.status === 'em-dia' && (
-                                     <>O aluno está com excelente cumprimento das refeições. Adesão superior a <strong className="text-success">80%</strong> nos últimos 7 dias.</>
-                                   )}
-                                   {student.status === 'atencao' && (
-                                     <>O aluno precisa de acompanhamento. Adesão intermediária entre <strong className="text-warning">50% e 79%</strong> nos últimos 7 dias.</>
-                                   )}
-                                   {student.status === 'sem-checkin' && (
-                                     <>Adesão crítica inferior a <strong className="text-danger">50%</strong> nos últimos 7 dias ou nenhuma refeição marcada.</>
-                                   )}
-                                   {student.status === 'sem-plano' && (
-                                     <>Este aluno não possui nenhuma rotina alimentar digital ativa cadastrada.</>
-                                   )}
-                                 </p>
-                               </div>
-                             </td>
-                            <td className="py-2.5 pl-3 pr-8 text-right">
-                              {student.planId ? (
-                                <Link
-                                  href={`/admin/nutricao/planos/${student.planId}`}
-                                  className="text-[12px] font-medium text-brand hover:underline"
-                                >
-                                  Ver plano →
-                                </Link>
-                              ) : (
-                                <Link
-                                  href={`/admin/nutricao/novo-plano`}
-                                  className="text-[12px] font-medium text-brand hover:underline"
-                                >
-                                  Criar →
-                                </Link>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile — card list (Fase 7) */}
-                <div className="md:hidden divide-y divide-border-divider/50">
+                <div className="flex flex-col gap-3">
                   {filteredStudents.map((student) => {
                     const statusLabels = {
                       'em-dia': 'Em dia',
                       'atencao': 'Atenção',
                       'sem-checkin': 'Sem check-in',
-                      'sem-plano': 'Sem plano'
-                    };
+                      'sem-plano': 'Sem plano',
+                    } as const;
                     const statusColors = {
-                      'em-dia': 'bg-success/10 text-success border-success/20',
-                      'atencao': 'bg-warning/10 text-warning border-warning/20',
-                      'sem-checkin': 'bg-danger/10 text-danger border-danger/20',
-                      'sem-plano': 'bg-surface-3 text-text-tertiary border-transparent'
-                    };
+                      'em-dia': 'bg-success/15 text-success',
+                      'atencao': 'bg-warning/15 text-warning',
+                      'sem-checkin': 'bg-danger/15 text-danger',
+                      'sem-plano': 'bg-surface-2 text-text-tertiary',
+                    } as const;
                     const temPlano = student.planName !== 'Sem plano';
+                    const adesaoAlunoClass =
+                      !temPlano
+                        ? 'text-text-tertiary'
+                        : student.adherence7d > 80
+                          ? 'text-success'
+                          : student.adherence7d > 33
+                            ? 'text-warning'
+                            : 'text-danger';
+
                     return (
-                      <MobileListRow
+                      <div
                         key={student.id}
-                        name={student.name}
-                        badge={
-                          <span className={cn(
-                            "inline-flex px-1.5 py-0.5 border rounded text-[8px] font-bold uppercase tracking-wider shrink-0",
-                            statusColors[student.status]
-                          )}>
-                            {statusLabels[student.status]}
-                          </span>
-                        }
-                        topRight={
-                          <>
-                            <span className="font-mono font-bold text-xs text-text-secondary">
-                              {temPlano ? `${student.adherence7d}%` : '—'}
-                            </span>
-                            <Link
-                              href={student.planId ? `/admin/nutricao/planos/${student.planId}` : `/admin/nutricao/novo-plano`}
-                              className="text-[11px] font-medium text-brand whitespace-nowrap"
-                            >
-                              {student.planId ? 'Ver plano →' : 'Criar →'}
-                            </Link>
-                          </>
-                        }
-                        meta={
-                          <>
-                            <span className="truncate max-w-[45%]">{student.planName}</span>
-                            <span className="text-text-tertiary">•</span>
-                            <span className="font-mono">{student.todayMeals} hoje</span>
-                            <span className="text-text-tertiary">•</span>
-                            <span className="truncate">{student.lastCheckin}</span>
-                          </>
-                        }
-                      />
+                        className="relative rounded-xl border-0 bg-surface-1 shadow-sm overflow-hidden"
+                      >
+                        <div className="flex items-start gap-3 px-4 py-3.5">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center text-brand">
+                            <AppleLogo size={18} weight="bold" />
+                          </div>
+                          <div className="min-w-0 flex-1 pt-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-bold text-text-primary truncate leading-tight">
+                                {student.name}
+                              </p>
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+                                  statusColors[student.status],
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    'w-1.5 h-1.5 rounded-full',
+                                    student.status === 'em-dia' && 'bg-success',
+                                    student.status === 'atencao' && 'bg-warning',
+                                    student.status === 'sem-checkin' && 'bg-danger',
+                                    student.status === 'sem-plano' && 'bg-text-tertiary',
+                                  )}
+                                />
+                                {statusLabels[student.status]}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-text-tertiary truncate">
+                              {student.planName}
+                              {temPlano ? ` · ${student.todayMeals} hoje` : ''}
+                              {student.lastCheckin ? ` · ${student.lastCheckin}` : ''}
+                            </p>
+                            {temPlano && (
+                              <p className={cn('mt-1 text-[11px] font-bold font-mono tabular-nums lining-nums', adesaoAlunoClass)}>
+                                Adesão 7d · {student.adherence7d}%
+                              </p>
+                            )}
+                          </div>
+                          <Link
+                            href={
+                              student.planId
+                                ? withReturnUrl(
+                                    `/admin/nutricao/planos/${student.planId}`,
+                                    '/admin/nutricao',
+                                  )
+                                : withReturnUrl(
+                                    '/admin/nutricao/novo-plano',
+                                    '/admin/nutricao',
+                                  )
+                            }
+                            className="mt-2.5 shrink-0 text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors whitespace-nowrap"
+                          >
+                            {student.planId ? 'Ver plano' : 'Prescrever'}
+                          </Link>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-                </>
-              </div>
               )}
             </div>
 
-            {/* PDF upload — colapsado (padrão treinos) */}
             {showPdfUpload && (
               <Card className="rounded-xl border-0 p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
                 <div className="flex items-center justify-between pb-2 border-b border-border-divider/40">

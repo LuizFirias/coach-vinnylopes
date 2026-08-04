@@ -57,11 +57,11 @@ export function WorkoutMuscleListCard({
         >
           <p
             style={{
-              fontSize: 58,
+              fontSize: 70,
               fontWeight: 900,
               color: tokens.text,
               margin: 0,
-              marginBottom: 28,
+              marginBottom: 32,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
               lineHeight: 1.02,
@@ -70,18 +70,18 @@ export function WorkoutMuscleListCard({
             {workoutName}
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, flex: 1 }}>
             {visibleExercises.map((ex) => (
               <div
                 key={`${ex.name}-${ex.sets}`}
-                style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: 12 }}
+                style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: 14 }}
               >
                 <span
                   style={{
-                    fontSize: 30,
+                    fontSize: 36,
                     fontWeight: 800,
                     color: tokens.accent,
-                    minWidth: 48,
+                    minWidth: 56,
                     flexShrink: 0,
                   }}
                 >
@@ -89,7 +89,7 @@ export function WorkoutMuscleListCard({
                 </span>
                 <span
                   style={{
-                    fontSize: 28,
+                    fontSize: 34,
                     color: tokens.textExercise,
                     fontWeight: 500,
                     flex: 1,
@@ -106,7 +106,7 @@ export function WorkoutMuscleListCard({
             ))}
 
             {remaining > 0 && (
-              <p style={{ fontSize: 22, color: tokens.textSecondary, marginTop: 4, marginBottom: 0 }}>
+              <p style={{ fontSize: 26, color: tokens.textSecondary, marginTop: 4, marginBottom: 0 }}>
                 +{remaining} exercício{remaining > 1 ? 's' : ''}
               </p>
             )}
@@ -115,8 +115,8 @@ export function WorkoutMuscleListCard({
 
         <div
           style={{
-            flex: '0 0 42%',
-            maxWidth: 420,
+            flex: '0 0 46%',
+            maxWidth: 460,
             minHeight: 0,
             display: 'flex',
             alignItems: 'center',

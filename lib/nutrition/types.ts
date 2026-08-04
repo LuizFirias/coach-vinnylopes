@@ -14,7 +14,7 @@ export type NutritionFoodCategory =
   | 'tempero'
   | 'outro';
 
-export type NutritionPlanStatus = 'draft' | 'active' | 'archived' | 'paused';
+export type NutritionPlanStatus = 'draft' | 'active' | 'archived' | 'paused' | 'template';
 
 export type NutritionMealType =
   | 'cafe_da_manha'

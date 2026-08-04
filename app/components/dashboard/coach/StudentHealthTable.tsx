@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react";
 import { MobileListRow } from "@/app/components/MobileListRow";
 import { cn } from "@/lib/utils/cn";
+import { withReturnUrl } from "@/lib/utils/adminNav";
 
 export interface StudentHealthRow {
   id: string;
@@ -19,9 +20,16 @@ interface StudentHealthTableProps {
   students: StudentHealthRow[];
   today?: Date;
   formatLastWorkout: (dateStr: string | null | undefined) => string | null;
+  /** Máximo de alunos na lista (os demais ficam em /admin/alunos). */
   limit?: number;
   isMobile?: boolean;
+  /** Origem para o botão voltar no perfil do aluno. */
+  returnUrl?: string;
 }
+
+/** Altura aproximada de 3 linhas mobile (nome + meta + padding). */
+const MOBILE_VISIBLE_ROWS = 3;
+const MOBILE_ROW_MAX_H = "10.75rem"; // ~3 × ~57px
 
 function getStudentStatus(
   aluno: StudentHealthRow,
@@ -54,17 +62,25 @@ export function StudentHealthTable({
   students,
   today = new Date(),
   formatLastWorkout,
-  limit = 5,
+  limit = 20,
   isMobile = false,
+  returnUrl,
 }: StudentHealthTableProps) {
-  const rows = students.slice(0, limit);
+  const rows = students.slice(0, isMobile ? limit : Math.min(limit, 5));
+  const alunoHref = (id: string) =>
+    returnUrl
+      ? withReturnUrl(`/admin/aluno/${id}`, returnUrl)
+      : `/admin/aluno/${id}`;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-0.5 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-      <div className="flex items-center justify-end gap-4 mb-1.5">
+    <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary">
+          Saúde dos alunos
+        </h3>
         <Link
           href="/admin/alunos"
-          className="inline-flex items-center gap-1 text-brand text-xs font-semibold hover:underline min-h-[44px]"
+          className="inline-flex items-center gap-1 text-brand text-xs font-semibold hover:underline shrink-0"
         >
           Ver todos <ArrowRight size={10} />
         </Link>
@@ -114,7 +130,7 @@ export function StudentHealthTable({
                     </td>
                     <td className="py-2.5 text-xs">
                       <Link
-                        href={`/admin/aluno/${aluno.id}`}
+                        href={alunoHref(aluno.id)}
                         className="text-brand hover:underline font-semibold inline-flex items-center gap-0.5 min-h-[44px]"
                       >
                         Perfil <ArrowRight size={10} />
@@ -127,7 +143,11 @@ export function StudentHealthTable({
           </table>
         </div>
       ) : (
-        <div className="divide-y divide-[color:var(--list-row-divider)]">
+        <div
+          className="divide-y divide-[color:var(--list-row-divider)] overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] scrollbar-hide"
+          style={{ maxHeight: MOBILE_ROW_MAX_H }}
+          aria-label={`Lista de alunos (até ${MOBILE_VISIBLE_ROWS} visíveis; role para ver mais)`}
+        >
           {rows.map((aluno) => {
             const expiration = aluno.data_expiracao ? new Date(aluno.data_expiracao) : null;
             const { isActive, label } = getStudentStatus(aluno, today);
@@ -139,8 +159,8 @@ export function StudentHealthTable({
                 badge={<StatusPill isActive={isActive} label={label} />}
                 topRight={
                   <Link
-                    href={`/admin/aluno/${aluno.id}`}
-                    className="text-brand text-xs font-semibold inline-flex items-center gap-0.5 min-h-[44px] active:opacity-70"
+                    href={alunoHref(aluno.id)}
+                    className="text-brand text-xs font-semibold inline-flex items-center gap-0.5 leading-none py-0.5 active:opacity-70"
                   >
                     Perfil <ArrowRight size={10} />
                   </Link>

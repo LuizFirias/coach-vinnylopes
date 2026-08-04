@@ -4,18 +4,23 @@ import { useEffect, useState, useRef, useCallback, useId } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Check, Play, X, Clock, CaretLeft, CaretRight, Video, Lightning, Minus, Plus, Info, CaretDown } from '@phosphor-icons/react';
+import { ArrowLeft, Check, X, Clock, CaretLeft, CaretRight, Lightning, Minus, Plus, Info, CaretDown, CaretUp, Trash, ChatCircle } from '@phosphor-icons/react';
 import { RestTimerOverlay } from '@/app/components/treino/execucao/RestTimerOverlay';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { resolveCoachShareHandle } from '@/lib/utils/workoutShare';
-import { VideoPlayerCard } from '@/app/components/treino/execucao/VideoPlayerCard';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { haptic } from '@/lib/utils/haptics';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { StudentTechniqueCard } from '@/app/components/workout/StudentTechniqueCard';
 import { BiSetGroupPreviewCard } from '@/app/components/treino/execucao/BiSetGroupPreviewCard';
+import { VideoPlayerCard } from '@/app/components/treino/execucao/VideoPlayerCard';
+import {
+  CargaPorLadoInfoButton,
+  CargaPorLadoInfoModal,
+} from '@/app/components/treino/execucao/CargaPorLadoInfoModal';
+import { isPerSideLoadEquipment } from '@/lib/constants/equipment';
 import type { WorkoutBlock } from '@/lib/utils/biset';
 import {
   buildWorkoutBlocksFromConfig,
@@ -26,6 +31,7 @@ import {
   calcVolumeFromBlocks,
   isBlockComplete,
   firstIncompleteRodada,
+  resolveResumePosition,
   countWorkoutBlocks,
 } from '@/lib/utils/biset';
 import { formatRestTime } from '@/lib/utils/restTime';
@@ -89,6 +95,7 @@ interface SerieState {
   ordem: number;
   peso_atual: number;
   reps: number | string;
+  reps_executadas?: number | string;
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
@@ -103,6 +110,7 @@ interface ExercicioState {
   gif_url?: string;
   observacoes?: string;
   grupo_muscular?: string;
+  equipamento?: string;
   series: SerieState[];
   biset_parceiro_id?: string;
 }
@@ -117,11 +125,11 @@ const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(96px, 1.6fr) 40px 34px 30p
 const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px 40px 32px 32px 32px';
 const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(110px, 1.5fr) 48px 48px 44px 44px 36px';
 const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px 48px 44px 44px 36px';
-const GRID_COLS_HISTORICO = '24px minmax(36px,1fr) 44px 36px 24px 24px';
+const GRID_COLS_HISTORICO = '28px 52px 60px 40px auto';
 const SERIES_GRID_GAP = '8px';
 /** Espaço extra só na coluna Ant. da lista (não mexe no SET) */
 const ANT_COL_PAD_LEFT = 14;
-const HISTORICO_COL_GAP = '10px';
+const HISTORICO_COL_GAP = '8px';
 const HISTORICO_ROW_PAD_X = 12;
 
 function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean): string {
@@ -202,11 +210,31 @@ function duasLetrasTenica(tecnica?: string): string {
   return tecnica.substring(0, 2).toUpperCase();
 }
 
+/** Retorna as reps a exibir e se está abaixo do prescrito */
+function resolveReps(serie: SerieState): {
+  valor: number | string;
+  abaixo: boolean;
+} {
+  const exec = serie.reps_executadas;
+  const presc = serie.reps;
+
+  if (exec === undefined || exec === null || exec === '') {
+    return { valor: presc, abaixo: false };
+  }
+
+  const execNum = typeof exec === 'string' ? parseFloat(exec) : exec;
+  const prescNum = typeof presc === 'string' ? parseFloat(String(presc)) : presc;
+  const abaixo = !isNaN(execNum) && !isNaN(prescNum) && execNum < prescNum;
+
+  return { valor: exec, abaixo };
+}
+
 function calcVolume(exercicios: ExercicioState[]): number {
   return exercicios.reduce((acc, ex) =>
     acc + ex.series.reduce((sAcc, s) => {
       if (!s.completado || s.peso_atual <= 0) return sAcc;
-      const r = typeof s.reps === 'string' ? parseFloat(s.reps) || 0 : s.reps;
+      const { valor } = resolveReps(s);
+      const r = typeof valor === 'string' ? parseFloat(valor) || 0 : valor;
       return sAcc + s.peso_atual * r;
     }, 0), 0);
 }
@@ -229,10 +257,12 @@ interface SetRowProps {
   gridCols: string;
   isDesktop?: boolean;
   onPesoChange: (peso: number) => void;
+  onRepsChange: (reps: number | string) => void;
   onCheck: () => void;
 }
 
-function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDesktop = false, onPesoChange, onCheck }: SetRowProps) {
+function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDesktop = false, onPesoChange, onRepsChange, onCheck }: SetRowProps) {
+  const { abaixo } = resolveReps(serie);
   return (
     <div
       className={cn(
@@ -252,14 +282,14 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
     >
       <div className="flex justify-center">
         <span
-          className="rounded-md flex items-center justify-center text-[11px] font-semibold font-kpi shrink-0"
+          className="rounded-md flex items-center justify-center text-[11px] font-semibold font-sans shrink-0"
           style={{
             width: 22,
             height: 22,
             minWidth: 22,
             ...(serie.completado
               ? { background: '#39c75a', color: '#fff' }
-              : { background: 'var(--surface-2)', color: '#888' }),
+              : { background: 'var(--surface-2)', color: 'var(--text-tertiary)' }),
           }}
         >
           {idx + 1}
@@ -270,10 +300,10 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
         <div className="min-w-0 overflow-hidden" style={{ paddingLeft: ANT_COL_PAD_LEFT }}>
           <p
             className={cn(
-              'text-[11px] font-kpi tabular-nums lining-nums truncate',
+              'text-[11px] font-sans tabular-nums lining-nums truncate',
               serie.completado && 'line-through'
             )}
-            style={{ color: serie.completado ? '#bbb' : '#888' }}
+            style={{ color: serie.completado ? 'var(--text-disabled)' : 'var(--text-tertiary)' }}
             title={serie.anterior || '—'}
           >
             {serie.anterior || '—'}
@@ -289,12 +319,12 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
           onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
           disabled={!treinoIniciado}
           placeholder="0"
-          className="w-full max-w-[40px] bg-transparent border-0 text-center font-kpi tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+          className="w-full max-w-[40px] bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
           style={{
             height: 28,
             fontSize: '15px',
-            color: '#666',
-            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+            color: 'var(--text-secondary)',
+            fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
             fontVariantNumeric: 'tabular-nums lining-nums',
             fontWeight: 400,
             borderBottom: '1.5px solid transparent',
@@ -309,16 +339,50 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
       </div>
 
       <div className="flex justify-center">
-        <span
-          className="text-[13px] font-semibold font-kpi tabular-nums lining-nums"
-          style={{ color: serie.completado ? '#39c75a' : '#1a1a1a' }}
-        >
-          {serie.reps}
-        </span>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={
+            serie.reps_executadas !== undefined && serie.reps_executadas !== ''
+              ? serie.reps_executadas
+              : ''
+          }
+          placeholder={String(serie.reps)}
+          onChange={(e) => {
+            const raw = e.target.value;
+            onRepsChange(raw === '' ? '' : parseFloat(raw) || 0);
+          }}
+          disabled={!treinoIniciado}
+          aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
+          className={cn(
+            'w-full max-w-[36px] bg-transparent border-0 text-center font-sans',
+            'tabular-nums lining-nums focus:outline-none disabled:opacity-50',
+            'placeholder:text-text-secondary',
+          )}
+          style={{
+            height: 28,
+            fontSize: '14px',
+            fontWeight: 600,
+            fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+            fontVariantNumeric: 'tabular-nums lining-nums',
+            color: serie.completado
+              ? '#39c75a'
+              : abaixo
+                ? 'var(--warning)'
+                : 'var(--text-primary)',
+            borderBottom: '1.5px solid transparent',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderBottomColor = 'transparent';
+          }}
+        />
       </div>
 
       <div className="flex justify-center">
-        <span className="text-[11px] font-medium leading-tight text-center" style={{ color: '#888' }}>
+        <span className="text-[11px] font-medium leading-tight text-center" style={{ color: 'var(--text-tertiary)' }}>
           {duasLetrasTenica(serie.tecnica) || '—'}
         </span>
       </div>
@@ -339,7 +403,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
             height: 28,
             ...(serie.completado
               ? { background: '#751BB4', border: '1.5px solid #751BB4', color: '#fff' }
-              : { background: 'transparent', border: '1.5px solid rgba(0,0,0,0.2)', color: '#888' }),
+              : { background: 'transparent', border: '1.5px solid var(--border-default)', color: 'var(--text-tertiary)' }),
           }}
         >
           {serie.completado && <Check className="w-3 h-3" weight="bold" />}
@@ -357,15 +421,18 @@ interface ExercicioCardProps {
   showAnteriorCol: boolean;
   isDesktop?: boolean;
   onPesoChange: (ordem: number, peso: number) => void;
+  onRepsChange: (ordem: number, reps: number | string) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen: (url: string) => void;
+  onCargaInfo?: () => void;
 }
 
-function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onCheck, onVideoOpen }: ExercicioCardProps) {
+function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onRepsChange, onCheck, onVideoOpen, onCargaInfo }: ExercicioCardProps) {
   const completadas = exercicio.series.filter(s => s.completado).length;
   const total = exercicio.series.length;
   const all = completadas === total;
   const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop);
+  const showCargaInfo = isPerSideLoadEquipment(exercicio.equipamento, exercicio.nome);
 
   return (
     <div
@@ -377,17 +444,22 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
     >
       <div
         className="flex items-start justify-between gap-2 px-4 pt-4 pb-3"
-        style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}
+        style={{ borderBottom: '1px solid var(--border-subtle)' }}
       >
         <div className="flex-1 min-w-0">
-          <h3
-            className="font-semibold leading-tight mb-1"
-            style={{ fontSize: 15, color: '#751BB4' }}
-          >
-            {toTitleCase(exercicio.nome)}
-          </h3>
-          <p style={{ fontSize: 11, color: '#aaa' }}>
-            Descanso: {formatDuration(exercicio.descanso)}
+          <div className="flex items-center gap-1.5 mb-1 min-w-0">
+            <h3
+              className="font-semibold leading-tight truncate min-w-0"
+              style={{ fontSize: 15, color: '#751BB4' }}
+            >
+              {toTitleCase(exercicio.nome)}
+            </h3>
+            {showCargaInfo && onCargaInfo && (
+              <CargaPorLadoInfoButton onClick={onCargaInfo} size={15} />
+            )}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            Descanso: {formatRestTime(exercicio.descanso)}
           </p>
         </div>
         {exercicio.gif_url ? (
@@ -423,10 +495,10 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
           className="mx-4 my-3 px-2.5 py-2 rounded-lg"
           style={{ background: 'var(--surface-0)' }}
         >
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: '#888' }}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--text-tertiary)' }}>
             Observações
           </p>
-          <p className="text-[11px] leading-relaxed" style={{ color: '#555' }}>{exercicio.observacoes}</p>
+          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{exercicio.observacoes}</p>
         </div>
       )}
 
@@ -440,20 +512,20 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
             marginBottom: 2,
           }}
         >
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>SET</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>SET</span>
           {showAnteriorCol && (
             <span
               className="text-[10px] font-semibold tracking-[0.06em]"
-              style={{ color: '#bbb', paddingLeft: ANT_COL_PAD_LEFT }}
+              style={{ color: 'var(--text-disabled)', paddingLeft: ANT_COL_PAD_LEFT }}
             >
               ANT.
             </span>
           )}
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>PESO</span>
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>REPS</span>
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>T1</span>
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: '#bbb' }}>T2</span>
-          <span className="text-[10px] text-center" style={{ color: '#bbb' }} />
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>PESO</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>REPS</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T1</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T2</span>
+          <span className="text-[10px] text-center" style={{ color: 'var(--text-disabled)' }} />
         </div>
 
         <div>
@@ -467,6 +539,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
               gridCols={gridCols}
               isDesktop={isDesktop}
               onPesoChange={(peso) => onPesoChange(serie.ordem, peso)}
+              onRepsChange={(reps) => onRepsChange(serie.ordem, reps)}
               onCheck={() => onCheck(serie.ordem)}
             />
           ))}
@@ -496,6 +569,11 @@ export default function ExecucaoTreinoPage() {
   const [showConfirmAbandon, setShowConfirmAbandon] = useState(false);
   const [coachUsername, setCoachUsername] = useState('@auronfit');
   const [prsCount, setPrsCount] = useState(0);
+  const [prPrincipal, setPrPrincipal] = useState<{
+    exercicioNome: string;
+    cargaNova: number;
+    cargaAnterior: number;
+  } | null>(null);
 
   // Timer principal
   const [treinoIniciado, setTreinoIniciado] = useState(false);
@@ -524,6 +602,14 @@ export default function ExecucaoTreinoPage() {
   const tecnicaKpiRef = useRef<HTMLButtonElement>(null);
   const tecnicaPanelRef = useRef<HTMLDivElement>(null);
 
+  const ajustarCarga = useCallback((delta: number) => {
+    setModalCarga((prev) => {
+      const next = Math.max(0, Math.round((prev + delta) * 100) / 100);
+      setModalCargaStr(String(next));
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (modalBlockIdx !== null) {
       setShowSeriesHistory(true);
@@ -532,7 +618,7 @@ export default function ExecucaoTreinoPage() {
 
   // Fecha o card de técnica ao trocar exercício/série/fase do bi-set
   useEffect(() => {
-    setTechniqueCardExpanded(false);
+    setTechniqueCardExpanded((open) => (open ? false : open));
   }, [modalBlockIdx, modalRodadaIdx, bisetFase]);
 
   // Fecha ao clicar fora do KPI ⓘ e do card
@@ -552,11 +638,13 @@ export default function ExecucaoTreinoPage() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackSatisfacao, setFeedbackSatisfacao] = useState('');
   const [feedbackDor, setFeedbackDor] = useState(5);
+  const [feedbackNota, setFeedbackNota] = useState('');
   const [savedTimestamp, setSavedTimestamp] = useState<string | null>(null);
 
   // Vídeo
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [demoImg, setDemoImg] = useState<string | null>(null);
+  const [cargaInfoOpen, setCargaInfoOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   /** Snapshot limpo da ficha — usado ao descartar o treino. */
   const blocksBaseRef = useRef<WorkoutBlock[]>([]);
@@ -628,7 +716,7 @@ export default function ExecucaoTreinoPage() {
         exercicioIds.length > 0
           ? supabaseClient
               .from('exercicios_biblioteca')
-              .select('id, grupo_muscular, gif_url, video_url')
+              .select('id, grupo_muscular, gif_url, video_url, equipamento')
               .in('id', exercicioIds)
           : Promise.resolve({ data: null as null }),
         exercicioIds.length > 0
@@ -651,6 +739,9 @@ export default function ExecucaoTreinoPage() {
       const videosBiblioteca: Record<string, string> = Object.fromEntries(
         (bibData || []).map(ex => [ex.id, ex.video_url || ''])
       );
+      const equipamentosBiblioteca: Record<string, string> = Object.fromEntries(
+        (bibData || []).map((ex: { id: string; equipamento?: string }) => [ex.id, ex.equipamento || ''])
+      );
 
       // Última sessão por exercício (qualquer ficha) — rows já vêm DESC
       const ultimoPorExercicio: Record<string, any> = {};
@@ -663,6 +754,7 @@ export default function ExecucaoTreinoPage() {
         gruposMusculares,
         gifs: gifsExercicios,
         videos: videosBiblioteca,
+        equipamentos: equipamentosBiblioteca,
         ultimoPorExercicio,
       });
 
@@ -761,11 +853,13 @@ export default function ExecucaoTreinoPage() {
 
           const { data: publicProfile } = await supabaseClient
             .from('coach_public_profiles')
-            .select('handle')
+            .select('handle, instagram')
             .eq('coach_id', coachData.coach_id)
             .maybeSingle();
 
-          setCoachUsername(resolveCoachShareHandle(publicProfile?.handle));
+          setCoachUsername(
+            resolveCoachShareHandle(publicProfile?.handle, publicProfile?.instagram),
+          );
         })().catch(() => undefined);
       }
     } finally {
@@ -956,25 +1050,49 @@ export default function ExecucaoTreinoPage() {
 
     if (block.kind === 'simples') {
       const prox = block.exercise.series.findIndex((s) => !s.completado);
-      rodadaIdx = prox >= 0 ? prox : 0;
-      const carga = block.exercise.series[rodadaIdx]?.peso_atual || 0;
-      setModalBlockIdx(blockIdx);
-      setModalRodadaIdx(rodadaIdx);
-      setBisetFase(null);
-      setModalCarga(carga);
-      setModalCargaStr(carga > 0 ? String(carga) : '');
+      rodadaIdx =
+        prox >= 0 ? prox : Math.max(0, block.exercise.series.length - 1);
+      fase = null;
+    } else if (isBlockComplete(block)) {
+      rodadaIdx = Math.max(0, block.exercicioA.series.length - 1);
+      fase = 'b';
     } else {
       rodadaIdx = firstIncompleteRodada(block);
       const aDone = block.exercicioA.series[rodadaIdx]?.completado;
       fase = aDone ? 'b' : 'a';
-      const ex = fase === 'a' ? block.exercicioA : block.exercicioB;
-      const carga = ex.series[rodadaIdx]?.peso_atual || 0;
-      setModalBlockIdx(blockIdx);
-      setModalRodadaIdx(rodadaIdx);
-      setBisetFase(fase);
-      setModalCarga(carga);
-      setModalCargaStr(carga > 0 ? String(carga) : '');
     }
+
+    const ex =
+      block.kind === 'simples'
+        ? block.exercise
+        : fase === 'b'
+          ? block.exercicioB
+          : block.exercicioA;
+    const carga = ex.series[rodadaIdx]?.peso_atual || 0;
+    setModalBlockIdx(blockIdx);
+    setModalRodadaIdx(rodadaIdx);
+    setBisetFase(fase);
+    setModalCarga(carga);
+    setModalCargaStr(carga > 0 ? String(carga) : '');
+  }
+
+  /** Retomar: 1ª incompleta, ou último exercício da ficha se a lista já concluiu tudo. */
+  function retomarExecucao() {
+    const { blockIdx, rodadaIdx, fase } = resolveResumePosition(blocks);
+    const block = blocks[blockIdx];
+    if (!block) return;
+    const ex =
+      block.kind === 'simples'
+        ? block.exercise
+        : fase === 'b'
+          ? block.exercicioB
+          : block.exercicioA;
+    const carga = ex.series[rodadaIdx]?.peso_atual || 0;
+    setModalBlockIdx(blockIdx);
+    setModalRodadaIdx(rodadaIdx);
+    setBisetFase(fase);
+    setModalCarga(carga);
+    setModalCargaStr(carga > 0 ? String(carga) : '');
   }
 
   const handlePesoChange = useCallback((exercicioId: string, serieOrdem: number, peso: number) => {
@@ -1010,6 +1128,43 @@ export default function ExecucaoTreinoPage() {
       })
     );
   }, []);
+
+  const handleRepsChange = useCallback(
+    (exercicioId: string, serieOrdem: number, reps: number | string) => {
+      setBlocks((prev) =>
+        prev.map((block) => {
+          if (block.kind === 'simples') {
+            if (block.exercise.id !== exercicioId) return block;
+            return {
+              ...block,
+              exercise: {
+                ...block.exercise,
+                series: block.exercise.series.map((s) =>
+                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps }
+                ),
+              },
+            };
+          }
+          const updateHalf = (half: 'exercicioA' | 'exercicioB') => {
+            if (block[half].id !== exercicioId) return block;
+            return {
+              ...block,
+              [half]: {
+                ...block[half],
+                series: block[half].series.map((s) =>
+                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps }
+                ),
+              },
+            };
+          };
+          const updatedA = updateHalf('exercicioA');
+          if (updatedA !== block) return updatedA;
+          return updateHalf('exercicioB');
+        })
+      );
+    },
+    []
+  );
 
   const handleCheck = useCallback((exercicioId: string, serieOrdem: number) => {
     if (!treinoIniciado) return;
@@ -1104,6 +1259,7 @@ export default function ExecucaoTreinoPage() {
       if (isUltimaSerie) {
         if (isUltimoBloco) {
           setModalBlockIdx(null);
+          handleFinalizar();
           return;
         }
         iniciarRest(ex.descanso, () => abrirModalBlock(modalBlockIdx + 1), {
@@ -1187,8 +1343,12 @@ export default function ExecucaoTreinoPage() {
           subtitleHighlight: 'Bi-Set concluído ✓',
         });
         iniciarRest(descanso, () => {
-          if (isUltimoBloco) setModalBlockIdx(null);
-          else abrirModalBlock(modalBlockIdx + 1);
+          if (isUltimoBloco) {
+            setModalBlockIdx(null);
+            handleFinalizar();
+          } else {
+            abrirModalBlock(modalBlockIdx + 1);
+          }
         });
       } else {
         const proxRodada = modalRodadaIdx + 1;
@@ -1235,7 +1395,9 @@ export default function ExecucaoTreinoPage() {
           nome_exercicio: ex.nome,
           series: ex.series.map(s => ({
             ordem: s.ordem,
-            reps: s.reps,
+            reps_prescritas: s.reps,
+            reps_executadas: s.reps_executadas ?? s.reps,
+            reps: s.reps_executadas ?? s.reps,
             tecnica: s.tecnica ?? null,
             tecnica_extra: s.tecnica_extra ?? null,
             peso_atual: s.peso_atual,
@@ -1246,6 +1408,7 @@ export default function ExecucaoTreinoPage() {
           duracao_segundos: elapsed,
           satisfacao_treino: feedbackSatisfacao || null,
           nivel_dor: feedbackDor,
+          nota_sessao: feedbackNota.trim() || null,
         },
         data_conclusao: agora,
       }));
@@ -1274,16 +1437,58 @@ export default function ExecucaoTreinoPage() {
         console.error('Erro ao atualizar ultimo_checkin:', profileErr);
       }
 
-      // Contar PRs batidos hoje
+      // PRs batidos hoje — schema: peso/reps (não carga_nova)
       const hoje = new Date().toISOString().split('T')[0];
-      const { data: prsData } = await supabaseClient
+      const { data: prsDetalhes } = await supabaseClient
         .from('recordes_pessoais')
-        .select('id', { count: 'exact', head: true })
+        .select('exercicio_id, peso, reps, exercicios_biblioteca(nome)')
         .eq('aluno_id', userId)
         .gte('conquistado_em', `${hoje}T00:00:00`)
-        .lte('conquistado_em', `${hoje}T23:59:59`);
+        .lte('conquistado_em', `${hoje}T23:59:59`)
+        .order('peso', { ascending: false });
 
-      setPrsCount(prsData?.length || 0);
+      const prsHoje = prsDetalhes ?? [];
+      setPrsCount(prsHoje.length);
+
+      const parseAnteriorPeso = (anterior?: string): number => {
+        if (!anterior || anterior === '—') return 0;
+        const m = anterior.match(/([\d.,]+)/);
+        return m ? parseFloat(m[1].replace(',', '.')) || 0 : 0;
+      };
+
+      type PrCand = { exercicioNome: string; cargaNova: number; cargaAnterior: number; delta: number };
+      const candidatos: PrCand[] = [];
+
+      for (const pr of prsHoje) {
+        const exId = pr.exercicio_id as string;
+        const cargaNova = Number(pr.peso) || 0;
+        const bib = pr.exercicios_biblioteca as { nome?: string } | { nome?: string }[] | null;
+        const nomeBib = Array.isArray(bib) ? bib[0]?.nome : bib?.nome;
+        const exSessao = exercicios.find((e) => e.id === exId);
+        const serieMatch =
+          exSessao?.series.find((s) => s.completado && Number(s.reps_executadas ?? s.reps) === Number(pr.reps))
+          ?? exSessao?.series.find((s) => s.completado && s.peso_atual === cargaNova)
+          ?? exSessao?.series.find((s) => s.completado);
+        const cargaAnterior = parseAnteriorPeso(serieMatch?.anterior);
+        candidatos.push({
+          exercicioNome: nomeBib || exSessao?.nome || 'Exercício',
+          cargaNova,
+          cargaAnterior,
+          delta: cargaNova - cargaAnterior,
+        });
+      }
+
+      candidatos.sort((a, b) => b.delta - a.delta || b.cargaNova - a.cargaNova);
+      const top = candidatos[0];
+      setPrPrincipal(
+        top
+          ? {
+              exercicioNome: top.exercicioNome,
+              cargaNova: top.cargaNova,
+              cargaAnterior: top.cargaAnterior,
+            }
+          : null,
+      );
 
       setSaved(true);
       haptic('success');
@@ -1342,6 +1547,8 @@ export default function ExecucaoTreinoPage() {
         sets={sets}
         exercicios={exercicios}
         coachUsername={coachUsername}
+        prsCount={prsCount}
+        prPrincipal={prPrincipal}
       />
     );
   }
@@ -1403,7 +1610,7 @@ export default function ExecucaoTreinoPage() {
           <Link
             href="/aluno/treinos"
             className="w-11 h-11 flex items-center justify-center transition-colors shrink-0"
-            style={{ color: '#555' }}
+            style={{ color: 'var(--text-secondary)' }}
             aria-label="Voltar para Minhas Rotinas"
           >
             <ArrowLeft size={20} />
@@ -1412,16 +1619,16 @@ export default function ExecucaoTreinoPage() {
           <div className="flex-1 min-w-0">
             <h1
               className="font-bold uppercase tracking-wide truncate"
-              style={{ color: '#1a1a1a', fontSize: '16px' }}
+              style={{ color: 'var(--text-primary)', fontSize: '16px' }}
             >
               {nomeRotina}
             </h1>
             {treinoIniciado ? (
-              <p className="mt-0.5" style={{ color: '#888', fontSize: '12px' }}>
+              <p className="mt-0.5" style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>
                 {setsCompletos}/{totalSets} sets
               </p>
             ) : (
-              <p className="mt-0.5" style={{ color: '#888', fontSize: '12px' }}>
+              <p className="mt-0.5" style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>
                 {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
               </p>
             )}
@@ -1431,24 +1638,24 @@ export default function ExecucaoTreinoPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowConfirmAbandon(true)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 active:opacity-70"
                 style={{
-                  background: 'var(--surface-2)',
-                  border: '1px solid rgba(0,0,0,0.08)',
-                  color: '#555',
+                  background: 'transparent',
+                  color: 'var(--brand-primary)',
                 }}
                 title="Descartar treino"
+                aria-label="Descartar treino"
               >
-                <X className="w-4 h-4" />
+                <Trash size={18} weight="bold" />
               </button>
               <div className="text-right">
                 <p
-                  className="font-mono tabular-nums lining-nums text-sm font-bold leading-none"
+                  className="font-sans tabular-nums lining-nums text-sm font-bold leading-none"
                   style={{ color: '#751BB4' }}
                 >
                   {formatDuration(elapsed)}
                 </p>
-                <p className="text-2xs" style={{ color: '#888' }}>{formatVolume(volume)}</p>
+                <p className="text-2xs" style={{ color: 'var(--text-tertiary)' }}>{formatVolume(volume)}</p>
               </div>
               <button
                 onClick={handleFinalizar}
@@ -1472,22 +1679,22 @@ export default function ExecucaoTreinoPage() {
                 className="rounded-[14px] p-6"
                 style={{
                   background: 'var(--surface-1)',
-                  border: '1px solid rgba(0,0,0,0.08)',
+                  border: '1px solid var(--border-subtle)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 }}
               >
                 <Link
                   href="/aluno/treinos"
                   className="inline-flex items-center gap-1.5 text-xs transition-colors mb-4"
-                  style={{ color: '#555' }}
+                  style={{ color: 'var(--text-secondary)' }}
                 >
                   <ArrowLeft size={16} />
                   Minhas Rotinas
                 </Link>
-                <h1 className="text-xl font-bold uppercase tracking-wide" style={{ color: '#1a1a1a' }}>
+                <h1 className="text-xl font-bold uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>
                   {nomeRotina}
                 </h1>
-                <p className="text-[13px] mt-1" style={{ color: '#888' }}>
+                <p className="text-[13px] mt-1" style={{ color: 'var(--text-tertiary)' }}>
                   {blockCount} blocos · Est. {estimateDurationMinFromBlocks(blocks)} min
                 </p>
                 {isDesktop && <div className="mt-5">{renderHistoricoChart()}</div>}
@@ -1534,15 +1741,15 @@ export default function ExecucaoTreinoPage() {
               <div
                 className="hidden lg:flex sticky top-0 z-10 py-3 items-center justify-between"
                 style={{
-                  background: 'rgba(245,245,247,0.95)',
-                  borderBottom: '1px solid rgba(0,0,0,0.08)',
+                  background: 'var(--surface-0)',
+                  borderBottom: '1px solid var(--border-subtle)',
                 }}
               >
                 <div className="flex items-center gap-2">
-                  <ArrowLeft size={18} style={{ color: '#555' }} />
-                  <span className="text-sm font-semibold" style={{ color: '#1a1a1a' }}>Exercícios</span>
+                  <ArrowLeft size={18} style={{ color: 'var(--text-secondary)' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Exercícios</span>
                 </div>
-                <span className="text-xs" style={{ color: '#888' }}>{blockCount} blocos</span>
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{blockCount} blocos</span>
               </div>
             )}
 
@@ -1552,10 +1759,7 @@ export default function ExecucaoTreinoPage() {
                 <p className="text-xs text-success font-medium flex-1">Treino em andamento</p>
                 <button
                   type="button"
-                  onClick={() => {
-                    const idx = blocks.findIndex((b) => !isBlockComplete(b));
-                    abrirModalBlock(idx >= 0 ? idx : 0);
-                  }}
+                  onClick={retomarExecucao}
                   className="text-[10px] font-semibold text-brand hover:underline"
                 >
                   Retomar →
@@ -1568,7 +1772,7 @@ export default function ExecucaoTreinoPage() {
                 <div
                   key={block.kind === 'simples' ? block.exercise.id : block.id}
                   className={index > 0 ? 'pt-2.5' : undefined}
-                  style={index > 0 ? { borderTop: '1px dashed rgba(0,0,0,0.08)' } : undefined}
+                  style={index > 0 ? { borderTop: '1px dashed var(--border-subtle)' } : undefined}
                 >
                   {block.kind === 'simples' ? (
                     <ExercicioCard
@@ -1577,8 +1781,10 @@ export default function ExecucaoTreinoPage() {
                       showAnteriorCol={hasHistorico}
                       isDesktop={isDesktop}
                       onPesoChange={(ordem, peso) => handlePesoChange(block.exercise.id, ordem, peso)}
+                      onRepsChange={(ordem, reps) => handleRepsChange(block.exercise.id, ordem, reps)}
                       onCheck={(ordem) => handleCheck(block.exercise.id, ordem)}
                       onVideoOpen={setVideoUrl}
+                      onCargaInfo={() => setCargaInfoOpen(true)}
                     />
                   ) : (
                     <BiSetGroupPreviewCard
@@ -1589,9 +1795,12 @@ export default function ExecucaoTreinoPage() {
                       gridCols={getSeriesGridCols(hasHistorico, isDesktop)}
                       onPesoChangeA={(ordem, peso) => handlePesoChange(block.exercicioA.id, ordem, peso)}
                       onPesoChangeB={(ordem, peso) => handlePesoChange(block.exercicioB.id, ordem, peso)}
+                      onRepsChangeA={(ordem, reps) => handleRepsChange(block.exercicioA.id, ordem, reps)}
+                      onRepsChangeB={(ordem, reps) => handleRepsChange(block.exercicioB.id, ordem, reps)}
                       onCheckA={(ordem) => handleCheck(block.exercicioA.id, ordem)}
                       onCheckB={(ordem) => handleCheck(block.exercicioB.id, ordem)}
                       onVideoOpen={setVideoUrl}
+                      onCargaInfo={() => setCargaInfoOpen(true)}
                     />
                   )}
                 </div>
@@ -1603,14 +1812,14 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── Rest Timer: bottom bar (só quando o modal de exercício está fechado) ── */}
       {restActive && modalBlockIdx === null && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-8px_32px_rgba(0,0,0,0.08)]"
-          style={{ background: 'var(--surface-1)', borderTop: '1px solid rgba(0,0,0,0.08)' }}
+        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-8px_32px_var(--border-subtle)]"
+          style={{ background: 'var(--surface-1)', borderTop: '1px solid var(--border-subtle)' }}
         >
           <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center gap-2">
             <button
               onClick={() => restAddSecs(-15)}
               className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
-              style={{ background: 'var(--surface-2)', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
+              style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
             >
               −15
             </button>
@@ -1624,7 +1833,7 @@ export default function ExecucaoTreinoPage() {
                   Pronto! →
                 </button>
               ) : (
-                <p className="font-mono text-3xl font-bold tabular-nums lining-nums tracking-display" style={{ color: '#1a1a1a' }}>
+                <p className="font-sans text-3xl font-bold tabular-nums lining-nums tracking-display" style={{ color: 'var(--text-primary)' }}>
                   {Math.floor(restRemaining / 60).toString().padStart(2, '0')}:{(restRemaining % 60).toString().padStart(2, '0')}
                 </p>
               )}
@@ -1633,7 +1842,7 @@ export default function ExecucaoTreinoPage() {
             <button
               onClick={() => restAddSecs(15)}
               className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
-              style={{ background: 'var(--surface-2)', color: '#555', border: '1px solid rgba(0,0,0,0.08)' }}
+              style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
             >
               +15
             </button>
@@ -1662,7 +1871,7 @@ export default function ExecucaoTreinoPage() {
               </div>
             )}
 
-            <h3 className="text-sm font-bold text-text-primary mb-4">Como foi o treino?</h3>
+            <h3 className="text-sm font-bold text-text-primary mb-4">Feedback do treino</h3>
 
             {/* Escala de Satisfação */}
             <div className="mb-4">
@@ -1692,10 +1901,10 @@ export default function ExecucaoTreinoPage() {
             </div>
 
             {/* Escala de Dor */}
-            <div className="mb-5">
+            <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Nível de Dor / Desconforto</p>
-                <span className="text-xs font-bold text-text-primary">{feedbackDor}/10</span>
+                <span className="text-xs font-bold tabular-nums lining-nums text-text-primary">{feedbackDor}/10</span>
               </div>
               <div className="relative flex items-center gap-2">
                 <span className="text-base">😌</span>
@@ -1735,6 +1944,20 @@ export default function ExecucaoTreinoPage() {
                 </div>
                 <span className="text-base">😣</span>
               </div>
+            </div>
+
+            {/* Nota da sessão */}
+            <div className="mb-5">
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
+                Como foi o treino? (opcional)
+              </label>
+              <textarea
+                value={feedbackNota}
+                onChange={(e) => setFeedbackNota(e.target.value.slice(0, 300))}
+                placeholder="Deixe uma nota sobre essa sessão..."
+                className="max-h-[120px] min-h-[72px] w-full resize-none rounded-xl border border-card bg-surface-2 p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                maxLength={300}
+              />
             </div>
 
             {/* Botões */}
@@ -1817,8 +2040,8 @@ export default function ExecucaoTreinoPage() {
               style={{ background: 'var(--surface-0)' }}
             >
               <p className="text-brand text-2xl font-bold">↓</p>
-              <p className="text-xl font-bold mt-1" style={{ color: '#1a1a1a' }}>{bisetTransitionName}</p>
-              <p className="text-xs mt-1" style={{ color: '#888' }}>agora</p>
+              <p className="text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{bisetTransitionName}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>agora</p>
             </div>
           )}
 
@@ -1832,35 +2055,47 @@ export default function ExecucaoTreinoPage() {
           <header
             className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 flex-shrink-0 pt-safe-top"
             style={{
-              background: 'rgba(245,245,247,0.95)',
-              borderBottom: '1px solid rgba(0,0,0,0.08)',
+              background: 'var(--surface-0)',
+              borderBottom: '1px solid var(--border-subtle)',
             }}
           >
             <button
               type="button"
               onClick={() => setModalBlockIdx(null)}
               className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
-              style={{ background: 'var(--surface-2)', color: '#555' }}
+              style={{ background: 'transparent', color: 'var(--brand-primary)' }}
               aria-label="Fechar execução"
             >
               <X size={20} />
             </button>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold leading-tight truncate" style={{ color: '#1a1a1a' }}>
-                {toTitleCase(modalEx.nome)}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h2 className="text-base font-bold leading-tight truncate min-w-0" style={{ color: 'var(--text-primary)' }}>
+                  {toTitleCase(modalEx.nome)}
+                </h2>
+                {isPerSideLoadEquipment(modalEx.equipamento, modalEx.nome) && (
+                  <CargaPorLadoInfoButton onClick={() => setCargaInfoOpen(true)} size={16} />
+                )}
                 {modalIsBiSet && (
-                  <span className="ml-1.5 inline-block text-[10px] font-bold uppercase text-brand bg-brand/10 rounded px-1.5 py-0.5 align-middle">
+                  <span className="ml-0.5 inline-block text-[10px] font-bold uppercase text-brand bg-brand/10 rounded px-1.5 py-0.5 align-middle shrink-0">
                     BI-SET {bisetFase === 'b' ? 'B/B' : 'A/B'}
                   </span>
                 )}
-              </h2>
+              </div>
+              <p
+                className="mt-0.5 text-[11px] tabular-nums lining-nums flex items-center gap-1"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                <Clock size={12} className="shrink-0" aria-hidden />
+                Descanso {formatRestTime(modalEx.descanso)}
+                <span className="mx-0.5" aria-hidden>·</span>
+                {formatDuration(elapsed)}
+              </p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-xs tabular-nums lining-nums" style={{ color: '#888' }}>
+              <p className="text-xs tabular-nums lining-nums" style={{ color: 'var(--text-tertiary)' }}>
                 Ex. {(modalBlockIdx ?? 0) + 1}/{blockCount}
-                {modalIsBiSet
-                  ? ` · Rodada ${modalRodadaIdx + 1}/${modalTotalRodadas} · A→B`
-                  : ` · Série ${modalRodadaIdx + 1}/${modalTotalRodadas}`}
+                {modalIsBiSet ? ` · Rodada ${modalRodadaIdx + 1}/${modalTotalRodadas} · A→B` : null}
               </p>
             </div>
           </header>
@@ -1871,7 +2106,7 @@ export default function ExecucaoTreinoPage() {
                 className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] border-brand"
                 style={{ background: 'var(--brand-subtle)' }}
               >
-                <p className="text-xs" style={{ color: '#555' }}>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   ↓ Em seguida: {modalPartnerEx.nome} · {modalPartnerEx.series[modalRodadaIdx]?.reps} reps
                   {modalPartnerEx.series[modalRodadaIdx]?.peso_atual
                     ? ` · ${modalPartnerEx.series[modalRodadaIdx]?.peso_atual} kg`
@@ -1885,147 +2120,40 @@ export default function ExecucaoTreinoPage() {
                 className="mx-4 mt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] border-brand"
                 style={{ background: 'var(--brand-subtle)' }}
               >
-                <p className="text-xs" style={{ color: '#555' }}>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   ⊙ Após esta série: {formatRestTime(modalBlock.descanso)} de descanso
                   {modalRodadaIdx < modalTotalRodadas - 1 ? ', depois repete' : ''}
                 </p>
               </div>
             )}
-            {/* GIF de demonstração (vídeo fica após o histórico) */}
-            {modalEx.gif_url && !modalEx.video_url && (
-              <div className="px-4 mt-4 mb-4">
-                <button
-                  onClick={() => setDemoImg(modalEx.gif_url!)}
-                  className="w-full h-11 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
-                  style={{
-                    background: 'var(--surface-1)',
-                    border: '1px solid rgba(0,0,0,0.08)',
-                    color: '#555',
-                  }}
-                >
-                  <Play className="w-4 h-4" fill="currentColor" />
-                  Ver demonstração
-                </button>
-              </div>
-            )}
-
-            {/* 3 cards de contexto: REPETIÇÕES / ÚLTIMA VEZ / TÉCNICA */}
-            <div className="mt-4 grid grid-cols-3 gap-2 px-4 mb-4">
-              <div
-                className="rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center"
-                style={{
-                  background: 'var(--surface-1)',
-                  border: '1px solid rgba(0,0,0,0.08)',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}
-              >
-                <span
-                  className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] mb-1"
-                  style={{ color: '#aaa' }}
-                >
-                  Repetições
-                </span>
-                <span
-                  className="text-[28px] lg:text-4xl font-extrabold font-kpi tabular-nums lining-nums leading-none"
-                  style={{ color: '#1a1a1a', letterSpacing: 'var(--tracking-display, -0.02em)' }}
-                >
-                  {modalSerie.reps}
-                </span>
-              </div>
-
-              <div
-                className="rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center justify-center"
-                style={{
-                  background: 'var(--surface-1)',
-                  border: '1px solid rgba(0,0,0,0.08)',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}
-              >
-                <span
-                  className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] mb-1"
-                  style={{ color: '#aaa' }}
-                >
-                  Última vez
-                </span>
-                <span
-                  className={cn(
-                    "text-center leading-tight font-kpi tabular-nums lining-nums",
-                    modalSerie.anterior
-                      ? "text-sm lg:text-base font-bold"
-                      : "text-[28px] lg:text-4xl font-extrabold"
-                  )}
-                  style={{ color: modalSerie.anterior ? '#1a1a1a' : '#bbb' }}
-                >
-                  {modalSerie.anterior || "—"}
-                </span>
-              </div>
-
-              {(() => {
-                const hasTecnica = !!(modalSerie.tecnica?.trim() || modalSerie.tecnica_extra?.trim());
-                const tecnicaLabel = modalSerie.tecnica_extra || modalSerie.tecnica || "";
-                const isLongLabel = tecnicaLabel.length > 8 || tecnicaLabel.includes(" ");
-                const expanded = techniqueCardExpanded && hasTecnica;
-                return (
+            {/* Técnica — único meta no topo, centralizado */}
+            {(() => {
+              const hasTecnica = !!(modalSerie.tecnica?.trim() || modalSerie.tecnica_extra?.trim());
+              if (!hasTecnica) return null;
+              const tecnicaLabel = (modalSerie.tecnica_extra || modalSerie.tecnica || '').trim();
+              const expanded = techniqueCardExpanded;
+              return (
+                <div className="flex justify-center px-4 py-3 mt-2">
                   <button
                     ref={tecnicaKpiRef}
                     type="button"
-                    onClick={() => {
-                      if (hasTecnica) setTechniqueCardExpanded((v) => !v);
-                    }}
-                    disabled={!hasTecnica}
+                    onClick={() => setTechniqueCardExpanded((v) => !v)}
                     aria-expanded={expanded}
                     aria-controls="tecnica-info-panel"
                     className={cn(
-                      "rounded-[12px] px-3.5 py-3 lg:px-5 lg:py-4 flex flex-col items-center relative transition-all",
-                      hasTecnica ? "cursor-pointer" : "cursor-default"
+                      'px-3 py-1.5 rounded-md bg-brand/10 text-brand text-[12px] font-semibold border border-brand/25',
+                      'inline-flex items-center gap-1.5 max-w-[min(100%,16rem)] min-h-11 touch-manipulation',
+                      expanded && 'bg-brand/15',
                     )}
-                    style={{
-                      background: expanded ? 'rgba(117, 27, 180,0.05)' : 'var(--surface-1)',
-                      border: expanded
-                        ? '1px solid rgba(117, 27, 180,0.2)'
-                        : '1px solid rgba(0,0,0,0.08)',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    }}
                   >
-                    <span
-                      className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-[0.15em] mb-1 flex items-center gap-1"
-                      style={{ color: '#aaa' }}
-                    >
-                      Técnica
-                      {hasTecnica && (
-                        <Info
-                          size={12}
-                          style={{ color: expanded ? '#751BB4' : '#bbb' }}
-                          weight={expanded ? 'fill' : 'regular'}
-                          aria-hidden
-                        />
-                      )}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-center leading-tight truncate w-full transition-colors",
-                        !hasTecnica
-                          ? "text-[28px] lg:text-4xl font-extrabold"
-                          : isLongLabel
-                            ? "text-base font-bold"
-                            : "text-[28px] lg:text-4xl font-extrabold"
-                      )}
-                      style={{
-                        color: !hasTecnica
-                          ? '#bbb'
-                          : expanded
-                            ? '#751BB4'
-                            : '#1a1a1a',
-                      }}
-                    >
-                      {tecnicaLabel || "—"}
-                    </span>
+                    <span className="truncate">{tecnicaLabel}</span>
+                    <Info size={14} weight={expanded ? 'fill' : 'regular'} aria-hidden />
                   </button>
-                );
-              })()}
-            </div>
+                </div>
+              );
+            })()}
 
-            <div ref={tecnicaPanelRef} id="tecnica-info-panel" className="mx-4 mb-4 empty:hidden">
+            <div ref={tecnicaPanelRef} id="tecnica-info-panel" className="mx-4 mb-2 empty:hidden">
               <StudentTechniqueCard
                 techniqueValue={modalSerie.tecnica}
                 extraValue={modalSerie.tecnica_extra}
@@ -2034,159 +2162,193 @@ export default function ExecucaoTreinoPage() {
               />
             </div>
 
-            {/* Campo de CARGA */}
-            <div className="mx-4 mt-4">
-              <p
-                className="text-[10px] font-semibold uppercase tracking-[0.1em] mb-3"
-                style={{ color: '#888' }}
-              >
-                Carga (kg)
+            {/* Display de carga (placar) */}
+            <div className="flex flex-col items-center gap-1 py-3 px-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
+                Carga
+                {isPerSideLoadEquipment(modalEx.equipamento, modalEx.nome) ? (
+                  <span className="normal-case tracking-normal font-medium text-text-tertiary"> · por lado</span>
+                ) : null}
               </p>
-              <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-5">
                 <button
                   type="button"
-                  onClick={() => {
-                    const newVal = Math.max(0, modalCarga - 2.5);
-                    setModalCarga(newVal);
-                    setModalCargaStr(String(newVal));
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    ajustarCarga(-2.5);
                   }}
-                  className="w-11 h-11 rounded-[10px] flex items-center justify-center text-xl font-bold transition-colors active:scale-95 shrink-0"
-                  style={{ background: 'var(--surface-2)', color: '#555' }}
+                  className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
                   aria-label="Diminuir carga"
                 >
-                  <Minus size={18} weight="bold" />
+                  <Minus size={20} weight="bold" />
                 </button>
 
-                <div
-                  className="flex-1 h-12 rounded-[12px] flex items-center justify-center"
-                  style={{
-                    background: 'var(--surface-1)',
-                    border: '1px solid rgba(0,0,0,0.10)',
-                  }}
-                >
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={modalCargaStr}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
-                        setModalCargaStr(raw);
-                        const num = parseFloat(raw);
-                        setModalCarga(isNaN(num) ? 0 : num);
-                      }
-                    }}
-                    placeholder="0"
-                    className="w-full bg-transparent border-0 text-center font-black font-kpi tabular-nums lining-nums focus:outline-none"
-                    style={{
-                      color: '#1a1a1a',
-                      fontSize: '24px',
-                      letterSpacing: '-0.02em',
-                      fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
-                    }}
-                  />
+                <div className="min-w-[100px] text-center">
+                  <div className="relative">
+                    <span
+                      className="block text-5xl font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none"
+                      aria-hidden
+                    >
+                      {modalCargaStr === '' ? '—' : modalCargaStr}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={modalCargaStr}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(',', '.');
+                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                          setModalCargaStr(raw);
+                          const num = parseFloat(raw);
+                          setModalCarga(isNaN(num) ? 0 : num);
+                        }
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.select();
+                      }}
+                      onBlur={() => {
+                        if (modalCargaStr !== '' && !isNaN(parseFloat(modalCargaStr))) {
+                          const normalized = String(Math.max(0, Math.round(parseFloat(modalCargaStr) * 100) / 100));
+                          setModalCargaStr(normalized);
+                          setModalCarga(parseFloat(normalized));
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
+                      style={{ fontSize: '16px' }}
+                      aria-label="Editar carga em kg"
+                    />
+                  </div>
+                  <span className="block text-base font-bold text-brand mt-0.5">kg</span>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    const newVal = modalCarga + 2.5;
-                    setModalCarga(newVal);
-                    setModalCargaStr(String(newVal));
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    ajustarCarga(2.5);
                   }}
-                  className="w-11 h-11 rounded-[10px] flex items-center justify-center text-xl font-bold text-white transition-colors active:scale-95 shrink-0"
-                  style={{
-                    background: 'var(--btn-primary-bg)',
-                    boxShadow: '0 2px 8px rgba(117, 27, 180,0.35)',
-                  }}
+                  className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
                   aria-label="Aumentar carga"
                 >
-                  <Plus size={18} weight="bold" />
+                  <Plus size={20} weight="bold" />
                 </button>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 mt-2.5">
-                {['-5', '-2.5', '+2.5', '+5'].map((inc) => (
-                  <button
-                    key={inc}
-                    type="button"
-                    onClick={() => {
-                      const val = parseFloat(inc);
-                      const newVal = Math.max(0, modalCarga + val);
-                      setModalCarga(newVal);
-                      setModalCargaStr(String(newVal));
-                    }}
-                    className="min-h-11 rounded-[8px] text-[13px] font-semibold tabular-nums lining-nums transition-colors active:scale-95"
-                    style={{ background: 'var(--surface-2)', color: '#555' }}
-                  >
-                    {inc}
-                  </button>
-                ))}
               </div>
             </div>
 
-            {/* Histórico de séries */}
-            <div className="mx-4 mt-4">
-              <button
-                type="button"
-                onClick={() => setShowSeriesHistory(v => !v)}
-                className="w-full flex items-center justify-between py-2 min-h-11"
-              >
-                <p
-                  className="text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: '#888' }}
-                >
-                  Histórico de Séries
-                </p>
-                <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: '#751BB4' }}>
-                  {showSeriesHistory ? "Ocultar" : "Mostrar"}
-                  <CaretDown
-                    size={14}
-                    className={cn("transition-transform duration-200", showSeriesHistory && "rotate-180")}
-                    aria-hidden
-                  />
-                </span>
-              </button>
-              {showSeriesHistory && (
-                <div
-                  className="rounded-[12px] overflow-hidden"
-                  style={{
-                    background: 'var(--surface-1)',
-                    border: '1px solid rgba(0,0,0,0.08)',
-                    borderRadius: 12,
-                    padding: '10px 0',
+            {/* Ajustes rápidos */}
+            <div className="flex gap-2 justify-center px-4">
+              {[
+                { delta: -5, label: '−5' },
+                { delta: -2.5, label: '−2.5' },
+                { delta: 2.5, label: '+2.5' },
+                { delta: 5, label: '+5' },
+              ].map(({ delta, label }) => (
+                <button
+                  key={delta}
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    ajustarCarga(delta);
                   }}
+                  className="min-w-[60px] h-11 rounded-[10px] bg-surface-2 text-sm font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
+                  aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} kg`}
                 >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Observação do coach — preenche o espaço entre ajustes e histórico */}
+            {modalEx.observacoes?.trim() ? (
+              <div className="mx-4 mt-4 rounded-xl bg-surface-1 px-4 py-3 flex gap-2">
+                <ChatCircle size={14} weight="fill" className="text-brand mt-0.5 shrink-0" aria-hidden />
+                <p className="text-xs text-text-secondary leading-relaxed">{modalEx.observacoes}</p>
+              </div>
+            ) : null}
+
+            {/* Histórico de séries */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between px-4 pb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-tertiary">
+                  Histórico de séries
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowSeriesHistory((v) => !v)}
+                  className="text-xs text-text-tertiary flex items-center gap-1 min-h-11 px-1 active:text-text-primary transition-colors touch-manipulation"
+                >
+                  {showSeriesHistory ? <CaretUp size={12} aria-hidden /> : <CaretDown size={12} aria-hidden />}
+                  {showSeriesHistory ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+
+              {showSeriesHistory && (
+                <div className="mx-4 rounded-xl bg-surface-2 overflow-hidden border border-border-default shadow-sm">
                   {modalIsBiSet && modalBlock?.kind === 'biset' ? (
-                    <div className="space-y-3 px-3">
+                    <div className="space-y-3 px-3 py-2">
                       {modalBlock.exercicioA.series.map((_, rodadaIdx) => {
                         const aSerie = modalBlock.exercicioA.series[rodadaIdx];
                         const bSerie = modalBlock.exercicioB.series[rodadaIdx];
                         if (!aSerie || !bSerie) return null;
                         const rows = [
-                          { label: 'A', nome: modalBlock.exercicioA.nome, exId: modalBlock.exercicioA.id, s: aSerie, color: 'text-brand' },
-                          { label: 'B', nome: modalBlock.exercicioB.nome, exId: modalBlock.exercicioB.id, s: bSerie, color: 'text-[#888]' },
+                          { label: 'A', nome: modalBlock.exercicioA.nome, exId: modalBlock.exercicioA.id, s: aSerie },
+                          { label: 'B', nome: modalBlock.exercicioB.nome, exId: modalBlock.exercicioB.id, s: bSerie },
                         ];
                         return (
                           <div
                             key={rodadaIdx}
-                            className={rodadaIdx > 0 ? 'pt-3' : ''}
-                            style={rodadaIdx > 0 ? { borderTop: '1px dashed rgba(0,0,0,0.06)' } : undefined}
+                            className={cn(rodadaIdx > 0 && 'pt-3 border-t border-dashed border-border-divider')}
                           >
-                            <p className="text-[10px] font-semibold uppercase mb-2" style={{ color: '#bbb' }}>
+                            <p className="text-[10px] font-semibold uppercase mb-2 text-text-disabled">
                               Rodada {rodadaIdx + 1}
                             </p>
-                            {rows.map(({ label, nome, exId, s, color }) => {
+                            {rows.map(({ label, nome, exId, s }) => {
                               const isAtualRow =
                                 rodadaIdx === modalRodadaIdx &&
                                 ((label === 'A' && bisetFase === 'a') || (label === 'B' && bisetFase !== 'a'));
+                              const pesoExibido = isAtualRow ? modalCarga : s.peso_atual;
                               return (
-                                <div key={label} className="flex items-center justify-between py-1 text-xs">
-                                  <span className="truncate flex-1" style={{ color: '#555' }}>{nome}</span>
-                                  <span className="mx-2" style={{ color: '#bbb' }}>{s.anterior || '—'}</span>
+                                <div
+                                  key={label}
+                                  className={cn(
+                                    'flex items-center justify-between gap-2 py-2 text-xs',
+                                    s.completado && 'opacity-80',
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      'w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold',
+                                      s.completado
+                                        ? 'bg-success text-white'
+                                        : 'bg-surface-2 text-text-secondary',
+                                    )}
+                                    aria-label={
+                                      s.completado
+                                        ? `Rodada ${rodadaIdx + 1} ${label} concluída`
+                                        : `Rodada ${rodadaIdx + 1} ${label}`
+                                    }
+                                  >
+                                    {s.completado ? (
+                                      <Check size={10} weight="bold" className="text-white" />
+                                    ) : (
+                                      label
+                                    )}
+                                  </span>
+                                  <span className="truncate flex-1 text-text-secondary">{nome}</span>
+                                  <span className="text-text-disabled tabular-nums lining-nums shrink-0">
+                                    {s.anterior || '—'}
+                                  </span>
                                   {isAtualRow ? (
-                                    <span className="font-medium font-kpi tabular-nums lining-nums" style={{ color: '#1a1a1a', fontWeight: 500 }}>
-                                      {modalCarga ? `${modalCarga}kg` : '—'}
+                                    <span className="font-bold tabular-nums lining-nums text-brand font-sans shrink-0">
+                                      {pesoExibido ? (
+                                        <>
+                                          {pesoExibido}
+                                          <span className="text-[10px] font-medium text-text-tertiary ml-0.5">kg</span>
+                                        </>
+                                      ) : (
+                                        '—'
+                                      )}
                                     </span>
                                   ) : (
                                     <input
@@ -2196,17 +2358,52 @@ export default function ExecucaoTreinoPage() {
                                       onChange={(e) => handlePesoChange(exId, s.ordem, parseFloat(e.target.value) || 0)}
                                       placeholder="—"
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
-                                      className="w-14 h-7 bg-transparent px-1 text-right font-kpi tabular-nums lining-nums focus:outline-none"
-                                      style={{
-                                        borderBottom: '1.5px solid rgba(117, 27, 180,0.3)',
-                                        color: '#1a1a1a',
-                                        fontSize: '12px',
-                                        fontWeight: 500,
-                                      }}
+                                      className="w-14 h-7 bg-transparent px-1 text-right font-bold font-sans tabular-nums lining-nums text-brand focus:outline-none border-b border-brand/30"
                                     />
                                   )}
-                                  <span className="text-accent mx-2 tabular-nums lining-nums">{s.reps}</span>
-                                  <span className={cn('text-[10px]', color)}>({label})</span>
+                                  {(() => {
+                                    const { abaixo } = resolveReps(s);
+                                    return (
+                                      <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        value={
+                                          s.reps_executadas !== undefined && s.reps_executadas !== ''
+                                            ? s.reps_executadas
+                                            : ''
+                                        }
+                                        placeholder={String(s.reps)}
+                                        onChange={(e) => {
+                                          const raw = e.target.value;
+                                          handleRepsChange(
+                                            exId,
+                                            s.ordem,
+                                            raw === '' ? '' : parseFloat(raw) || 0,
+                                          );
+                                        }}
+                                        aria-label={`Reps — ${nome}, rodada ${rodadaIdx + 1}. Prescrito: ${s.reps}`}
+                                        className={cn(
+                                          'w-9 shrink-0 bg-transparent text-center text-xs font-semibold',
+                                          'tabular-nums lining-nums font-sans focus:outline-none',
+                                          'placeholder:text-text-secondary',
+                                        )}
+                                        style={{
+                                          color: s.completado
+                                            ? '#39c75a'
+                                            : abaixo
+                                              ? 'var(--warning)'
+                                              : 'var(--text-primary)',
+                                          borderBottom: '1.5px solid transparent',
+                                        }}
+                                        onFocus={(e) => {
+                                          e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                        }}
+                                        onBlur={(e) => {
+                                          e.currentTarget.style.borderBottomColor = 'transparent';
+                                        }}
+                                      />
+                                    );
+                                  })()}
                                 </div>
                               );
                             })}
@@ -2216,201 +2413,242 @@ export default function ExecucaoTreinoPage() {
                     </div>
                   ) : (
                     <>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: GRID_COLS_HISTORICO,
-                      gap: `0 ${HISTORICO_COL_GAP}`,
-                      padding: `0 ${HISTORICO_ROW_PAD_X}px`,
-                      marginBottom: 6,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
-                      Set
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb' }}>
-                      Ant.
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'right' }}>
-                      Peso
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
-                      Reps
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
-                      T1
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
-                      T2
-                    </span>
-                  </div>
-                  {modalEx.series.map((s, idx) => {
-                    const isAtual = idx === modalRodadaIdx;
-                    return (
                       <div
-                        key={s.ordem}
+                        className="grid items-center border-b border-border-divider"
                         style={{
-                          display: 'grid',
                           gridTemplateColumns: GRID_COLS_HISTORICO,
-                          gap: `0 ${HISTORICO_COL_GAP}`,
-                          padding: `8px ${HISTORICO_ROW_PAD_X}px`,
-                          borderTop: idx > 0 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-                          alignItems: 'center',
-                          background: s.completado
-                            ? 'rgba(57,199,90,0.05)'
-                            : isAtual
-                              ? 'rgba(117, 27, 180,0.05)'
-                              : undefined,
+                          columnGap: HISTORICO_COL_GAP,
+                          padding: `6px ${HISTORICO_ROW_PAD_X}px`,
                         }}
                       >
-                        <div
-                          style={{
-                            width: 22,
-                            height: 22,
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            margin: '0 auto',
-                            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
-                            ...(s.completado
-                              ? { background: '#39c75a', color: '#fff' }
-                              : isAtual
-                                ? { background: '#751BB4', color: '#fff' }
-                                : { background: 'var(--surface-2)', color: '#888' }),
-                          }}
-                        >
-                          {idx + 1}
-                        </div>
-
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
-                            fontSize: 10,
-                            color: '#aaa',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                          title={s.anterior || '—'}
-                        >
-                          {s.anterior || '—'}
-                        </span>
-
-                        {isAtual ? (
+                        {[
+                          { label: 'SET', align: 'text-center' },
+                          { label: 'ANT.', align: 'text-left' },
+                          { label: 'PESO', align: 'text-right' },
+                          { label: 'REPS', align: 'text-center' },
+                          { label: 'TÉC', align: 'text-left' },
+                        ].map(({ label, align }) => (
                           <span
+                            key={label}
+                            className={cn(
+                              'text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled',
+                              align,
+                            )}
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                      {modalEx.series.map((s, idx) => {
+                        const isAtual = idx === modalRodadaIdx;
+                        const t1 = s.tecnica ? duasLetrasTenica(s.tecnica) : '';
+                        const t2 = s.tecnica_extra ? duasLetrasTenica(s.tecnica_extra) : '';
+                        return (
+                          <div
+                            key={s.ordem}
+                            className={cn(
+                              'grid items-center',
+                              idx < modalEx.series.length - 1 && 'border-b border-border-divider',
+                              s.completado && 'opacity-80',
+                              isAtual && !s.completado && 'bg-brand/[0.04]',
+                            )}
                             style={{
-                              fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
-                              fontSize: 12,
-                              fontWeight: 500,
-                              color: '#1a1a1a',
-                              textAlign: 'right',
-                              fontVariantNumeric: 'tabular-nums',
+                              gridTemplateColumns: GRID_COLS_HISTORICO,
+                              columnGap: HISTORICO_COL_GAP,
+                              padding: `10px ${HISTORICO_ROW_PAD_X}px`,
                             }}
                           >
-                            {modalCarga ? `${modalCarga}kg` : '—'}
-                          </span>
-                        ) : (
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            value={s.peso_atual || ''}
-                            onChange={(e) => handlePesoChange(modalEx.id, s.ordem, parseFloat(e.target.value) || 0)}
-                            placeholder="—"
-                            aria-label={`Editar peso da série ${idx + 1}`}
-                            className="w-full bg-transparent focus:outline-none"
-                            style={{
-                              fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
-                              fontSize: 12,
-                              fontWeight: 500,
-                              color: '#1a1a1a',
-                              textAlign: 'right',
-                              fontVariantNumeric: 'tabular-nums',
-                              borderBottom: '1.5px solid rgba(117, 27, 180,0.3)',
-                              height: 24,
-                            }}
-                          />
-                        )}
+                            <span
+                              className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mx-auto font-sans tabular-nums',
+                                s.completado
+                                  ? 'bg-success text-white'
+                                  : isAtual
+                                    ? 'bg-brand text-white'
+                                    : 'bg-surface-2 text-text-secondary',
+                              )}
+                              aria-label={
+                                s.completado
+                                  ? `Série ${idx + 1} concluída`
+                                  : `Série ${idx + 1}`
+                              }
+                            >
+                              {s.completado ? (
+                                <Check size={12} weight="bold" className="text-white" />
+                              ) : (
+                                idx + 1
+                              )}
+                            </span>
 
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: '#751BB4',
-                            textAlign: 'center',
-                            fontVariantNumeric: 'tabular-nums',
-                            fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
-                          }}
-                        >
-                          {s.reps || '—'}
-                        </span>
+                            <span
+                              className="text-xs text-text-disabled tabular-nums lining-nums font-sans truncate"
+                              title={s.anterior || '—'}
+                            >
+                              {s.anterior || '—'}
+                            </span>
 
-                        <span style={{ fontSize: 10, color: '#ccc', textAlign: 'center' }}>
-                          {s.tecnica ? s.tecnica.substring(0, 2).toUpperCase() : '—'}
-                        </span>
+                            {/* PESO — sempre <input> (mesma tipografia em todas as linhas) */}
+                            <div className="flex items-baseline justify-end gap-0.5 min-w-0">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                value={isAtual ? (modalCarga || '') : (s.peso_atual || '')}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  if (isAtual) {
+                                    setModalCarga(val);
+                                    setModalCargaStr(e.target.value === '' ? '' : String(val));
+                                  }
+                                  handlePesoChange(modalEx.id, s.ordem, val);
+                                }}
+                                placeholder="—"
+                                aria-label={`Editar peso da série ${idx + 1}`}
+                                className="w-full max-w-[44px] bg-transparent text-right tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: 700,
+                                  lineHeight: '22px',
+                                  height: 22,
+                                  fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                                  fontVariantNumeric: 'tabular-nums lining-nums',
+                                  color: 'var(--brand-primary)',
+                                  borderBottom: isAtual
+                                    ? '1.5px solid transparent'
+                                    : '1.5px solid rgba(117, 27, 180, 0.3)',
+                                  WebkitTextFillColor: 'var(--brand-primary)',
+                                }}
+                              />
+                              {(isAtual ? modalCarga : s.peso_atual) ? (
+                                <span
+                                  className="shrink-0 text-text-tertiary"
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 500,
+                                    lineHeight: '22px',
+                                  }}
+                                >
+                                  kg
+                                </span>
+                              ) : null}
+                            </div>
 
-                        <span style={{ fontSize: 10, color: '#ccc', textAlign: 'center' }}>
-                          {s.tecnica_extra ? s.tecnica_extra.substring(0, 2).toUpperCase() : '—'}
-                        </span>
-                      </div>
-                    );
-                  })}
+                            {(() => {
+                              const { abaixo } = resolveReps(s);
+                              return (
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  value={
+                                    s.reps_executadas !== undefined && s.reps_executadas !== ''
+                                      ? s.reps_executadas
+                                      : ''
+                                  }
+                                  placeholder={String(s.reps)}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    handleRepsChange(
+                                      modalEx.id,
+                                      s.ordem,
+                                      raw === '' ? '' : parseFloat(raw) || 0,
+                                    );
+                                  }}
+                                  aria-label={`Reps da série ${idx + 1}. Prescrito: ${s.reps}`}
+                                  className={cn(
+                                    'w-full max-w-[36px] mx-auto bg-transparent text-center',
+                                    'tabular-nums lining-nums font-sans focus:outline-none',
+                                    'placeholder:text-text-primary placeholder:opacity-90',
+                                  )}
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                    fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                                    color: s.completado
+                                      ? '#39c75a'
+                                      : abaixo
+                                        ? 'var(--warning)'
+                                        : 'var(--text-primary)',
+                                    borderBottom: '1.5px solid rgba(117, 27, 180, 0.35)',
+                                    height: 22,
+                                  }}
+                                  onFocus={(e) => {
+                                    e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.7)';
+                                  }}
+                                  onBlur={(e) => {
+                                    e.currentTarget.style.borderBottomColor = 'rgba(117, 27, 180, 0.35)';
+                                  }}
+                                />
+                              );
+                            })()}
+
+                            <div className="flex gap-1 justify-start items-center flex-wrap">
+                              {t1 ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand/15 text-brand border border-brand/20">
+                                  {t1}
+                                </span>
+                              ) : null}
+                              {t2 ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-surface-3 text-text-tertiary">
+                                  {t2}
+                                </span>
+                              ) : null}
+                              {!t1 && !t2 ? (
+                                <span className="text-[9px] text-text-disabled">—</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </>
                   )}
                 </div>
               )}
             </div>
 
+            {/* Preview de vídeo / gif — abaixo do histórico */}
             {modalEx.video_url ? (
-              <VideoPlayerCard
-                videoUrl={modalEx.video_url}
-                exercicioNome={modalEx.nome}
-              />
-            ) : !modalEx.gif_url ? (
-              <div
-                className="mx-4 mt-4 rounded-[14px] flex-shrink-0"
-                style={{
-                  background: 'rgba(0,0,0,0.03)',
-                  border: '1px solid rgba(0,0,0,0.06)',
-                }}
-              >
-                <div className="flex items-center gap-2.5 px-4 py-3">
-                  <Video className="w-4 h-4 flex-shrink-0" style={{ color: '#ccc' }} />
-                  <div>
-                    <p className="text-[12px] font-medium" style={{ color: '#999' }}>
-                      Sem demonstração disponível
-                    </p>
-                    <p className="text-[11px]" style={{ color: '#bbb' }}>
-                      Este exercício não possui vídeo nem GIF na biblioteca
-                    </p>
-                  </div>
-                </div>
+              <div className="pb-2">
+                <VideoPlayerCard videoUrl={modalEx.video_url} exercicioNome={modalEx.nome} />
               </div>
+            ) : modalEx.gif_url ? (
+              <button
+                type="button"
+                onClick={() => setDemoImg(modalEx.gif_url!)}
+                className="mx-4 mt-4 mb-2 w-[calc(100%-2rem)] overflow-hidden rounded-[14px] bg-surface-1 active:opacity-90 transition-opacity touch-manipulation"
+                aria-label="Ver demonstração do exercício"
+              >
+                <img
+                  src={modalEx.gif_url}
+                  alt=""
+                  className="w-full h-[180px] object-cover"
+                  loading="lazy"
+                />
+              </button>
             ) : null}
           </div>
 
-          {/* Botão fixo no rodapé */}
-          <div
-            className="absolute bottom-0 left-0 right-0 px-4 pt-3 flex flex-col gap-1.5 pb-[calc(1rem+env(safe-area-inset-bottom))]"
-            style={{
-              background: 'linear-gradient(to top, var(--surface-0) 60%, color-mix(in srgb, var(--surface-0) 85%, transparent) 85%, transparent)',
-            }}
-          >
+          {/* Bottom bar */}
+          <div className="absolute bottom-0 left-0 right-0 z-20 bg-surface-0/95 backdrop-blur-md border-t border-border-divider px-4 pt-3 flex flex-col gap-1.5 pb-[max(12px,env(safe-area-inset-bottom))]">
             <button
               type="button"
-              onClick={concluirSerieModal}
-              disabled={restActive || bisetFase === 'transicao'}
-              className="w-full min-h-[52px] rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-40"
-              style={{
-                background: 'var(--btn-primary-bg)',
-                boxShadow: '0 4px 16px rgba(117, 27, 180,0.40)',
+              onClick={() => {
+                // Lista já concluiu todos os blocos → só finalizar (não re-marcar série)
+                const treinoConcluidoNaLista = blocks.length > 0 && blocks.every(isBlockComplete);
+                if (treinoConcluidoNaLista) {
+                  setModalBlockIdx(null);
+                  handleFinalizar();
+                  return;
+                }
+                concluirSerieModal();
               }}
+              disabled={restActive || bisetFase === 'transicao'}
+              className="btn-primary w-full min-h-[52px] rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-40 touch-manipulation"
             >
               <Check size={18} weight="bold" />
               {(() => {
+                const treinoConcluidoNaLista = blocks.length > 0 && blocks.every(isBlockComplete);
+                if (treinoConcluidoNaLista) {
+                  return 'Finalizar treino';
+                }
                 if (modalIsBiSet && modalPartnerEx && modalBlock?.kind === 'biset') {
                   if (bisetFase === 'a') {
                     return `Concluir ${modalEx.nome} → ${modalPartnerEx.nome}`;
@@ -2418,14 +2656,14 @@ export default function ExecucaoTreinoPage() {
                   const isUltimaRodada = modalRodadaIdx >= modalTotalRodadas - 1;
                   if (isUltimaRodada) {
                     return modalBlockIdx !== null && modalBlockIdx >= blocks.length - 1
-                      ? 'Concluir treino'
+                      ? 'Finalizar treino'
                       : `Concluir ${modalEx.nome} → Finalizar Bi-Set`;
                   }
                   return `Concluir ${modalEx.nome} → Descanso ${formatRestTime(modalBlock.descanso)}`;
                 }
                 if (modalRodadaIdx >= modalTotalRodadas - 1) {
                   return modalBlockIdx !== null && modalBlockIdx >= blocks.length - 1
-                    ? 'Concluir treino'
+                    ? 'Finalizar treino'
                     : 'Concluir exercício';
                 }
                 return `Concluir série ${modalRodadaIdx + 1}/${modalTotalRodadas}`;
@@ -2433,9 +2671,9 @@ export default function ExecucaoTreinoPage() {
             </button>
             {modalBlockIdx !== null && modalBlockIdx < blocks.length - 1 && modalRodadaIdx >= modalTotalRodadas - 1 && !modalIsBiSet && (
               <button
+                type="button"
                 onClick={() => { setModalBlockIdx(null); }}
-                className="w-full h-10 text-xs transition-colors"
-                style={{ color: '#888' }}
+                className="w-full h-10 text-xs text-text-tertiary transition-colors touch-manipulation"
               >
                 Fechar e voltar à lista
               </button>
@@ -2446,6 +2684,7 @@ export default function ExecucaoTreinoPage() {
 
       {/* ── YouTube player ── */}
       {videoUrl && <YouTubePlayer videoUrl={videoUrl} onClose={() => setVideoUrl(null)} />}
+      <CargaPorLadoInfoModal open={cargaInfoOpen} onClose={() => setCargaInfoOpen(false)} />
 
       {/* ── Demonstração em imagem (sob demanda) ── */}
       {demoImg && (

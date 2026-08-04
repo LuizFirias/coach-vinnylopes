@@ -41,6 +41,10 @@ export async function GET(req: Request) {
                 <li><a href="/api/auth/preview-email?template=first-workout">9. Primeiro Treino Concluído</a></li>
                 <li><a href="/api/auth/preview-email?template=first-student">10. Primeiro Aluno Cadastrado</a></li>
               </ul>
+              <p style="margin-top:28px;font-size:13px;color:#666;">
+                Também disponível:
+                <a href="/dev/share-cards" style="color:#751BB4;">Cards compartilháveis pós-treino</a>
+              </p>
             </div>
           </body>
         </html>

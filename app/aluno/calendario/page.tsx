@@ -116,6 +116,13 @@ export default function AlunoCalendario() {
             volumeTotal,
             totalSets,
             exercises: parsedExercises,
+            satisfacao: (ds0.satisfacao_treino as string | null | undefined) || null,
+            nivelDor:
+              typeof ds0.nivel_dor === "number"
+                ? ds0.nivel_dor
+                : typeof ds0.nivel_dor === "string" && ds0.nivel_dor !== ""
+                  ? Number(ds0.nivel_dor)
+                  : null,
           };
         }
       );

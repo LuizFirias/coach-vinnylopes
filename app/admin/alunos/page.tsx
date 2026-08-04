@@ -25,6 +25,7 @@ import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 import { textIncludes } from "@/lib/utils/textNormalize";
+import { withReturnUrl } from "@/lib/utils/adminNav";
 import {
   fetchCoachCustomPlans,
   mergedPlans,
@@ -260,7 +261,9 @@ export default function AdminAlunosPage() {
         {/* ── Page Header ── */}
         <div className="flex items-center justify-end gap-4">
           <button
-            onClick={() => router.push("/admin/alunos/novo")}
+            onClick={() =>
+              router.push(withReturnUrl("/admin/alunos/novo", "/admin/alunos"))
+            }
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10 w-fit"
           >
             <Plus size={13} weight="bold" /> Adicionar Aluno
@@ -275,7 +278,9 @@ export default function AdminAlunosPage() {
           <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
             <StudentsEmptyState
               variant="no-students"
-              onAddStudent={() => router.push("/admin/alunos/novo")}
+              onAddStudent={() =>
+                router.push(withReturnUrl("/admin/alunos/novo", "/admin/alunos"))
+              }
             />
           </div>
         ) : (
@@ -338,7 +343,7 @@ export default function AdminAlunosPage() {
                 <div className="hidden lg:block w-px h-7 bg-border-divider shrink-0" />
 
                 <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto lg:justify-end lg:ml-auto">
-                  <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 rounded-lg p-1 h-9 bg-brand-subtle/60">
+                  <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 rounded-lg p-1 h-9">
                     {(["todos", "ativos", "pendentes", "inativos"] as const).map((status) => (
                       <button
                         key={status}
@@ -346,10 +351,10 @@ export default function AdminAlunosPage() {
                         style={{ touchAction: "manipulation" }}
                         aria-pressed={statusFilter === status}
                         className={cn(
-                          "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-7 flex items-center justify-center border-0 cursor-pointer",
+                          "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md transition-all h-7 flex items-center justify-center border-0 cursor-pointer bg-transparent",
                           statusFilter === status
-                            ? "bg-brand/20 text-brand shadow-sm"
-                            : "bg-transparent text-text-tertiary hover:text-text-primary"
+                            ? "font-bold text-brand"
+                            : "text-text-tertiary hover:text-text-primary",
                         )}
                       >
                         {status}
@@ -401,7 +406,12 @@ export default function AdminAlunosPage() {
                   <button onClick={handleResetFilters} className="btn-secondary text-[11px] py-1.5 px-3 rounded-lg">
                     Limpar filtros
                   </button>
-                  <button onClick={() => router.push("/admin/alunos/novo")} className="btn-primary text-[11px] py-1.5 px-3 rounded-lg">
+                  <button
+                    onClick={() =>
+                      router.push(withReturnUrl("/admin/alunos/novo", "/admin/alunos"))
+                    }
+                    className="btn-primary text-[11px] py-1.5 px-3 rounded-lg"
+                  >
                     Adicionar novo aluno
                   </button>
                 </div>
@@ -415,6 +425,11 @@ export default function AdminAlunosPage() {
                   const expiration = row.data_expiracao ? new Date(row.data_expiracao) : null;
                   const isExpired = expiration && expiration < new Date();
                   const isActive = isAtivo && (!expiration || expiration >= new Date());
+                  const dias = diasRestantes(row.data_expiracao);
+                  const duracaoMeses =
+                    mergedPlans(planosPersonalizados).find((p) => p.slug === row.tipo_plano)
+                      ?.duracao_meses ?? 1;
+                  const alerta = isArquivado ? null : nivelAlerta(dias, duracaoMeses);
 
                   return (
                     <MobileListRow
@@ -435,7 +450,7 @@ export default function AdminAlunosPage() {
                       topRight={
                         <button
                           type="button"
-                          onClick={() => router.push(`/admin/aluno/${row.id}`)}
+                          onClick={() => router.push(withReturnUrl(`/admin/aluno/${row.id}`, "/admin/alunos"))}
                           className="text-brand text-xs font-medium hover:underline"
                         >
                           Ver perfil →
@@ -451,8 +466,22 @@ export default function AdminAlunosPage() {
                           {expiration && (
                             <>
                               <span className="text-brand/50 shrink-0 mx-0.5" aria-hidden>•</span>
-                              <span className="shrink-0 whitespace-nowrap">
-                                vence {expiration.toLocaleDateString("pt-BR")}
+                              <span
+                                className={cn(
+                                  "shrink-0 whitespace-nowrap font-medium",
+                                  alerta === "vencido" && "text-danger",
+                                  alerta === "semana" && "text-warning",
+                                  alerta === "mes" && "text-amber-500",
+                                  !alerta && "text-text-tertiary",
+                                )}
+                              >
+                                {alerta === "vencido"
+                                  ? `vencido${dias != null ? ` há ${Math.abs(dias)}d` : ""}`
+                                  : alerta === "semana" && dias != null
+                                    ? dias === 0
+                                      ? "vence hoje"
+                                      : `vence em ${dias}d`
+                                    : `vence ${expiration.toLocaleDateString("pt-BR")}`}
                               </span>
                             </>
                           )}
@@ -497,7 +526,7 @@ export default function AdminAlunosPage() {
                         return (
                           <tr
                             key={row.id}
-                            onClick={() => router.push(`/admin/aluno/${row.id}`)}
+                            onClick={() => router.push(withReturnUrl(`/admin/aluno/${row.id}`, "/admin/alunos"))}
                             className={cn(
                               "border-b border-divider/50 last:border-b-0 cursor-pointer transition-colors hover:bg-surface-2/40",
                               isArquivado && "opacity-60",
@@ -595,7 +624,7 @@ export default function AdminAlunosPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  router.push(`/admin/aluno/${row.id}`);
+                                  router.push(withReturnUrl(`/admin/aluno/${row.id}`, "/admin/alunos"));
                                 }}
                                 className="text-[13px] font-medium text-brand hover:underline"
                               >

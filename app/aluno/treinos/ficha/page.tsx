@@ -809,7 +809,7 @@ function FichaContent() {
               className="bg-surface-1 border border-card shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-lg transition-all"
             >
               {/* Cabeçalho do exercício */}
-              <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+              <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <h3
@@ -818,7 +818,7 @@ function FichaContent() {
                     >
                       {toTitleCase(exercicio.nome)}
                     </h3>
-                    <p style={{ fontSize: 11, color: '#aaa' }}>
+                    <p style={{ fontSize: 11, color: 'var(--text-disabled)' }}>
                       Descanso: {exercicio.descanso}
                     </p>
                   </div>
@@ -899,19 +899,19 @@ function FichaContent() {
                           marginBottom: 6,
                         }}
                       >
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                           Set
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)' }}>
                           Ant.
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'right' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'right' }}>
                           Peso
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                           Reps
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                           T1
                         </span>
                         <span
@@ -920,7 +920,7 @@ function FichaContent() {
                             fontWeight: 700,
                             textTransform: 'uppercase',
                             letterSpacing: '0.08em',
-                            color: '#bbb',
+                            color: 'var(--text-disabled)',
                             textAlign: 'center',
                             display: 'flex',
                             alignItems: 'center',
@@ -931,7 +931,7 @@ function FichaContent() {
                           T2
                           <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} className="text-[8px]" />
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bbb', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                           ✓
                         </span>
                       </div>
@@ -968,8 +968,8 @@ function FichaContent() {
                                   fontWeight: 700,
                                   margin: '0 auto',
                                   flexShrink: 0,
-                                  background: serie.completado ? '#39c75a' : '#ebebf0',
-                                  color: serie.completado ? '#fff' : '#888',
+                                  background: serie.completado ? '#39c75a' : 'var(--filter-bg)',
+                                  color: serie.completado ? '#fff' : 'var(--text-tertiary)',
                                 }}
                               >
                                 {sIdx + 1}
@@ -981,7 +981,7 @@ function FichaContent() {
                                 style={{
                                   fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
                                   fontSize: 10,
-                                  color: serie.completado ? '#ccc' : '#aaa',
+                                  color: serie.completado ? 'var(--text-disabled)' : 'var(--text-disabled)',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -1004,11 +1004,11 @@ function FichaContent() {
                                     height: 28,
                                     fontSize: 14,
                                     fontWeight: 500,
-                                    background: '#ebebf0',
-                                    border: '1px solid rgba(0,0,0,0.10)',
+                                    background: 'var(--filter-bg)',
+                                    border: '1px solid var(--border-subtle)',
                                     borderRadius: 6,
                                     textAlign: 'center',
-                                    color: '#1a1a1a',
+                                    color: 'var(--text-primary)',
                                     fontVariantNumeric: 'tabular-nums',
                                     fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
                                     outline: 'none',
@@ -1037,19 +1037,19 @@ function FichaContent() {
                                     onClick={() => setTecnicaInfoModal(serie.tecnica!)}
                                     style={{
                                       padding: '2px 4px',
-                                      background: '#ebebf0',
-                                      border: '1px solid rgba(0,0,0,0.08)',
+                                      background: 'var(--filter-bg)',
+                                      border: '1px solid var(--border-subtle)',
                                       borderRadius: 4,
                                       fontSize: 8,
                                       fontWeight: 700,
-                                      color: '#666',
+                                      color: 'var(--text-secondary)',
                                       textTransform: 'uppercase',
                                     }}
                                   >
                                     {serie.tecnica.substring(0, 2).toUpperCase()}
                                   </button>
                                 ) : (
-                                  <span style={{ fontSize: 10, color: '#ccc' }}>—</span>
+                                  <span style={{ fontSize: 10, color: 'var(--text-disabled)' }}>—</span>
                                 )}
                               </div>
 
@@ -1072,7 +1072,7 @@ function FichaContent() {
                                     {serie.tecnica_extra.substring(0, 2).toUpperCase()}
                                   </button>
                                 ) : (
-                                  <span style={{ fontSize: 10, color: '#ccc' }}>—</span>
+                                  <span style={{ fontSize: 10, color: 'var(--text-disabled)' }}>—</span>
                                 )}
                               </div>
 
@@ -1092,7 +1092,7 @@ function FichaContent() {
                                     flexShrink: 0,
                                     ...(serie.completado
                                       ? { background: '#39c75a', border: '1.5px solid #39c75a' }
-                                      : { background: 'transparent', border: '1.5px solid rgba(0,0,0,0.18)' }),
+                                      : { background: 'transparent', border: '1.5px solid var(--border-default)' }),
                                   }}
                                 >
                                   {serie.completado && <Check className="w-3.5 h-3.5 text-white" />}
@@ -1381,15 +1381,15 @@ function FichaContent() {
             ) : (
               <div
                 className="w-full border-y border-divider flex-shrink-0"
-                style={{ background: 'rgba(0,0,0,0.03)' }}
+                style={{ background: 'var(--surface-2)' }}
               >
                 <div className="flex items-center gap-2.5 px-5 py-3">
-                  <Video className="w-4 h-4 flex-shrink-0" style={{ color: '#ccc' }} />
+                  <Video className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-disabled)' }} />
                   <div>
-                    <p className="text-[12px] font-medium" style={{ color: '#999' }}>
+                    <p className="text-[12px] font-medium" style={{ color: 'var(--text-tertiary)' }}>
                       Sem demonstração disponível
                     </p>
-                    <p className="text-[11px]" style={{ color: '#bbb' }}>
+                    <p className="text-[11px]" style={{ color: 'var(--text-disabled)' }}>
                       Este exercício não possui vídeo na biblioteca
                     </p>
                   </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -17,7 +18,6 @@ import {
   Image as ImageIcon,
   ChartLineUp,
   Trash,
-  Gear,
   CurrencyDollar,
   Clock,
   WarningCircle,
@@ -35,15 +35,16 @@ import {
   ArrowRight,
   FilePdf,
   HeartStraight,
+  DotsThree,
+  Check,
+  ChartLine,
+  CalendarBlank,
+  CaretDown,
+  Smiley,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
-import {
-  ResponsiveContainer,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
-} from "recharts";
-import { MuscleBodyFigure } from '@/app/components/MuscleBodyFigure';
 import { CoachCardioTab } from '@/app/components/admin/cardio/CoachCardioTab';
 import { MeasurementsView } from '@/app/components/measurements/MeasurementsView';
 import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
@@ -52,13 +53,9 @@ import {
   buildDailyAdherenceSeries,
   getStatusAdherenceWeight,
 } from '@/lib/nutrition/adherence';
-import { profileSexoToBodyGender, type BodyGender } from '@/lib/utils/bodyGender';
-import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
-import { resolveMuscleGroup } from '@/lib/constants/muscle-groups';
-import {
-  ChartLine, ChartPieSlice, PersonSimpleRun, CalendarBlank, Fire, CaretRight, Question
-} from "@phosphor-icons/react";
-import { FichasKanban } from "@/app/components/admin/alunos/FichasKanban";
+import { RotinasExpandableCards } from "@/app/components/admin/alunos/RotinasExpandableCards";
+import { AlunoObservacoesCard } from "@/app/components/admin/alunos/AlunoObservacoesCard";
+import { StudentPlanCard } from "@/app/components/admin/alunos/StudentPlanCard";
 import { KanbanWorkoutBuilderSheet } from "@/app/components/admin/alunos/KanbanWorkoutBuilderSheet";
 import {
   ExerciseLibraryModal,
@@ -66,6 +63,7 @@ import {
 } from "@/app/components/workout-builder/ExerciseLibraryModal";
 import {
   alunoTreinosReturnUrl,
+  readReturnUrl,
   withReturnUrl,
 } from "@/lib/utils/adminNav";
 import { parseFichaItems, serializeFichaItems } from "@/lib/utils/biset";
@@ -76,6 +74,12 @@ import {
   planDisplayName,
   type CoachPlan,
 } from "@/lib/coachPlans";
+import { RenovarPlanoModal } from "@/app/components/admin/alunos/RenovarPlanoModal";
+import {
+  FORMA_PAGAMENTO_LABEL,
+  type FormaPagamento,
+} from "@/lib/financeiro/types";
+import { sendCoachNotification } from "@/lib/notifications/sendCoachNotification";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -100,11 +104,13 @@ interface Profile {
 
 interface PlanoFinanceiroHistorico {
   id: string;
-  status_pagamento: 'pago' | 'pendente' | 'atrasado';
+  status_pagamento: 'pago' | 'pendente' | 'atrasado' | 'cancelado';
   tipo_plano: string; // slug — planos padrão ou personalizados do coach
   valor_plano: number;
   data_inicio: string;
   data_expiracao: string;
+  data_pagamento?: string | null;
+  forma_pagamento?: string | null;
   origem?: string | null;
   observacao?: string | null;
   registrado_em: string;
@@ -145,66 +151,6 @@ const fieldCls = cn(
   "appearance-none"
 );
 
-// ─── Muscle mapping for statistics ──────────────────────────────────────────
-const MUSCLE_MAP: Record<string, string[]> = {
-  'Peito Superior': ['chest-upper'],
-  'Peito Médio': ['chest-middle'],
-  'Peito Inferior': ['chest-lower'],
-  'Dorsais': ['lats-left', 'lats-right'],
-  'Trapézio': ['trapezius'],
-  'Lombar': ['lower-back'],
-  'Ombro Anterior': ['shoulders-front'],
-  'Ombro Lateral': ['shoulders-middle'],
-  'Ombro Posterior': ['shoulders-back'],
-  'Bíceps': ['biceps-left', 'biceps-right'],
-  'Tríceps': ['triceps-left', 'triceps-right'],
-  'Antebraço': ['forearms-left', 'forearms-right'],
-  'Quadríceps': ['quads-left', 'quads-right'],
-  'Posterior (Isquiotibiais)': ['hamstrings-left', 'hamstrings-right'],
-  'Panturrilha': ['calves-left', 'calves-right'],
-  'Glúteos': ['glutes'],
-  'Abdômen': ['abs'],
-  'Oblíquos': ['obliques-left', 'obliques-right'],
-};
-
-// Simplified muscle groups for radar
-const RADAR_GROUPS: Record<string, string[]> = {
-  'Costas': ['Dorsais', 'Trapézio', 'Lombar'],
-  'Peito': ['Peito Superior', 'Peito Médio', 'Peito Inferior'],
-  'Core': ['Abdômen', 'Oblíquos'],
-  'Braços': ['Bíceps', 'Tríceps', 'Antebraço'],
-  'Ombros': ['Ombro Anterior', 'Ombro Lateral', 'Ombro Posterior'],
-  'Pernas': ['Quadríceps', 'Posterior (Isquiotibiais)', 'Panturrilha', 'Glúteos'],
-};
-
-function MuscleBodyChart({
-  muscleIntensity,
-  side,
-  gender,
-}: {
-  muscleIntensity: Record<string, number>;
-  side: 'front' | 'back';
-  gender: BodyGender;
-}) {
-  const data = useMemo(
-    () => buildIntensityHighlightData(muscleIntensity),
-    [muscleIntensity],
-  );
-
-  return (
-    <MuscleBodyFigure
-      data={data}
-      side={side}
-      gender={gender}
-      scale={0.85}
-      defaultFill="#27272a"
-      defaultStroke="#3f3f46"
-      defaultStrokeWidth={1}
-      style={{ minHeight: 260, maxHeight: 300 }}
-    />
-  );
-}
-
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function AdminAlunoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -223,12 +169,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [cloning, setCloning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
-  const [editStatus, setEditStatus] = useState<string>("pago");
-  const [editPlano, setEditPlano] = useState<string>("mensal");
   const [planosPersonalizados, setPlanosPersonalizados] = useState<CoachPlan[]>([]);
-  const [editValorPlano, setEditValorPlano] = useState<string>("");
-  const [editDataInicio, setEditDataInicio] = useState<string>("");
-  const [savingProfile, setSavingProfile] = useState(false);
+  const [historicoMenuId, setHistoricoMenuId] = useState<string | null>(null);
+  const [cancellingHistoricoId, setCancellingHistoricoId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [planosAlimentares, setPlanosAlimentares] = useState<any[]>([]);
   const [uploadNutritionOpen, setUploadNutritionOpen] = useState(false);
@@ -241,9 +184,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [historicoTreinos, setHistoricoTreinos] = useState<any[]>([]);
   const [historicoFinanceiro, setHistoricoFinanceiro] = useState<PlanoFinanceiroHistorico[]>([]);
-  const [exerciciosBiblioteca, setExerciciosBiblioteca] = useState<Record<string, string>>({});
-  const [notasOriginais, setNotasOriginais] = useState<string>("");
-  const [salvandoNotas, setSalvandoNotas] = useState(false);
+  const [sessaoHistoricoExpandida, setSessaoHistoricoExpandida] = useState<string | null>(null);
 
   // Nutrition States
   const [digitalPlan, setDigitalPlan] = useState<any | null>(null);
@@ -251,26 +192,54 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [latestDigitalPlan, setLatestDigitalPlan] = useState<any | null>(null);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'cardio' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos' | 'observacoes'>('visao-geral');
+  const [activeTab, setActiveTab] = useState<'visao-geral' | 'treinos' | 'cardio' | 'nutricao' | 'evolucao' | 'financeiro' | 'fotos'>('visao-geral');
   const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
   const [treinoPdfOpen, setTreinoPdfOpen] = useState(false);
   const [nutritionPdfOpen, setNutritionPdfOpen] = useState(false);
+  const [nutritionPlanOpen, setNutritionPlanOpen] = useState(false);
   const [kanbanBuilderOpen, setKanbanBuilderOpen] = useState(false);
   const [addExerciseFichaId, setAddExerciseFichaId] = useState<string | null>(null);
   const [exerciseCatalog, setExerciseCatalog] = useState<LibraryExercise[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [routineMenuId, setRoutineMenuId] = useState<string | null>(null);
+  const [routineMenuPos, setRoutineMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [notifToast, setNotifToast] = useState<string | null>(null);
+  const [notifToastTone, setNotifToastTone] = useState<'ok' | 'error'>('ok');
+  const [sendingPhotosNotif, setSendingPhotosNotif] = useState(false);
+  const [coachUserId, setCoachUserId] = useState<string | null>(null);
 
   useEffect(() => { load(); }, [id]);
 
-  // Abre a aba indicada pela URL (?tab=), ex.: vindo da "Atividade recente" do dashboard
+  useEffect(() => {
+    if (!notifToast) return;
+    const t = setTimeout(() => setNotifToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [notifToast]);
+
+  // Abre a aba indicada pela URL (?tab=) e opcionalmente o modal de renovação
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    const abasPermitidas = ["visao-geral", "treinos", "cardio", "nutricao", "evolucao", "financeiro", "fotos", "observacoes"];
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    const abasPermitidas = ["visao-geral", "treinos", "cardio", "nutricao", "evolucao", "financeiro", "fotos"];
     if (tab && abasPermitidas.includes(tab)) {
       setActiveTab(tab as typeof activeTab);
     }
+    if (params.get("renovar") === "1") {
+      setActiveTab("financeiro");
+      setEditingProfile(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!historicoMenuId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setHistoricoMenuId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [historicoMenuId]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -321,6 +290,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       const boot = await getBootstrapProfile();
       if (boot) {
         setIsSuperAdmin(boot.role === "super_admin");
+        setCoachUserId(boot.userId);
 
         if (boot.role === "coach" || boot.role === "super_admin") {
           const { data: ownership } = await supabaseClient
@@ -357,7 +327,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         { data: ultimaFicha },
         { data: ultimoCheckin },
         { data: pontuacaoData },
-        { data: bibData },
         { data: historicoData },
         { data: activeDigPlan },
         { data: latestDigPlan },
@@ -399,8 +368,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           ),
         supabaseClient
           .from("aluno_planos_historico")
-          .select("id, status_pagamento, tipo_plano, valor_plano, data_inicio, data_expiracao, origem, observacao, registrado_em")
+          .select("id, status_pagamento, tipo_plano, valor_plano, data_inicio, data_expiracao, data_pagamento, forma_pagamento, origem, observacao, registrado_em")
           .eq("aluno_id", id)
+          .neq("status_pagamento", "cancelado")
           .order("registrado_em", { ascending: false }),
         supabaseClient
           .from("historico_treinos").select("data_conclusao").eq("aluno_id", id)
@@ -410,9 +380,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           .order("data_treino", { ascending: false }).limit(1).maybeSingle(),
         supabaseClient
           .from("pontuacao_alunos").select("total_pontos").eq("aluno_id", id).maybeSingle(),
-        supabaseClient
-          .from('exercicios_biblioteca')
-          .select('id, grupo_muscular'),
         supabaseClient
           .from("historico_treinos")
           .select("id, data_conclusao, dados_sessao, exercicio_id")
@@ -450,12 +417,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
       setProfile(prof as Profile);
       if (prof) {
-        setEditStatus(prof.status_pagamento || "pago");
-        setEditPlano(prof.tipo_plano || "mensal");
-        setEditValorPlano(prof.valor_plano != null ? String(prof.valor_plano) : "");
-        setEditDataInicio(prof.data_inicio ? new Date(prof.data_inicio).toISOString().slice(0, 10) : "");
-        setNotasOriginais(prof.orientacoes || "");
-
         // Carregar avatar se existir
         if (prof.avatar_url) {
           setAvatarUrl(getPublicStorageUrl('avatars', prof.avatar_url));
@@ -482,14 +443,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       }
       setUltimaAtividade(dataUltimaAtividade);
       setPontosTotais(pontuacaoData?.total_pontos || 0);
-
-      const bibMap: Record<string, string> = {};
-      bibData?.forEach((item) => {
-        if (item.grupo_muscular) {
-          bibMap[item.id] = resolveMuscleGroup(item.grupo_muscular);
-        }
-      });
-      setExerciciosBiblioteca(bibMap);
       setHistoricoTreinos(historicoData || []);
       setDigitalPlan(activeDigPlan);
       setLatestDigitalPlan(latestDigPlan);
@@ -563,6 +516,27 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       await load();
     } catch (err: any) {
       setError("Erro ao deletar ficha: " + err.message);
+    }
+  };
+
+  const handleSolicitarFotos = async () => {
+    if (sendingPhotosNotif) return;
+    setSendingPhotosNotif(true);
+    try {
+      const result = await sendCoachNotification(id, 'photos_reminder');
+      if (!result.ok) {
+        setNotifToastTone('error');
+        setNotifToast(result.error);
+        return;
+      }
+      setNotifToastTone('ok');
+      setNotifToast(
+        result.deduped
+          ? 'Fotos já solicitadas (notificação ainda não lida pelo aluno)'
+          : 'Notificação de fotos enviada para o aluno',
+      );
+    } finally {
+      setSendingPhotosNotif(false);
     }
   };
 
@@ -711,6 +685,28 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
 
 
+  const handleCancelarHistorico = async (itemId: string) => {
+    if (itemId === "profile-current") return;
+    if (!window.confirm("Cancelar este registro de pagamento? Ele deixará de contar no faturamento.")) {
+      return;
+    }
+    setCancellingHistoricoId(itemId);
+    setHistoricoMenuId(null);
+    setError(null);
+    try {
+      const { error: cancelError } = await supabaseClient
+        .from("aluno_planos_historico")
+        .update({ status_pagamento: "cancelado" })
+        .eq("id", itemId);
+      if (cancelError) throw cancelError;
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCancellingHistoricoId(null);
+    }
+  };
+
   const handleDeleteNutritionPlan = async (planId: string, pdfUrl: string) => {
     if (!window.confirm("Remover este plano alimentar permanentemente?")) return;
     try {
@@ -726,71 +722,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editDataInicio) return setError("Selecione a data de início do plano");
-    setSavingProfile(true);
-    setError(null);
-    try {
-      const dataInicio = new Date(editDataInicio);
-      const dataExpiracao = new Date(editDataInicio);
-      const planoSel = mergedPlans(planosPersonalizados).find((p) => p.slug === editPlano);
-      dataExpiracao.setMonth(dataExpiracao.getMonth() + (planoSel?.duracao_meses ?? 1));
-      const valorPlanoNumber = editValorPlano.trim().length ? Number(editValorPlano.replace(",", ".")) : null;
-      const { error } = await supabaseClient.from("profiles").update({
-        status_pagamento: editStatus,
-        tipo_plano: editPlano,
-        valor_plano: Number.isFinite(valorPlanoNumber) ? valorPlanoNumber : null,
-        data_inicio: dataInicio.toISOString(),
-        data_expiracao: dataExpiracao.toISOString(),
-      }).eq("id", id);
-      if (error) throw error;
-
-      const currentInicio = profile?.data_inicio ? new Date(profile.data_inicio).toISOString().slice(0, 10) : "";
-      const shouldRegisterHistory =
-        editStatus === "pago" &&
-        Number.isFinite(valorPlanoNumber) &&
-        valorPlanoNumber !== null &&
-        (
-          profile?.status_pagamento !== "pago" ||
-          profile?.tipo_plano !== editPlano ||
-          Number(profile?.valor_plano ?? -1) !== valorPlanoNumber ||
-          currentInicio !== editDataInicio
-        );
-
-      if (shouldRegisterHistory) {
-        const coachId = (await getBootstrapProfile())?.userId;
-        if (!coachId) throw new Error("Sessão inválida para registrar histórico financeiro");
-
-        const { error: historyError } = await supabaseClient
-          .from("aluno_planos_historico")
-          .insert({
-            aluno_id: id,
-            coach_id: coachId,
-            status_pagamento: editStatus,
-            tipo_plano: editPlano,
-            valor_plano: valorPlanoNumber,
-            data_inicio: dataInicio.toISOString().slice(0, 10),
-            data_expiracao: dataExpiracao.toISOString().slice(0, 10),
-            origem: "manual_coach",
-            observacao: "Registro automático pela aba Financeiro",
-          });
-        if (historyError) throw historyError;
-      }
-
-      await load();
-      setEditingProfile(false);
-    } catch (err: any) {
-      setError(err?.message || String(err));
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
   const profileName = profile?.coaching_reference || profile?.full_name || "Aluno";
 
   // Calculations for profile overview
-  const activeRoutine = fichas.find(f => f.ativo)?.nome_rotina || "Nenhuma";
   
   // Weekly adhesion: count of sessions in last 7 days
   const completedThisWeek = historicoTreinos.filter(h => {
@@ -835,16 +769,36 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       ? "warn"
       : "neutral";
   const activeFicha = fichas.find((f) => f.ativo) || null;
-  const fichaAtualizadaLabel = (() => {
-    if (!activeFicha?.criado_em) return null;
-    const days = Math.floor(
-      (today.getTime() - new Date(activeFicha.criado_em).getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
-    if (days <= 0) return "Atualizada hoje";
-    if (days === 1) return "Atualizada há 1 dia";
-    return `Atualizada há ${days} dias`;
-  })();
+
+  /**
+   * Histórico vem de aluno_planos_historico. Assinaturas simuladas / seed
+   * costumam atualizar só profiles — nesse caso mostramos o plano atual do perfil.
+   */
+  const historicoExibido = useMemo((): PlanoFinanceiroHistorico[] => {
+    if (historicoFinanceiro.length > 0) return historicoFinanceiro;
+    if (!profile) return [];
+    const hasPlan =
+      Boolean(profile.tipo_plano) ||
+      profile.valor_plano != null ||
+      Boolean(profile.data_inicio) ||
+      Boolean(profile.data_expiracao);
+    if (!hasPlan) return [];
+
+    const status = (profile.status_pagamento || 'pendente') as PlanoFinanceiroHistorico['status_pagamento'];
+    return [
+      {
+        id: 'profile-current',
+        status_pagamento: status === 'pago' || status === 'atrasado' ? status : 'pendente',
+        tipo_plano: profile.tipo_plano || 'mensal',
+        valor_plano: Number(profile.valor_plano) || 0,
+        data_inicio: profile.data_inicio || new Date().toISOString(),
+        data_expiracao: profile.data_expiracao || profile.data_inicio || new Date().toISOString(),
+        origem: 'profile',
+        observacao: 'Plano atual do perfil',
+        registrado_em: profile.data_inicio || new Date().toISOString(),
+      },
+    ];
+  }, [historicoFinanceiro, profile]);
 
   // Overview Priorities list for this student
   const studentPriorities: { id: string; desc: string; type: 'danger' | 'warning' | 'info'; action: string; tab: any }[] = [];
@@ -931,45 +885,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   }
 
   // ── Derivações de Estatísticas de Treino do Aluno (Visão Coach) ─────────────
-  const weekMuscleIntensity = useMemo(() => {
-    const now = Date.now();
-    const countSets: Record<string, number> = {};
-    historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= 7 * 86400000).forEach(row => {
-      const grupo = resolveMuscleGroup(
-        exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
-      );
-      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
-      if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
-    });
-    const maxSets = Math.max(...Object.values(countSets), 1);
-    const intensity: Record<string, number> = {};
-    Object.entries(countSets).forEach(([g, c]) => { intensity[g] = Math.round((c / maxSets) * 10); });
-    return intensity;
-  }, [historicoTreinos, exerciciosBiblioteca]);
-
-  const alunoBodyGender = useMemo(
-    () => profileSexoToBodyGender(profile?.sexo),
-    [profile?.sexo],
-  );
-
-  const radarData30 = useMemo(() => {
-    const now = Date.now();
-    const countSets: Record<string, number> = {};
-    historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= 30 * 86400000).forEach(row => {
-      const grupo = resolveMuscleGroup(
-        exerciciosBiblioteca[row.exercicio_id] || row.dados_sessao?.grupo_muscular,
-      );
-      const series = (row.dados_sessao?.series || []).filter((s: any) => s.completado);
-      if (series.length) countSets[grupo] = (countSets[grupo] || 0) + series.length;
-    });
-    
-    return Object.entries(RADAR_GROUPS).map(([group, muscles]) => ({
-      subject: group,
-      value: muscles.reduce((sum, m) => sum + (countSets[m] || 0), 0),
-      fullMark: 100,
-    }));
-  }, [historicoTreinos, exerciciosBiblioteca]);
-
   const stats30 = useMemo(() => {
     const now = Date.now();
     const limit30 = 30 * 86400000;
@@ -995,6 +910,63 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       volume,
       minutes
     };
+  }, [historicoTreinos]);
+
+  /** Sessões agrupadas por dia (para lista scrollável na visão geral). */
+  const sessoesRecentes = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      dateLabel: string;
+      sortKey: string;
+      nomeRotina: string;
+      exercicios: number;
+      satisfacao: string | null;
+      nivelDor: number | null;
+      exerciciosDetalhe: { nome: string; seriesCompletas: number }[];
+    }>();
+
+    for (const h of historicoTreinos) {
+      const iso = h.data_conclusao as string | undefined;
+      if (!iso) continue;
+      const dayKey = iso.slice(0, 10);
+      const ds = (h.dados_sessao ?? {}) as Record<string, unknown>;
+      const nome = (ds.nome_rotina as string | undefined) || 'Treino';
+      const key = `${dayKey}::${nome}`;
+      const series = (ds.series as Array<{ completado?: boolean }> | undefined) || [];
+      const seriesCompletas = series.filter((s) => s.completado).length;
+      const nomeEx = (ds.nome_exercicio as string | undefined) || 'Exercício';
+      const satisfacao = (ds.satisfacao_treino as string | null | undefined) || null;
+      const nivelDorRaw = ds.nivel_dor;
+      const nivelDor =
+        typeof nivelDorRaw === 'number'
+          ? nivelDorRaw
+          : typeof nivelDorRaw === 'string' && nivelDorRaw !== ''
+            ? Number(nivelDorRaw)
+            : null;
+
+      const existing = map.get(key);
+      if (existing) {
+        existing.exercicios += 1;
+        existing.exerciciosDetalhe.push({ nome: nomeEx, seriesCompletas });
+        if (!existing.satisfacao && satisfacao) existing.satisfacao = satisfacao;
+        if (existing.nivelDor == null && nivelDor != null && !Number.isNaN(nivelDor)) {
+          existing.nivelDor = nivelDor;
+        }
+      } else {
+        map.set(key, {
+          key,
+          dateLabel: new Date(iso).toLocaleDateString('pt-BR'),
+          sortKey: dayKey,
+          nomeRotina: nome,
+          exercicios: 1,
+          satisfacao,
+          nivelDor: nivelDor != null && !Number.isNaN(nivelDor) ? nivelDor : null,
+          exerciciosDetalhe: [{ nome: nomeEx, seriesCompletas }],
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
   }, [historicoTreinos]);
 
   const handleExportPDF = async () => {
@@ -1203,52 +1175,145 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-6">
+    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-4 md:gap-6">
 
-      {/* ── Page Header & Quick actions ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/admin/alunos')}
-            className="w-9 h-9 rounded-xl bg-surface-2 border-0 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight truncate font-display">
-              {profileName}
-            </h1>
-            <p className="text-xs text-text-tertiary truncate">{profile?.email}</p>
-          </div>
-        </div>
+      <button
+        type="button"
+        onClick={() =>
+          router.push(readReturnUrl(window.location.search, "/admin/alunos"))
+        }
+        aria-label="Voltar"
+        className="self-start -ml-1 flex h-9 w-9 items-center justify-center rounded-lg bg-transparent border-0 text-brand hover:bg-brand/10 transition-colors shrink-0"
+      >
+        <ArrowLeft className="w-5 h-5" weight="bold" />
+      </button>
 
-        {/* Quick action buttons — Nova Ficha full-width, Gerir/Enviar 50/50 abaixo */}
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 w-full lg:w-auto">
-          <button
-            onClick={() => {
-              setActiveTab("treinos");
-              setKanbanBuilderOpen(true);
-            }}
-            className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-2.5 py-1.5 bg-brand hover:bg-brand-hover text-text-on-brand text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95 shadow-sm shadow-brand/10"
-          >
-            <Plus size={10} weight="bold" /> Nova Ficha
-          </button>
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5">
-            <button
-              onClick={() => { setActiveTab('financeiro'); setEditingProfile(!editingProfile); }}
-              className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-2.5 py-1.5 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
-            >
-              <Gear size={10} /> Gerir Plano
-            </button>
-            <button
-              onClick={() => { setActiveTab('nutricao'); setUploadNutritionOpen(true); }}
-              className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-2.5 py-1.5 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-[9px] font-bold uppercase tracking-wider rounded-md transition-all active:scale-95"
-            >
-              <UploadSimple size={10} /> Enviar Plano
-            </button>
+      {/* ── Profile Base Card ── */}
+      {profile && (
+        <Card className="rounded-2xl border-0 p-4 bg-brand shadow-[0_12px_32px_rgba(147,51,234,0.35)] relative overflow-visible">
+          <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.14)_0%,transparent_55%)]" />
           </div>
-        </div>
-      </div>
+
+          <button
+            type="button"
+            aria-label="Mais opções"
+            aria-expanded={profileMenuOpen}
+            onClick={() => setProfileMenuOpen((o) => !o)}
+            className="absolute top-2.5 right-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <DotsThree size={20} weight="bold" />
+          </button>
+          {profileMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-20"
+                aria-hidden
+                onClick={() => setProfileMenuOpen(false)}
+              />
+              <div className="absolute right-2.5 top-11 z-30 min-w-[168px] rounded-lg border border-border-subtle bg-surface-1 py-1 shadow-elev-2">
+                {!profile.arquivado && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      setActiveTab("financeiro");
+                      setEditingProfile(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-text-primary hover:bg-surface-2 border-0 bg-transparent cursor-pointer"
+                  >
+                    <Coins size={14} />
+                    Renovar plano
+                  </button>
+                )}
+                {profile.arquivado ? (
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      void handleReactivate();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-text-primary hover:bg-surface-2"
+                  >
+                    Reativar aluno
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      void handleDelete();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-danger hover:bg-danger/5"
+                  >
+                    <Trash size={14} />
+                    Desativar acesso
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="relative flex items-start gap-3 pr-9">
+            {avatarUrl ? (
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/25 shrink-0">
+                <img src={avatarUrl || ""} alt={profileName} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-white/15 border border-white/20 flex items-center justify-center font-bold text-lg text-white shrink-0">
+                {profileName[0].toUpperCase()}
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h2 className="text-base font-bold text-white tracking-tight truncate">
+                  {profileName}
+                </h2>
+                {profile.arquivado ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white/70">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/45" />
+                    desativado
+                  </span>
+                ) : isPaid && !isExpired ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white/90">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#39c75a]" />
+                    ativo
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white/90">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#e05555]" />
+                    bloqueado
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-white/70 mt-0.5 truncate">{profile.email}</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-white/55">
+                {profile.data_inicio && (
+                  <span>Início: {new Date(profile.data_inicio).toLocaleDateString("pt-BR")}</span>
+                )}
+                {ultimaAtividade && (
+                  <span>Última: {new Date(ultimaAtividade).toLocaleDateString("pt-BR")}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Quick action — Nova Ficha */}
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab("treinos");
+          setKanbanBuilderOpen(true);
+        }}
+        className="inline-flex items-center justify-center gap-1.5 w-full min-h-11 px-3 py-3 bg-brand hover:bg-brand-hover text-text-on-brand text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all active:scale-[0.98] shadow-sm shadow-brand/10"
+      >
+        <Plus size={14} weight="bold" /> Nova Ficha
+      </button>
 
       {/* ── Error Box ── */}
       {error && (
@@ -1286,133 +1351,198 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* ── Profile Base Card ── */}
-      {profile && (
-        <Card className="rounded-2xl border-0 p-6 bg-surface-1 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-transparent pointer-events-none" />
-          
-          <div className="relative flex items-center gap-5">
-            {avatarUrl ? (
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand/20 shrink-0 shadow-lg">
-                <img src={avatarUrl || ""} alt={profileName} className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className={cn(
-                "w-16 h-16 rounded-full bg-gradient-to-br flex items-center justify-center font-bold text-2xl text-white shrink-0 shadow-lg",
-                avatarGrad(profileName)
-              )}>
-                {profileName[0].toUpperCase()}
-              </div>
-            )}
+      {/* ── Rotinas (carrossel) + métricas ── */}
+      <div className="flex flex-col gap-4">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
+          Rotinas
+        </p>
+
+        {fichas.length === 0 ? (
+          <div className="rounded-xl border-0 bg-surface-1 px-4 py-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-bold text-text-primary tracking-tight truncate">
-                  {profileName}
-                </h2>
-                {profile.arquivado ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7a8aab]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#555555]" />
-                    desativado
-                  </span>
-                ) : isPaid && !isExpired ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#39c75a]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#39c75a]" />
-                    ativo
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#e05555]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#e05555]" />
-                    bloqueado
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-text-secondary mt-0.5">{profile.email}</p>
-              
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-2xs text-text-tertiary">
-                {profile.data_inicio && (
-                  <span>Início: {new Date(profile.data_inicio).toLocaleDateString("pt-BR")}</span>
-                )}
-                {ultimaAtividade && (
-                  <span>Última atividade: {new Date(ultimaAtividade).toLocaleDateString("pt-BR")}</span>
-                )}
-              </div>
+              <p className="text-sm font-semibold text-text-primary">Nenhuma rotina prescrita</p>
+              <p className="text-[11px] text-text-tertiary mt-0.5">
+                Crie uma ficha digital para este aluno.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("treinos");
+                setKanbanBuilderOpen(true);
+              }}
+              className="shrink-0 text-[11px] font-semibold text-brand"
+            >
+              + criar
+            </button>
           </div>
+        ) : (
+          <div
+            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pt-2 pb-5 scrollbar-hide"
+            style={{ scrollPaddingInline: '1rem', WebkitOverflowScrolling: 'touch' }}
+          >
+            {fichas.map((ficha) => {
+              const exCount = parseFichaItems(
+                (ficha.configuracao as { exercicios?: unknown[] })?.exercicios || [],
+              ).length;
+              const menuOpen = routineMenuId === ficha.id;
+              return (
+                <div
+                  key={ficha.id}
+                  className="relative w-[min(88%,20rem)] shrink-0 snap-start snap-always rounded-xl border-0 bg-surface-1 px-4 py-3.5 md:w-[min(100%,320px)] shadow-[0_0_0_1px_rgba(147,51,234,0.22),0_2px_16px_rgba(147,51,234,0.35)]"
+                >
+                  <div className="flex items-start gap-3 pr-7">
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0 text-brand">
+                      <Barbell size={18} weight="bold" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-text-primary truncate leading-tight">
+                        {ficha.nome_rotina || "Sem nome"}
+                      </p>
+                      <p className="text-[11px] text-text-tertiary mt-1">
+                        {exCount} exercício{exCount === 1 ? "" : "s"}
+                        {ficha.ativo ? " · ativa" : ""}
+                      </p>
+                    </div>
+                  </div>
 
-          <div className="relative flex items-center gap-2 shrink-0 md:self-center">
-            {profile.arquivado ? (
-              <Button variant="primary" size="sm" loading={deleting} onClick={handleReactivate}>
-                Reativar Aluno
-              </Button>
-            ) : (
-              <Button variant="danger" size="sm" leftIcon={<Trash className="w-4 h-4" />} loading={deleting} onClick={handleDelete}>
-                Desativar Acesso
-              </Button>
-            )}
+                  <div className="absolute top-2.5 right-2.5 z-10">
+                    <button
+                      type="button"
+                      aria-label={`Opções de ${ficha.nome_rotina}`}
+                      aria-expanded={menuOpen}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (routineMenuId === ficha.id) {
+                          setRoutineMenuId(null);
+                          setRoutineMenuPos(null);
+                          return;
+                        }
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const menuW = 148;
+                        setRoutineMenuPos({
+                          top: rect.bottom + 4,
+                          left: Math.min(
+                            Math.max(8, rect.right - menuW),
+                            window.innerWidth - menuW - 8,
+                          ),
+                        });
+                        setRoutineMenuId(ficha.id);
+                      }}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors"
+                    >
+                      <DotsThree size={18} weight="bold" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {typeof document !== "undefined" &&
+              routineMenuId &&
+              routineMenuPos &&
+              createPortal(
+                <>
+                  <div
+                    className="fixed inset-0 z-[80]"
+                    aria-hidden
+                    onClick={() => {
+                      setRoutineMenuId(null);
+                      setRoutineMenuPos(null);
+                    }}
+                  />
+                  <div
+                    role="menu"
+                    className="fixed z-[90] min-w-[148px] rounded-lg border border-border-subtle bg-surface-1 py-1 shadow-elev-2"
+                    style={{ top: routineMenuPos.top, left: routineMenuPos.left }}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        const fichaId = routineMenuId;
+                        setRoutineMenuId(null);
+                        setRoutineMenuPos(null);
+                        router.push(
+                          withReturnUrl(
+                            `/admin/aluno/${id}/ficha/${fichaId}`,
+                            alunoTreinosReturnUrl(id),
+                          ),
+                        );
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-text-primary hover:bg-surface-2"
+                    >
+                      <PencilSimple size={14} />
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        const ficha = fichas.find((f) => f.id === routineMenuId);
+                        setRoutineMenuId(null);
+                        setRoutineMenuPos(null);
+                        if (ficha) setSelectedRoutineForPreview(ficha);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-text-primary hover:bg-surface-2"
+                    >
+                      <Eye size={14} />
+                      Visualizar
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        const fichaId = routineMenuId;
+                        setRoutineMenuId(null);
+                        setRoutineMenuPos(null);
+                        if (fichaId) void handleDeleteFicha(fichaId);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-danger hover:bg-danger/5"
+                    >
+                      <Trash size={14} />
+                      Excluir
+                    </button>
+                  </div>
+                </>,
+                document.body,
+              )}
           </div>
-        </Card>
-      )}
+        )}
 
-      {/* ── Hero unificado (métricas neutras; cor só em exceção) ── */}
-      <div
-        className="rounded-xl border-0 bg-surface-1 px-5 py-4 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] items-center gap-6"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          {avatarUrl ? (
-            <div className="w-11 h-11 rounded-full overflow-hidden border-0 shrink-0">
-              <img src={avatarUrl} alt={profileName} className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div className="w-11 h-11 rounded-full bg-surface-2 border-0 flex items-center justify-center font-bold text-sm text-white shrink-0">
-              {profileName[0]?.toUpperCase() || "?"}
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab] font-medium">
-              Treino atual
-            </p>
-            <p className="text-xl font-bold text-white truncate leading-tight mt-0.5">
-              {activeRoutine}
-            </p>
-          </div>
-        </div>
-
-        <div className="hidden md:block" />
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 md:justify-self-end">
+        <div className="rounded-xl border-0 bg-surface-1 px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Adesão</p>
+            <p className="text-[10px] uppercase tracking-[1px] text-text-tertiary">Adesão</p>
             <p
               className={cn(
                 "text-base font-semibold mt-0.5",
-                adesaoTone === "good" && "text-[#39c75a]",
-                adesaoTone === "bad" && "text-[#e05555]",
-                adesaoTone === "neutral" && "text-white",
+                adesaoTone === "good" && "text-success",
+                adesaoTone === "bad" && "text-danger",
+                adesaoTone === "neutral" && "text-text-primary",
               )}
             >
               {adesaoSemanal}%
               {adesaoSuffix && (
-                <span className="text-[11px] ml-1 font-medium">{adesaoSuffix}</span>
+                <span className="text-[11px] ml-1 font-medium text-text-tertiary">{adesaoSuffix}</span>
               )}
             </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Peso</p>
-            <p className="text-base font-semibold text-white mt-0.5">
+            <p className="text-[10px] uppercase tracking-[1px] text-text-tertiary">Peso</p>
+            <p className="text-base font-semibold text-text-primary mt-0.5">
               {ultimoMedidaVal}
               {pesoDeltaLabel && (
-                <span className="text-[11px] ml-1 font-medium text-[#7a8aab]">
+                <span className="text-[11px] ml-1 font-medium text-text-tertiary">
                   {pesoDeltaLabel}
                 </span>
               )}
             </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Vencimento</p>
+            <p className="text-[10px] uppercase tracking-[1px] text-text-tertiary">Vencimento</p>
             <p
               className={cn(
                 "text-base font-semibold mt-0.5",
-                vencimentoTone === "warn" ? "text-[#f59e0b]" : "text-white",
+                vencimentoTone === "warn" ? "text-warning" : "text-text-primary",
               )}
             >
               {vencimentoVal}
@@ -1422,17 +1552,22 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab]">Pontos</p>
-            <p className="text-base font-semibold text-white mt-0.5 tabular-nums lining-nums">
+            <p className="text-[10px] uppercase tracking-[1px] text-text-tertiary">Pontos</p>
+            <p className="text-base font-semibold text-text-primary mt-0.5 tabular-nums lining-nums">
               {pontosTotais}
-              <span className="text-[11px] ml-1 font-medium text-[#7a8aab]">pts</span>
+              <span className="text-[11px] ml-1 font-medium text-text-tertiary">pts</span>
             </p>
           </div>
         </div>
       </div>
 
       {/* ── Tab Navigation ── */}
-      <div className="flex items-center gap-1 bg-surface-1 border-0 p-1 rounded-xl overflow-x-auto scrollbar-none shadow-sm">
+      <div
+        className={cn(
+          "flex items-center gap-1 bg-surface-1 border-0 p-1 rounded-xl overflow-x-auto shadow-sm",
+          "aluno-tabs-scroll",
+        )}
+      >
         {([
           { key: 'visao-geral', label: 'Visão Geral', icon: User },
           { key: 'treinos', label: 'Treinos', icon: Barbell },
@@ -1441,7 +1576,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           { key: 'evolucao', label: 'Evolução', icon: Ruler },
           { key: 'financeiro', label: 'Financeiro', icon: CreditCard },
           { key: 'fotos', label: 'Fotos', icon: ImageIcon },
-          { key: 'observacoes', label: 'Notas/Orientações', icon: FileText }
         ] as const).map((tab) => {
           const Icon = tab.icon;
           return (
@@ -1449,13 +1583,13 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               key={tab.key}
               onClick={() => { setActiveTab(tab.key); setEditingProfile(false); }}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-lg transition-all shrink-0 whitespace-nowrap",
+                "flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all shrink-0 whitespace-nowrap bg-transparent border-0",
                 activeTab === tab.key
-                  ? "bg-brand text-text-on-brand shadow-md shadow-brand/10 font-bold"
-                  : "text-text-secondary hover:text-text-primary"
+                  ? "text-[13px] font-bold text-brand"
+                  : "text-xs font-semibold text-text-secondary hover:text-text-primary",
               )}
             >
-              <Icon size={14} />
+              <Icon size={activeTab === tab.key ? 16 : 14} weight={activeTab === tab.key ? 'bold' : 'regular'} />
               <span>{tab.label}</span>
             </button>
           );
@@ -1473,29 +1607,52 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             <div className="lg:col-span-8 flex flex-col gap-6">
               
               {/* Prioridades / Pendências do Aluno */}
-              <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <div className="flex flex-col gap-3">
+              <div className="bg-surface-1 border-0 rounded-2xl px-4 py-3 shadow-sm">
+                <div className="flex flex-col divide-y divide-[color:var(--list-row-divider)]">
                   {studentPriorities.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-text-tertiary">
-                      ✨ Tudo em ordem por aqui. Atleta com planejamento ativo e em dia.
+                    <div className="py-3 text-center text-xs text-text-tertiary">
+                      Tudo em ordem — atleta com planejamento ativo e em dia.
                     </div>
                   ) : (
                     studentPriorities.map((item) => (
-                      <div key={item.id} className="p-3.5 bg-surface-1 border-0 rounded-xl flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 py-2.5 first:pt-0.5 last:pb-0.5"
+                      >
+                        <div
+                          className={cn(
+                            "w-1.5 h-1.5 rounded-full shrink-0",
                             item.type === 'danger' && "bg-danger",
                             item.type === 'warning' && "bg-warning",
                             item.type === 'info' && "bg-info"
-                          )} />
-                          <span className="text-xs font-bold text-text-primary">{item.desc}</span>
-                        </div>
+                          )}
+                        />
+                        <span className="min-w-0 flex-1 text-[13px] font-medium text-text-primary leading-snug">
+                          {item.desc}
+                        </span>
                         <button
-                          onClick={() => setActiveTab(item.tab)}
-                          className="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-text-primary text-[10px] font-bold uppercase rounded-lg transition-all inline-flex items-center gap-1"
+                          type="button"
+                          disabled={
+                            sendingPhotosNotif &&
+                            (item.action === 'Solicitar Fotos' || item.action === 'Solicitar Renovação')
+                          }
+                          onClick={() => {
+                            if (
+                              item.action === 'Solicitar Fotos' ||
+                              item.action === 'Solicitar Renovação'
+                            ) {
+                              void handleSolicitarFotos();
+                              return;
+                            }
+                            setActiveTab(item.tab);
+                          }}
+                          className="shrink-0 ml-auto inline-flex items-center gap-1 bg-transparent border-0 px-0 py-1 text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors disabled:opacity-50"
                         >
-                          {item.action} <ArrowRight size={10} />
+                          {sendingPhotosNotif &&
+                          (item.action === 'Solicitar Fotos' || item.action === 'Solicitar Renovação')
+                            ? 'Enviando…'
+                            : item.action}{' '}
+                          <ArrowRight size={11} weight="bold" />
                         </button>
                       </div>
                     ))
@@ -1503,162 +1660,176 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
 
-              {/* Estatísticas Avançadas do Aluno */}
-              <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm flex flex-col gap-6">
+              {/* Histórico de Treinos */}
+              <div className="bg-surface-1 border-0 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
+                  Histórico de treinos
+                </p>
                 {historicoTreinos.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    {/* Coluna 1: Cartões de Resumo 2x2 (Desktop span 6, Mobile span 12) */}
-                    <div className="md:col-span-6 flex flex-col justify-between gap-4">
-                      <div className="grid grid-cols-2 gap-3 h-full">
-                        {[
-                          { label: 'Treinos', value: stats30.workouts.toString(), icon: CalendarBlank },
-                          { label: 'Duração estim.', value: `${Math.floor(stats30.minutes / 60)}h ${stats30.minutes % 60}m`, icon: Clock },
-                          { label: 'Volume total', value: stats30.volume > 0 ? `${(stats30.volume / 1000).toFixed(1)}k kg` : `${stats30.sets} séries`, icon: ChartLine },
-                          { label: 'Séries feitas', value: stats30.sets.toString(), icon: Barbell },
-                        ].map((stat) => {
-                          const Icon = stat.icon;
-                          return (
-                            <div key={stat.label} className="bg-surface-1 border-0 rounded-xl p-4 flex flex-col justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <Icon className="w-3.5 h-3.5 text-[#7a8aab]" />
-                                <span className="text-[10px] font-semibold text-[#7a8aab] uppercase tracking-wider">{stat.label}</span>
-                              </div>
-                              <p className="text-lg font-bold text-white mt-2 font-mono">{stat.value}</p>
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { label: 'Treinos', value: stats30.workouts.toString(), icon: CalendarBlank },
+                        { label: 'Duração', value: `${Math.floor(stats30.minutes / 60)}h ${stats30.minutes % 60}m`, icon: Clock },
+                        { label: 'Volume', value: stats30.volume > 0 ? `${(stats30.volume / 1000).toFixed(1)}k kg` : `${stats30.sets} séries`, icon: ChartLine },
+                        { label: 'Séries', value: stats30.sets.toString(), icon: Barbell },
+                      ].map((stat) => {
+                        const Icon = stat.icon;
+                        return (
+                          <div key={stat.label} className="bg-surface-2/40 border-0 rounded-xl px-2.5 py-2 flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <Icon className="w-3 h-3 text-text-tertiary" />
+                              <span className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider">{stat.label}</span>
                             </div>
-                          );
-                        })}
-                      </div>
+                            <p className="text-sm font-bold text-text-primary font-mono tabular-nums lining-nums">{stat.value}</p>
+                          </div>
+                        );
+                      })}
                     </div>
 
-                    {/* Coluna 2: Muscle Body Chart (Heatmap) (Desktop span 6, Mobile span 12) */}
-                    <div className="md:col-span-6 flex flex-col gap-3 justify-center">
-                      <div className="flex justify-around items-center bg-surface-1 border-0 py-3 px-2 rounded-xl h-full min-h-[320px]">
-                        <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="front" gender={alunoBodyGender} />
-                        </div>
-                        <div className="w-[46%] h-[300px] flex items-center justify-center overflow-hidden">
-                          <MuscleBodyChart muscleIntensity={weekMuscleIntensity} side="back" gender={alunoBodyGender} />
-                        </div>
-                      </div>
-                    </div>
+                    <ul className="flex max-h-[18rem] flex-col divide-y divide-[color:var(--list-row-divider)] overflow-y-auto overscroll-contain scrollbar-brand-thin pr-0.5">
+                      {sessoesRecentes.map((sessao) => {
+                        const expanded = sessaoHistoricoExpandida === sessao.key;
+                        const hasFeedback = !!(sessao.satisfacao || sessao.nivelDor != null);
+                        const dorColor =
+                          sessao.nivelDor == null
+                            ? undefined
+                            : sessao.nivelDor <= 3
+                              ? 'var(--success)'
+                              : sessao.nivelDor <= 6
+                                ? 'var(--warning)'
+                                : 'var(--danger)';
+                        return (
+                          <li key={sessao.key} className="py-2 first:pt-0.5 last:pb-0.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSessaoHistoricoExpandida(expanded ? null : sessao.key)
+                              }
+                              className="flex w-full items-center gap-3 text-left touch-manipulation"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[12px] font-medium text-text-primary truncate leading-snug">
+                                  {sessao.nomeRotina}
+                                </p>
+                                <p className="mt-0.5 text-[10px] text-text-tertiary">
+                                  {sessao.dateLabel}
+                                  {hasFeedback ? ' · com feedback' : ''}
+                                </p>
+                              </div>
+                              <span className="shrink-0 text-[10px] font-semibold tabular-nums lining-nums text-text-secondary">
+                                {sessao.exercicios} ex.
+                              </span>
+                              <CaretDown
+                                size={14}
+                                className={cn(
+                                  'shrink-0 text-text-tertiary transition-transform',
+                                  expanded && 'rotate-180',
+                                )}
+                                aria-hidden
+                              />
+                            </button>
 
-                    {/* Radar Chart (Distribuição Muscular) (Desktop span 12, Mobile span 12) */}
-                    <div className="md:col-span-12 flex flex-col gap-3">
-                      <div className="w-full min-w-0 bg-surface-1 border-0 rounded-xl p-2 flex items-center justify-center" style={{ height: 224, minHeight: 224 }}>
-                        <ResponsiveContainer width="100%" height={208} debounce={50} minWidth={0}>
-                          <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData30}>
-                            <PolarGrid stroke="var(--color-border-subtle)" />
-                            <PolarAngleAxis dataKey="subject" stroke="var(--color-text-secondary)" fontSize={9} />
-                            <PolarRadiusAxis stroke="transparent" tick={false} />
-                            <Radar name="Intensidade" dataKey="value" stroke="var(--color-brand)" fill="var(--color-brand)" fillOpacity={0.25} />
-                          </RadarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
+                            {expanded && (
+                              <div className="mt-2 rounded-xl bg-surface-2/50 px-3 py-2.5 space-y-2">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-text-disabled">
+                                  Exercícios
+                                </p>
+                                <ul className="space-y-1.5">
+                                  {sessao.exerciciosDetalhe.map((ex, i) => (
+                                    <li
+                                      key={`${ex.nome}-${i}`}
+                                      className="flex items-center justify-between gap-2 text-[12px]"
+                                    >
+                                      <span className="truncate text-text-primary font-medium">
+                                        {ex.nome}
+                                      </span>
+                                      <span className="shrink-0 tabular-nums text-text-tertiary text-[11px]">
+                                        {ex.seriesCompletas}{' '}
+                                        {ex.seriesCompletas === 1 ? 'série' : 'séries'}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+
+                                <div className="pt-2 mt-1 border-t border-border-divider space-y-1.5">
+                                  <p className="text-[9px] font-bold uppercase tracking-wider text-text-disabled">
+                                    Feedback do aluno
+                                  </p>
+                                  {hasFeedback ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {sessao.satisfacao ? (
+                                        <span className="inline-flex items-center gap-1 rounded-md bg-brand/10 border border-brand/20 px-2 py-1 text-[11px] font-semibold text-brand">
+                                          <Smiley size={13} weight="fill" aria-hidden />
+                                          {sessao.satisfacao}
+                                        </span>
+                                      ) : null}
+                                      {sessao.nivelDor != null ? (
+                                        <span
+                                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold border"
+                                          style={{
+                                            color: dorColor,
+                                            borderColor: `color-mix(in srgb, ${dorColor} 35%, transparent)`,
+                                            background: `color-mix(in srgb, ${dorColor} 12%, transparent)`,
+                                          }}
+                                        >
+                                          Dor {sessao.nivelDor}/10
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    <p className="text-[11px] text-text-tertiary">
+                                      Sem avaliação de satisfação/dor nesta sessão.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
                 ) : (
-                  <div className="rounded-xl border-0 bg-surface-1 p-4">
-                    <p className="text-xs text-[#555555]">
-                      Sem treinos concluídos ainda — os dados aparecem aqui após o primeiro treino registrado.
-                    </p>
-                  </div>
+                  <p className="text-xs text-text-tertiary py-1">
+                    Sem treinos concluídos ainda — os dados aparecem aqui após o primeiro treino registrado.
+                  </p>
                 )}
               </div>
 
-              {/* Notas Rápidas */}
-              <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-end mb-4">
-                  <button onClick={() => setActiveTab('observacoes')} className="text-brand hover:underline text-xs font-semibold">
-                    Editar
-                  </button>
-                </div>
-                <div className="p-4 bg-surface-1 rounded-xl border-0 min-h-24">
-                  {profile?.orientacoes ? (
-                    <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{profile.orientacoes}</p>
-                  ) : (
-                    <span className="text-xs text-text-tertiary italic">Nenhuma observação interna registrada. Clique em editar para adicionar orientações para este atleta.</span>
-                  )}
-                </div>
-              </div>
+              <AlunoObservacoesCard
+                alunoId={id}
+                coachId={coachUserId}
+                legacyOrientacoes={profile?.orientacoes}
+              />
 
             </div>
 
-            {/* Direita: Métricas Rápidas & Logs */}
-            <div className="lg:col-span-4 flex flex-col gap-6">
-              
-              {/* Informações de Cadastro */}
-              <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <div className="flex flex-col gap-3 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-text-tertiary font-medium">Plano Contratado</span>
-                    <span className="font-bold text-text-primary capitalize">{planDisplayName(profile?.tipo_plano, planosPersonalizados)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-text-tertiary font-medium">Data de Início</span>
-                    <span className="font-bold text-text-primary">
-                      {profile?.data_inicio ? new Date(profile.data_inicio).toLocaleDateString("pt-BR") : "Não definida"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-text-tertiary font-medium">Último Checkin</span>
+            {/* Direita: Plano */}
+            <div className="lg:col-span-4 flex flex-col gap-4">
+              <StudentPlanCard
+                planLabel={planDisplayName(profile?.tipo_plano, planosPersonalizados)}
+                valorPlano={profile?.valor_plano}
+                dataInicio={profile?.data_inicio}
+                dataExpiracao={profile?.data_expiracao}
+                isActive={isPaid && !isExpired}
+                onManage={() => setActiveTab('financeiro')}
+              />
+
+              <div className="bg-surface-1 border-0 rounded-2xl p-4 shadow-sm">
+                <div className="flex flex-col gap-2.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-text-tertiary font-medium">Último check-in</span>
                     <span className="font-bold text-text-primary">
                       {profile?.ultimo_checkin ? new Date(profile.ultimo_checkin).toLocaleDateString("pt-BR") : "Nenhum"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#7a8aab] font-medium">Total de Pontos</span>
-                    <span className="font-bold text-white tabular-nums lining-nums">{pontosTotais} pts</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-text-tertiary font-medium">Total de pontos</span>
+                    <span className="font-bold text-text-primary tabular-nums lining-nums">{pontosTotais} pts</span>
                   </div>
                 </div>
               </div>
-
-              {/* Treino Ativo Card — resumo mínimo (link para Kanban/ficha) */}
-              <div className="bg-surface-1 border-0 rounded-2xl p-5 flex flex-col gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 bg-surface-2 border-0 rounded-xl flex items-center justify-center shrink-0 text-[#7a8aab]">
-                    <Barbell size={20} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-medium text-[#7a8aab] tracking-[1px] block">
-                      Ficha ativa
-                    </span>
-                    <span className="text-sm font-bold text-white block truncate mt-0.5">
-                      {activeRoutine}
-                    </span>
-                    {fichaAtualizadaLabel && (
-                      <span className="text-[11px] text-[#7a8aab] mt-0.5 block">
-                        {fichaAtualizadaLabel}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {activeFicha && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      router.push(
-                        withReturnUrl(
-                          `/admin/aluno/${id}/ficha/${activeFicha.id}`,
-                          alunoTreinosReturnUrl(id),
-                        ),
-                      )
-                    }
-                    className="w-full text-center text-[11px] font-semibold text-brand hover:opacity-80 py-2 border-0 rounded-lg"
-                  >
-                    Ver ficha completa
-                  </button>
-                )}
-                {!activeFicha && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("treinos")}
-                    className="w-full text-center text-[11px] font-medium text-[#39c75a] hover:opacity-80 py-2"
-                  >
-                    + criar ficha digital
-                  </button>
-                )}
-              </div>
-
             </div>
 
           </div>
@@ -1668,21 +1839,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {activeTab === 'treinos' && (
           <div className="flex flex-col gap-4">
             
-            {/* Kanban de Fichas Digitais */}
-            <div className="w-full bg-surface-1 border-0 rounded-2xl p-5 shadow-sm flex flex-col gap-4 min-w-0">
-              <FichasKanban
-                fichas={fichas}
-                alunoId={id}
-                currentFichaId={activeFicha?.id ?? null}
-                onReorderFichas={handleReorderFichas}
-                onUpdateFichaExercicios={handleUpdateFichaExercicios}
-                onDeleteFicha={handleDeleteFicha}
-                onCloneFicha={(f) => abrirClonarFicha(f as FichaTreino)}
-                onPreviewFicha={(f) => setSelectedRoutineForPreview(f as FichaTreino)}
-                onCreateTreino={() => setKanbanBuilderOpen(true)}
-                onAddExercise={(fichaId) => void openAddExercise(fichaId)}
-              />
-            </div>
+            <RotinasExpandableCards
+              fichas={fichas}
+              alunoId={id}
+              currentFichaId={activeFicha?.id ?? null}
+              onDeleteFicha={handleDeleteFicha}
+              onCloneFicha={(f) => abrirClonarFicha(f as FichaTreino)}
+              onPreviewFicha={(f) => setSelectedRoutineForPreview(f as FichaTreino)}
+              onAddExercise={(fichaId) => void openAddExercise(fichaId)}
+            />
 
             {/* Upload de PDF individual — compacto por padrão */}
             <form
@@ -1738,12 +1903,22 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
                     />
                     <div className={cn(
-                      "flex items-center justify-center gap-2 min-h-20 rounded-lg border border-dashed transition-all",
-                      pdfFile ? "border-brand/50 bg-brand/5" : "border-transparent bg-surface-1 hover:border-brand/40"
+                      "flex items-center justify-center gap-2 min-h-12 md:min-h-20 rounded-lg transition-all",
+                      "md:border md:border-dashed",
+                      pdfFile
+                        ? "border-brand/50 bg-brand/5 md:border-brand/50"
+                        : "bg-surface-2 md:border-transparent md:bg-surface-1 md:hover:border-brand/40",
                     )}>
-                      <UploadSimple className={cn("w-4 h-4", pdfFile ? "text-brand" : "text-[#7a8aab]")} />
+                      <UploadSimple className={cn("w-4 h-4 shrink-0", pdfFile ? "text-brand" : "text-[#7a8aab]")} />
                       <span className={cn("text-xs text-center px-4 truncate max-w-full", pdfFile ? "text-white font-medium" : "text-[#7a8aab]")}>
-                        {pdfFile ? pdfFile.name : "Clique ou arraste o PDF do treino"}
+                        {pdfFile ? (
+                          pdfFile.name
+                        ) : (
+                          <>
+                            <span className="md:hidden">Toque para selecionar o PDF</span>
+                            <span className="hidden md:inline">Clique ou arraste o PDF do treino</span>
+                          </>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -1781,114 +1956,129 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {activeTab === 'nutricao' && (
           <div className="w-full flex flex-col gap-4">
             
-            {/* Seção 1: Plano Digital Ativo */}
-            <div className="bg-surface-1 border-0 rounded-xl p-5 flex flex-col gap-5">
-              <div className="flex items-center justify-end gap-3">
-                {!digitalPlan && (
-                  <Link href="/admin/nutricao/novo-plano">
-                    <Button variant="primary" size="sm" leftIcon={<AppleLogo size={14} />}>
-                      Prescrever Plano
-                    </Button>
-                  </Link>
-                )}
-              </div>
-
-              {digitalPlan ? (
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                    {/* Resumo: plano + macros + KPIs */}
-                    <div className="p-4 bg-surface-1 border-0 rounded-xl flex flex-col gap-4">
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="min-w-0">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#39c75a]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#39c75a]" />
-                            ativo
-                          </span>
-                          <h4 className="text-xs font-bold text-white mt-2 truncate">{digitalPlan.name}</h4>
-                          <p className="text-[11px] text-[#7a8aab]">Objetivo: {digitalPlan.goal || 'Hipertrofia'}</p>
-                        </div>
-                        
-                        <div className="flex gap-2 shrink-0">
-                          <Link href={`/admin/nutricao/planos/${digitalPlan.id}`}>
-                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border-0">
-                              Ver Plano
-                            </Button>
-                          </Link>
-                          <Link href={`/admin/nutricao/planos/${digitalPlan.id}/editar`}>
-                            <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2.5 rounded-md cursor-pointer border-0">
-                              Editar
-                            </Button>
-                          </Link>
-                        </div>
+            {/* Plano digital — colapsado como fichas de treino */}
+            {digitalPlan ? (
+              <div className="relative rounded-xl border-0 bg-surface-1 shadow-sm overflow-hidden">
+                <div className="flex items-start gap-3 px-4 py-3.5">
+                  <button
+                    type="button"
+                    onClick={() => setNutritionPlanOpen((v) => !v)}
+                    className="flex min-w-0 flex-1 items-start gap-3 bg-transparent border-0 p-0 text-left"
+                    aria-expanded={nutritionPlanOpen}
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center text-brand">
+                      <AppleLogo size={18} weight="bold" />
+                    </div>
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-text-primary truncate leading-tight">
+                          {digitalPlan.name || 'Plano alimentar'}
+                        </p>
+                        <span className="inline-flex items-center gap-1 rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-success">
+                          <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                          ativo
+                        </span>
                       </div>
-
-                      {digitalPlan.calories_target && (
-                        <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-divider py-2.5">
-                          <div className="flex flex-col">
-                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Calorias</span>
-                            <span className="text-white font-bold">{digitalPlan.calories_target} kcal</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Proteínas</span>
-                            <span className="text-white font-bold">{digitalPlan.protein_target || '—'}g</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Carbos</span>
-                            <span className="text-white font-bold">{digitalPlan.carbs_target || '—'}g</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[8px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-0.5">Gorduras</span>
-                            <span className="text-white font-bold">{digitalPlan.fat_target || '—'}g</span>
-                          </div>
-                        </div>
+                      <p className="mt-1 text-[11px] text-text-tertiary">
+                        {digitalPlan.goal || 'Hipertrofia'}
+                        {digitalPlan.days?.[0]?.meals?.length
+                          ? ` · ${digitalPlan.days[0].meals.length} refeiç${digitalPlan.days[0].meals.length === 1 ? 'ão' : 'ões'}`
+                          : ''}
+                      </p>
+                    </div>
+                    <CaretDown
+                      size={14}
+                      weight="bold"
+                      className={cn(
+                        'mt-2.5 shrink-0 text-text-tertiary transition-transform',
+                        nutritionPlanOpen && 'rotate-180',
                       )}
+                    />
+                  </button>
+                </div>
 
-                      {(() => {
-                        const todayISO = new Date().toISOString().slice(0, 10);
-                        const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
-                        const todayCheckins = digitalCheckins.filter(c => c.checkin_date === todayISO);
-                        let todayWeightSum = 0;
-                        todayCheckins.forEach(c => {
-                          todayWeightSum += getStatusAdherenceWeight(c.status);
-                        });
-                        const todayAdherence = mealsCount > 0 ? Math.min(100, Math.round((todayWeightSum / mealsCount) * 100)) : 100;
-
-                        const expected7dMeals = mealsCount * 7;
-                        let total7dWeightSum = 0;
-                        digitalCheckins.forEach(c => {
-                          total7dWeightSum += getStatusAdherenceWeight(c.status);
-                        });
-                        const weeklyAdherence = expected7dMeals > 0 ? Math.min(100, Math.round((total7dWeightSum / expected7dMeals) * 100)) : 100;
-
-                        const lastCheckin = digitalCheckins[0];
-                        const formattedLastCheckin = lastCheckin
-                          ? `${new Date(lastCheckin.checkin_date).toLocaleDateString('pt-BR')} (${lastCheckin.status.toUpperCase()})`
-                          : 'Nenhum recente';
-
-                        return (
-                          <div className="grid grid-cols-3 gap-4 text-xs font-medium">
-                            <div>
-                              <p className="text-[9px] uppercase font-semibold text-[#7a8aab] mb-0.5">Adesão Hoje</p>
-                              <p className="text-white font-bold font-mono">{todayAdherence}%</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] uppercase font-semibold text-[#7a8aab] mb-0.5">Adesão 7 Dias</p>
-                              <p className="text-white font-bold font-mono">{weeklyAdherence}%</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] uppercase font-semibold text-[#7a8aab] mb-0.5">Último Registro</p>
-                              <p className="text-[#7a8aab] truncate">{formattedLastCheckin}</p>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                {nutritionPlanOpen && (
+                  <div className="border-t border-[color:var(--list-row-divider)] px-4 pb-4 pt-3 flex flex-col gap-4">
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        href={`/admin/nutricao/planos/${digitalPlan.id}`}
+                        className="text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors"
+                      >
+                        Ver Plano
+                      </Link>
+                      <Link
+                        href={`/admin/nutricao/planos/${digitalPlan.id}/editar`}
+                        className="text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors"
+                      >
+                        Editar
+                      </Link>
                     </div>
 
-                    {/* Card: Adesão nos últimos 7 dias */}
-                    <div className="p-4 bg-surface-1 border-0 rounded-xl flex flex-col gap-3 min-h-[180px]">
+                    {digitalPlan.calories_target && (
+                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-divider py-2.5">
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Calorias</span>
+                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.calories_target} kcal</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Proteínas</span>
+                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.protein_target || '—'}g</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Carbos</span>
+                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.carbs_target || '—'}g</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Gorduras</span>
+                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.fat_target || '—'}g</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const todayISO = new Date().toISOString().slice(0, 10);
+                      const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
+                      const todayCheckins = digitalCheckins.filter(c => c.checkin_date === todayISO);
+                      let todayWeightSum = 0;
+                      todayCheckins.forEach(c => {
+                        todayWeightSum += getStatusAdherenceWeight(c.status);
+                      });
+                      const todayAdherence = mealsCount > 0 ? Math.min(100, Math.round((todayWeightSum / mealsCount) * 100)) : 100;
+
+                      const expected7dMeals = mealsCount * 7;
+                      let total7dWeightSum = 0;
+                      digitalCheckins.forEach(c => {
+                        total7dWeightSum += getStatusAdherenceWeight(c.status);
+                      });
+                      const weeklyAdherence = expected7dMeals > 0 ? Math.min(100, Math.round((total7dWeightSum / expected7dMeals) * 100)) : 100;
+
+                      const lastCheckin = digitalCheckins[0];
+                      const formattedLastCheckin = lastCheckin
+                        ? `${new Date(lastCheckin.checkin_date).toLocaleDateString('pt-BR')} (${lastCheckin.status.toUpperCase()})`
+                        : 'Nenhum recente';
+
+                      return (
+                        <div className="grid grid-cols-3 gap-4 text-xs font-medium">
+                          <div>
+                            <p className="text-[9px] uppercase font-semibold text-text-tertiary mb-0.5">Adesão Hoje</p>
+                            <p className="text-text-primary font-bold font-mono tabular-nums lining-nums">{todayAdherence}%</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase font-semibold text-text-tertiary mb-0.5">Adesão 7 Dias</p>
+                            <p className="text-text-primary font-bold font-mono tabular-nums lining-nums">{weeklyAdherence}%</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase font-semibold text-text-tertiary mb-0.5">Último Registro</p>
+                            <p className="text-text-secondary truncate">{formattedLastCheckin}</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="flex flex-col gap-3">
                       <div>
-                        <h4 className="text-[13px] font-semibold text-white">Adesão nos últimos 7 dias</h4>
-                        <p className="text-[10px] text-[#7a8aab] mt-0.5">Série diária — mesmo cálculo dos KPIs</p>
+                        <h4 className="text-[13px] font-semibold text-text-primary">Adesão nos últimos 7 dias</h4>
+                        <p className="text-[10px] text-text-tertiary mt-0.5">Série diária — mesmo cálculo dos KPIs</p>
                       </div>
                       {(() => {
                         const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
@@ -1897,7 +2087,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         return (
                           <MeasurementLineChart
                             data={chartData}
-                            height={140}
+                            height={100}
                             isDesktop
                             yDomain={[0, 100]}
                             labelMode="all"
@@ -1907,60 +2097,82 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                         );
                       })()}
                     </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] uppercase font-semibold text-text-tertiary tracking-wider mb-1">
+                        Adesão às refeições de hoje
+                      </span>
+                      {(digitalPlan.days?.[0]?.meals || []).length === 0 ? (
+                        <p className="py-2 text-[12px] text-text-tertiary">Nenhuma refeição neste plano.</p>
+                      ) : (
+                        <ul className="flex flex-col divide-y divide-[color:var(--list-row-divider)]">
+                          {digitalPlan.days[0].meals.map((meal: any) => {
+                            const todayISO = new Date().toISOString().slice(0, 10);
+                            const checkin = digitalCheckins.find(c => c.meal_id === meal.id && c.checkin_date === todayISO);
+                            const status = checkin?.status || 'pending';
+
+                            const statusLabels: Record<string, string> = {
+                              done: 'Feita',
+                              substituted: 'Substituída',
+                              partial: 'Parcial',
+                              skipped: 'Não Feita',
+                              pending: 'Pendente',
+                            };
+
+                            const statusColors: Record<string, string> = {
+                              done: 'bg-success/10 text-success border-success/20',
+                              substituted: 'bg-brand/10 text-brand border-brand/20',
+                              partial: 'bg-warning/10 text-warning border-warning/20',
+                              skipped: 'bg-danger/10 text-danger border-danger/20',
+                              pending: 'bg-surface-2 text-text-tertiary border-transparent',
+                            };
+
+                            return (
+                              <li key={meal.id} className="flex items-center justify-between gap-3 py-2.5">
+                                <div className="min-w-0">
+                                  <p className="text-[13px] font-medium text-text-primary leading-snug truncate">{meal.title}</p>
+                                  {meal.time_suggestion && (
+                                    <span className="mt-0.5 text-[11px] text-text-tertiary font-mono inline-flex items-center gap-1">
+                                      <Clock size={10} /> {meal.time_suggestion.slice(0, 5)}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={cn(
+                                  'inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border shrink-0',
+                                  statusColors[status],
+                                )}>
+                                  {statusLabels[status]}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Refeições Recentes (Hoje) */}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] uppercase font-semibold text-[#7a8aab] tracking-wider mb-1">Adesão às refeições de hoje</span>
-                    {digitalPlan.days?.[0]?.meals?.map((meal: any) => {
-                      const todayISO = new Date().toISOString().slice(0, 10);
-                      const checkin = digitalCheckins.find(c => c.meal_id === meal.id && c.checkin_date === todayISO);
-                      const status = checkin?.status || 'pending';
-
-                      const statusLabels: Record<string, string> = {
-                        done: 'Feita',
-                        substituted: 'Substituída',
-                        partial: 'Parcial',
-                        skipped: 'Não Feita',
-                        pending: 'Pendente'
-                      };
-
-                      const statusColors: Record<string, string> = {
-                        done: 'bg-success/10 text-success border-success/20',
-                        substituted: 'bg-brand/10 text-brand border-brand/20',
-                        partial: 'bg-warning/10 text-warning border-warning/20',
-                        skipped: 'bg-danger/10 text-danger border-danger/20',
-                        pending: 'bg-surface-2 text-[#7a8aab] border-transparent'
-                      };
-
-                      return (
-                        <div key={meal.id} className="p-3 bg-surface-1 border-0 rounded-lg flex items-center justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white leading-tight truncate">{meal.title}</p>
-                            {meal.time_suggestion && (
-                              <span className="text-[9px] text-[#555555] font-mono flex items-center gap-1 mt-0.5">
-                                <Clock size={10} /> {meal.time_suggestion.slice(0, 5)}
-                              </span>
-                            )}
-                          </div>
-                          
-                          <span className={cn(
-                            "inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border",
-                            statusColors[status]
-                          )}>
-                            {statusLabels[status]}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border-0 bg-surface-1 px-4 py-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-text-primary">Nenhum plano alimentar ativo</p>
+                  <p className="text-[11px] text-text-tertiary mt-0.5">
+                    Prescreva um plano digital para acompanhar a adesão.
+                  </p>
                 </div>
-              ) : (
-                <p className="text-xs text-[#555555] p-4 rounded-xl border-0">
-                  Sem plano alimentar digital ativo — os dados de adesão aparecem aqui após a prescrição.
-                </p>
-              )}
-            </div>
+                <Link
+                  href={withReturnUrl(
+                    "/admin/nutricao/novo-plano",
+                    `/admin/aluno/${id}`,
+                  )}
+                  className="shrink-0"
+                >
+                  <Button variant="primary" size="sm" leftIcon={<AppleLogo size={14} />}>
+                    Prescrever
+                  </Button>
+                </Link>
+              </div>
+            )}
 
             {/* Seção 2: PDF compacto / colapsável */}
             <div className="bg-surface-1 border-0 rounded-xl">
@@ -1971,12 +2183,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   className="flex items-center gap-2 min-w-0 text-left"
                   aria-expanded={nutritionPdfOpen}
                 >
-                  <FilePdf size={16} className="text-[#7a8aab] shrink-0" />
-                  <span className="text-[13px] text-[#7a8aab] font-medium">
+                  <FilePdf size={16} className="text-text-tertiary shrink-0" />
+                  <span className="text-[13px] text-text-secondary font-medium">
                     Plano em PDF
                   </span>
                   {planosAlimentares.length > 0 && (
-                    <span className="text-[11px] text-white">
+                    <span className="text-[11px] text-text-tertiary tabular-nums">
                       {planosAlimentares.length} arquivo{planosAlimentares.length === 1 ? '' : 's'}
                     </span>
                   )}
@@ -1985,7 +2197,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <button
                   type="button"
                   onClick={() => setUploadNutritionOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-0 bg-surface-2 text-[11px] font-semibold text-white hover:bg-surface-3 transition-colors shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-0 bg-surface-2 text-[11px] font-semibold text-text-primary hover:bg-surface-3 transition-colors shrink-0"
                 >
                   <UploadSimple size={12} />
                   Enviar PDF
@@ -1997,10 +2209,10 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   {planosAlimentares.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {planosAlimentares.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-surface-1 border-0">
+                        <div key={p.id} className="flex items-center justify-between p-2 rounded-lg bg-surface-2/40 border-0">
                           <div className="min-w-0">
-                            <p className="text-xs text-white truncate font-medium">{p.nome_arquivo}</p>
-                            <span className="text-[10px] text-[#7a8aab] font-mono">
+                            <p className="text-xs text-text-primary truncate font-medium">{p.nome_arquivo}</p>
+                            <span className="text-[10px] text-text-tertiary font-mono">
                               {new Date(p.criado_em).toLocaleDateString("pt-BR")}
                             </span>
                           </div>
@@ -2025,7 +2237,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-[#555555] py-2">
+                    <p className="text-xs text-text-tertiary py-2">
                       Nenhum plano em PDF enviado ainda.
                     </p>
                   )}
@@ -2065,30 +2277,32 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
               {/* Tabela de Medidas Corporais */}
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-end mb-4">
-                  <Ruler className="text-brand w-5 h-5" />
-                </div>
-
                 {medidas.length > 0 ? (
                   <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-xs min-w-[600px]">
                       <thead>
-                        <tr className="border-b border-divider">
-                          <th className="pb-3 text-left font-semibold text-text-tertiary uppercase">Data</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Peso</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Gordura</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Cintura</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Peitoral</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Braço E</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Braço D</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Coxa E</th>
-                          <th className="pb-3 text-center font-semibold text-text-tertiary uppercase">Coxa D</th>
+                        <tr>
+                          <th className="pb-3 text-left font-semibold text-brand uppercase">Data</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Peso</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Gordura</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Cintura</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Peitoral</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Braço E</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Braço D</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Coxa E</th>
+                          <th className="pb-3 text-center font-semibold text-brand uppercase">Coxa D</th>
                         </tr>
                       </thead>
                       <tbody>
                         {medidas.map((m: any) => (
-                          <tr key={m.id} className="border-b border-divider hover:bg-surface-2/40 transition-colors">
-                            <td className="py-3 font-semibold text-text-primary">{new Date(m.data_medicao).toLocaleDateString("pt-BR")}</td>
+                          <tr key={m.id} className="hover:bg-surface-2/40 transition-colors">
+                            <td className="py-3 font-semibold text-text-primary">
+                              {new Date(m.data_medicao).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                              })}
+                            </td>
                             <td className="py-3 text-center text-brand font-bold">{m.peso?.toFixed(1) || "—"} kg</td>
                             <td className="py-3 text-center text-text-primary font-medium">{m.gordura_corporal ? `${m.gordura_corporal.toFixed(1)}%` : "—"}</td>
                             <td className="py-3 text-center text-text-secondary">{m.cintura?.toFixed(1) || "—"} cm</td>
@@ -2123,12 +2337,32 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 });
 
                 return (
-                  <div className="max-h-[360px] overflow-y-auto pr-1 flex flex-col gap-3 scrollbar-thin">
-                    {Array.from(sessoesPorData.entries()).map(([dia, sessao]) => (
+                  <div className="max-h-[10.5rem] overflow-y-auto overscroll-contain pr-0.5 flex flex-col gap-3 scrollbar-brand-thin">
+                    {Array.from(sessoesPorData.entries()).map(([dia, sessao]) => {
+                      const ds0 = (sessao[0]?.dados_sessao ?? {}) as Record<string, unknown>;
+                      const satisfacao = (ds0.satisfacao_treino as string | null | undefined) || null;
+                      const nivelDorRaw = ds0.nivel_dor;
+                      const nivelDor =
+                        typeof nivelDorRaw === 'number'
+                          ? nivelDorRaw
+                          : typeof nivelDorRaw === 'string' && nivelDorRaw !== ''
+                            ? Number(nivelDorRaw)
+                            : null;
+                      const hasFeedback = !!(satisfacao || (nivelDor != null && !Number.isNaN(nivelDor)));
+                      const dorColor =
+                        nivelDor == null || Number.isNaN(nivelDor)
+                          ? undefined
+                          : nivelDor <= 3
+                            ? 'var(--success)'
+                            : nivelDor <= 6
+                              ? 'var(--warning)'
+                              : 'var(--danger)';
+
+                      return (
                       <div key={dia} className="rounded-xl bg-surface-1 border-0 overflow-hidden">
                         <div className="px-3 py-1.5 bg-surface-3 border-b border-divider flex items-center justify-between text-[9px] uppercase tracking-wider font-bold text-text-tertiary">
                           <span>{dia}</span>
-                          <span className="truncate max-w-[120px]">{sessao[0]?.dados_sessao?.nome_rotina || "Treino"}</span>
+                          <span className="truncate max-w-[120px]">{(ds0.nome_rotina as string) || "Treino"}</span>
                         </div>
                         <div className="divide-y divide-border-subtle/50">
                           {sessao.map((h: any, i: number) => {
@@ -2145,8 +2379,34 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                             );
                           })}
                         </div>
+                        {hasFeedback && (
+                          <div className="px-3 py-2.5 border-t border-divider bg-surface-2/40 flex flex-wrap items-center gap-2">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-text-disabled w-full mb-0.5">
+                              Feedback
+                            </span>
+                            {satisfacao ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-brand/10 border border-brand/20 px-2 py-1 text-[11px] font-semibold text-brand">
+                                <Smiley size={13} weight="fill" aria-hidden />
+                                {satisfacao}
+                              </span>
+                            ) : null}
+                            {nivelDor != null && !Number.isNaN(nivelDor) ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold border"
+                                style={{
+                                  color: dorColor,
+                                  borderColor: `color-mix(in srgb, ${dorColor} 35%, transparent)`,
+                                  background: `color-mix(in srgb, ${dorColor} 12%, transparent)`,
+                                }}
+                              >
+                                Dor {nivelDor}/10
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })() : (
@@ -2197,128 +2457,173 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                leftIcon={<Gear className="w-4 h-4" />}
-                onClick={() => setEditingProfile(!editingProfile)}
+              <button
+                type="button"
+                onClick={() => setEditingProfile(true)}
+                className="inline-flex items-center gap-1.5 self-start bg-transparent border-0 px-0 py-1 text-[12px] font-semibold text-brand hover:text-brand-hover transition-colors"
               >
-                {editingProfile ? "Fechar Gestão" : "Editar Detalhes de Cobrança"}
-              </Button>
+                <Coins className="w-4 h-4" />
+                Renovar plano
+              </button>
             </div>
 
-            {/* Formulário / Transferência */}
+            {/* Histórico de planos */}
             <div className="lg:col-span-6 flex flex-col gap-6">
               <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-                {historicoFinanceiro.length === 0 ? (
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-3">
+                  Histórico de planos
+                </p>
+                {historicoExibido.length === 0 ? (
                   <p className="text-xs text-text-tertiary">
-                    Ainda não há registros de planos pagos para este aluno.
+                    Ainda não há registros de planos para este aluno.
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {historicoFinanceiro.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded-xl border border-divider/60 bg-surface-1 px-3 py-2.5"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-semibold text-text-primary capitalize">{planDisplayName(item.tipo_plano, planosPersonalizados)}</p>
-                          <p className="text-[10px] text-text-tertiary">
-                            {new Date(item.registrado_em).toLocaleDateString("pt-BR")} ·{" "}
-                            {new Date(item.data_inicio).toLocaleDateString("pt-BR")} →{" "}
-                            {new Date(item.data_expiracao).toLocaleDateString("pt-BR")}
-                          </p>
+                    {historicoExibido.map((item) => {
+                      const dataCaixa =
+                        item.data_pagamento?.slice(0, 10) ||
+                        item.registrado_em;
+                      const formaLabel =
+                        item.forma_pagamento &&
+                        item.forma_pagamento in FORMA_PAGAMENTO_LABEL
+                          ? FORMA_PAGAMENTO_LABEL[
+                              item.forma_pagamento as FormaPagamento
+                            ]
+                          : null;
+                      const canCancel =
+                        item.origem !== "profile" && item.id !== "profile-current";
+                      return (
+                        <div
+                          key={item.id}
+                          className="relative flex items-center justify-between rounded-xl border-0 bg-surface-2/40 px-3 py-2.5"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold text-text-primary capitalize">
+                              {planDisplayName(item.tipo_plano, planosPersonalizados)}
+                              {item.origem === "profile" ? (
+                                <span className="ml-1.5 text-[9px] font-semibold uppercase text-brand">
+                                  atual
+                                </span>
+                              ) : null}
+                            </p>
+                            <p className="text-[10px] text-text-tertiary">
+                              {new Date(dataCaixa).toLocaleDateString("pt-BR")}
+                              {formaLabel ? ` · ${formaLabel}` : ""}
+                              {" · "}
+                              {new Date(item.data_inicio).toLocaleDateString("pt-BR")} →{" "}
+                              {new Date(item.data_expiracao).toLocaleDateString("pt-BR")}
+                            </p>
+                            {item.observacao ? (
+                              <p className="text-[10px] text-text-disabled mt-0.5 truncate">
+                                {item.observacao}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="ml-3 shrink-0 flex items-start gap-1">
+                            <div className="text-right">
+                              <p
+                                className={cn(
+                                  "text-xs font-bold font-kpi tabular-nums lining-nums",
+                                  item.status_pagamento === "pago"
+                                    ? "text-success"
+                                    : "text-text-primary",
+                                )}
+                              >
+                                {item.valor_plano.toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                })}
+                              </p>
+                              <span
+                                className={cn(
+                                  "text-[9px] font-bold uppercase",
+                                  item.status_pagamento === "pago"
+                                    ? "text-success"
+                                    : "text-warning",
+                                )}
+                              >
+                                {item.status_pagamento}
+                              </span>
+                            </div>
+                            {canCancel && (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  aria-label="Mais opções do registro"
+                                  onClick={() =>
+                                    setHistoricoMenuId((cur) =>
+                                      cur === item.id ? null : item.id,
+                                    )
+                                  }
+                                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-2 border-0 bg-transparent cursor-pointer"
+                                >
+                                  <DotsThree size={16} weight="bold" />
+                                </button>
+                                {historicoMenuId === item.id && (
+                                  <>
+                                    <div
+                                      className="fixed inset-0 z-20"
+                                      aria-hidden
+                                      onClick={() => setHistoricoMenuId(null)}
+                                    />
+                                    <div className="absolute right-0 top-8 z-30 min-w-[148px] rounded-lg border border-border-subtle bg-surface-1 py-1 shadow-elev-2">
+                                      <button
+                                        type="button"
+                                        disabled={cancellingHistoricoId === item.id}
+                                        onClick={() =>
+                                          void handleCancelarHistorico(item.id)
+                                        }
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-danger hover:bg-danger/5 border-0 bg-transparent cursor-pointer disabled:opacity-50"
+                                      >
+                                        {cancellingHistoricoId === item.id
+                                          ? "Cancelando…"
+                                          : "Cancelar registro"}
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="ml-3 shrink-0 text-right">
-                          <p className="text-xs font-bold text-text-primary font-kpi tabular-nums lining-nums">
-                            {item.valor_plano.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                          </p>
-                          <span className={cn(
-                            "text-[9px] font-bold uppercase",
-                            item.status_pagamento === "pago" ? "text-success" : "text-warning",
-                          )}>
-                            {item.status_pagamento}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
-              
-              {/* Form de Edição Inline */}
-              {editingProfile && (
-                <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm animate-fade-in">
-                  <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Situação</label>
-                      <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} className={fieldCls}>
-                        <option value="pago">Pago (Acesso ativo)</option>
-                        <option value="pendente">Pendente (Bloqueado)</option>
-                        <option value="atrasado">Em atraso (Bloqueado)</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Modalidade</label>
-                        <select value={editPlano} onChange={(e) => setEditPlano(e.target.value)} className={fieldCls}>
-                          {mergedPlans(planosPersonalizados).map((p) => (
-                            <option key={p.slug} value={p.slug}>
-                              {p.custom
-                                ? `${p.nome} (${p.duracao_meses} ${p.duracao_meses === 1 ? "mês" : "meses"})`
-                                : p.nome}
-                            </option>
-                          ))}
-                          {/* Plano legado do aluno que não existe mais no catálogo */}
-                          {!mergedPlans(planosPersonalizados).some((p) => p.slug === editPlano) && (
-                            <option value={editPlano}>{planDisplayName(editPlano, planosPersonalizados)}</option>
-                          )}
-                        </select>
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Valor (R$)</label>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={editValorPlano}
-                          onChange={(e) => setEditValorPlano(e.target.value)}
-                          placeholder="Ex: 149,90"
-                          className={fieldCls}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Data de início do ciclo</label>
-                      <input
-                        type="date"
-                        value={editDataInicio}
-                        onChange={(e) => setEditDataInicio(e.target.value)}
-                        className={cn(fieldCls, "text-brand")}
-                        required
-                      />
-                    </div>
-
-                    <Button type="submit" loading={savingProfile} fullWidth>
-                      Confirmar Atualização
-                    </Button>
-                  </form>
-                </div>
-              )}
-
-
-
             </div>
 
           </div>
         )}
 
+        <RenovarPlanoModal
+          open={editingProfile}
+          onClose={() => setEditingProfile(false)}
+          onSaved={() => load()}
+          alunoId={id}
+          alunoNome={profileName}
+          profile={{
+            status_pagamento: profile?.status_pagamento,
+            tipo_plano: profile?.tipo_plano,
+            valor_plano: profile?.valor_plano,
+            data_expiracao: profile?.data_expiracao,
+          }}
+          planosPersonalizados={planosPersonalizados}
+        />
+
         {/* ── FOTOS TAB ── */}
         {activeTab === 'fotos' && (
           <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-end mb-6">
+            <div className="flex items-center justify-between gap-3 mb-6">
+              <button
+                type="button"
+                disabled={sendingPhotosNotif}
+                onClick={() => void handleSolicitarFotos()}
+                className="inline-flex items-center gap-1.5 bg-transparent border-0 px-0 py-1 text-[12px] font-semibold text-brand hover:text-brand-hover transition-colors disabled:opacity-50"
+              >
+                {sendingPhotosNotif ? 'Enviando…' : 'Solicitar fotos'}
+                <ArrowRight size={12} weight="bold" />
+              </button>
               <ImageIcon className="text-brand w-5 h-5" />
             </div>
 
@@ -2349,6 +2654,15 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                 <ImageIcon size={36} className="text-text-disabled" />
                 <p className="text-xs text-text-tertiary">Nenhuma captura de evolução física enviada.</p>
                 <span className="text-[10px] text-text-disabled">O atleta pode carregar fotos da evolução no portal de aluno.</span>
+                <button
+                  type="button"
+                  disabled={sendingPhotosNotif}
+                  onClick={() => void handleSolicitarFotos()}
+                  className="mt-1 inline-flex items-center gap-1 bg-transparent border-0 text-[12px] font-semibold text-brand hover:text-brand-hover disabled:opacity-50"
+                >
+                  {sendingPhotosNotif ? 'Enviando…' : 'Solicitar fotos ao aluno'}
+                  <ArrowRight size={12} weight="bold" />
+                </button>
               </div>
             )}
           </div>
@@ -2357,54 +2671,21 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {/* ── CARDIO TAB ── */}
         {activeTab === 'cardio' && <CoachCardioTab alunoId={id} />}
 
-        {/* ── OBSERVAÇÕES TAB ── */}
-        {activeTab === 'observacoes' && (
-          <div className="bg-surface-1 border-0 rounded-2xl p-6 shadow-sm max-w-3xl mx-auto w-full flex flex-col gap-4">
-            <textarea
-              value={profile?.orientacoes || ""}
-              onChange={(e) => {
-                const newVal = e.target.value;
-                setProfile((prev) => prev ? { ...prev, orientacoes: newVal } : null);
-              }}
-              placeholder="Digite anamnese, restrições ou ajustes estruturais..."
-              className={cn(fieldCls, "h-48 resize-none text-xs")}
-            />
-
-            {profile?.orientacoes !== notasOriginais && (
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-divider/50">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setProfile((prev) => prev ? { ...prev, orientacoes: notasOriginais } : null);
-                  }}
-                >
-                  Descartar
-                </Button>
-                <Button
-                  size="sm"
-                  loading={salvandoNotas}
-                  onClick={async () => {
-                    setSalvandoNotas(true);
-                    try {
-                      await supabaseClient.from("profiles").update({ orientacoes: profile?.orientacoes }).eq("id", id);
-                      setNotasOriginais(profile?.orientacoes || "");
-                    } catch (err) {
-                      console.error("Erro ao salvar nota:", err);
-                      setError("Erro ao salvar notas");
-                    } finally {
-                      setSalvandoNotas(false);
-                    }
-                  }}
-                >
-                  Salvar Observações
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
       </div>
+
+      {notifToast && (
+        <div
+          role="status"
+          className="fixed left-1/2 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[70] flex max-w-[min(92vw,360px)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border-subtle bg-surface-1 px-3.5 py-2.5 text-[12px] font-medium text-text-primary shadow-elev-2 animate-backdrop-in"
+        >
+          {notifToastTone === 'error' ? (
+            <WarningCircle size={16} weight="bold" className="shrink-0 text-danger" />
+          ) : (
+            <Check size={16} weight="bold" className="shrink-0 text-success" />
+          )}
+          <span>{notifToast}</span>
+        </div>
+      )}
 
       <KanbanWorkoutBuilderSheet
         open={kanbanBuilderOpen}

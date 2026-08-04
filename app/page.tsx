@@ -392,29 +392,31 @@ function LoginForm() {
 
       {/* Lado Esquerdo — mockups transparentes + cards flutuantes (Desktop) */}
       <div
-        className="hidden lg:flex lg:w-[50%] lg:min-h-dvh items-center justify-center relative overflow-hidden select-none border-r border-black/5"
+        className="hidden lg:flex lg:w-[50%] lg:min-h-dvh items-center justify-center relative select-none border-r border-black/5 z-20"
         style={{
           background: 'linear-gradient(160deg, #faf5ff 0%, #f5f5f7 60%, #ffffff 100%)',
         }}
       >
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(80% 70% at 40% 30%, rgba(117, 27, 180,0.10), transparent 70%)',
-          }}
-        />
+        {/* Clip só no hero — cards podem atravessar a linha divisória */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(80% 70% at 40% 30%, rgba(117, 27, 180,0.10), transparent 70%)',
+            }}
+          />
+          <Image
+            src="/images/auth/auron-login-hero.webp"
+            alt="Auronfit em laptop, tablet e celular"
+            fill
+            priority
+            sizes="50vw"
+            className="object-contain object-center p-2 xl:p-4 scale-[1.35]"
+          />
+        </div>
 
-        <Image
-          src="/images/auth/auron-login-hero.webp"
-          alt="Auronfit em laptop, tablet e celular"
-          fill
-          priority
-          sizes="50vw"
-          className="object-contain object-center p-2 xl:p-4 scale-[1.35]"
-        />
-
-        <LoginFloatingCards className="absolute inset-0 z-10 w-full h-full" />
+        <LoginFloatingCards className="absolute inset-0 z-10 w-full h-full overflow-visible" />
       </div>
 
       {/* Lado Direito - Form Panel */}
@@ -429,13 +431,13 @@ function LoginForm() {
         <div className="flex flex-col items-center text-center mb-3 sm:mb-4 lg:mb-5">
           {!logoFailed ? (
             <Image
-              src="/images/logo-elo.webp"
+              src="/images/logo-auron-nome-roxo.svg"
               alt="Auronfit"
-              width={96}
-              height={96}
+              width={200}
+              height={40}
               priority
               onError={() => setLogoFailed(true)}
-              className="w-12 h-12 lg:w-14 lg:h-14 object-contain drop-shadow-2xl animate-fade-in"
+              className="w-40 lg:w-44 h-auto object-contain drop-shadow-2xl animate-fade-in"
             />
           ) : (
             <div className="flex items-center gap-2 mb-2">
@@ -751,7 +753,7 @@ function LoginForm() {
 
                   <div className="mt-3 text-center">
                     <Link
-                      href={roleTab === "coach" ? "/signup/coach" : "/signup/aluno"}
+                      href="/signup"
                       className="block w-full rounded-[10px] py-3 text-[14px] font-semibold transition-all duration-150 hover:opacity-80 touch-manipulation"
                       style={{
                         border: '1.5px solid #751BB4',

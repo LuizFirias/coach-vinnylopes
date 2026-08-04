@@ -13,6 +13,7 @@ interface MeasurementLineChartProps {
   labelMode?: 'sparse' | 'all';
   formatValue?: (value: number) => string;
   solidBackground?: boolean;
+  emptyMessage?: string;
 }
 
 export function MeasurementLineChart({
@@ -21,6 +22,7 @@ export function MeasurementLineChart({
   isDesktop = false,
   yDomain,
   labelMode = 'sparse',
+  emptyMessage = 'Registre pelo menos 2 medidas para ver o gráfico',
 }: MeasurementLineChartProps) {
   const chartHeight = height ?? (isDesktop ? 240 : 120);
   const width = 300;
@@ -131,7 +133,7 @@ export function MeasurementLineChart({
         </div>
       ) : (
         <p style={{ fontSize: 12, color: '#bbb', textAlign: 'center' }}>
-          Registre pelo menos 2 medidas para ver o gráfico
+          {emptyMessage}
         </p>
       )}
     </div>

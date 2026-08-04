@@ -11,6 +11,7 @@ import {
   mergedPlans,
   type CoachPlan,
 } from "@/lib/coachPlans";
+import { readReturnUrl } from "@/lib/utils/adminNav";
 
 const DRAFT_KEY = "draft_novo_aluno";
 const INPUT: CSSProperties = {
@@ -196,6 +197,9 @@ function FieldGroup({ children }: { children: ReactNode }) {
 
 export default function NovoAlunoPage() {
   const router = useRouter();
+  const goBack = () => {
+    router.push(readReturnUrl(window.location.search, "/admin/alunos"));
+  };
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -456,10 +460,10 @@ export default function NovoAlunoPage() {
         <div className="w-full max-w-2xl">
         <button
           type="button"
-          onClick={() => router.push("/admin/alunos")}
+          onClick={goBack}
           className="flex items-center gap-1.5 text-[13px] text-text-tertiary hover:text-text-primary transition-colors mb-7 bg-transparent border-0 p-0 cursor-pointer"
         >
-          ← Voltar para alunos
+          ← Voltar
         </button>
 
         <p className="text-xl font-semibold text-text-primary mb-1">
@@ -648,7 +652,7 @@ export default function NovoAlunoPage() {
           <div className="flex justify-end items-center flex-wrap gap-2.5">
             <button
               type="button"
-              onClick={() => router.push("/admin/alunos")}
+              onClick={goBack}
               className="h-10 px-5 rounded-[10px] border border-border-subtle bg-transparent text-text-tertiary text-[13px] font-medium cursor-pointer hover:text-text-primary transition-colors"
             >
               Cancelar
@@ -704,7 +708,7 @@ export default function NovoAlunoPage() {
               type="button"
               onClick={() => {
                 setShowModal(false);
-                router.push("/admin/alunos");
+                goBack();
               }}
               className="absolute top-4 right-4 text-text-tertiary hover:text-text-primary transition-colors p-1"
             >
@@ -761,11 +765,11 @@ export default function NovoAlunoPage() {
                 type="button"
                 onClick={() => {
                   setShowModal(false);
-                  router.push("/admin/alunos");
+                  goBack();
                 }}
                 className="w-full h-11 bg-surface-3 hover:bg-surface-2 border-0 text-text-primary rounded-lg text-xs font-semibold transition-all"
               >
-                Concluir e voltar à base
+                Concluir e voltar
               </button>
             </div>
           </div>

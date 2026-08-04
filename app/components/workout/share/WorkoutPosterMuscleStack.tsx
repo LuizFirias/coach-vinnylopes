@@ -41,11 +41,11 @@ export function WorkoutPosterMuscleStack({
           data={muscleData}
           side="front"
           gender={gender}
-          scale={1.05}
+          scale={1.26}
           defaultFill={tokens.muscleInactive}
           defaultStroke={tokens.muscleStroke}
           defaultStrokeWidth={1}
-          style={{ height: '100%', maxHeight: 420 }}
+          style={{ height: '100%', maxHeight: 504 }}
         />
       </div>
       <div style={{ flex: 1, width: '100%', minHeight: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
@@ -53,11 +53,11 @@ export function WorkoutPosterMuscleStack({
           data={muscleData}
           side="back"
           gender={gender}
-          scale={1.05}
+          scale={1.26}
           defaultFill={tokens.muscleInactive}
           defaultStroke={tokens.muscleStroke}
           defaultStrokeWidth={1}
-          style={{ height: '100%', maxHeight: 420 }}
+          style={{ height: '100%', maxHeight: 504 }}
         />
       </div>
     </div>

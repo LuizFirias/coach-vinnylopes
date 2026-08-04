@@ -8,16 +8,22 @@ type ChatListProps = {
   conversas: ChatListItem[];
   conversaAtiva?: string;
   onSelect: (item: ChatListItem) => void;
+  emptyLabel?: string;
 };
 
-export function ChatList({ conversas, conversaAtiva, onSelect }: ChatListProps) {
+export function ChatList({
+  conversas,
+  conversaAtiva,
+  onSelect,
+  emptyLabel = 'Nenhuma conversa ainda.',
+}: ChatListProps) {
   if (conversas.length === 0) {
     return (
       <p
         className="px-4 py-10 text-center"
         style={{ fontSize: 13, color: 'var(--text-tertiary, #888)' }}
       >
-        Nenhum aluno para conversar ainda.
+        {emptyLabel}
       </p>
     );
   }
@@ -28,6 +34,7 @@ export function ChatList({ conversas, conversaAtiva, onSelect }: ChatListProps) 
         const avatar = getPublicStorageUrl('avatars', c.outro.avatar_url);
         const initial = (c.outro.full_name?.[0] ?? '?').toUpperCase();
         const active = conversaAtiva === c.id;
+        const unread = c.nao_lidas > 0;
 
         return (
           <button
@@ -92,7 +99,7 @@ export function ChatList({ conversas, conversaAtiva, onSelect }: ChatListProps) 
                 <p
                   style={{
                     fontSize: 14,
-                    fontWeight: 600,
+                    fontWeight: unread ? 700 : 600,
                     color: 'var(--text-primary, #1a1a1a)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -105,7 +112,8 @@ export function ChatList({ conversas, conversaAtiva, onSelect }: ChatListProps) 
                   <span
                     style={{
                       fontSize: 11,
-                      color: 'var(--text-tertiary, #aaa)',
+                      color: unread ? '#e05555' : 'var(--text-tertiary, #aaa)',
+                      fontWeight: unread ? 600 : 400,
                       flexShrink: 0,
                     }}
                   >
@@ -127,7 +135,10 @@ export function ChatList({ conversas, conversaAtiva, onSelect }: ChatListProps) 
                 <p
                   style={{
                     fontSize: 12,
-                    color: 'var(--text-secondary, #888)',
+                    fontWeight: unread ? 700 : 400,
+                    color: unread
+                      ? 'var(--text-primary, #1a1a1a)'
+                      : 'var(--text-secondary, #888)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -136,25 +147,17 @@ export function ChatList({ conversas, conversaAtiva, onSelect }: ChatListProps) 
                 >
                   {c.ultima_msg ?? 'Sem mensagens'}
                 </p>
-                {c.nao_lidas > 0 && (
+                {unread && (
                   <span
+                    aria-label={`${c.nao_lidas} não lida${c.nao_lidas === 1 ? '' : 's'}`}
                     style={{
-                      minWidth: 18,
-                      height: 18,
-                      borderRadius: 9,
-                      background: '#751BB4',
-                      color: '#fff',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '0 4px',
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#e05555',
                       flexShrink: 0,
                     }}
-                  >
-                    {c.nao_lidas > 99 ? '99+' : c.nao_lidas}
-                  </span>
+                  />
                 )}
               </div>
             </div>

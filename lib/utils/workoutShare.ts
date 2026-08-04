@@ -13,8 +13,10 @@ export interface ShareThemeTokens {
   bg: string;
   text: string;
   textSecondary: string;
+  textTertiary: string;
   textExercise: string;
   accent: string;
+  success: string;
   divider: string;
   muscleInactive: string;
   muscleStroke: string;
@@ -27,9 +29,11 @@ export const SHARE_THEME_TOKENS: Record<ShareTheme, ShareThemeTokens> = {
     bg: '#0a0f1e',
     text: '#ffffff',
     textSecondary: '#7a8aab',
+    textTertiary: '#52525B',
     textExercise: '#d4dce8',
     accent: '#751BB4',
-    divider: '#1a2540',
+    success: '#39c75a',
+    divider: '#1a1a2e',
     muscleInactive: '#1a2540',
     muscleStroke: '#2a3a60',
     exportBackground: '#0a0f1e',
@@ -38,9 +42,11 @@ export const SHARE_THEME_TOKENS: Record<ShareTheme, ShareThemeTokens> = {
     bg: '#ffffff',
     text: '#0f172a',
     textSecondary: '#64748b',
+    textTertiary: '#A1A1AA',
     textExercise: '#334155',
     accent: '#751BB4',
-    divider: '#e2e8f0',
+    success: '#39c75a',
+    divider: '#e5e7eb',
     muscleInactive: '#e2e8f0',
     muscleStroke: '#cbd5e1',
     exportBackground: '#ffffff',
@@ -48,12 +54,14 @@ export const SHARE_THEME_TOKENS: Record<ShareTheme, ShareThemeTokens> = {
   transparente: {
     bg: 'transparent',
     text: '#ffffff',
-    textSecondary: '#b8c4d9',
-    textExercise: '#e8edf5',
-    accent: '#4d9fff',
+    textSecondary: '#d4dce8',
+    textTertiary: '#9aa3b5',
+    textExercise: '#f0f4fa',
+    accent: '#751BB4',
+    success: '#39c75a',
     divider: 'rgba(255,255,255,0.18)',
-    muscleInactive: '#1a2540',
-    muscleStroke: '#2a3a60',
+    muscleInactive: '#2a3348',
+    muscleStroke: '#3d4a66',
     exportBackground: null,
   },
 };
@@ -88,7 +96,7 @@ export const MUSCLE_HIGHLIGHTER_MAP: Record<string, string[]> = {
 export interface ShareExerciseInput {
   nome: string;
   grupo_muscular?: string;
-  series: Array<{ completado: boolean }>;
+  series: Array<{ completado: boolean; peso_atual?: number }>;
 }
 
 /** Volume sempre em kg com separador pt-BR — nunca em ton */
@@ -107,23 +115,27 @@ export function formatCoachHandle(handle: string): string {
 
 /**
  * @ do Instagram do coach nos cards de compartilhamento.
- * Prioridade: handle do perfil público → coaching_reference legado → nome → @auronfit.
+ * Prioridade: handle do perfil → URL do Instagram → @auronfit.
+ * Não usa nome de exibição — só @ ou fallback.
  */
 export function resolveCoachShareHandle(
-  instagramOrReference?: string | null,
-  fullName?: string | null,
+  handle?: string | null,
+  instagramUrl?: string | null,
 ): string {
-  const insta = (instagramOrReference || '').replace(/^@+/, '').trim();
+  const fromHandle = (handle || '').replace(/^@+/, '').trim();
+  if (fromHandle && !fromHandle.includes('/') && !fromHandle.includes('http')) {
+    return `@${fromHandle}`;
+  }
+
+  const insta = (instagramUrl || '').trim();
   if (insta) {
-    // Se veio URL, extrai o user
     const fromUrl = insta.match(/instagram\.com\/([a-zA-Z0-9._]+)/i)?.[1];
-    const user = (fromUrl || insta).replace(/\/+$/, '');
+    const user = (fromUrl || insta.replace(/^@+/, '')).replace(/\/+$/, '').trim();
     if (user && !user.includes('/') && !user.includes('http')) {
       return `@${user}`;
     }
   }
-  const name = (fullName || '').trim();
-  if (name) return name;
+
   return '@auronfit';
 }
 
@@ -169,14 +181,32 @@ export function buildMuscleHighlightData(
 
 export function getShareExportOptions(theme: ShareTheme) {
   const tokens = getShareThemeTokens(theme);
-  return {
+  const base = {
     pixelRatio: 1,
     cacheBust: true,
     width: SHARE_CARD.width,
     height: SHARE_CARD.height,
-    ...(tokens.exportBackground === null
-      ? { backgroundColor: undefined as undefined }
-      : { backgroundColor: tokens.exportBackground }),
   };
+  // Sem backgroundColor = PNG transparente (html-to-image)
+  if (tokens.exportBackground === null) return base;
+  return { ...base, backgroundColor: tokens.exportBackground };
 }
+
+/** Padrão quadriculado estilo PNG (preview do tema transparente). */
+export const SHARE_TRANSPARENT_CHECKER: {
+  backgroundColor: string;
+  backgroundImage: string;
+  backgroundSize: string;
+  backgroundPosition: string;
+} = {
+  backgroundColor: '#e8e8e8',
+  backgroundImage: [
+    'linear-gradient(45deg, #cfcfcf 25%, transparent 25%)',
+    'linear-gradient(-45deg, #cfcfcf 25%, transparent 25%)',
+    'linear-gradient(45deg, transparent 75%, #cfcfcf 75%)',
+    'linear-gradient(-45deg, transparent 75%, #cfcfcf 75%)',
+  ].join(', '),
+  backgroundSize: '20px 20px',
+  backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0',
+};
 

@@ -127,7 +127,7 @@ export async function calculatePlanMacros(planId: string, dayIndex: number = 1):
 
 /** Campos mínimos do alimento para macros + exibição de porção */
 const FOOD_EMBED =
-  'id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, portions:nutrition_food_portions(label, grams)';
+  'id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, portions:nutrition_food_portions(label, grams, is_default)';
 
 /** Itens sem substituições — query leve e estável */
 const MEAL_ITEM_SELECT = `id, meal_id, food_id, quantity_grams, portion_label, notes, sort_order, food:nutrition_foods(${FOOD_EMBED})`;

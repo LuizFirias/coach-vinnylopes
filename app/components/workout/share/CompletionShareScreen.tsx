@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { DeviceMobile, Download, ShareNetwork, Trophy, X } from '@phosphor-icons/react';
+import { DeviceMobile, Download, ShareNetwork, X } from '@phosphor-icons/react';
 import { toPng } from 'html-to-image';
 import { useAlunoBodyGender } from '@/app/contexts/AlunoBodyGenderContext';
+import { MuscleVolumeCard } from '@/app/components/workout/share/MuscleVolumeCard';
+import { PrCard } from '@/app/components/workout/share/PrCard';
+import { ReceiptCard } from '@/app/components/workout/share/ReceiptCard';
 import { WorkoutExercisesCard } from '@/app/components/workout/share/WorkoutExercisesCard';
 import { WorkoutMuscleListCard } from '@/app/components/workout/share/WorkoutMuscleListCard';
 import { WorkoutPosterCard } from '@/app/components/workout/share/WorkoutPosterCard';
@@ -14,9 +17,16 @@ import {
   type ShareExerciseInput,
   type ShareTheme,
   SHARE_THEME_LABELS,
+  SHARE_TRANSPARENT_CHECKER,
   getShareExportOptions,
 } from '@/lib/utils/workoutShare';
 import { cn } from '@/lib/utils/cn';
+
+export interface SharePrPrincipal {
+  exercicioNome: string;
+  cargaNova: number;
+  cargaAnterior: number;
+}
 
 export interface CompletionShareScreenProps {
   nomeRotina: string;
@@ -25,6 +35,8 @@ export interface CompletionShareScreenProps {
   sets: number;
   exercicios: ShareExerciseInput[];
   coachUsername: string;
+  prsCount?: number;
+  prPrincipal?: SharePrPrincipal | null;
 }
 
 const SHARE_THEMES: ShareTheme[] = ['escuro', 'claro', 'transparente'];
@@ -46,10 +58,10 @@ export function CompletionShareScreen({
   sets,
   exercicios,
   coachUsername,
+  prsCount = 0,
+  prPrincipal = null,
 }: CompletionShareScreenProps) {
   const [exporting, setExporting] = useState(false);
-  const [shareMode, setShareMode] = useState(false);
-  const [feedbackNota, setFeedbackNota] = useState('');
   const [temaAtivo, setTemaAtivo] = useState<ShareTheme>('escuro');
   const [cardAtivo, setCardAtivo] = useState(0);
   const [cardScale, setCardScale] = useState(1);
@@ -75,16 +87,54 @@ export function CompletionShareScreen({
     gender: bodyGender,
   };
 
-  const cards = [
+  const receiptExercicios = exercicios
+    .filter((ex) => ex.series.some((s) => s.completado))
+    .map((ex) => {
+      const done = ex.series.filter((s) => s.completado);
+      const pesos = done.map((s) => s.peso_atual ?? 0).filter((p) => p > 0);
+      return {
+        nome: ex.nome,
+        series: done.length,
+        cargaMax: pesos.length > 0 ? Math.max(...pesos) : 0,
+      };
+    });
+
+  const gruposMap: Record<string, number> = {};
+  for (const ex of exercicios) {
+    if (!ex.grupo_muscular) continue;
+    const seriesCompletas = ex.series.filter((s) => s.completado).length;
+    if (seriesCompletas === 0) continue;
+    gruposMap[ex.grupo_muscular] = (gruposMap[ex.grupo_muscular] ?? 0) + seriesCompletas;
+  }
+  const gruposMusculares = Object.entries(gruposMap)
+    .map(([musculo, series]) => ({ musculo, series }))
+    .sort((a, b) => b.series - a.series)
+    .slice(0, 6);
+
+  const cards: Array<{ id: string; label: string; render: () => ReactNode }> = [];
+
+  if (prsCount > 0 && prPrincipal) {
+    cards.push({
+      id: 'pr',
+      label: 'PR',
+      render: () => (
+        <PrCard
+          exercicioNome={prPrincipal.exercicioNome}
+          cargaNova={prPrincipal.cargaNova}
+          cargaAnterior={prPrincipal.cargaAnterior}
+          prsCount={prsCount}
+          coachHandle={coachUsername}
+          theme={temaAtivo}
+        />
+      ),
+    });
+  }
+
+  cards.push(
     {
       id: 'poster',
       label: 'Anatomia',
-      render: () => (
-        <WorkoutPosterCard
-          {...shareProps}
-          exercicios={exercicios}
-        />
-      ),
+      render: () => <WorkoutPosterCard {...shareProps} exercicios={exercicios} />,
     },
     {
       id: 'pull',
@@ -103,23 +153,45 @@ export function CompletionShareScreen({
     {
       id: 'metricas',
       label: 'Métricas',
-      render: () => (
-        <WorkoutSummaryCard
-          {...shareProps}
-        />
-      ),
+      render: () => <WorkoutSummaryCard {...shareProps} />,
     },
     {
       id: 'exercicios',
       label: 'Exercícios',
+      render: () => <WorkoutExercisesCard {...shareProps} exercises={exerciseItems} />,
+    },
+    {
+      id: 'receipt',
+      label: 'Detalhes',
       render: () => (
-        <WorkoutExercisesCard
-          {...shareProps}
-          exercises={exerciseItems}
+        <ReceiptCard
+          workoutName={workoutName}
+          exercicios={receiptExercicios}
+          volumeTotal={volume}
+          duracaoSegundos={duracao}
+          coachHandle={coachUsername}
+          theme={temaAtivo}
         />
       ),
     },
-  ];
+  );
+
+  if (gruposMusculares.length > 0) {
+    cards.push({
+      id: 'muscles',
+      label: 'Músculos',
+      render: () => (
+        <MuscleVolumeCard
+          workoutName={workoutName}
+          grupos={gruposMusculares}
+          totalSeries={sets}
+          duracaoSegundos={duracao}
+          coachHandle={coachUsername}
+          theme={temaAtivo}
+        />
+      ),
+    });
+  }
 
   useEffect(() => {
     setSupportsGallerySave(canShareFiles());
@@ -134,6 +206,11 @@ export function CompletionShareScreen({
     window.addEventListener('resize', calcScale);
     return () => window.removeEventListener('resize', calcScale);
   }, []);
+
+  useEffect(() => {
+    setCardAtivo((prev) => Math.min(prev, Math.max(0, cards.length - 1)));
+    cardRefs.current = cardRefs.current.slice(0, cards.length);
+  }, [cards.length]);
 
   const renderCardBlob = async (index: number): Promise<Blob> => {
     const cardEl = cardRefs.current[index];
@@ -206,72 +283,11 @@ export function CompletionShareScreen({
     }
   };
 
-  if (!shareMode) {
-    return (
-      <div className="flex min-h-screen flex-col bg-surface-0 px-4 pb-8">
-        <div className="flex flex-col items-center pb-6 pt-12">
-          <Trophy className="mb-3 h-10 w-10 text-success" weight="duotone" />
-          <h1 className="text-xl font-bold text-text-primary">Treino concluído!</h1>
-          <p className="mt-1 font-mono text-xs tabular-nums lining-nums text-text-muted">
-            {volume.toLocaleString('pt-BR')} kg · {durationFormatted} · {sets} séries
-          </p>
-        </div>
-
-        <div className="mb-5 grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-card bg-surface-1 p-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Duração</span>
-            <span className="font-mono text-lg font-bold tabular-nums lining-nums text-text-primary">{durationFormatted}</span>
-          </div>
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-card bg-surface-1 p-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Volume</span>
-            <span className="font-mono text-lg font-bold tabular-nums lining-nums text-text-primary">
-              {volume.toLocaleString('pt-BR')}
-              <span className="ml-0.5 text-xs font-normal text-text-muted">kg</span>
-            </span>
-          </div>
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-card bg-surface-1 p-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">Séries</span>
-            <span className="font-mono text-lg font-bold tabular-nums lining-nums text-text-primary">{sets}</span>
-          </div>
-        </div>
-
-        <div className="mb-5">
-          <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
-            Como foi o treino? (opcional)
-          </label>
-          <textarea
-            value={feedbackNota}
-            onChange={(e) => setFeedbackNota(e.target.value.slice(0, 300))}
-            placeholder="Deixe uma nota sobre essa sessão..."
-            className="max-h-[140px] min-h-[80px] w-full resize-none rounded-lg border border-input bg-surface-1 p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-            maxLength={300}
-          />
-        </div>
-
-        <div className="mt-auto flex flex-col gap-2">
-          <button
-            onClick={() => setShareMode(true)}
-            className="flex h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-brand text-[15px] font-semibold text-white transition-colors duration-120 hover:bg-brand-hover"
-          >
-            <ShareNetwork className="h-4 w-4" />
-            Compartilhar treino
-          </button>
-          <button
-            onClick={() => router.push('/aluno/treinos')}
-            className="h-11 w-full rounded-lg text-sm font-medium text-text-muted transition-colors duration-120 hover:text-text-primary"
-          >
-            Ir para treinos
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="relative flex min-h-screen flex-col bg-surface-0">
       <div className="flex items-center justify-between px-4 pb-3 pt-4">
         <button
-          onClick={() => setShareMode(false)}
+          onClick={() => router.push('/aluno/treinos')}
           className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-1"
         >
           <X className="h-4 w-4 text-text-secondary" />
@@ -310,10 +326,8 @@ export function CompletionShareScreen({
           {cards.map((card) => (
             <div
               key={card.id}
-              className={cn(
-                'aspect-square w-[85vw] shrink-0 snap-center overflow-hidden rounded-xl',
-                temaAtivo === 'transparente' && 'bg-[#0a0f1e]',
-              )}
+              className="aspect-square w-[85vw] shrink-0 snap-center overflow-hidden rounded-xl"
+              style={temaAtivo === 'transparente' ? SHARE_TRANSPARENT_CHECKER : undefined}
             >
               <div
                 style={{
@@ -407,4 +421,3 @@ export function CompletionShareScreen({
     </div>
   );
 }
-

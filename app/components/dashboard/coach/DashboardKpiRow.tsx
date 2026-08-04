@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Info } from '@phosphor-icons/react';
 import { GlassPanel, DASHBOARD_KPI_GLASS, type GlassPanelVariant } from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils/cn';
@@ -37,16 +38,53 @@ export function CoachKpiCard({
   compact,
 }: CoachKpiCardProps) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!infoOpen || !cardRef.current) {
+      setTooltipPos(null);
+      return;
+    }
+
+    const update = () => {
+      const rect = cardRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      // Um pouco menor que o KPI; alinhado à direita (ícone info)
+      const width = Math.min(Math.max(rect.width * 0.82, 140), 200);
+      let left = rect.right - width;
+      left = Math.min(Math.max(8, left), window.innerWidth - width - 8);
+      setTooltipPos({
+        top: rect.top - 6,
+        left,
+        width,
+      });
+    };
+
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [infoOpen]);
 
   useEffect(() => {
     if (!infoOpen) return;
 
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!cardRef.current?.contains(event.target as Node)) {
-        setInfoOpen(false);
-      }
+      const target = event.target as Node;
+      if (cardRef.current?.contains(target)) return;
+      if (tooltipRef.current?.contains(target)) return;
+      setInfoOpen(false);
     };
 
     const handleEscape = (event: KeyboardEvent) => {
@@ -62,6 +100,30 @@ export function CoachKpiCard({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [infoOpen]);
+
+  const tooltip =
+    mounted &&
+    infoOpen &&
+    tooltipPos &&
+    createPortal(
+      <div
+        ref={tooltipRef}
+        id={popoverId}
+        role="tooltip"
+        className="coach-kpi-tooltip fixed z-[80] -translate-y-full rounded-lg border border-border-subtle bg-surface-2 px-2.5 py-2 shadow-elev-2"
+        style={{
+          top: tooltipPos.top,
+          left: tooltipPos.left,
+          width: tooltipPos.width,
+        }}
+      >
+        <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-tertiary">
+          {label}
+        </p>
+        <p className="text-[10px] leading-relaxed text-text-secondary">{infoText}</p>
+      </div>,
+      document.body,
+    );
 
   return (
     <div ref={cardRef} className="relative coach-kpi-card">
@@ -98,23 +160,6 @@ export function CoachKpiCard({
           >
             <Info size={compact ? 13 : 14} weight="bold" />
           </button>
-
-          {infoOpen && (
-            <GlassPanel
-              id={popoverId}
-              role="tooltip"
-              variant={glassVariant}
-              shine="subtle"
-              className="coach-kpi-tooltip absolute z-30 left-0 right-0 top-full mt-1.5"
-            >
-              <div className="px-3 py-2.5">
-                <p className="coach-kpi-tooltip-title text-[10px] font-semibold uppercase tracking-wider mb-1">
-                  {label}
-                </p>
-                <p className="coach-kpi-tooltip-body text-[11px] leading-relaxed">{infoText}</p>
-              </div>
-            </GlassPanel>
-          )}
         </div>
         <div
           className={cn(
@@ -142,6 +187,7 @@ export function CoachKpiCard({
           <span className="coach-kpi-subtitle text-[11px] mt-1.5 leading-none">{subtitle}</span>
         )}
       </GlassPanel>
+      {tooltip}
     </div>
   );
 }

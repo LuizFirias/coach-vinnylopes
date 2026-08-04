@@ -294,10 +294,12 @@ export interface ExercicioExecucao {
   gif_url?: string;
   observacoes?: string;
   grupo_muscular?: string;
+  equipamento?: string;
   series: Array<{
     ordem: number;
     peso_atual: number;
     reps: number | string;
+    reps_executadas?: number | string;
     tecnica?: string;
     tecnica_extra?: string;
     completado: boolean;
@@ -336,6 +338,7 @@ type PrevSerieSessao = {
   ordem?: number;
   peso_atual?: number;
   reps?: number | string;
+  reps_executadas?: number | string;
   completado?: boolean;
 };
 
@@ -343,6 +346,7 @@ type BibMeta = {
   gruposMusculares: Record<string, string>;
   gifs: Record<string, string>;
   videos: Record<string, string>;
+  equipamentos: Record<string, string>;
   ultimoPorExercicio: Record<string, { dados_sessao?: { series?: PrevSerieSessao[] } }>;
 };
 
@@ -375,7 +379,8 @@ function buildSerieExecucao(
 ) {
   const ordem = s.ordem ?? idx + 1;
   const prev = findPrevSerie(prevSeries, ordem, idx);
-  const anterior = prev ? `${prev.peso_atual}kg × ${prev.reps || 0}` : "—";
+  const prevReps = prev?.reps_executadas ?? prev?.reps ?? 0;
+  const anterior = prev ? `${prev.peso_atual}kg × ${prevReps}` : "—";
   return {
     ordem,
     peso_atual: prev?.peso_atual ?? 0,
@@ -402,6 +407,7 @@ function buildHalfExecucao(
     gif_url: meta.gifs[eid] || "",
     observacoes: half.observacoes,
     grupo_muscular: meta.gruposMusculares[eid] || "",
+    equipamento: meta.equipamentos[eid] || "",
     series: (half.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries)),
   };
 }
@@ -419,6 +425,7 @@ function buildSimpleExecucao(ex: ExercicioSimplesPrescricao, meta: BibMeta): Exe
     gif_url: meta.gifs[eid] || "",
     observacoes: ex.observacoes,
     grupo_muscular: meta.gruposMusculares[eid] || "",
+    equipamento: meta.equipamentos[eid] || "",
     series: (ex.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries)),
   };
 }
@@ -533,7 +540,8 @@ export function calcVolumeFromBlocks(blocks: WorkoutBlock[]): number {
       acc +
       ex.series.reduce((sAcc, s) => {
         if (!s.completado) return sAcc;
-        const r = parseFloat(String(s.reps)) || 0;
+        const repsValor = s.reps_executadas ?? s.reps;
+        const r = parseFloat(String(repsValor)) || 0;
         return sAcc + (s.peso_atual || 0) * r;
       }, 0),
     0
@@ -553,5 +561,49 @@ export function firstIncompleteRodada(block: Extract<WorkoutBlock, { kind: "bise
   for (let i = 0; i < block.exercicioA.series.length; i++) {
     if (!block.exercicioA.series[i]?.completado || !block.exercicioB.series[i]?.completado) return i;
   }
-  return 0;
+  return Math.max(0, block.exercicioA.series.length - 1);
+}
+
+/** Onde retomar o modal: 1ª incompleta, ou último exercício/série se tudo concluído na lista. */
+export function resolveResumePosition(blocks: WorkoutBlock[]): {
+  blockIdx: number;
+  rodadaIdx: number;
+  fase: "a" | "b" | null;
+} {
+  if (blocks.length === 0) {
+    return { blockIdx: 0, rodadaIdx: 0, fase: null };
+  }
+
+  const incompleteIdx = blocks.findIndex((b) => !isBlockComplete(b));
+  const allDone = incompleteIdx < 0;
+  const blockIdx = allDone ? blocks.length - 1 : incompleteIdx;
+  const block = blocks[blockIdx];
+
+  if (block.kind === "simples") {
+    if (allDone) {
+      return {
+        blockIdx,
+        rodadaIdx: Math.max(0, block.exercise.series.length - 1),
+        fase: null,
+      };
+    }
+    const prox = block.exercise.series.findIndex((s) => !s.completado);
+    return {
+      blockIdx,
+      rodadaIdx: prox >= 0 ? prox : Math.max(0, block.exercise.series.length - 1),
+      fase: null,
+    };
+  }
+
+  if (allDone) {
+    return {
+      blockIdx,
+      rodadaIdx: Math.max(0, block.exercicioA.series.length - 1),
+      fase: "b",
+    };
+  }
+
+  const rodadaIdx = firstIncompleteRodada(block);
+  const aDone = !!block.exercicioA.series[rodadaIdx]?.completado;
+  return { blockIdx, rodadaIdx, fase: aDone ? "b" : "a" };
 }

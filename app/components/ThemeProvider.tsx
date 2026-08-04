@@ -55,12 +55,15 @@ function readStoredTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof document === 'undefined') return 'light';
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  });
 
   useEffect(() => {
     const stored = readStoredTheme();
-    setThemeState(stored);
     applyTheme(stored);
+    setThemeState((current) => (current === stored ? current : stored));
   }, []);
 
   const setTheme = useCallback((next: Theme) => {

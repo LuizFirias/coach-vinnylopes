@@ -419,7 +419,9 @@ export default function TreinosPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 py-2">
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
             <button
-              onClick={() => router.push('/admin/treinos/nova-ficha')}
+              onClick={() =>
+                router.push(withReturnUrl('/admin/treinos/nova-ficha', '/admin/treinos'))
+              }
               className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
             >
               <PlusCircle size={14} weight="bold" /> Nova Ficha Digital
@@ -463,7 +465,12 @@ export default function TreinosPage() {
             <p className="text-text-secondary text-xs mb-6">
               Você precisa possuir alunos vinculados para começar a prescrever e gerenciar treinos digitais e PDFs.
             </p>
-            <button onClick={() => router.push("/admin/alunos/novo")} className="btn-primary inline-flex items-center gap-2 max-w-xs mx-auto text-xs py-2 rounded-lg">
+            <button
+              onClick={() =>
+                router.push(withReturnUrl('/admin/alunos/novo', '/admin/treinos'))
+              }
+              className="btn-primary inline-flex items-center gap-2 max-w-xs mx-auto text-xs py-2 rounded-lg"
+            >
               Cadastrar Aluno
             </button>
           </div>

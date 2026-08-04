@@ -28,6 +28,10 @@ import {
   type CoachPlan,
 } from "@/lib/coachPlans";
 import { useNaoLidasRealtime } from "@/lib/chat/realtime";
+import { withReturnUrl } from "@/lib/utils/adminNav";
+
+const FROM_DASHBOARD = "/admin/dashboard";
+const fromDashboard = (href: string) => withReturnUrl(href, FROM_DASHBOARD);
 
 // Interfaces
 interface ProfileRow {
@@ -254,7 +258,7 @@ export default function AdminDashboard() {
                 tipo: 'warning',
                 descricao: `Plano vence em ${diffDays} dias`,
                 acao: 'Renovar',
-                link: `/admin/aluno/${r.id}`
+                link: fromDashboard(`/admin/aluno/${r.id}`)
               });
             }
           }
@@ -269,7 +273,7 @@ export default function AdminDashboard() {
             tipo: 'danger',
             descricao: isExpired ? 'Plano Expirado' : 'Pagamento Pendente',
             acao: 'Cobrar',
-            link: `/admin/aluno/${r.id}`
+            link: fromDashboard(`/admin/aluno/${r.id}`)
           });
         }
 
@@ -286,7 +290,7 @@ export default function AdminDashboard() {
               tipo: 'danger',
               descricao: `Sem treinar há ${diffDays} dias`,
               acao: 'Enviar Mensagem',
-              link: `/admin/aluno/${r.id}`
+              link: fromDashboard(`/admin/aluno/${r.id}`)
             });
           }
         } else if (isActive) {
@@ -298,7 +302,7 @@ export default function AdminDashboard() {
             tipo: 'info',
             descricao: 'Nenhum treino realizado ainda',
             acao: 'Prescrever',
-            link: `/admin/aluno/${r.id}`
+            link: fromDashboard(`/admin/aluno/${r.id}`)
           });
         }
 
@@ -327,7 +331,7 @@ export default function AdminDashboard() {
                 tipo: 'warning',
                 descricao: `Adesão à dieta baixa: ${studentAdherence}%`,
                 acao: 'Ver Plano',
-                link: `/admin/nutricao/planos/${studentPlan.id}`
+                link: fromDashboard(`/admin/nutricao/planos/${studentPlan.id}`)
               });
             }
 
@@ -344,7 +348,8 @@ export default function AdminDashboard() {
                   tipo: 'danger',
                   descricao: `Sem registrar dieta há ${diffDays} dias`,
                   acao: 'Cobrar Check-in',
-                  link: `/admin/aluno/${r.id}`
+                  link: fromDashboard(`/admin/aluno/${r.id}`),
+                  kind: 'cobrar_checkin',
                 });
               }
             } else {
@@ -356,7 +361,8 @@ export default function AdminDashboard() {
                 tipo: 'warning',
                 descricao: `Sem check-in de dieta na semana`,
                 acao: 'Cobrar Check-in',
-                link: `/admin/aluno/${r.id}`
+                link: fromDashboard(`/admin/aluno/${r.id}`),
+                kind: 'cobrar_checkin',
               });
             }
           }
@@ -369,7 +375,7 @@ export default function AdminDashboard() {
             tipo: 'info',
             descricao: `Sem plano de nutrição digital`,
             acao: 'Criar Plano',
-            link: `/admin/nutricao/novo-plano`
+            link: fromDashboard(`/admin/nutricao/novo-plano`)
           });
         }
       });
@@ -404,6 +410,7 @@ export default function AdminDashboard() {
         { data: recentWorkouts },
         { data: recentManual },
         { data: recentFeedbacks },
+        { data: fotosRecentes },
       ] = await Promise.all([
         supabaseClient
           .from('fotos_evolucao')
@@ -439,7 +446,58 @@ export default function AdminDashboard() {
           .in('aluno_id', alunosIds)
           .order('created_at', { ascending: false })
           .limit(20),
+        supabaseClient
+          .from('fotos_evolucao')
+          .select('aluno_id, data_upload')
+          .in('aluno_id', alunosIds)
+          .order('data_upload', { ascending: false })
+          .limit(500),
       ]);
+
+      const lastPhotoByAluno = new Map<string, string>();
+      for (const f of fotosRecentes || []) {
+        if (f.aluno_id && !lastPhotoByAluno.has(f.aluno_id)) {
+          lastPhotoByAluno.set(f.aluno_id, f.data_upload);
+        }
+      }
+
+      for (const r of rows) {
+        const isPaid = r.status_pagamento === 'pago';
+        const expiration = r.data_expiracao ? new Date(r.data_expiracao) : null;
+        const isActive = isPaid && (!expiration || expiration >= today);
+        if (!isActive) continue;
+
+        const nome = r.coaching_reference || r.full_name || 'Atleta';
+        const lastPhoto = lastPhotoByAluno.get(r.id);
+        if (!lastPhoto) {
+          tempPrioridades.push({
+            id: `no-photos-${r.id}`,
+            aluno_id: r.id,
+            nome,
+            tipo: 'warning',
+            descricao: 'Nenhuma foto de evolução cadastrada',
+            acao: 'Solicitar Fotos',
+            link: fromDashboard(`/admin/aluno/${r.id}?tab=fotos`),
+            kind: 'solicitar_fotos',
+          });
+        } else {
+          const diffDays = Math.ceil(
+            (today.getTime() - new Date(lastPhoto).getTime()) / (1000 * 60 * 60 * 24),
+          );
+          if (diffDays > 15) {
+            tempPrioridades.push({
+              id: `photos-old-${r.id}`,
+              aluno_id: r.id,
+              nome,
+              tipo: 'warning',
+              descricao: `Fotos desatualizadas (há ${diffDays} dias)`,
+              acao: 'Solicitar Renovação',
+              link: fromDashboard(`/admin/aluno/${r.id}?tab=fotos`),
+              kind: 'solicitar_fotos',
+            });
+          }
+        }
+      }
 
       setCheckinsPendentes((photosCount || 0) + (medidasCount || 0) + (feedbacksCount || 0));
 
@@ -455,7 +513,7 @@ export default function AdminDashboard() {
           type: "workout_completed",
           workoutName: routine?.nome_rotina || "Treino Digital",
           timestamp: new Date(w.data_conclusao),
-          link: `/admin/aluno/${w.aluno_id}?tab=treinos`,
+          link: fromDashboard(`/admin/aluno/${w.aluno_id}?tab=treinos`),
         });
       });
 
@@ -468,7 +526,7 @@ export default function AdminDashboard() {
           type: "workout_manual",
           description: m.descricao || "Treino livre",
           timestamp: new Date(m.data_treino),
-          link: `/admin/aluno/${m.aluno_id}?tab=treinos`,
+          link: fromDashboard(`/admin/aluno/${m.aluno_id}?tab=treinos`),
         });
       });
 
@@ -483,7 +541,7 @@ export default function AdminDashboard() {
           type: "checkin_sent",
           description: `Enviou feedback: "${snippet}"`,
           timestamp: new Date(f.created_at),
-          link: `/admin/aluno/${f.aluno_id}?tab=visao-geral`,
+          link: fromDashboard(`/admin/aluno/${f.aluno_id}?tab=visao-geral`),
         });
       });
 
@@ -601,7 +659,7 @@ export default function AdminDashboard() {
             <p className="text-text-secondary text-xs mb-6">
               Adicione seu primeiro aluno para começar a prescrever treinos, acompanhar adesão e gerenciar cobranças.
             </p>
-            <Link href="/admin/alunos/novo" className="btn-primary inline-flex items-center gap-2 justify-center max-w-xs mx-auto text-xs py-2 rounded-lg">
+            <Link href={fromDashboard("/admin/alunos/novo")} className="btn-primary inline-flex items-center gap-2 justify-center max-w-xs mx-auto text-xs py-2 rounded-lg">
               <Plus size={14} weight="bold" /> Cadastrar Aluno
             </Link>
           </div>
@@ -632,6 +690,7 @@ export default function AdminDashboard() {
               today={today}
               formatLastWorkout={(d) => timeAgo(d) ?? "Sem treinos"}
               isMobile
+              returnUrl={FROM_DASHBOARD}
             />
           </div>
         ) : (
@@ -657,6 +716,7 @@ export default function AdminDashboard() {
               students={saudeAlunos}
               today={today}
               formatLastWorkout={(d) => timeAgo(d) ?? "Sem treinos"}
+              returnUrl={FROM_DASHBOARD}
             />
           </div>
         )}

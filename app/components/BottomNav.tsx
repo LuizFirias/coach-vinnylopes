@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ForkKnife, User, HeartStraight,
-  Users, Chat, ChatCircle, Plus, BookOpen, X, Handshake, ChartBar, ShieldWarning,
-  AppleLogo, Trophy, List, Link as LinkIcon,
+  ForkKnife, User, HeartStraight, Barbell,
+  Users, Chat, ChatCircle, BookOpen, X, Handshake, ChartBar, ShieldWarning,
+  AppleLogo, Trophy, Link as LinkIcon,
 } from '@phosphor-icons/react';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
-import { useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { AuronLinkIcon } from '@/app/components/ui/Auronlinkicon';
 import { AuronAIcon } from '@/app/components/ui/auronAIcon';
 
@@ -28,15 +29,33 @@ const COACH_LEFT = [
   { href: '/admin/alunos',    label: 'Alunos',    icon: Users },
 ];
 const COACH_RIGHT = [
-  { href: '/admin/treinos',    label: 'Treinos',    icon: AuronLinkIcon },
+  { href: '/admin/treinos',    label: 'Treinos',    icon: Barbell },
   { href: '/admin/relatorios', label: 'Financeiro', icon: ChartBar  },
 ];
+
+/** Offset do ícone elevado: sobe um pouco no notch, sem sair da tela. */
+const ELEVATED_BOTTOM = -16;
+
+const NAV_SHELL: CSSProperties = {
+  position: 'fixed',
+  left: 16,
+  right: 16,
+  bottom: 0,
+  zIndex: 50,
+  paddingBottom: 'max(10px, env(safe-area-inset-bottom, 0px))',
+  pointerEvents: 'none',
+};
 
 export default function BottomNav() {
   const pathname  = usePathname();
   const router    = useRouter();
   const { userRole, loading } = useAuth();
   const [fabOpen, setFabOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isWorkoutBuilder =
     pathname?.startsWith('/admin/treinos/nova-ficha') ||
@@ -74,160 +93,152 @@ export default function BottomNav() {
     ...(userRole === 'super_admin' ? [
       { label: 'Master Control', href: '/super-admin', icon: ShieldWarning },
       { label: 'Convites', href: '/super-admin/convites', icon: LinkIcon },
-    ] : [])
+    ] : []),
   ];
 
   // ── Student ─────────────────────────────────────────────────────────────────
   if (!isCoach) {
-    return (
-      <nav
-        className={cn(
-          'fixed left-4 right-4 z-40 lg:hidden',
-          'overflow-visible',
-          'h-13',
-        )}
-        style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
-        aria-label="Navegação principal"
-      >
-        {/* Fundo da barra com notch côncavo — cor via --nav-bg (tema) */}
-        <svg
-          className="absolute inset-0 w-full h-full overflow-visible"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          style={{ filter: 'drop-shadow(var(--nav-shadow))' }}
-        >
-          <path
-            d="
-              M 8,0
-              L 30,0
-              C 36,0 38,12 50,14
-              C 62,12 64,0 70,0
-              L 92,0
-              A 8 50 0 0 1 100 50
-              A 8 50 0 0 1 92 100
-              L 8,100
-              A 8 50 0 0 1 0 50
-              A 8 50 0 0 1 8 0
-              Z
-            "
-            fill="var(--nav-bg)"
-            fillOpacity="1"
-          />
-        </svg>
-        <ul className="relative flex items-center justify-around h-full px-2 overflow-visible">
-          {STUDENT_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href) ||
-              (href === '/aluno/perfil' && (
-                pathname.startsWith('/aluno/estatisticas') ||
-                pathname.startsWith('/aluno/medidas') ||
-                pathname.startsWith('/aluno/fotos') ||
-                pathname.startsWith('/aluno/ranking')
-              ));
-            const isHome = href === '/aluno/dashboard';
-            const isTreinos = href === '/aluno/treinos';
+    const studentNav = (
+      <nav style={NAV_SHELL} aria-label="Navegação principal" className="lg:hidden">
+        <div className="pointer-events-auto relative h-13 overflow-visible">
+          <svg
+            className="absolute inset-0 w-full h-full overflow-visible"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            style={{ filter: 'drop-shadow(var(--nav-shadow))' }}
+          >
+            <path
+              d="
+                M 8,0
+                L 30,0
+                C 36,0 38,12 50,14
+                C 62,12 64,0 70,0
+                L 92,0
+                A 8 50 0 0 1 100 50
+                A 8 50 0 0 1 92 100
+                L 8,100
+                A 8 50 0 0 1 0 50
+                A 8 50 0 0 1 8 0
+                Z
+              "
+              fill="var(--nav-bg)"
+              fillOpacity="1"
+            />
+          </svg>
+          <ul className="relative flex items-center justify-around h-full px-2 overflow-visible">
+            {STUDENT_ITEMS.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname.startsWith(href) ||
+                (href === '/aluno/perfil' && (
+                  pathname.startsWith('/aluno/estatisticas') ||
+                  pathname.startsWith('/aluno/medidas') ||
+                  pathname.startsWith('/aluno/fotos') ||
+                  pathname.startsWith('/aluno/ranking')
+                ));
+              const isHome = href === '/aluno/dashboard';
 
-            // Ícone elevado no notch (Início / dashboard)
-            if (isHome) {
+              if (isHome) {
+                return (
+                  <li
+                    key={href}
+                    className="relative flex flex-1 items-center justify-center"
+                  >
+                    <Link
+                      href={href}
+                      className={cn(
+                        'absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5 transition-colors duration-fast',
+                        isActive ? 'text-brand' : 'text-text-tertiary',
+                      )}
+                      style={{ bottom: ELEVATED_BOTTOM }}
+                      aria-current={isActive ? 'page' : undefined}
+                      aria-label="Início"
+                    >
+                      <AuronAIcon
+                        size={40}
+                        active={isActive}
+                        className={cn(
+                          'transition-transform duration-fast',
+                          isActive && 'scale-105',
+                        )}
+                        style={{
+                          filter: isActive
+                            ? 'drop-shadow(0 2px 8px rgba(117, 27, 180,0.55))'
+                            : 'none',
+                        }}
+                      />
+                      <span
+                        className={cn(
+                          'text-[9px]',
+                          isActive ? 'font-semibold text-brand' : 'font-medium text-text-tertiary',
+                        )}
+                      >
+                        {label}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              }
+
               return (
-                <li
-                  key={href}
-                  className="relative flex flex-1 items-center justify-center"
-                >
+                <li key={href} className="flex flex-1 items-center justify-center">
                   <Link
                     href={href}
                     className={cn(
-                      'absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5 transition-colors duration-fast',
+                      'flex w-full flex-col items-center justify-center gap-0.5 transition-colors duration-fast',
                       isActive ? 'text-brand' : 'text-text-tertiary',
                     )}
-                    style={{ bottom: -20 }}
                     aria-current={isActive ? 'page' : undefined}
-                    aria-label="Início"
                   >
-                    <AuronAIcon
-                      size={40}
-                      active={isActive}
+                    <Icon
                       className={cn(
                         'transition-transform duration-fast',
-                        isActive && 'scale-105',
+                        href === '/aluno/treinos' ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
+                        isActive && 'scale-110',
                       )}
-                      style={{
-                        filter: isActive
-                          ? 'drop-shadow(0 2px 8px rgba(117, 27, 180,0.55))'
-                          : 'none',
-                      }}
+                      weight={isActive ? 'fill' : 'regular'}
+                      {...(Icon === AuronLinkIcon ? { active: isActive } : {})}
                     />
-                    <span
-                      className={cn(
-                        'text-[9px]',
-                        isActive ? 'font-semibold text-brand' : 'font-medium text-text-tertiary',
-                      )}
-                    >
+                    <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>
                       {label}
                     </span>
                   </Link>
                 </li>
               );
-            }
-
-            return (
-              <li key={href} className="flex flex-1 items-center justify-center">
-                <Link
-                  href={href}
-                  className={cn(
-                    'flex w-full flex-col items-center justify-center gap-0.5 transition-colors duration-fast',
-                    isActive ? 'text-brand' : 'text-text-tertiary',
-                  )}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <Icon
-                    className={cn(
-                      'transition-transform duration-fast',
-                      isTreinos ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
-                      isActive && 'scale-110',
-                    )}
-                    weight={isActive ? 'fill' : 'regular'}
-                    {...(Icon === AuronLinkIcon ? { active: isActive } : {})}
-                  />
-                  <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>
-                    {label}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+            })}
+          </ul>
+        </div>
       </nav>
     );
+
+    if (!mounted) return null;
+    return createPortal(studentNav, document.body);
   }
 
-  // ── Coach ────────────────────────────────────────────────────────────────────
-  return (
+  // ── Coach ───────────────────────────────────────────────────────────────────
+  const coachNav = (
     <>
-      {/* Quick-action overlay */}
       {fabOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end bg-black/65 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-[2px] animate-backdrop-in lg:hidden"
           onClick={() => setFabOpen(false)}
         >
           <div
-            className="w-full px-4 pb-[calc(max(12px,env(safe-area-inset-bottom))+76px)]"
+            className="w-full max-w-[200px] min-w-[148px] mb-24 px-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-surface-2 border border-border-default rounded-3xl overflow-hidden shadow-elev-3">
-              {actions.map(({ label, href, icon: Icon }, i) => (
+            <div className="bg-surface-1 rounded-2xl overflow-hidden shadow-elev-3">
+              {actions.map(({ href, label, icon: Icon }) => (
                 <button
                   key={href}
-                  onClick={() => { setFabOpen(false); router.push(href); }}
-                  className={cn(
-                    'w-full flex items-center gap-4 px-5 py-4 text-left transition-colors active:bg-surface-3 cursor-pointer',
-                    i < actions.length - 1 && 'border-b border-divider',
-                  )}
+                  type="button"
+                  onClick={() => {
+                    setFabOpen(false);
+                    router.push(href);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left bg-transparent border-0 transition-colors active:bg-surface-2 cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
-                    <Icon size={18} />
-                  </div>
-                  <span className="text-sm font-medium text-text-primary">{label}</span>
+                  <Icon size={18} weight="regular" className="shrink-0 text-brand" />
+                  <span className="text-[12px] font-medium text-text-primary truncate">{label}</span>
                 </button>
               ))}
             </div>
@@ -235,97 +246,137 @@ export default function BottomNav() {
         </div>
       )}
 
-      {/* Bottom bar */}
-      <nav
-        className={cn(
-          'fixed left-4 right-4 z-40 lg:hidden',
-          'rounded-[28px]',
-          'h-16',
-        )}
-        style={{
-          bottom: 'max(12px, env(safe-area-inset-bottom))',
-          background: 'var(--nav-bg)',
-          border: '1px solid var(--nav-border)',
-          boxShadow: 'var(--nav-shadow)',
-          backdropFilter: 'blur(16px)',
-        }}
-        aria-label="Navegação coach"
-      >
-        <ul className="flex items-center justify-around h-full px-2">
+      <nav style={NAV_SHELL} aria-label="Navegação coach" className="lg:hidden">
+        <div className="pointer-events-auto relative h-13 overflow-visible">
+          <svg
+            className="absolute inset-0 w-full h-full overflow-visible"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            style={{ filter: 'drop-shadow(var(--nav-shadow))' }}
+          >
+            <path
+              d="
+                M 8,0
+                L 30,0
+                C 36,0 38,12 50,14
+                C 62,12 64,0 70,0
+                L 92,0
+                A 8 50 0 0 1 100 50
+                A 8 50 0 0 1 92 100
+                L 8,100
+                A 8 50 0 0 1 0 50
+                A 8 50 0 0 1 8 0
+                Z
+              "
+              fill="var(--nav-bg)"
+              fillOpacity="1"
+            />
+          </svg>
 
-          {/* Left 2 items */}
-          {COACH_LEFT.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href);
-            const isHome = href === '/admin/dashboard';
-            return (
-              <li key={href} className="flex-1 flex items-center justify-center">
-                <Link
-                  href={href}
-                  className={cn(
-                    'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
-                    isActive ? 'text-brand' : 'text-text-tertiary',
-                  )}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <Icon
+          <ul className="relative flex items-center justify-around h-full px-2 overflow-visible">
+            {COACH_LEFT.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname.startsWith(href);
+              const isHome = href === '/admin/dashboard';
+              return (
+                <li key={href} className="flex flex-1 items-center justify-center">
+                  <Link
+                    href={href}
                     className={cn(
-                      'transition-transform duration-fast',
-                      isHome ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
-                      isActive && 'scale-110',
+                      'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
+                      isActive ? 'text-brand' : 'text-text-tertiary',
                     )}
-                    weight={isActive ? 'fill' : 'regular'}
-                    {...(Icon === AuronAIcon ? { active: isActive } : {})}
-                  />
-                  <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>{label}</span>
-                </Link>
-              </li>
-            );
-          })}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <Icon
+                      className={cn(
+                        'transition-transform duration-fast',
+                        isHome ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
+                        isActive && 'scale-110',
+                      )}
+                      weight={isActive ? 'fill' : 'regular'}
+                      {...(Icon === AuronAIcon ? { active: isActive } : {})}
+                    />
+                    <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>
+                      {label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
 
-          {/* FAB */}
-          <li className="flex items-center justify-center shrink-0 px-2">
-            <button
-              onClick={() => setFabOpen(v => !v)}
-              className={cn(
-                'w-12 h-12 rounded-2xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand cursor-pointer',
-                'transition-all duration-fast active:scale-90',
-              )}
-              aria-label={fabOpen ? 'Fechar menu' : 'Mais seções'}
-            >
-              {fabOpen
-                ? <X size={22} weight="bold" />
-                : <LinkIcon size={22} weight="bold" />
-              }
-            </button>
-          </li>
-
-          {/* Right 2 items */}
-          {COACH_RIGHT.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href);
-            const isTreinos = href === '/admin/treinos';
-            return (
-              <li key={href} className="flex-1 flex items-center justify-center">
-                <Link
-                  href={href}
+            <li className="relative flex flex-1 items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setFabOpen((v) => !v)}
+                className={cn(
+                  'absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5 transition-colors duration-fast',
+                  fabOpen ? 'text-brand' : 'text-text-tertiary',
+                )}
+                style={{ bottom: ELEVATED_BOTTOM }}
+                aria-label={fabOpen ? 'Fechar menu' : 'Mais seções'}
+              >
+                {fabOpen ? (
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-text-on-brand shadow-glow-brand"
+                  >
+                    <X size={20} weight="bold" />
+                  </span>
+                ) : (
+                  <span
+                    className="transition-transform duration-fast"
+                    style={{
+                      filter: 'drop-shadow(0 2px 8px rgba(117, 27, 180,0.55))',
+                    }}
+                  >
+                    <AuronLinkIcon size={40} active />
+                  </span>
+                )}
+                <span
                   className={cn(
-                    'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
-                    isActive ? 'text-brand' : 'text-text-tertiary',
+                    'text-[9px]',
+                    fabOpen ? 'font-semibold text-brand' : 'font-medium text-text-tertiary',
                   )}
-                  aria-current={isActive ? 'page' : undefined}
                 >
-                  <Icon className={cn(
-                    'transition-transform duration-fast',
-                    isTreinos ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
-                    isActive && 'scale-110',
-                  )} weight={isActive ? 'fill' : 'regular'} {...(Icon === AuronLinkIcon ? { active: isActive } : {})} />
-                  <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>{label}</span>
-                </Link>
-              </li>
-            );
-          })}
+                  Mais
+                </span>
+              </button>
+            </li>
 
-        </ul>
+            {COACH_RIGHT.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname.startsWith(href);
+              const isTreinos = href === '/admin/treinos';
+              return (
+                <li key={href} className="flex flex-1 items-center justify-center">
+                  <Link
+                    href={href}
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-0.5 transition-colors duration-fast w-full',
+                      isActive ? 'text-brand' : 'text-text-tertiary',
+                    )}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <Icon
+                      className={cn(
+                        'transition-transform duration-fast',
+                        isTreinos ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
+                        isActive && 'scale-110',
+                      )}
+                      weight={isActive ? 'fill' : 'regular'}
+                    />
+                    <span className={cn('text-[9px]', isActive ? 'font-semibold text-brand' : 'font-medium')}>
+                      {label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </nav>
     </>
   );
+
+  if (!mounted) return null;
+  return createPortal(coachNav, document.body);
 }

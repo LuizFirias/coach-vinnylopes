@@ -226,7 +226,7 @@ export function LoginFloatingCards({ className }: LoginFloatingCardsProps) {
   return (
     <div
       className={cn(
-        'relative w-full h-full min-h-[600px] select-none pointer-events-none overflow-hidden',
+        'relative w-full h-full min-h-[600px] select-none pointer-events-none overflow-visible',
         className,
       )}
     >
@@ -253,9 +253,9 @@ export function LoginFloatingCards({ className }: LoginFloatingCardsProps) {
         </div>
       </FloatSlot>
 
-      {/* Calendário — apenas campos dos dias, separados */}
+      {/* Calendário — invade levemente a linha divisória */}
       <FloatSlot
-        className="top-[12%] right-[1%] rotate-[2deg]"
+        className="top-[12%] right-[-6%] xl:right-[-8%] rotate-[2deg] z-20"
         delay={0.8}
         duration={5.4}
         amplitude={11}
@@ -299,9 +299,9 @@ export function LoginFloatingCards({ className }: LoginFloatingCardsProps) {
         </div>
       </FloatSlot>
 
-      {/* Gráfico MRR */}
+      {/* Gráfico MRR — atravessa a linha e invade o painel de login */}
       <FloatSlot
-        className="top-[54%] right-[0%] rotate-[1.5deg]"
+        className="top-[54%] right-[-8%] xl:right-[-6%] rotate-[1.5deg] z-30"
         delay={2}
         duration={6.2}
         amplitude={10}

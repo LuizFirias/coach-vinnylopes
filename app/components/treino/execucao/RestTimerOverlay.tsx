@@ -34,9 +34,11 @@ export function RestTimerOverlay({
   onSkip,
   onAdvance,
 }: RestTimerOverlayProps) {
-  const size = isDesktop ? 240 : 192;
+  const strokeWidth = 6;
+  const size = isDesktop ? 240 : 200;
   const center = size / 2;
-  const radius = isDesktop ? 96 : 96;
+  // Reserva espaço para o stroke (metade pra cada lado) — senão o anel é cortado
+  const radius = center - strokeWidth;
   const circumference = 2 * Math.PI * radius;
   const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const dashOffset = circumference * (1 - progress);
@@ -60,7 +62,7 @@ export function RestTimerOverlay({
     >
       <div
         className={cn(
-          "w-full bg-surface-1 rounded-t-2xl px-5 pt-6 pb-8",
+          "w-full bg-surface-1 rounded-t-2xl px-5 pt-6 pb-8 overflow-visible",
           "lg:rounded-2xl lg:max-w-[400px] lg:p-10 lg:mx-4",
           "pb-[calc(2rem+env(safe-area-inset-bottom))]"
         )}
@@ -69,12 +71,12 @@ export function RestTimerOverlay({
           {title}
         </p>
 
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-6 overflow-visible">
           <svg
             width={size}
             height={size}
             viewBox={`0 0 ${size} ${size}`}
-            className="shrink-0"
+            className="shrink-0 overflow-visible"
             aria-hidden
           >
             <circle
@@ -82,8 +84,8 @@ export function RestTimerOverlay({
               cy={center}
               r={radius}
               fill="none"
-              stroke="#1e1e1e"
-              strokeWidth={6}
+              stroke="var(--surface-3, #1e1e1e)"
+              strokeWidth={strokeWidth}
               strokeDasharray="8 6"
               strokeLinecap="round"
             />
@@ -92,8 +94,8 @@ export function RestTimerOverlay({
               cy={center}
               r={radius}
               fill="none"
-              stroke="#751BB4"
-              strokeWidth={6}
+              stroke="var(--brand-primary, #751BB4)"
+              strokeWidth={strokeWidth}
               strokeDasharray={circumference}
               strokeDashoffset={expired ? 0 : dashOffset}
               strokeLinecap="round"

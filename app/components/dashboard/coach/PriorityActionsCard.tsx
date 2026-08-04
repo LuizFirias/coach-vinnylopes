@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { CaretRight, WarningCircle } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
+import { CaretRight, Check, WarningCircle } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 import {
   agruparAcoesPorAluno,
@@ -27,8 +27,15 @@ const MARKER_COL = 'w-4 shrink-0 flex items-center justify-center';
 
 export function PriorityActionsCard({ actions, className }: PriorityActionsCardProps) {
   const [alunoSelecionado, setAlunoSelecionado] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const grupos = agruparAcoesPorAluno(actions);
   const alunoAtivo = grupos.find((g) => g.alunoId === alunoSelecionado) ?? null;
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   if (grupos.length === 0) {
     return (
@@ -106,7 +113,18 @@ export function PriorityActionsCard({ actions, className }: PriorityActionsCardP
         <AcoesAlunoSheet
           aluno={alunoAtivo}
           onClose={() => setAlunoSelecionado(null)}
+          onCheckinSent={setToast}
         />
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed left-1/2 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[70] flex max-w-[min(92vw,360px)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border-subtle bg-surface-1 px-3.5 py-2.5 text-[12px] font-medium text-text-primary shadow-elev-2 animate-backdrop-in"
+        >
+          <Check size={16} weight="bold" className="shrink-0 text-success" />
+          <span>{toast}</span>
+        </div>
       )}
     </>
   );

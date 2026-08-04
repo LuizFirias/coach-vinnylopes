@@ -23,10 +23,10 @@ function TechniqueBlock({
 }) {
   return (
     <div>
-      <p className="text-[11px] font-bold text-[#333] mb-1">{name}</p>
+      <p className="text-[11px] font-bold text-text-primary mb-1">{name}</p>
       <p
         className={cn(
-          "text-[11px] text-[#555] leading-relaxed",
+          "text-[11px] text-text-secondary leading-relaxed",
           example ? "mb-2" : undefined,
         )}
       >
@@ -72,8 +72,8 @@ export function StudentTechniqueCard({
       )}
       style={{
         background: "var(--surface-1)",
-        border: "1px solid rgba(0,0,0,0.08)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        border: "1px solid var(--border-subtle)",
+        boxShadow: "0 2px 8px var(--border-subtle)",
       }}
       role="region"
       aria-label="Como executar esta série"
@@ -97,7 +97,7 @@ export function StudentTechniqueCard({
           <button
             type="button"
             onClick={() => onExpandedChange?.(false)}
-            className="shrink-0 p-0.5 text-[#ccc] hover:text-[#888] transition-colors"
+            className="shrink-0 p-0.5 text-text-disabled hover:text-text-tertiary transition-colors"
             aria-label="Fechar técnica"
           >
             <X size={16} weight="bold" />
@@ -105,7 +105,7 @@ export function StudentTechniqueCard({
         </div>
 
         {summaryLabel && (
-          <p className="text-[11px] text-[#888] mb-2.5">{summaryLabel}</p>
+          <p className="text-[11px] text-text-tertiary mb-2.5">{summaryLabel}</p>
         )}
 
         <div className="space-y-2.5">
@@ -118,7 +118,7 @@ export function StudentTechniqueCard({
           )}
 
           {hasTechnique && hasExtra && (
-            <div className="h-px bg-black/6" />
+            <div className="h-px bg-border-subtle" />
           )}
 
           {hasExtra && (
