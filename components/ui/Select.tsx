@@ -29,7 +29,7 @@ interface SelectProps {
 
 /** Classes compartilhadas do painel de lista (Select, autocomplete, multi-select). */
 export const selectListboxClassName =
-  "absolute z-30 mt-1.5 w-full max-h-56 overflow-y-auto overscroll-contain rounded-xl bg-surface-2 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.28)]";
+  "absolute z-50 mt-1.5 w-full max-h-56 overflow-y-auto overscroll-contain rounded-xl bg-surface-2 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.28)]";
 
 export const selectOptionClassName = (active: boolean) =>
   cn(

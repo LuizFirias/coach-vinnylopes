@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft } from "@phosphor-icons/react";
 import DashboardTopActions from "@/app/components/DashboardTopActions";
+import { BackButton } from "@/app/components/ui/BackButton";
 import { cn } from "@/lib/utils/cn";
 
 interface SuperAdminPageShellProps {
@@ -20,7 +19,6 @@ export function SuperAdminPageShell({
   title,
   subtitle,
   backHref,
-  backLabel = "Voltar",
   headerAction,
   maxWidth = "4xl",
   children,
@@ -36,13 +34,7 @@ export function SuperAdminPageShell({
         </div>
 
         {backHref && (
-          <Link
-            href={backHref}
-            className="inline-flex items-center gap-1.5 text-[13px] text-text-tertiary hover:text-text-primary transition-colors mb-4"
-          >
-            <ArrowLeft size={14} />
-            {backLabel}
-          </Link>
+          <BackButton href={backHref} className="mb-4" />
         )}
 
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
@@ -54,9 +46,7 @@ export function SuperAdminPageShell({
               <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>
             )}
           </div>
-          {headerAction && (
-            <div className="flex flex-wrap items-center gap-2 shrink-0">{headerAction}</div>
-          )}
+          {headerAction}
         </div>
 
         {children}

@@ -10,7 +10,6 @@ import {
   PencilSimple,
   Trash,
   X,
-  ArrowLeft,
   Video,
   CircleNotch,
   WarningCircle,
@@ -20,7 +19,7 @@ import {
   CaretLeft,
   CaretRight,
 } from "@phosphor-icons/react";
-import Link from "next/link";
+import { BackButton } from "@/app/components/ui/BackButton";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
@@ -337,12 +336,7 @@ export default function BibliotecaExerciciosPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-2.5">
-            <Link
-              href="/admin/alunos"
-              className="w-8 h-8 rounded-lg bg-surface-2 border-0 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
+            <BackButton href="/admin/alunos" />
             <div>
               <h1 className="text-xl font-bold text-text-primary tracking-tight">Biblioteca de Exercícios</h1>
               <p className="text-xs text-text-secondary mt-0.5">Gerencie exercícios e demonstrações em vídeo</p>

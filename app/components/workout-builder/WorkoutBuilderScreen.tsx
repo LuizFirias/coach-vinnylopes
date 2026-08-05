@@ -123,6 +123,7 @@ export function WorkoutBuilderScreen({
   const [saving, setSaving] = useState(false);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [alunoFromParam, setAlunoFromParam] = useState(!!alunoId);
   const [dragHint, setDragHint] = useState<string | null>(null);
   /** Índice do Bi-Set aguardando seleção do exercício B na biblioteca */
   const [biSetPickIndex, setBiSetPickIndex] = useState<number | null>(null);
@@ -169,7 +170,10 @@ export function WorkoutBuilderScreen({
     if (isEdit) return;
     const params = new URLSearchParams(window.location.search);
     const param = params.get("alunoId") || alunoId;
-    if (param) setAlunoSelecionado(param);
+    if (param) {
+      setAlunoSelecionado(param);
+      setAlunoFromParam(true);
+    }
   }, [isEdit, alunoId]);
 
   const resolvedFallback =
@@ -310,22 +314,6 @@ export function WorkoutBuilderScreen({
     if (isMobile) setModalExercicio(false);
   };
 
-
-  const duplicarExercicio = (index: number) => {
-    setExerciciosFicha((prev) => {
-      const item = prev[index];
-      if (!item || isBiSetFichaItem(item)) return prev;
-      const copy: ExercicioFicha = {
-        ...item,
-        instanceId: crypto.randomUUID(),
-        series: item.series.map((s) => ({ ...s })),
-      };
-      const next = [...prev];
-      next.splice(index + 1, 0, copy);
-      return next;
-    });
-    markDirty();
-  };
 
   const transformarEmBiSet = (index: number) => {
     setExerciciosFicha((prev) => {
@@ -679,7 +667,6 @@ export function WorkoutBuilderScreen({
     onReorder: handleReorder,
     onUpdateSimple: atualizarExercicio,
     onDeleteSimple: removerExercicioSimple,
-    onDuplicateSimple: duplicarExercicio,
     onAddSetSimple: adicionarSerie,
     onUpdateSerieSimple: atualizarSerie,
     onDeleteSerieSimple: removerSerie,
@@ -886,7 +873,7 @@ export function WorkoutBuilderScreen({
           alunos={alunos}
           alunoSelecionado={alunoSelecionado}
           nomeRotina={nomeRotina}
-          alunoLocked={isEdit}
+          alunoLocked={isEdit || alunoFromParam}
           onAlunoChange={(id) => {
             if (isEdit) return;
             setAlunoSelecionado(id);

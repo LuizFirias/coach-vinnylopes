@@ -23,7 +23,10 @@
       "Bash(py \"C:/Users/lfern/AppData/Local/Temp/claude/C--Users-lfern-Documents-Apps-Auronfit/07fbe91f-5cc0-4d07-9b55-e37624305383/scratchpad/remove-bg.py\")",
       "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")",
       "Bash(npx tsc *)",
-      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright OK'\\)}catch\\(e\\){console.log\\('no playwright'\\)} try{require.resolve\\('puppeteer'\\);console.log\\('puppeteer OK'\\)}catch\\(e\\){console.log\\('no puppeteer'\\)}\")"
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright OK'\\)}catch\\(e\\){console.log\\('no playwright'\\)} try{require.resolve\\('puppeteer'\\);console.log\\('puppeteer OK'\\)}catch\\(e\\){console.log\\('no puppeteer'\\)}\")",
+      "PowerShell(npx tsc --noEmit 2>&1)",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell(try { \\(Get-Command chromium-cli -ErrorAction Stop\\).Source } catch { \"no chromium-cli\" }; try { \\(Get-Command npx -ErrorAction Stop\\).Source } catch {}; Test-Path .env.local)"
     ]
   }
 }

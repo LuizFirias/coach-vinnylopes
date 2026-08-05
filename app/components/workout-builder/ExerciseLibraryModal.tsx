@@ -189,11 +189,23 @@ export function ExerciseLibraryModal({
   onCreateNew,
 }: ExerciseLibraryModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(existingIds ?? []),
+  );
   const [filtroMusculo, setFiltroMusculo] = useState<FiltroValor>(null);
   const [filtroEquipamento, setFiltroEquipamento] = useState<FiltroValor>(null);
   const [filtroTipo, setFiltroTipo] = useState<FiltroValor>(null);
   const [dropdownAberto, setDropdownAberto] = useState<DropdownKey>(null);
+
+  // Mantém pré-seleção se existingIds chegar após mount
+  useEffect(() => {
+    if (!existingIds || existingIds.size === 0) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      existingIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [existingIds]);
 
   const opcoesMusculo = useMemo(
     () =>
@@ -253,6 +265,8 @@ export function ExerciseLibraryModal({
       if (ex) onAdd([ex]);
       return;
     }
+    // Já na ficha: permanece selecionado (sem duplicar / sem remover por aqui)
+    if (existingIds?.has(id)) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -261,12 +275,17 @@ export function ExerciseLibraryModal({
     });
   };
 
+  const newSelectedCount = [...selectedIds].filter((id) => !existingIds?.has(id)).length;
+
   const handleConfirm = () => {
-    if (selectedIds.size === 0) {
+    if (newSelectedCount === 0) {
       onClose();
       return;
     }
-    const selected = catalog.filter((ex) => selectedIds.has(ex.id));
+    // Só envia exercícios novos — os já na ficha ficam de fora
+    const selected = catalog.filter(
+      (ex) => selectedIds.has(ex.id) && !existingIds?.has(ex.id),
+    );
     onAdd(selected);
   };
 
@@ -321,23 +340,25 @@ export function ExerciseLibraryModal({
         </div>
 
         <div className="relative z-30 px-4 py-3 flex flex-col gap-2 shrink-0 overflow-visible">
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <div className="relative flex-1 min-w-[140px]">
-              <MagnifyingGlass
-                size={14}
-                className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-[var(--filter-placeholder)]"
-              />
-              <input
-                type="search"
-                placeholder="Buscar exercício..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                aria-label="Buscar exercícios"
-                autoFocus
-                className="filter-control filter-control-search filter-control-compact w-full"
-              />
-            </div>
+          {/* Search — always full width */}
+          <div className="relative w-full">
+            <MagnifyingGlass
+              size={14}
+              className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-[var(--filter-placeholder)]"
+            />
+            <input
+              type="search"
+              placeholder="Buscar exercício..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Buscar exercícios"
+              autoFocus
+              className="filter-control filter-control-search filter-control-compact w-full"
+            />
+          </div>
 
+          {/* Filters — uniform row below search */}
+          <div className="flex items-center gap-2 flex-wrap">
             <FiltroDropdown
               label="Músculo"
               opcoes={opcoesMusculo}
@@ -416,6 +437,7 @@ export function ExerciseLibraryModal({
                     : isSelected
                       ? "bg-brand/10 ring-1 ring-brand/30"
                       : "bg-surface-1 hover:bg-brand/5",
+                  alreadyIn && "cursor-default",
                 )}
               >
                 <div className="min-w-0 flex-1">
@@ -466,10 +488,10 @@ export function ExerciseLibraryModal({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={selectedIds.size === 0}
+              disabled={newSelectedCount === 0}
               className="btn-primary px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
             >
-              Adicionar ({selectedIds.size})
+              Adicionar ({newSelectedCount})
             </button>
           )}
         </div>

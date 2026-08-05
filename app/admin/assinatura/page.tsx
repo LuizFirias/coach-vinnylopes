@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
-import { Check, ArrowLeft, Lock } from "@phosphor-icons/react";
+import { Check, Lock } from "@phosphor-icons/react";
+import { BackButton } from "@/app/components/ui/BackButton";
 import { cn } from "@/lib/utils/cn";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import {
@@ -930,15 +930,7 @@ export default function AssinaturaPage() {
       <ScreenHeader
         title="Assinatura"
         subtitle={data?.siteUrl?.replace(/^https?:\/\//, "") || "auronfit.com.br"}
-        action={
-          <Link
-            href="/admin/perfil"
-            className="h-8 px-3 text-xs font-medium text-[#7a8aab] hover:text-white transition-colors flex items-center gap-1.5"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Voltar
-          </Link>
-        }
+        action={<BackButton href="/admin/perfil" aria-label="Voltar ao perfil" />}
       />
 
       <div className="px-4 w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-0">

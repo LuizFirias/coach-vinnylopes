@@ -6,6 +6,7 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 import { CaretDown, Check, CheckCircle, Info, X, WhatsappLogo } from "@phosphor-icons/react";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { BackButton } from "@/app/components/ui/BackButton";
 import {
   fetchCoachCustomPlans,
   mergedPlans,
@@ -458,13 +459,7 @@ export default function NovoAlunoPage() {
       {/* MainWrapper já aplica ml do sidebar — não repetir aqui */}
       <div className="w-full flex justify-center px-4 sm:px-8 py-10">
         <div className="w-full max-w-2xl">
-        <button
-          type="button"
-          onClick={goBack}
-          className="flex items-center gap-1.5 text-[13px] text-text-tertiary hover:text-text-primary transition-colors mb-7 bg-transparent border-0 p-0 cursor-pointer"
-        >
-          ← Voltar
-        </button>
+        <BackButton onClick={goBack} className="mb-7" />
 
         <p className="text-xl font-semibold text-text-primary mb-1">
           Adicionar aluno

@@ -2,12 +2,11 @@
 
 import { useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { ArrowLeft } from '@phosphor-icons/react';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { marcarMensagensLidas } from '@/lib/chat/actions';
 import { useChat } from '@/lib/chat/realtime';
 import { getPublicStorageUrl } from '@/lib/storageUrls';
+import { BackButton } from '@/app/components/ui/BackButton';
 import { ChatBubble } from './ChatBubble';
 import { ChatInput } from './ChatInput';
 
@@ -48,14 +47,7 @@ export function ChatWindow({
         className="flex items-center gap-3 px-3 py-3"
         style={{ borderBottom: '1px solid var(--mobile-card-border, rgba(0,0,0,0.07))' }}
       >
-        <Link
-          href={backHref}
-          className="flex h-9 w-9 items-center justify-center rounded-[10px]"
-          style={{ color: 'var(--text-tertiary)' }}
-          aria-label="Voltar"
-        >
-          <ArrowLeft size={20} />
-        </Link>
+        <BackButton href={backHref} />
         <div
           className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
           style={{ background: 'linear-gradient(135deg, #c084fc, #751BB4)' }}

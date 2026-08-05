@@ -2,16 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 import {
-  ArrowLeft,
   Plus,
   PencilSimple,
   Trash,
   X,
 } from "@phosphor-icons/react";
+import { BackButton } from "@/app/components/ui/BackButton";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils/cn";
@@ -180,13 +179,7 @@ export default function CoachPlanosPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/admin/perfil"
-              aria-label="Voltar ao perfil"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-1 text-text-secondary hover:text-text-primary transition-colors"
-            >
-              <ArrowLeft size={16} />
-            </Link>
+            <BackButton href="/admin/perfil" aria-label="Voltar ao perfil" />
             <div className="min-w-0">
               <h1 className="text-xl font-extrabold tracking-tight text-text-primary">Planos de venda</h1>
               <p className="text-xs text-text-secondary">

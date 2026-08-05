@@ -107,7 +107,6 @@ export function ExerciseList({
   onReorder,
   onUpdateSimple,
   onDeleteSimple,
-  onDuplicateSimple,
   onAddSetSimple,
   onUpdateSerieSimple,
   onDeleteSerieSimple,
@@ -331,7 +330,6 @@ export function ExerciseList({
                   }}
                   onUpdate={onUpdateSimple}
                   onDelete={onDeleteSimple}
-                  onDuplicate={onDuplicateSimple}
                   onAddSet={onAddSetSimple}
                   onUpdateSerie={onUpdateSerieSimple}
                   onDeleteSerie={onDeleteSerieSimple}

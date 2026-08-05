@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { ArrowLeft, Eye, PlusCircle, X } from "@phosphor-icons/react";
+import { Eye, PlusCircle, X } from "@phosphor-icons/react";
+import { BackButton } from "@/app/components/ui/BackButton";
 import { cn } from "@/lib/utils/cn";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
@@ -113,14 +114,10 @@ export function StudentWorkoutsModal({
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border-divider/40 shrink-0">
           {previewPlan ? (
             <>
-              <button
-                type="button"
+              <BackButton
                 onClick={backToList}
-                className="w-8 h-8 rounded-full hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors shrink-0"
                 aria-label="Voltar para lista de treinos"
-              >
-                <ArrowLeft size={16} weight="bold" />
-              </button>
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-brand">
                   Ficha digital

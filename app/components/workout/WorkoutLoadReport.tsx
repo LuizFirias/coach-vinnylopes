@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils/cn';
-import { FilePdf, ChartBar, Barbell, Clock, CalendarBlank, CaretDown, CaretLeft, CaretRight, Lightning, Repeat } from '@phosphor-icons/react';
+import { FilePdf, ChartBar, Barbell, Clock, CalendarBlank, CaretDown, CaretLeft, CaretRight, Lightning, Repeat, Trophy } from '@phosphor-icons/react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

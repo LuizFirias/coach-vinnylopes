@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
+import { BackButton } from "@/app/components/ui/BackButton";
 
 interface StatsPageHeaderProps {
   title: string;
@@ -19,12 +18,6 @@ export function StatsPageHeader({
   periodSelector,
   className,
 }: StatsPageHeaderProps) {
-  const backButtonClass = cn(
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-    "text-text-tertiary transition-colors",
-    "hover:text-text-secondary active:opacity-70",
-  );
-
   return (
     <header
       className={cn(
@@ -34,13 +27,9 @@ export function StatsPageHeader({
       )}
     >
       {backHref ? (
-        <Link href={backHref} className={backButtonClass} aria-label="Voltar">
-          <ArrowLeft size={18} weight="regular" />
-        </Link>
+        <BackButton href={backHref} />
       ) : (
-        <button type="button" onClick={onBack} className={backButtonClass} aria-label="Voltar">
-          <ArrowLeft size={18} weight="regular" />
-        </button>
+        <BackButton onClick={onBack} />
       )}
 
       <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-text-primary">

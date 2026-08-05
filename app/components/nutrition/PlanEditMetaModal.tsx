@@ -23,14 +23,19 @@ type Props = {
   saving?: boolean;
 };
 
-const GOAL_OPTIONS = [
+export const PLAN_GOAL_OPTIONS = [
   { value: 'Hipertrofia', label: 'Hipertrofia' },
   { value: 'Emagrecimento', label: 'Emagrecimento' },
+  { value: 'Definição', label: 'Definição' },
   { value: 'Manutenção', label: 'Manutenção' },
-  { value: 'Performance', label: 'Performance' },
   { value: 'Recomposição', label: 'Recomposição' },
+  { value: 'Performance', label: 'Performance' },
+  { value: 'Condicionamento', label: 'Condicionamento' },
+  { value: 'Saúde', label: 'Saúde' },
   { value: 'Outro', label: 'Outro' },
 ];
+
+const GOAL_VALUES = new Set(PLAN_GOAL_OPTIONS.map((o) => o.value));
 
 export function PlanEditMetaModal({
   open,
@@ -51,20 +56,24 @@ export function PlanEditMetaModal({
 
   if (!open) return null;
 
+  const goalInList = GOAL_VALUES.has(draft.goal) && draft.goal !== 'Outro';
+  const goalSelectValue = goalInList ? draft.goal : 'Outro';
+  const customGoal = goalInList ? '' : draft.goal === 'Outro' ? '' : draft.goal;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/55"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal
-        aria-label="Editar objetivo e datas"
-        className="w-full max-w-md max-h-[min(90vh,640px)] flex flex-col rounded-2xl bg-surface-1 shadow-elev-3 overflow-hidden"
+        aria-label="Editar nome e objetivo do plano"
+        className="w-full max-w-md max-h-[min(90vh,640px)] flex flex-col rounded-2xl bg-surface-1 shadow-elev-3 overflow-visible"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--list-row-divider)] shrink-0">
-          <h3 className="text-sm font-bold text-text-primary">Objetivo e datas</h3>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--list-row-divider)] shrink-0 rounded-t-2xl">
+          <h3 className="text-sm font-bold text-text-primary">Nome e objetivo</h3>
           <button
             type="button"
             onClick={onClose}
@@ -80,15 +89,38 @@ export function PlanEditMetaModal({
             label="Nome do plano"
             value={draft.name}
             onChange={(e) => onChange({ ...draft, name: e.target.value })}
+            placeholder="Ex: Bulking limpo — fase 1"
+            helperText="Editável — personalize como preferir"
             className="!h-10 !text-sm"
           />
           <Select
             label="Objetivo"
-            value={draft.goal}
-            onChange={(v) => onChange({ ...draft, goal: v })}
-            options={GOAL_OPTIONS}
+            helperText="Lista padrão do Auron"
+            value={goalSelectValue}
+            onChange={(v) => {
+              if (v === 'Outro') {
+                onChange({ ...draft, goal: customGoal || 'Outro' });
+                return;
+              }
+              onChange({ ...draft, goal: v });
+            }}
+            options={PLAN_GOAL_OPTIONS}
             placeholder="Selecionar"
           />
+          {goalSelectValue === 'Outro' && (
+            <Input
+              label="Objetivo personalizado"
+              value={draft.goal === 'Outro' ? '' : draft.goal}
+              onChange={(e) =>
+                onChange({
+                  ...draft,
+                  goal: e.target.value.trim() ? e.target.value : 'Outro',
+                })
+              }
+              placeholder="Descreva o objetivo"
+              className="!h-10 !text-sm"
+            />
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Início"
@@ -120,11 +152,17 @@ export function PlanEditMetaModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-[color:var(--list-row-divider)] shrink-0">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-[color:var(--list-row-divider)] shrink-0 rounded-b-2xl">
           <Button variant="secondary" size="sm" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button variant="primary" size="sm" onClick={onSave} loading={saving} disabled={saving || !draft.name.trim()}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onSave}
+            loading={saving}
+            disabled={saving || !draft.name.trim()}
+          >
             Salvar
           </Button>
         </div>

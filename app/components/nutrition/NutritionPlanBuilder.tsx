@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { 
-  Plus, Trash, ArrowLeft, FloppyDisk, CheckCircle, 
+  Plus, Trash, FloppyDisk, CheckCircle, 
   MagnifyingGlass, Barbell, Info, Calendar, Copy, CaretRight
 } from '@phosphor-icons/react';
+import { BackButton } from '@/app/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -443,12 +444,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="flex items-center gap-4 py-6 border-b border-divider/50 mb-6">
-          <button
-            onClick={goBack}
-            className="w-8 h-8 rounded-md bg-surface-2 border-0 hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <ArrowLeft size={16} />
-          </button>
+          <BackButton onClick={goBack} />
         </div>
 
         {/* Feedback Messages */}

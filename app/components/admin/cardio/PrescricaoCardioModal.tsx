@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from '@phosphor-icons/react';
+import { CaretDown, X } from '@phosphor-icons/react';
 import {
   CARDIO_INTENSIDADES,
-  CARDIO_MODALIDADES,
   DIAS_SEMANA_CURTO,
   type CardioIntensidade,
 } from '@/lib/constants/cardio';
+import { ModalidadePickerModal } from '@/app/aluno/cardio/components/ModalidadePickerModal';
 import { cn } from '@/lib/utils/cn';
 
 export interface PrescricaoCardioValues {
@@ -28,9 +28,9 @@ interface PrescricaoCardioModalProps {
 }
 
 const LABEL_CLS =
-  'block text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary mb-2';
+  'block text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary mb-1.5';
 const INPUT_CLS =
-  'w-full rounded-[8px] border border-input bg-surface-2 px-3 py-2.5 text-sm font-semibold text-text-primary tabular-nums lining-nums placeholder:text-text-disabled focus:outline-none focus:border-brand';
+  'w-full text-sm font-semibold text-text-primary tabular-nums lining-nums placeholder:text-text-disabled';
 
 export function PrescricaoCardioModal({
   open,
@@ -46,6 +46,7 @@ export function PrescricaoCardioModal({
   const [dias, setDias] = useState<number[]>([]);
   const [observacao, setObservacao] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!open) return null;
 
@@ -92,7 +93,7 @@ export function PrescricaoCardioModal({
       onClick={() => !submitting && onClose()}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] border-0 bg-surface-1 p-5 sm:rounded-[20px]"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border-0 bg-surface-1 p-5 sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
@@ -108,7 +109,7 @@ export function PrescricaoCardioModal({
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="flex h-9 w-9 items-center justify-center rounded-[8px] border border-input text-text-tertiary"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-input text-text-tertiary"
           >
             <X size={15} />
           </button>
@@ -116,25 +117,40 @@ export function PrescricaoCardioModal({
 
         <div className="space-y-5">
           <div>
-            <label className={LABEL_CLS}>Modalidade</label>
-            <div className="flex flex-wrap gap-2">
-              {CARDIO_MODALIDADES.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setModalidade(m)}
-                  aria-pressed={modalidade === m}
-                  className={cn(
-                    'rounded-[8px] px-3 py-2 text-xs font-medium transition-colors',
-                    modalidade === m
-                      ? 'bg-brand text-text-on-brand border border-brand'
-                      : 'bg-surface-2 text-text-secondary border border-input',
-                  )}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
+            <label className={LABEL_CLS} id="presc-modalidade-label">
+              Modalidade
+            </label>
+            <button
+              type="button"
+              aria-labelledby="presc-modalidade-label"
+              aria-haspopup="dialog"
+              aria-expanded={pickerOpen}
+              onClick={() => setPickerOpen(true)}
+              className={cn(
+                'relative flex w-full items-center bg-transparent border-0 border-b border-border-divider px-0 py-1.5 text-left text-sm font-semibold transition-colors',
+                modalidade ? 'text-text-primary' : 'text-text-disabled',
+              )}
+            >
+              <span className="min-w-0 flex-1 truncate pr-6">
+                {modalidade || 'Selecionar modalidade'}
+              </span>
+              <CaretDown
+                size={14}
+                weight="bold"
+                className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-brand"
+                aria-hidden
+              />
+            </button>
+
+            <ModalidadePickerModal
+              open={pickerOpen}
+              value={modalidade}
+              onClose={() => setPickerOpen(false)}
+              onChange={(v) => {
+                setModalidade(v);
+                setLocalError(null);
+              }}
+            />
           </div>
 
           <div>
@@ -147,10 +163,10 @@ export function PrescricaoCardioModal({
                   onClick={() => setIntensidade(i.value)}
                   aria-pressed={intensidade === i.value}
                   className={cn(
-                    'flex-1 rounded-[8px] px-3 py-2.5 text-xs font-semibold transition-colors',
+                    'flex-1 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors border-0',
                     intensidade === i.value
-                      ? 'bg-brand text-text-on-brand border border-brand'
-                      : 'bg-surface-2 text-text-secondary border border-input',
+                      ? 'bg-brand text-text-on-brand'
+                      : 'bg-transparent text-text-secondary hover:bg-surface-2',
                   )}
                 >
                   {i.label}
@@ -163,7 +179,7 @@ export function PrescricaoCardioModal({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="field-flat-input border-b border-border-divider pb-1">
               <label className={LABEL_CLS} htmlFor="presc-duracao">
                 Duração (min)
               </label>
@@ -179,7 +195,7 @@ export function PrescricaoCardioModal({
                 className={INPUT_CLS}
               />
             </div>
-            <div>
+            <div className="field-flat-input border-b border-border-divider pb-1">
               <label className={LABEL_CLS} htmlFor="presc-distancia">
                 Distância (km) <span className="normal-case text-text-disabled">opcional</span>
               </label>
@@ -209,10 +225,10 @@ export function PrescricaoCardioModal({
                   onClick={() => toggleDia(idx)}
                   aria-pressed={dias.includes(idx)}
                   className={cn(
-                    'flex h-9 flex-1 items-center justify-center rounded-[8px] text-[11px] font-semibold transition-colors',
+                    'flex h-9 flex-1 items-center justify-center rounded-lg text-[11px] font-semibold transition-colors border-0',
                     dias.includes(idx)
-                      ? 'bg-brand text-text-on-brand border border-brand'
-                      : 'bg-surface-2 text-text-secondary border border-input',
+                      ? 'bg-brand text-text-on-brand'
+                      : 'bg-transparent text-text-secondary hover:bg-surface-2',
                   )}
                 >
                   {label}
@@ -221,7 +237,7 @@ export function PrescricaoCardioModal({
             </div>
           </div>
 
-          <div>
+          <div className="field-flat-input border-b border-border-divider pb-1">
             <label className={LABEL_CLS} htmlFor="presc-obs">
               Observação <span className="normal-case text-text-disabled">opcional</span>
             </label>
@@ -231,7 +247,7 @@ export function PrescricaoCardioModal({
               onChange={(e) => setObservacao(e.target.value)}
               placeholder="Ex: manter ritmo constante, sem inclinação"
               rows={2}
-              className="w-full resize-none rounded-[8px] border border-input bg-surface-2 px-3 py-2.5 text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand"
+              className="w-full resize-none text-xs text-text-primary placeholder:text-text-disabled"
             />
           </div>
 

@@ -7,17 +7,13 @@ import {
   type FocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { MagnifyingGlass, Plus, Trash, X } from '@phosphor-icons/react';
+import { CaretDown, Check, MagnifyingGlass, Plus, Trash, X } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { MEAL_TYPE_LABELS, MEAL_TYPE_OPTIONS } from '@/lib/nutrition/planEdit';
 import { calculateItemMacros, sumMacros } from '@/lib/nutrition/calculateMacros';
 import {
-  getUnitPortion,
   isGramsOnlyLabel,
   preferredPortion,
-  stripLeadingCount,
 } from '@/lib/nutrition/portionDisplay';
 import type { NutritionFood, NutritionMealType } from '@/lib/nutrition/types';
 import { textIncludes } from '@/lib/utils/textNormalize';
@@ -52,7 +48,7 @@ type Props = {
 };
 
 const qtyInputClass =
-  'w-12 !bg-transparent bg-transparent appearance-none shadow-none border-0 border-b border-border-subtle rounded-none px-0 py-0.5 text-sm font-semibold tabular-nums lining-nums text-text-primary text-right outline-none focus:border-brand placeholder:text-text-disabled/45 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+  'serie-metric-input w-[3.25rem] min-w-[3.25rem] !bg-transparent bg-transparent appearance-none shadow-none border-0 border-b border-border-subtle rounded-none px-0 py-0.5 text-sm font-semibold tabular-nums lining-nums text-text-primary text-right outline-none focus:border-brand placeholder:text-text-disabled/45 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 
 /** Input numérico estilo app de ficha: vazio mostra 0 fantasma; digitar sobrescreve. */
 function SoftQtyInput({
@@ -124,6 +120,23 @@ function SoftQtyInput({
   );
 }
 
+function formatTimeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function normalizeTimeValue(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4);
+  if (digits.length < 4) return raw.slice(0, 5);
+  let h = Number(digits.slice(0, 2));
+  let m = Number(digits.slice(2, 4));
+  if (Number.isNaN(h) || Number.isNaN(m)) return '';
+  h = Math.min(23, Math.max(0, h));
+  m = Math.min(59, Math.max(0, m));
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 export function PlanEditMealModal({
   open,
   draft,
@@ -136,22 +149,30 @@ export function PlanEditMealModal({
 }: Props) {
   const [pickingFood, setPickingFood] = useState(false);
   const [q, setQ] = useState('');
+  const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
+  const [typeOpen, setTypeOpen] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setPickingFood(false);
       setQ('');
+      setPickedIds(new Set());
+      setTypeOpen(false);
       return;
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (pickingFood) setPickingFood(false);
+        if (pickingFood) {
+          setPickingFood(false);
+          setPickedIds(new Set());
+          setQ('');
+        } else if (typeOpen) setTypeOpen(false);
         else onClose();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose, pickingFood]);
+  }, [open, onClose, pickingFood, typeOpen]);
 
   const filtered = useMemo(() => {
     return foods
@@ -171,26 +192,44 @@ export function PlanEditMealModal({
   if (!open) return null;
 
   const timeValue = (draft.time_suggestion || '').slice(0, 5);
+  const typeLabel = MEAL_TYPE_LABELS[draft.meal_type] || 'Tipo';
 
-  const addFood = (food: NutritionFood) => {
-    const portion = preferredPortion(food);
-    const grams = portion ? Number(portion.grams) : 100;
-    const label = portion ? portion.label : '100g';
+  const togglePick = (id: string) => {
+    setPickedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const confirmPickedFoods = () => {
+    if (pickedIds.size === 0) {
+      setPickingFood(false);
+      return;
+    }
+    const additions: MealDraftItem[] = [];
+    pickedIds.forEach((id) => {
+      const food = foods.find((f) => f.id === id);
+      if (!food) return;
+      const portion = preferredPortion(food);
+      const grams = portion ? Number(portion.grams) : 100;
+      const label = portion ? portion.label : '100g';
+      additions.push({
+        food_id: food.id,
+        quantity_grams: grams,
+        portion_label: label,
+        food,
+        substitutions: [],
+      });
+    });
     onChange({
       ...draft,
-      items: [
-        ...draft.items,
-        {
-          food_id: food.id,
-          quantity_grams: grams,
-          portion_label: label,
-          food,
-          substitutions: [],
-        },
-      ],
+      items: [...draft.items, ...additions],
     });
-    setPickingFood(false);
+    setPickedIds(new Set());
     setQ('');
+    setPickingFood(false);
   };
 
   const removeItem = (idx: number) => {
@@ -202,44 +241,56 @@ export function PlanEditMealModal({
 
   const updateItemGrams = (idx: number, grams: number) => {
     const items = draft.items.map((it, i) =>
-      i === idx ? { ...it, quantity_grams: grams } : it,
+      i === idx ? { ...it, quantity_grams: grams, portion_label: '100g' } : it,
     );
     onChange({ ...draft, items });
   };
 
-  const updateItemUnits = (idx: number, count: number) => {
-    const item = draft.items[idx];
-    const food = item.food || foods.find((f) => f.id === item.food_id);
-    const portion = getUnitPortion(food, item.portion_label);
-    if (!portion) return;
-    const grams = Math.round(Number(portion.grams) * Math.max(0, count) * 10) / 10;
-    const items = draft.items.map((it, i) =>
-      i === idx
-        ? { ...it, quantity_grams: grams, portion_label: portion.label }
-        : it,
-    );
-    onChange({ ...draft, items });
+  const setMealType = (type: NutritionMealType) => {
+    const prevDefault = MEAL_TYPE_LABELS[draft.meal_type];
+    const trimmed = (draft.title || '').trim();
+    const defaultLabels = Object.values(MEAL_TYPE_LABELS);
+    const isAppDefault =
+      !trimmed ||
+      trimmed === prevDefault ||
+      defaultLabels.includes(trimmed);
+    onChange({
+      ...draft,
+      meal_type: type,
+      title: isAppDefault ? MEAL_TYPE_LABELS[type] : draft.title,
+    });
+    setTypeOpen(false);
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55"
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/55"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal
-        aria-label={pickingFood ? 'Adicionar alimento' : 'Editar refeição'}
+        aria-label={pickingFood ? 'Adicionar alimentos' : 'Editar refeição'}
         className="w-full max-w-md h-[min(90vh,640px)] flex flex-col rounded-2xl bg-surface-1 shadow-elev-3 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--list-row-divider)] shrink-0">
           <h3 className="text-sm font-bold text-text-primary">
-            {pickingFood ? 'Adicionar alimento' : 'Editar refeição'}
+            {pickingFood
+              ? pickedIds.size > 0
+                ? `${pickedIds.size} selecionado${pickedIds.size === 1 ? '' : 's'}`
+                : 'Adicionar alimentos'
+              : 'Editar refeição'}
           </h3>
           <button
             type="button"
-            onClick={() => (pickingFood ? setPickingFood(false) : onClose())}
+            onClick={() => {
+              if (pickingFood) {
+                setPickingFood(false);
+                setPickedIds(new Set());
+                setQ('');
+              } else onClose();
+            }}
             className="p-1.5 rounded-lg text-text-tertiary hover:text-text-primary"
             aria-label="Fechar"
           >
@@ -262,9 +313,10 @@ export function PlanEditMealModal({
               />
             </div>
             <p className="px-4 pb-1 text-[10px] text-text-tertiary shrink-0">
-              {filtered.length} alimento{filtered.length === 1 ? '' : 's'}
+              Toque para selecionar · {filtered.length} alimento
+              {filtered.length === 1 ? '' : 's'}
             </p>
-            <div className="flex-1 overflow-y-auto min-h-0 pb-3">
+            <div className="flex-1 overflow-y-auto min-h-0 pb-2">
               {foods.length === 0 ? (
                 <p className="px-4 py-6 text-center text-xs text-text-tertiary">
                   Carregando alimentos...
@@ -275,6 +327,7 @@ export function PlanEditMealModal({
                 </p>
               ) : (
                 filtered.map((food) => {
+                  const on = pickedIds.has(food.id);
                   const portion = preferredPortion(food);
                   const unitHint =
                     portion && !isGramsOnlyLabel(portion.label)
@@ -284,85 +337,154 @@ export function PlanEditMealModal({
                     <button
                       key={food.id}
                       type="button"
-                      onClick={() => addFood(food)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-surface-2/60 transition-colors"
+                      onClick={() => togglePick(food.id)}
+                      className={cn(
+                        'w-full flex items-center gap-3 text-left px-4 py-2.5 transition-colors',
+                        on ? 'bg-brand/10' : 'hover:bg-surface-2/60',
+                      )}
                     >
-                      <p className="text-sm font-semibold text-text-primary truncate">{food.name}</p>
-                      <p className="text-[11px] text-text-tertiary tabular-nums">{unitHint}</p>
+                      <span
+                        className={cn(
+                          'flex h-4 w-4 shrink-0 items-center justify-center rounded',
+                          on ? 'bg-brand text-text-on-brand' : 'bg-surface-2',
+                        )}
+                      >
+                        {on && <Check size={10} weight="bold" />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-brand truncate">{food.name}</p>
+                        <p className="text-[11px] text-text-tertiary tabular-nums">{unitHint}</p>
+                      </span>
                     </button>
                   );
                 })
               )}
             </div>
+            <div className="px-4 py-3 border-t border-[color:var(--list-row-divider)] shrink-0">
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full"
+                disabled={pickedIds.size === 0}
+                onClick={confirmPickedFoods}
+              >
+                Adicionar{pickedIds.size > 0 ? ` (${pickedIds.size})` : ''}
+              </Button>
+            </div>
           </>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 min-h-0">
-              <Select
-                label="Tipo de refeição"
-                value={draft.meal_type}
-                onChange={(v) => {
-                  const type = v as NutritionMealType;
-                  onChange({
-                    ...draft,
-                    meal_type: type,
-                    title: draft.title?.trim() ? draft.title : MEAL_TYPE_LABELS[type],
-                  });
-                }}
-                options={MEAL_TYPE_OPTIONS}
-              />
-              <Input
-                label="Título"
-                value={draft.title}
-                onChange={(e) => onChange({ ...draft, title: e.target.value })}
-                className="!h-10 !text-sm"
-              />
-
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <label
-                    htmlFor="meal-time"
-                    className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary"
-                  >
-                    Horário{' '}
-                    <span className="normal-case tracking-normal font-medium text-text-disabled">
-                      opcional
-                    </span>
-                  </label>
-                  {timeValue ? (
-                    <button
-                      type="button"
-                      onClick={() => onChange({ ...draft, time_suggestion: '' })}
-                      className="text-[11px] font-semibold text-text-tertiary hover:text-text-primary"
-                    >
-                      Limpar
-                    </button>
-                  ) : null}
-                </div>
-                <input
-                  id="meal-time"
-                  type="time"
-                  value={timeValue}
-                  onChange={(e) =>
-                    onChange({ ...draft, time_suggestion: e.target.value || '' })
-                  }
-                  className={cn(
-                    'h-10 w-full px-3.5 rounded-[10px] text-[16px] font-medium',
-                    'bg-transparent border border-border-subtle',
-                    'text-text-primary outline-none focus:border-brand/50',
-                    !timeValue && 'text-text-disabled',
-                  )}
-                  style={{ fontSize: 16 }}
-                />
+            <div className="shrink-0 px-4 pt-3 pb-3 flex flex-col gap-3 border-b border-[color:var(--list-row-divider)]">
+              {/* Tipo — flat, sem preenchimento */}
+              <div className="relative">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand mb-1 block">
+                  Tipo de refeição
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setTypeOpen((v) => !v)}
+                  className="w-full h-9 flex items-center gap-2 px-0 bg-transparent border-0 border-b border-border-subtle text-left outline-none focus:border-brand"
+                >
+                  <span className="flex-1 min-w-0 truncate text-[13px] font-semibold text-text-primary">
+                    {typeLabel}
+                  </span>
+                  <CaretDown
+                    size={14}
+                    className={cn(
+                      'shrink-0 text-text-tertiary transition-transform',
+                      typeOpen && 'rotate-180',
+                    )}
+                  />
+                </button>
+                {typeOpen && (
+                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-xl bg-surface-2 py-1 shadow-elev-3">
+                    {MEAL_TYPE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setMealType(opt.value)}
+                        className={cn(
+                          'w-full text-left px-3 py-2 text-[13px] transition-colors',
+                          opt.value === draft.meal_type
+                            ? 'font-semibold text-brand bg-brand/10'
+                            : 'text-text-primary hover:bg-surface-1',
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+              {/* Título + horário compacto na mesma linha */}
+              <div className="flex items-end gap-3">
+                <div className="min-w-0 flex-1 flex flex-col gap-1">
+                  <label
+                    htmlFor="meal-title"
+                    className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand"
+                  >
+                    Título
+                  </label>
+                  <div className="field-flat-input border-b border-border-subtle focus-within:border-brand">
+                    <input
+                      id="meal-title"
+                      value={draft.title}
+                      onChange={(e) => onChange({ ...draft, title: e.target.value })}
+                      placeholder={MEAL_TYPE_LABELS[draft.meal_type]}
+                      className="h-9 w-full px-0 text-[13px] font-semibold text-text-primary"
+                      style={{ fontSize: 16 }}
+                    />
+                  </div>
+                </div>
+                <div className="shrink-0 flex flex-col gap-1 w-[4.5rem]">
+                  <label
+                    htmlFor="meal-time"
+                    className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand"
+                  >
+                    Hora
+                  </label>
+                  <div className="field-flat-input border-b border-border-subtle focus-within:border-brand">
+                    <input
+                      id="meal-time"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="00:00"
+                      value={timeValue}
+                      maxLength={5}
+                      onChange={(e) =>
+                        onChange({
+                          ...draft,
+                          time_suggestion: formatTimeInput(e.target.value),
+                        })
+                      }
+                      onBlur={() => {
+                        if (!timeValue) return;
+                        onChange({
+                          ...draft,
+                          time_suggestion: normalizeTimeValue(timeValue),
+                        });
+                      }}
+                      className="h-9 w-full px-0 text-[13px] font-semibold tabular-nums lining-nums text-text-primary text-center"
+                      style={{ fontSize: 16 }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2 min-h-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand">
                   Alimentos
                 </span>
                 <button
                   type="button"
-                  onClick={() => setPickingFood(true)}
+                  onClick={() => {
+                    setPickedIds(new Set());
+                    setQ('');
+                    setPickingFood(true);
+                  }}
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand"
                 >
                   <Plus size={12} weight="bold" /> Adicionar
@@ -376,60 +498,55 @@ export function PlanEditMealModal({
                   {draft.items.map((item, idx) => {
                     const food = item.food || foods.find((f) => f.id === item.food_id);
                     const name = food?.name || 'Alimento';
-                    const unit = getUnitPortion(food, item.portion_label);
-                    const unitary = Boolean(unit);
-                    const unitCount = unit
-                      ? Math.round((Number(item.quantity_grams) / Number(unit.grams)) * 100) / 100
-                      : 1;
                     const macros = food
                       ? calculateItemMacros(food, Number(item.quantity_grams) || 0)
                       : null;
 
                     return (
-                      <li key={`${item.food_id}-${idx}`} className="flex items-start gap-2 py-2.5">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[13px] font-semibold text-text-primary truncate">{name}</p>
-                          <div className="mt-1 flex items-baseline gap-2 flex-wrap">
-                            {unitary && unit ? (
-                              <>
-                                <SoftQtyInput
-                                  value={unitCount}
-                                  onValueChange={(n) => updateItemUnits(idx, n)}
-                                  aria-label="Quantidade em unidades"
-                                />
-                                <span className="text-[12px] text-text-primary font-medium">
-                                  {stripLeadingCount(unit.label)}
-                                </span>
-                                <span className="text-[11px] text-text-tertiary tabular-nums">
-                                  ~{Math.round(Number(item.quantity_grams))}g
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <SoftQtyInput
-                                  value={Number(item.quantity_grams) || 0}
-                                  onValueChange={(n) => updateItemGrams(idx, n)}
-                                  aria-label="Quantidade em gramas"
-                                />
-                                <span className="text-[12px] text-text-tertiary">g</span>
-                              </>
-                            )}
+                      <li key={`${item.food_id}-${idx}`} className="py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[13px] font-semibold text-brand truncate leading-snug">
+                            {name}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(idx)}
+                            className="p-1 text-text-tertiary hover:text-danger shrink-0"
+                            aria-label="Remover alimento"
+                          >
+                            <Trash size={14} />
+                          </button>
+                        </div>
+                        <div className="mt-1 flex items-center gap-2.5">
+                          <div className="field-flat-input flex items-baseline gap-1 shrink-0">
+                            <SoftQtyInput
+                              value={Number(item.quantity_grams) || 0}
+                              onValueChange={(n) => updateItemGrams(idx, n)}
+                              aria-label="Quantidade em gramas"
+                            />
+                            <span className="text-[12px] text-text-tertiary">g</span>
                           </div>
                           {macros && (
-                            <p className="mt-0.5 text-[10px] font-mono text-text-tertiary tabular-nums">
-                              {macros.calories} kcal · P {macros.protein}g · C {macros.carbs}g · G{' '}
-                              {macros.fat}g
-                            </p>
+                            <div className="grid grid-cols-[auto_auto] gap-x-1.5 gap-y-0.5 shrink-0 text-[10px] font-mono text-text-tertiary tabular-nums lining-nums leading-tight">
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#e05555' }} />
+                                {Math.round(macros.calories)} kcal
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#751BB4' }} />
+                                P {macros.protein}g
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#f59e0b' }} />
+                                C {macros.carbs}g
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#39c75a' }} />
+                                G {macros.fat}g
+                              </span>
+                            </div>
                           )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(idx)}
-                          className="p-1.5 text-text-tertiary hover:text-danger shrink-0"
-                          aria-label="Remover alimento"
-                        >
-                          <Trash size={14} />
-                        </button>
                       </li>
                     );
                   })}
@@ -437,7 +554,7 @@ export function PlanEditMealModal({
               )}
 
               <p className="text-[11px] font-mono text-text-secondary tabular-nums pt-1 border-t border-[color:var(--list-row-divider)]">
-                Total refeição · {draftMacros.calories} kcal · P {draftMacros.protein}g · C{' '}
+                Total · {draftMacros.calories} kcal · P {draftMacros.protein}g · C{' '}
                 {draftMacros.carbs}g · G {draftMacros.fat}g
               </p>
             </div>

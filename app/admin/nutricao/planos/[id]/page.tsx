@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft, PencilSimple, Info, Plus, Check, CaretDown,
+  PencilSimple, Info, Plus, Check, CaretDown,
 } from '@phosphor-icons/react';
+import { BackButton } from '@/app/components/ui/BackButton';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -511,15 +512,11 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-6 border-b border-divider/50 mb-6">
           <div className="flex items-center gap-4 min-w-0">
-            <button
-              type="button"
+            <BackButton
               onClick={() =>
                 router.push(readReturnUrl(window.location.search, '/admin/nutricao'))
               }
-              className="w-8 h-8 rounded-md bg-surface-2 border-0 hover:border-brand/40 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            >
-              <ArrowLeft size={16} />
-            </button>
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight truncate">

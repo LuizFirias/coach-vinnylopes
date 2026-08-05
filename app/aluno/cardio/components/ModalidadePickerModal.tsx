@@ -28,17 +28,16 @@ export function ModalidadePickerModal({
       aria-label="Selecionar modalidade"
     >
       <div
-        className="flex max-h-[min(85vh,640px)] w-full max-w-sm flex-col overflow-hidden rounded-t-[24px] bg-white shadow-elev-3 sm:rounded-2xl"
+        className="flex max-h-[min(85vh,640px)] w-full max-w-sm flex-col overflow-hidden rounded-t-2xl bg-surface-1 shadow-elev-3 sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-[rgba(0,0,0,0.06)] px-4 py-3">
-          <h3 className="text-[15px] font-semibold text-[#1a1a1a]">Modalidade</h3>
+        <div className="flex shrink-0 items-center justify-between border-b border-border-divider px-4 py-3">
+          <h3 className="text-[15px] font-semibold text-text-primary">Modalidade</h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="flex h-8 w-8 items-center justify-center rounded-lg touch-manipulation"
-            style={{ background: 'var(--surface-2)', color: 'var(--text-tertiary)', border: 'none' }}
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-text-tertiary border-0 touch-manipulation"
           >
             <X size={15} />
           </button>
@@ -48,17 +47,10 @@ export function ModalidadePickerModal({
           {MODALIDADES_CARDIO.map((grupo, gi) => (
             <div key={grupo.grupo}>
               {gi > 0 && (
-                <div
-                  className="mx-3 my-2 h-px"
-                  style={{ background: 'rgba(117, 27, 180, 0.18)' }}
-                  aria-hidden
-                />
+                <div className="mx-3 my-2 h-px bg-brand/20" aria-hidden />
               )}
 
-              <p
-                className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-[0.08em]"
-                style={{ color: '#751BB4' }}
-              >
+              <p className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-brand">
                 {grupo.grupo}
               </p>
 
@@ -74,10 +66,10 @@ export function ModalidadePickerModal({
                         onClose();
                       }}
                       className={cn(
-                        'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors touch-manipulation',
+                        'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors touch-manipulation border-0',
                         selected
-                          ? 'bg-[rgba(117, 27, 180,0.10)] text-brand'
-                          : 'text-text-primary hover:bg-surface-0',
+                          ? 'bg-brand/10 text-brand'
+                          : 'bg-transparent text-text-primary hover:bg-surface-2',
                       )}
                     >
                       <span

@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowLeft, CircleNotch, FloppyDisk, Gear, FileArrowDown } from "@phosphor-icons/react";
+import { CircleNotch, FloppyDisk, Gear, FileArrowDown } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
+import { BackButton } from "@/app/components/ui/BackButton";
 
 interface AlunoOption {
   id: string;
@@ -54,13 +55,7 @@ export function WorkoutBuilderHeader({
     return (
       <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-9 h-9 shrink-0 rounded-lg bg-surface-1 border-0 flex items-center justify-center text-text-tertiary"
-          >
-            <ArrowLeft size={16} />
-          </button>
+          <BackButton onClick={onBack} />
           <button type="button" onClick={onOpenSettings} className="min-w-0 text-left flex-1">
             <p className="text-sm font-bold text-text-primary truncate">
               {nomeRotina || (alunoLocked ? "Editar ficha" : "Nova ficha")}
@@ -83,13 +78,7 @@ export function WorkoutBuilderHeader({
     <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 md:px-0 py-3 mb-4">
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-9 h-9 rounded-lg bg-surface-1 border-0 flex items-center justify-center text-text-tertiary hover:text-brand transition-colors"
-          >
-            <ArrowLeft size={16} />
-          </button>
+          <BackButton onClick={onBack} />
         </div>
 
         <div className="field-flat-input flex-1 min-w-0 rounded-2xl border-0 bg-surface-1 overflow-hidden">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DotsSixVertical, DotsThree, Trash, Copy, Play, Barbell } from "@phosphor-icons/react";
+import { DotsSixVertical, DotsThree, Trash, Play, Barbell } from "@phosphor-icons/react";
 import { RestBadge } from "./RestBadge";
 import { SetRow, SetsTableHeader } from "./SetRow";
 import { getColunasPorTipo, showPesoColumn } from "./exerciseColumns";
@@ -18,7 +18,6 @@ interface ExerciseCardProps {
   isDragging?: boolean;
   onUpdate: (index: number, patch: Partial<ExercicioFicha>) => void;
   onDelete: (index: number) => void;
-  onDuplicate?: (index: number) => void;
   onAddSet: (index: number) => void;
   onUpdateSerie: (exIndex: number, serieIndex: number, field: string, value: unknown) => void;
   onDeleteSerie: (exIndex: number, serieIndex: number) => void;
@@ -31,7 +30,6 @@ export function ExerciseCard({
   isDragging,
   onUpdate,
   onDelete,
-  onDuplicate,
   onAddSet,
   onUpdateSerie,
   onDeleteSerie,
@@ -114,15 +112,6 @@ export function ExerciseCard({
               >
                 Observação
               </button>
-              {onDuplicate && (
-                <button
-                  type="button"
-                  onClick={() => { onDuplicate(exIndex); setMenuOpen(false); }}
-                  className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-2 flex items-center gap-2"
-                >
-                  <Copy size={14} /> Duplicar
-                </button>
-              )}
               <div className="h-px bg-border-divider my-1" />
               <button
                 type="button"
