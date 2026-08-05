@@ -6,6 +6,8 @@ import { MeasurementCurrentCard } from '@/app/components/measurements/Measuremen
 import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
 import { MeasurementHistoryList } from '@/app/components/measurements/MeasurementHistoryList';
 import { MeasurementInputCard } from '@/app/components/measurements/MeasurementInputCard';
+import { MeasurementTabs } from '@/app/components/measurements/MeasurementTabs';
+import { PeriodSelector } from '@/app/components/measurements/PeriodSelector';
 import {
   buildChartData,
   buildHistoryEntries,
@@ -109,8 +111,14 @@ export function MeasurementsView({
 
   const content = (
     <>
-      {variant === 'embedded' && headerAction && (
-        <div className="mb-2 flex justify-end">{headerAction}</div>
+      {variant === 'embedded' && (
+        <div className="mb-1 flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <MeasurementTabs selected={metricId} onChange={setMetricId} />
+            <PeriodSelector selected={period} onChange={setPeriod} />
+          </div>
+          {headerAction && <div className="shrink-0 ml-auto">{headerAction}</div>}
+        </div>
       )}
 
       {successMessage && (
@@ -132,7 +140,7 @@ export function MeasurementsView({
           isDesktop && 'grid grid-cols-[1fr_1.3fr] gap-8 items-start',
         )}
       >
-        <div className={cn(isDesktop && 'sticky top-24')}>
+        <div className={cn(isDesktop && variant !== 'embedded' && 'sticky top-24')}>
           <MeasurementCurrentCard
             metricId={metricId}
             onMetricChange={setMetricId}
@@ -146,6 +154,7 @@ export function MeasurementsView({
             chartData={chartPoints}
             isDesktop={isDesktop}
             showChart={!isDesktop}
+            showSelectors={variant !== 'embedded'}
             emptyChartMessage={
               readOnly
                 ? 'O aluno deve registrar pelo menos 2 medidas para ver o gráfico'
@@ -210,7 +219,7 @@ export function MeasurementsView({
   );
 
   if (variant === 'embedded') {
-    return <div className="flex flex-col gap-4">{content}</div>;
+    return <div className="flex flex-col gap-3">{content}</div>;
   }
 
   return (

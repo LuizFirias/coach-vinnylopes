@@ -19,6 +19,8 @@ interface MeasurementCurrentCardProps {
   chartData: Array<{ date: string; value: number }>;
   isDesktop?: boolean;
   showChart?: boolean;
+  /** Quando false, tabs/período ficam fora do card (toolbar externa) */
+  showSelectors?: boolean;
   emptyChartMessage?: string;
 }
 
@@ -35,20 +37,23 @@ export function MeasurementCurrentCard({
   chartData,
   isDesktop = false,
   showChart = true,
+  showSelectors = true,
   emptyChartMessage,
 }: MeasurementCurrentCardProps) {
   const parts = value !== null ? splitValueParts(value) : null;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <MeasurementTabs selected={metricId} onChange={onMetricChange} />
-        <PeriodSelector
-          selected={period}
-          onChange={onPeriodChange}
-          className="mt-0.5"
-        />
-      </div>
+      {showSelectors && (
+        <div className="flex items-start justify-between gap-3">
+          <MeasurementTabs selected={metricId} onChange={onMetricChange} />
+          <PeriodSelector
+            selected={period}
+            onChange={onPeriodChange}
+            className="mt-0.5"
+          />
+        </div>
+      )}
 
       <div>
         {parts ? (

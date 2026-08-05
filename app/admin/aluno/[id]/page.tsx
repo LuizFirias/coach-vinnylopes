@@ -9,7 +9,6 @@ import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 import { extractStoragePath, getSignedStorageUrl, getPublicStorageUrl } from "@/lib/storageUrls";
 import UploadNutritionPlan from "@/app/components/UploadNutritionPlan";
 import {
-  ArrowLeft,
   User,
   Calendar,
   CreditCard,
@@ -47,16 +46,16 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import { CoachCardioTab } from '@/app/components/admin/cardio/CoachCardioTab';
 import { MeasurementsView } from '@/app/components/measurements/MeasurementsView';
-import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
 import type { MedicaoRecord } from '@/lib/measurements/types';
+import { FichasKanban, type FichaKanbanItem } from "@/app/components/admin/alunos/FichasKanban";
+import { WorkoutLoadReport } from "@/app/components/workout/WorkoutLoadReport";
 import {
-  buildDailyAdherenceSeries,
-  getStatusAdherenceWeight,
-} from '@/lib/nutrition/adherence';
-import { RotinasExpandableCards } from "@/app/components/admin/alunos/RotinasExpandableCards";
+  PlanosNutricaoKanban,
+  type PlanoNutricaoKanbanItem,
+} from "@/app/components/admin/alunos/PlanosNutricaoKanban";
+import { CloneToStudentsModal } from "@/app/components/admin/alunos/CloneToStudentsModal";
 import { AlunoObservacoesCard } from "@/app/components/admin/alunos/AlunoObservacoesCard";
 import { StudentPlanCard } from "@/app/components/admin/alunos/StudentPlanCard";
-import { KanbanWorkoutBuilderSheet } from "@/app/components/admin/alunos/KanbanWorkoutBuilderSheet";
 import {
   ExerciseLibraryModal,
   type LibraryExercise,
@@ -66,7 +65,7 @@ import {
   readReturnUrl,
   withReturnUrl,
 } from "@/lib/utils/adminNav";
-import { parseFichaItems, serializeFichaItems } from "@/lib/utils/biset";
+import { isBiSetFichaItem, parseFichaItems, serializeFichaItems } from "@/lib/utils/biset";
 import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
 import {
   fetchCoachCustomPlans,
@@ -80,6 +79,8 @@ import {
   type FormaPagamento,
 } from "@/lib/financeiro/types";
 import { sendCoachNotification } from "@/lib/notifications/sendCoachNotification";
+import { ConfirmModal } from "@/app/components/ConfirmModal";
+import { BackButton } from "@/app/components/ui/BackButton";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -165,7 +166,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [fichas, setFichas] = useState<FichaTreino[]>([]);
   const [clonandoFicha, setClonandoFicha] = useState<FichaTreino | null>(null);
   const [alunosCoach, setAlunosCoach] = useState<{ id: string; nome: string }[]>([]);
-  const [alunoAlvoId, setAlunoAlvoId] = useState<string>("");
+  const [alunosCoachLoading, setAlunosCoachLoading] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -188,6 +189,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
   // Nutrition States
   const [digitalPlan, setDigitalPlan] = useState<any | null>(null);
+  const [digitalPlans, setDigitalPlans] = useState<PlanoNutricaoKanbanItem[]>([]);
   const [digitalCheckins, setDigitalCheckins] = useState<any[]>([]);
   const [latestDigitalPlan, setLatestDigitalPlan] = useState<any | null>(null);
 
@@ -196,8 +198,6 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<any | null>(null);
   const [treinoPdfOpen, setTreinoPdfOpen] = useState(false);
   const [nutritionPdfOpen, setNutritionPdfOpen] = useState(false);
-  const [nutritionPlanOpen, setNutritionPlanOpen] = useState(false);
-  const [kanbanBuilderOpen, setKanbanBuilderOpen] = useState(false);
   const [addExerciseFichaId, setAddExerciseFichaId] = useState<string | null>(null);
   const [exerciseCatalog, setExerciseCatalog] = useState<LibraryExercise[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -208,6 +208,24 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   const [notifToastTone, setNotifToastTone] = useState<'ok' | 'error'>('ok');
   const [sendingPhotosNotif, setSendingPhotosNotif] = useState(false);
   const [coachUserId, setCoachUserId] = useState<string | null>(null);
+
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    destructive?: boolean;
+    loading?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const showConfirm = (opts: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    destructive?: boolean;
+    onConfirm: () => void;
+  }) => setConfirmModal(opts);
 
   useEffect(() => { load(); }, [id]);
 
@@ -243,8 +261,17 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleDelete = async () => {
-    if (!window.confirm("Tem certeza que deseja desativar este aluno? O acesso será bloqueado, mas os dados e histórico serão mantidos.")) return;
+  const handleDelete = () => {
+    showConfirm({
+      title: "Desativar aluno",
+      message: "Tem certeza que deseja desativar este aluno? O acesso será bloqueado, mas os dados e histórico serão mantidos.",
+      confirmLabel: "Desativar",
+      destructive: true,
+      onConfirm: () => void handleDeleteConfirmed(),
+    });
+  };
+
+  const handleDeleteConfirmed = async () => {
     setDeleting(true);
     setError(null);
     try {
@@ -265,8 +292,16 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleReactivate = async () => {
-    if (!window.confirm("Reativar este aluno? O acesso será restaurado.")) return;
+  const handleReactivate = () => {
+    showConfirm({
+      title: "Reativar aluno",
+      message: "Reativar este aluno? O acesso será restaurado.",
+      confirmLabel: "Reativar",
+      onConfirm: () => void handleReactivateConfirmed(),
+    });
+  };
+
+  const handleReactivateConfirmed = async () => {
     setDeleting(true);
     setError(null);
     try {
@@ -328,8 +363,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         { data: ultimoCheckin },
         { data: pontuacaoData },
         { data: historicoData },
-        { data: activeDigPlan },
-        { data: latestDigPlan },
+        { data: digPlansData },
         { data: checkinsData },
       ] = await Promise.all([
         supabaseClient.from("profiles").select("*").eq("id", id).single(),
@@ -351,7 +385,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             }))
           ),
         supabaseClient
-          .from("fichas_treino").select("*").eq("aluno_id", id).eq("ativo", true).order("criado_em", { ascending: false }),
+          .from("fichas_treino").select("*").eq("aluno_id", id).order("criado_em", { ascending: false }),
         supabaseClient
           .from("medidas_aluno")
           .select("id, peso, peitoral, cintura, braco_esquerdo, braco_direito, coxa_esquerda, coxa_direita, panturrilha_direita, data_medicao, gordura_corporal")
@@ -398,15 +432,8 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             )
           `)
           .eq('student_id', id)
-          .eq('status', 'active')
-          .maybeSingle(),
-        supabaseClient
-          .from('nutrition_plans')
-          .select('id, created_at, status')
-          .eq('student_id', id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+          .neq('status', 'template')
+          .order('updated_at', { ascending: false }),
         supabaseClient
           .from('nutrition_meal_checkins')
           .select('*')
@@ -427,7 +454,11 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
       setFotos(fotosAssinadas);
       setTreinosPdf(treinosAssinados);
-      setFichas((fichasData || []) as FichaTreino[]);
+      setFichas(
+        ([...(fichasData || [])] as FichaTreino[]).sort(
+          (a, b) => Number(b.ativo) - Number(a.ativo),
+        ),
+      );
       setMedidas(medidasData || []);
       setPlanosAlimentares(planosAssinados);
       setHistoricoFinanceiro((financeiroData || []) as PlanoFinanceiroHistorico[]);
@@ -444,9 +475,13 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       setUltimaAtividade(dataUltimaAtividade);
       setPontosTotais(pontuacaoData?.total_pontos || 0);
       setHistoricoTreinos(historicoData || []);
+      setDigitalPlans((digPlansData || []) as PlanoNutricaoKanbanItem[]);
+      const activeDigPlan =
+        (digPlansData || []).find((p: any) => p.status === 'active') || null;
+      const latestDigPlan = (digPlansData || [])[0] || null;
       setDigitalPlan(activeDigPlan);
       setLatestDigitalPlan(latestDigPlan);
-      setDigitalCheckins(activeDigPlan ? checkinsData || [] : []);
+      setDigitalCheckins(checkinsData || []);
 
       // Calcular dias para renovação
       if (prof?.data_expiracao) {
@@ -495,8 +530,17 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleDeleteTreino = async (treinoId: string, urlPdf: string) => {
-    if (!window.confirm("Remover este arquivo de treino permanentemente?")) return;
+  const handleDeleteTreino = (treinoId: string, urlPdf: string) => {
+    showConfirm({
+      title: "Remover arquivo",
+      message: "Remover este arquivo de treino permanentemente? Esta ação não pode ser desfeita.",
+      confirmLabel: "Remover",
+      destructive: true,
+      onConfirm: () => void handleDeleteTreinoConfirmed(treinoId, urlPdf),
+    });
+  };
+
+  const handleDeleteTreinoConfirmed = async (treinoId: string, urlPdf: string) => {
     try {
       const filePath = extractStoragePath("treinos-pdf", urlPdf) || urlPdf;
       await supabaseClient.storage.from("treinos-pdf").remove([filePath]);
@@ -508,14 +552,76 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleDeleteFicha = async (fichaId: string) => {
-    if (!window.confirm("Desativar esta ficha digital? O aluno perderá acesso, mas o histórico será mantido.")) return;
+  const handleDeleteFicha = (fichaId: string) => {
+    showConfirm({
+      title: "Excluir ficha",
+      message: "Excluir esta ficha permanentemente? Esta ação não pode ser desfeita.",
+      confirmLabel: "Excluir",
+      destructive: true,
+      onConfirm: () => void handleDeleteFichaConfirmed(fichaId),
+    });
+  };
+
+  const handleDeleteFichaConfirmed = async (fichaId: string) => {
     try {
-      const { error } = await supabaseClient.from("fichas_treino").update({ ativo: false }).eq("id", fichaId);
+      const { error } = await supabaseClient.from("fichas_treino").delete().eq("id", fichaId);
       if (error) throw error;
       await load();
     } catch (err: any) {
-      setError("Erro ao deletar ficha: " + err.message);
+      setError("Erro ao excluir ficha: " + err.message);
+    }
+  };
+
+  const handleArchiveFicha = (fichaId: string) => {
+    showConfirm({
+      title: "Arquivar ficha?",
+      message: "A ficha ficará arquivada (bloqueada) neste aluno.",
+      confirmLabel: "Arquivar",
+      onConfirm: () => void handleArchiveFichaConfirmed(fichaId),
+    });
+  };
+
+  const handleArchiveFichaConfirmed = async (fichaId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from("fichas_treino")
+        .update({ ativo: false })
+        .eq("id", fichaId);
+      if (error) throw error;
+      await load();
+    } catch (err: any) {
+      setError("Erro ao arquivar ficha: " + err.message);
+    }
+  };
+
+  const handleUnarchiveFicha = async (fichaId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from("fichas_treino")
+        .update({ ativo: true })
+        .eq("id", fichaId);
+      if (error) throw error;
+      await load();
+    } catch (err: any) {
+      setError("Erro ao desarquivar ficha: " + err.message);
+    }
+  };
+
+  const handleDuplicateFicha = async (ficha: FichaKanbanItem | FichaTreino) => {
+    try {
+      const coachId = (await getBootstrapProfile())?.userId;
+      if (!coachId) throw new Error("Sessão inválida");
+      const { error } = await supabaseClient.from("fichas_treino").insert({
+        coach_id: coachId,
+        aluno_id: id,
+        nome_rotina: `${ficha.nome_rotina || "Ficha"} — cópia`,
+        configuracao: ficha.configuracao,
+        ativo: true,
+      });
+      if (error) throw error;
+      await load();
+    } catch (err: any) {
+      setError("Erro ao duplicar ficha: " + err.message);
     }
   };
 
@@ -610,19 +716,36 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     const current = parseFichaItems(
       (ficha.configuracao as { exercicios?: unknown[] })?.exercicios || [],
     );
-    const novos: ExercicioFicha[] = selected.map((ex) => {
-      const tipoEx = ex.tipo_exercicio || "Peso & Repetições";
-      return {
-        instanceId: crypto.randomUUID(),
-        id: ex.id,
-        nome: ex.nome,
-        tipo_exercicio: tipoEx,
-        descanso: "01:00",
-        video_url: ex.video_url || "",
-        observacoes: "",
-        series: criarSeriesPadraoLocal(tipoEx),
-      };
-    });
+    const existingIds = new Set<string>();
+    for (const item of current) {
+      if (isBiSetFichaItem(item as never)) {
+        const bi = item as { exercicioA?: { id?: string }; exercicioB?: { id?: string } };
+        if (bi.exercicioA?.id) existingIds.add(bi.exercicioA.id);
+        if (bi.exercicioB?.id) existingIds.add(bi.exercicioB.id);
+      } else {
+        const id = (item as { id?: string })?.id;
+        if (id) existingIds.add(id);
+      }
+    }
+    const novos: ExercicioFicha[] = selected
+      .filter((ex) => !existingIds.has(ex.id))
+      .map((ex) => {
+        const tipoEx = ex.tipo_exercicio || "Peso & Repetições";
+        return {
+          instanceId: crypto.randomUUID(),
+          id: ex.id,
+          nome: ex.nome,
+          tipo_exercicio: tipoEx,
+          descanso: "01:00",
+          video_url: ex.video_url || "",
+          observacoes: "",
+          series: criarSeriesPadraoLocal(tipoEx),
+        };
+      });
+    if (novos.length === 0) {
+      setAddExerciseFichaId(null);
+      return;
+    }
     await handleUpdateFichaExercicios(
       addExerciseFichaId,
       serializeFichaItems([...current, ...novos]),
@@ -630,52 +753,62 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     setAddExerciseFichaId(null);
   };
 
-  const abrirClonarFicha = async (ficha: FichaTreino) => {
-    setClonandoFicha(ficha);
-    setAlunoAlvoId("");
-    if (alunosCoach.length === 0) {
-      try {
-        const coachId = (await getBootstrapProfile())?.userId;
-        if (!coachId) { setError("Sessão inválida"); return; }
+  const loadAlunosCoach = async () => {
+    setAlunosCoachLoading(true);
+    try {
+      const coachId = (await getBootstrapProfile())?.userId;
+      if (!coachId) { setError("Sessão inválida"); return; }
 
-        // Buscar alunos do coach
-        const { data: alunosRel, error: relError } = await supabaseClient
-          .from("coach_alunos").select("aluno_id").eq("coach_id", coachId);
+      const { data: alunosRel, error: relError } = await supabaseClient
+        .from("coach_alunos").select("aluno_id").eq("coach_id", coachId);
+      if (relError) throw relError;
+      if (!alunosRel || alunosRel.length === 0) { setAlunosCoach([]); return; }
 
-        if (relError) throw relError;
-        if (!alunosRel || alunosRel.length === 0) { setAlunosCoach([]); return; }
+      const alunoIds = alunosRel.map(r => r.aluno_id).filter((aid) => aid !== id);
+      if (alunoIds.length === 0) { setAlunosCoach([]); return; }
 
-        // Buscar perfis dos alunos
-        const alunoIds = alunosRel.map(r => r.aluno_id);
-        const { data: profiles, error: profilesError } = await supabaseClient
-          .from("profiles").select("id, coaching_reference, email").in("id", alunoIds);
+      const { data: profiles, error: profilesError } = await supabaseClient
+        .from("profiles")
+        .select("id, coaching_reference, full_name, email")
+        .in("id", alunoIds)
+        .eq("arquivado", false);
+      if (profilesError) throw profilesError;
 
-        if (profilesError) throw profilesError;
-
-        const lista = (profiles || [])
-          .map((p: any) => ({ id: p.id, nome: p.coaching_reference || p.email || p.id }))
-          .filter(a => a.id !== id);
-
-        setAlunosCoach(lista);
-      } catch (err: any) {
-        setError("Erro ao carregar lista de alunos");
-      }
+      setAlunosCoach(
+        (profiles || []).map((p: any) => ({
+          id: p.id,
+          nome: p.coaching_reference || p.full_name || p.email || p.id,
+        })),
+      );
+    } catch {
+      setError("Erro ao carregar lista de alunos");
+      setAlunosCoach([]);
+    } finally {
+      setAlunosCoachLoading(false);
     }
   };
 
-  const handleClonarFicha = async () => {
-    if (!clonandoFicha || !alunoAlvoId) return;
+  const abrirClonarFicha = async (ficha: FichaTreino | FichaKanbanItem) => {
+    setClonandoFicha(ficha as FichaTreino);
+    await loadAlunosCoach();
+  };
+
+  const handleClonarFicha = async (studentIds: string[]) => {
+    if (!clonandoFicha || studentIds.length === 0) return;
     setCloning(true);
     try {
       const coachId = (await getBootstrapProfile())?.userId;
       if (!coachId) throw new Error("Sessão inválida");
-      const { error } = await supabaseClient.from("fichas_treino").insert({
-        coach_id: coachId, aluno_id: alunoAlvoId, nome_rotina: clonandoFicha.nome_rotina, configuracao: clonandoFicha.configuracao, ativo: true,
-      });
+      const rows = studentIds.map((alunoId) => ({
+        coach_id: coachId,
+        aluno_id: alunoId,
+        nome_rotina: clonandoFicha.nome_rotina,
+        configuracao: clonandoFicha.configuracao,
+        ativo: true,
+      }));
+      const { error } = await supabaseClient.from("fichas_treino").insert(rows);
       if (error) throw error;
       setClonandoFicha(null);
-      setAlunoAlvoId("");
-      alert("Ficha clonada com sucesso!");
     } catch (err: any) {
       setError("Erro ao clonar ficha: " + err.message);
     } finally {
@@ -685,11 +818,18 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
 
 
 
-  const handleCancelarHistorico = async (itemId: string) => {
+  const handleCancelarHistorico = (itemId: string) => {
     if (itemId === "profile-current") return;
-    if (!window.confirm("Cancelar este registro de pagamento? Ele deixará de contar no faturamento.")) {
-      return;
-    }
+    showConfirm({
+      title: "Cancelar pagamento",
+      message: "Cancelar este registro de pagamento? Ele deixará de contar no faturamento.",
+      confirmLabel: "Cancelar pagamento",
+      destructive: true,
+      onConfirm: () => void handleCancelarHistoricoConfirmed(itemId),
+    });
+  };
+
+  const handleCancelarHistoricoConfirmed = async (itemId: string) => {
     setCancellingHistoricoId(itemId);
     setHistoricoMenuId(null);
     setError(null);
@@ -707,8 +847,17 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleDeleteNutritionPlan = async (planId: string, pdfUrl: string) => {
-    if (!window.confirm("Remover este plano alimentar permanentemente?")) return;
+  const handleDeleteNutritionPlan = (planId: string, pdfUrl: string) => {
+    showConfirm({
+      title: "Remover plano alimentar",
+      message: "Remover este plano alimentar permanentemente? Esta ação não pode ser desfeita.",
+      confirmLabel: "Remover",
+      destructive: true,
+      onConfirm: () => void handleDeleteNutritionPlanConfirmed(planId, pdfUrl),
+    });
+  };
+
+  const handleDeleteNutritionPlanConfirmed = async (planId: string, pdfUrl: string) => {
     try {
       if (!pdfUrl) throw new Error("URL do PDF não encontrada");
       const pathParts = pdfUrl.split("/plano_alimentar/");
@@ -1177,20 +1326,18 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-4 md:gap-6">
 
-      <button
-        type="button"
-        onClick={() =>
-          router.push(readReturnUrl(window.location.search, "/admin/alunos"))
-        }
-        aria-label="Voltar"
-        className="self-start -ml-1 flex h-9 w-9 items-center justify-center rounded-lg bg-transparent border-0 text-brand hover:bg-brand/10 transition-colors shrink-0"
-      >
-        <ArrowLeft className="w-5 h-5" weight="bold" />
-      </button>
+      {/* ── Back + Profile ── */}
+      <div className="relative will-change-transform">
+        <BackButton
+          onClick={() =>
+            router.push(readReturnUrl(window.location.search, "/admin/alunos"))
+          }
+          className="mb-3 self-start -ml-1 lg:mb-0 lg:absolute lg:-left-12 lg:top-1"
+        />
 
-      {/* ── Profile Base Card ── */}
-      {profile && (
-        <Card className="rounded-2xl border-0 p-4 bg-brand shadow-[0_12px_32px_rgba(147,51,234,0.35)] relative overflow-visible">
+        {/* ── Profile Base Card ── */}
+        {profile && (
+          <Card className="rounded-2xl border border-brand p-4 bg-brand shadow-[0_12px_32px_rgba(147,51,234,0.35)] relative overflow-visible outline-none">
           <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.14)_0%,transparent_55%)]" />
           </div>
@@ -1301,16 +1448,14 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         </Card>
-      )}
+        )}
+      </div>
 
       {/* Quick action — Nova Ficha */}
       <button
         type="button"
-        onClick={() => {
-          setActiveTab("treinos");
-          setKanbanBuilderOpen(true);
-        }}
-        className="inline-flex items-center justify-center gap-1.5 w-full min-h-11 px-3 py-3 bg-brand hover:bg-brand-hover text-text-on-brand text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all active:scale-[0.98] shadow-sm shadow-brand/10"
+        onClick={() => router.push(withReturnUrl(`/admin/treinos/nova-ficha?alunoId=${id}`, `/admin/aluno/${id}`))}
+        className="inline-flex items-center justify-center gap-1.5 w-full min-h-11 px-3 py-3 bg-brand hover:bg-brand-hover text-text-on-brand text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all active:scale-[0.98] border border-brand outline-none"
       >
         <Plus size={14} weight="bold" /> Nova Ficha
       </button>
@@ -1367,10 +1512,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </div>
             <button
               type="button"
-              onClick={() => {
-                setActiveTab("treinos");
-                setKanbanBuilderOpen(true);
-              }}
+              onClick={() => router.push(withReturnUrl(`/admin/treinos/nova-ficha?alunoId=${id}`, `/admin/aluno/${id}`))}
               className="shrink-0 text-[11px] font-semibold text-brand"
             >
               + criar
@@ -1838,16 +1980,29 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {/* ── TREINOS TAB ── */}
         {activeTab === 'treinos' && (
           <div className="flex flex-col gap-4">
-            
-            <RotinasExpandableCards
-              fichas={fichas}
+
+            <FichasKanban
+              fichas={fichas as FichaKanbanItem[]}
               alunoId={id}
               currentFichaId={activeFicha?.id ?? null}
+              onReorderFichas={handleReorderFichas}
+              onUpdateFichaExercicios={handleUpdateFichaExercicios}
               onDeleteFicha={handleDeleteFicha}
-              onCloneFicha={(f) => abrirClonarFicha(f as FichaTreino)}
-              onPreviewFicha={(f) => setSelectedRoutineForPreview(f as FichaTreino)}
+              onCloneFicha={(f) => void abrirClonarFicha(f)}
+              onDuplicateFicha={(f) => void handleDuplicateFicha(f)}
+              onArchiveFicha={handleArchiveFicha}
+              onUnarchiveFicha={(fichaId) => void handleUnarchiveFicha(fichaId)}
+              onFichaSaved={() => void load()}
               onAddExercise={(fichaId) => void openAddExercise(fichaId)}
             />
+
+            {/* Dinâmica de Carga */}
+            <div className="rounded-2xl bg-surface-1 border-0 p-4 md:p-5">
+              <WorkoutLoadReport
+                alunoId={id}
+                profileName={profile?.full_name ?? ''}
+              />
+            </div>
 
             {/* Upload de PDF individual — compacto por padrão */}
             <form
@@ -1955,224 +2110,13 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         {/* ── NUTRIÇÃO TAB ── */}
         {activeTab === 'nutricao' && (
           <div className="w-full flex flex-col gap-4">
-            
-            {/* Plano digital — colapsado como fichas de treino */}
-            {digitalPlan ? (
-              <div className="relative rounded-xl border-0 bg-surface-1 shadow-sm overflow-hidden">
-                <div className="flex items-start gap-3 px-4 py-3.5">
-                  <button
-                    type="button"
-                    onClick={() => setNutritionPlanOpen((v) => !v)}
-                    className="flex min-w-0 flex-1 items-start gap-3 bg-transparent border-0 p-0 text-left"
-                    aria-expanded={nutritionPlanOpen}
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center text-brand">
-                      <AppleLogo size={18} weight="bold" />
-                    </div>
-                    <div className="min-w-0 flex-1 pt-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-text-primary truncate leading-tight">
-                          {digitalPlan.name || 'Plano alimentar'}
-                        </p>
-                        <span className="inline-flex items-center gap-1 rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-success">
-                          <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                          ativo
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-text-tertiary">
-                        {digitalPlan.goal || 'Hipertrofia'}
-                        {digitalPlan.days?.[0]?.meals?.length
-                          ? ` · ${digitalPlan.days[0].meals.length} refeiç${digitalPlan.days[0].meals.length === 1 ? 'ão' : 'ões'}`
-                          : ''}
-                      </p>
-                    </div>
-                    <CaretDown
-                      size={14}
-                      weight="bold"
-                      className={cn(
-                        'mt-2.5 shrink-0 text-text-tertiary transition-transform',
-                        nutritionPlanOpen && 'rotate-180',
-                      )}
-                    />
-                  </button>
-                </div>
 
-                {nutritionPlanOpen && (
-                  <div className="border-t border-[color:var(--list-row-divider)] px-4 pb-4 pt-3 flex flex-col gap-4">
-                    <div className="flex flex-wrap gap-3">
-                      <Link
-                        href={`/admin/nutricao/planos/${digitalPlan.id}`}
-                        className="text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors"
-                      >
-                        Ver Plano
-                      </Link>
-                      <Link
-                        href={`/admin/nutricao/planos/${digitalPlan.id}/editar`}
-                        className="text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors"
-                      >
-                        Editar
-                      </Link>
-                    </div>
-
-                    {digitalPlan.calories_target && (
-                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-mono border-t border-b border-divider py-2.5">
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Calorias</span>
-                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.calories_target} kcal</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Proteínas</span>
-                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.protein_target || '—'}g</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Carbos</span>
-                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.carbs_target || '—'}g</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[8px] uppercase font-semibold text-text-tertiary tracking-wider mb-0.5">Gorduras</span>
-                          <span className="text-text-primary font-bold tabular-nums lining-nums">{digitalPlan.fat_target || '—'}g</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {(() => {
-                      const todayISO = new Date().toISOString().slice(0, 10);
-                      const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
-                      const todayCheckins = digitalCheckins.filter(c => c.checkin_date === todayISO);
-                      let todayWeightSum = 0;
-                      todayCheckins.forEach(c => {
-                        todayWeightSum += getStatusAdherenceWeight(c.status);
-                      });
-                      const todayAdherence = mealsCount > 0 ? Math.min(100, Math.round((todayWeightSum / mealsCount) * 100)) : 100;
-
-                      const expected7dMeals = mealsCount * 7;
-                      let total7dWeightSum = 0;
-                      digitalCheckins.forEach(c => {
-                        total7dWeightSum += getStatusAdherenceWeight(c.status);
-                      });
-                      const weeklyAdherence = expected7dMeals > 0 ? Math.min(100, Math.round((total7dWeightSum / expected7dMeals) * 100)) : 100;
-
-                      const lastCheckin = digitalCheckins[0];
-                      const formattedLastCheckin = lastCheckin
-                        ? `${new Date(lastCheckin.checkin_date).toLocaleDateString('pt-BR')} (${lastCheckin.status.toUpperCase()})`
-                        : 'Nenhum recente';
-
-                      return (
-                        <div className="grid grid-cols-3 gap-4 text-xs font-medium">
-                          <div>
-                            <p className="text-[9px] uppercase font-semibold text-text-tertiary mb-0.5">Adesão Hoje</p>
-                            <p className="text-text-primary font-bold font-mono tabular-nums lining-nums">{todayAdherence}%</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] uppercase font-semibold text-text-tertiary mb-0.5">Adesão 7 Dias</p>
-                            <p className="text-text-primary font-bold font-mono tabular-nums lining-nums">{weeklyAdherence}%</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] uppercase font-semibold text-text-tertiary mb-0.5">Último Registro</p>
-                            <p className="text-text-secondary truncate">{formattedLastCheckin}</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    <div className="flex flex-col gap-3">
-                      <div>
-                        <h4 className="text-[13px] font-semibold text-text-primary">Adesão nos últimos 7 dias</h4>
-                        <p className="text-[10px] text-text-tertiary mt-0.5">Série diária — mesmo cálculo dos KPIs</p>
-                      </div>
-                      {(() => {
-                        const mealsCount = digitalPlan.days?.[0]?.meals?.length || 0;
-                        const series = buildDailyAdherenceSeries(digitalCheckins, mealsCount, 7);
-                        const chartData = series.map((p) => ({ date: p.date, value: p.value }));
-                        return (
-                          <MeasurementLineChart
-                            data={chartData}
-                            height={100}
-                            isDesktop
-                            yDomain={[0, 100]}
-                            labelMode="all"
-                            solidBackground
-                            formatValue={(v) => `${v}%`}
-                          />
-                        );
-                      })()}
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] uppercase font-semibold text-text-tertiary tracking-wider mb-1">
-                        Adesão às refeições de hoje
-                      </span>
-                      {(digitalPlan.days?.[0]?.meals || []).length === 0 ? (
-                        <p className="py-2 text-[12px] text-text-tertiary">Nenhuma refeição neste plano.</p>
-                      ) : (
-                        <ul className="flex flex-col divide-y divide-[color:var(--list-row-divider)]">
-                          {digitalPlan.days[0].meals.map((meal: any) => {
-                            const todayISO = new Date().toISOString().slice(0, 10);
-                            const checkin = digitalCheckins.find(c => c.meal_id === meal.id && c.checkin_date === todayISO);
-                            const status = checkin?.status || 'pending';
-
-                            const statusLabels: Record<string, string> = {
-                              done: 'Feita',
-                              substituted: 'Substituída',
-                              partial: 'Parcial',
-                              skipped: 'Não Feita',
-                              pending: 'Pendente',
-                            };
-
-                            const statusColors: Record<string, string> = {
-                              done: 'bg-success/10 text-success border-success/20',
-                              substituted: 'bg-brand/10 text-brand border-brand/20',
-                              partial: 'bg-warning/10 text-warning border-warning/20',
-                              skipped: 'bg-danger/10 text-danger border-danger/20',
-                              pending: 'bg-surface-2 text-text-tertiary border-transparent',
-                            };
-
-                            return (
-                              <li key={meal.id} className="flex items-center justify-between gap-3 py-2.5">
-                                <div className="min-w-0">
-                                  <p className="text-[13px] font-medium text-text-primary leading-snug truncate">{meal.title}</p>
-                                  {meal.time_suggestion && (
-                                    <span className="mt-0.5 text-[11px] text-text-tertiary font-mono inline-flex items-center gap-1">
-                                      <Clock size={10} /> {meal.time_suggestion.slice(0, 5)}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className={cn(
-                                  'inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border shrink-0',
-                                  statusColors[status],
-                                )}>
-                                  {statusLabels[status]}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-xl border-0 bg-surface-1 px-4 py-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-text-primary">Nenhum plano alimentar ativo</p>
-                  <p className="text-[11px] text-text-tertiary mt-0.5">
-                    Prescreva um plano digital para acompanhar a adesão.
-                  </p>
-                </div>
-                <Link
-                  href={withReturnUrl(
-                    "/admin/nutricao/novo-plano",
-                    `/admin/aluno/${id}`,
-                  )}
-                  className="shrink-0"
-                >
-                  <Button variant="primary" size="sm" leftIcon={<AppleLogo size={14} />}>
-                    Prescrever
-                  </Button>
-                </Link>
-              </div>
-            )}
+            <PlanosNutricaoKanban
+              planos={digitalPlans}
+              alunoId={id}
+              checkins={digitalCheckins}
+              onRefresh={() => void load()}
+            />
 
             {/* Seção 2: PDF compacto / colapsável */}
             <div className="bg-surface-1 border-0 rounded-xl">
@@ -2257,21 +2201,21 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               
               {/* Gráfico de Evolução de Medidas */}
               <div className="rounded-2xl border-0 p-4 md:p-6 shadow-sm bg-surface-1">
-                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-end">
-                  {medidas.length > 0 && (
-                    <button
-                      onClick={handleExportPDF}
-                      className="flex items-center justify-center gap-1.5 rounded-lg border border-transparent bg-brand px-4 py-2 text-xs font-semibold text-text-primary shadow-sm transition-all duration-200 hover:bg-brand-hover"
-                    >
-                      <FilePdf className="h-4 w-4" /> Exportar Relatório PDF
-                    </button>
-                  )}
-                </div>
-
                 <MeasurementsView
                   variant="embedded"
                   readOnly
                   medicoes={medidas as MedicaoRecord[]}
+                  headerAction={
+                    medidas.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleExportPDF}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-transparent bg-brand px-4 py-2 text-xs font-semibold text-text-primary shadow-sm transition-all duration-200 hover:bg-brand-hover"
+                      >
+                        <FilePdf className="h-4 w-4" /> Exportar Relatório PDF
+                      </button>
+                    ) : null
+                  }
                 />
               </div>
 
@@ -2687,20 +2631,31 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      <KanbanWorkoutBuilderSheet
-        open={kanbanBuilderOpen}
-        alunoId={id}
-        onClose={() => setKanbanBuilderOpen(false)}
-        onSaved={() => void load()}
-      />
-
-      {addExerciseFichaId && (
-        <ExerciseLibraryModal
-          catalog={exerciseCatalog}
-          onClose={() => setAddExerciseFichaId(null)}
-          onAdd={(selected) => void handleAddExercisesToFicha(selected)}
-        />
-      )}
+      {addExerciseFichaId && (() => {
+        const ficha = fichas.find((f) => f.id === addExerciseFichaId);
+        const current = parseFichaItems(
+          (ficha?.configuracao as { exercicios?: unknown[] })?.exercicios || [],
+        );
+        const existingIds = new Set<string>();
+        for (const item of current) {
+          if (isBiSetFichaItem(item as never)) {
+            const bi = item as { exercicioA?: { id?: string }; exercicioB?: { id?: string } };
+            if (bi.exercicioA?.id) existingIds.add(bi.exercicioA.id);
+            if (bi.exercicioB?.id) existingIds.add(bi.exercicioB.id);
+          } else {
+            const eid = (item as { id?: string })?.id;
+            if (eid) existingIds.add(eid);
+          }
+        }
+        return (
+          <ExerciseLibraryModal
+            catalog={exerciseCatalog}
+            existingIds={existingIds}
+            onClose={() => setAddExerciseFichaId(null)}
+            onAdd={(selected) => void handleAddExercisesToFicha(selected)}
+          />
+        );
+      })()}
 
       {/* Modal de upload de nutrição */}
       <UploadNutritionPlan
@@ -2712,63 +2667,16 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       />
 
       {/* Modal Clonar Ficha */}
-      {clonandoFicha && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-1 border-0 rounded-2xl p-5 flex flex-col gap-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-text-primary font-display">Clonar Ficha</p>
-                <p className="text-xs text-text-tertiary truncate max-w-[220px]">{clonandoFicha.nome_rotina}</p>
-              </div>
-              <button
-                onClick={() => setClonandoFicha(null)}
-                className="p-2 text-text-disabled hover:text-text-secondary rounded-lg transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase text-text-tertiary mb-2 block">
-                Selecionar atleta destino
-              </label>
-              {alunosCoach.length === 0 ? (
-                <p className="text-xs text-text-tertiary py-3 text-center">Carregando alunos…</p>
-              ) : (
-                <select
-                  value={alunoAlvoId}
-                  onChange={e => setAlunoAlvoId(e.target.value)}
-                  className="w-full px-3 py-3 bg-surface-3 border-0 rounded-xl text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-all"
-                >
-                  <option value="">Escolha um aluno…</option>
-                  {alunosCoach.map(a => (
-                    <option key={a.id} value={a.id}>{a.nome}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setClonandoFicha(null)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-text-secondary bg-surface-3 border-0 hover:bg-surface-2 transition-colors"
-              >
-                Cancelar
-              </button>
-              <Button
-                onClick={handleClonarFicha}
-                disabled={!alunoAlvoId || cloning}
-                loading={cloning}
-                leftIcon={<Copy className="w-4 h-4" />}
-                className="flex-1"
-                size="sm"
-              >
-                Clonar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CloneToStudentsModal
+        open={!!clonandoFicha}
+        title="Clonar ficha"
+        subtitle={clonandoFicha?.nome_rotina}
+        students={alunosCoach}
+        loadingStudents={alunosCoachLoading}
+        confirming={cloning}
+        onClose={() => setClonandoFicha(null)}
+        onConfirm={(ids) => void handleClonarFicha(ids)}
+      />
 
         {/* Simplified Routine Preview Modal */}
         {selectedRoutineForPreview && (
@@ -2846,6 +2754,21 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         )}
-      </div>
-    );
-  }
+
+      {/* ── Confirm Modal ── */}
+      {confirmModal && (() => {
+        const m = confirmModal;
+        return (
+          <ConfirmModal
+            title={m.title}
+            message={m.message}
+            confirmLabel={m.confirmLabel}
+            destructive={m.destructive}
+            onConfirm={() => { setConfirmModal(null); m.onConfirm(); }}
+            onCancel={() => setConfirmModal(null)}
+          />
+        );
+      })()}
+    </div>
+  );
+}
