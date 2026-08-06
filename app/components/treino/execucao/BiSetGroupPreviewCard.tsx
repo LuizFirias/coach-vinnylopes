@@ -162,6 +162,7 @@ function HalfPreview({
             <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Peso</span>
           )}
           <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Reps</span>
+          <span aria-hidden className="min-w-0" />
           <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T1</span>
           <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T2</span>
           <span className="text-[10px] text-center" style={{ color: "var(--text-disabled)" }}>✓</span>
@@ -178,7 +179,7 @@ function HalfPreview({
           >
             <span className="text-center text-xs font-bold font-sans" style={{ color: "var(--text-tertiary)" }}>{idx + 1}</span>
             {showAnteriorCol && (
-              <span className="text-[11px] font-sans truncate" style={{ color: "var(--text-tertiary)", paddingLeft: 14 }}>
+              <span className="text-[11px] font-sans truncate" style={{ color: "var(--text-tertiary)", paddingLeft: 4 }}>
                 {serie.anterior || "—"}
               </span>
             )}
@@ -226,7 +227,7 @@ function HalfPreview({
                   disabled={!treinoIniciado}
                   aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
                   className={cn(
-                    "w-full max-w-[36px] mx-auto bg-transparent border-0 text-center font-sans",
+                    "w-full max-w-[48px] mx-auto bg-transparent border-0 text-center font-sans",
                     "tabular-nums lining-nums focus:outline-none disabled:opacity-50",
                     "placeholder:text-text-secondary",
                   )}
@@ -252,6 +253,7 @@ function HalfPreview({
                 />
               );
             })()}
+            <div aria-hidden className="min-w-0" />
             <span className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               {duasLetrasTenica(serie.tecnica) || "—"}
             </span>

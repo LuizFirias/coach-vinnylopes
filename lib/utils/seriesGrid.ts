@@ -1,23 +1,29 @@
 /**
  * Templates de grid das linhas de série na execução do treino (cards e bi-set).
- * Compartilhado entre `executar/page.tsx` e `BiSetGroupPreviewCard` para que cada
- * metade do bi-set calcule sua própria coluna (uma pode ter peso, a outra não).
+ * Compartilhado entre `executar/page.tsx` e `BiSetGroupPreviewCard`.
+ *
+ * Layout: SET | ANT | PESO | REPS | [spacer 1fr] | T1 | T2 | ✓
+ * - PESO/REPS ficam à esquerda (junto do SET/ANT)
+ * - T1/T2/check ficam ancorados à direita
+ * - O spacer isola os dois grupos (ex.: reps cluster "8x2" não colidem com T1)
  */
 
-const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(96px, 1.6fr) 40px 34px 30px 30px 30px';
-const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px 40px 32px 32px 32px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(110px, 1.5fr) 48px 48px 44px 44px 36px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px 48px 44px 44px 36px';
-// Variantes sem a coluna PESO (exercícios de peso do corpo)
-const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_PESO = '28px minmax(96px, 1.6fr) 34px 30px 30px 30px';
-const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_PESO = '28px 40px 32px 32px 32px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_PESO = '36px minmax(110px, 1.5fr) 48px 44px 44px 36px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_PESO = '36px 48px 44px 44px 36px';
+// Com ANT: SET ANT PESO REPS ·spacer· T1 T2 CHECK
+const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(48px, 84px) 40px 48px minmax(0, 1fr) 30px 30px 30px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(64px, 110px) 48px 52px minmax(0, 1fr) 44px 44px 36px';
+// Sem ANT: SET PESO REPS ·spacer· T1 T2 CHECK
+const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px 48px minmax(0, 1fr) 32px 32px 32px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px 52px minmax(0, 1fr) 44px 44px 36px';
+// Sem PESO + com ANT
+const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_PESO = '28px minmax(48px, 84px) 48px minmax(0, 1fr) 30px 30px 30px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_PESO = '36px minmax(64px, 110px) 52px minmax(0, 1fr) 44px 44px 36px';
+// Sem PESO + sem ANT
+const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_PESO = '28px 48px minmax(0, 1fr) 32px 32px 32px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_PESO = '36px 52px minmax(0, 1fr) 44px 44px 36px';
 
-// ANT flexível (evita truncar o "anterior") — PESO/REPS/TÉC ficam com largura fixa,
-// encostados à direita da linha (mesmo padrão de coluna flexível da lista).
-export const GRID_COLS_HISTORICO = '28px minmax(70px, 1fr) 52px 36px 64px';
-export const GRID_COLS_HISTORICO_NO_PESO = '28px minmax(70px, 1fr) 36px 64px';
+// Histórico: SET ANT PESO REPS ·spacer· TÉC
+export const GRID_COLS_HISTORICO = '28px minmax(48px, 88px) 48px 44px minmax(0, 1fr) 64px';
+export const GRID_COLS_HISTORICO_NO_PESO = '28px minmax(48px, 88px) 44px minmax(0, 1fr) 64px';
 
 export function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean, showPeso = true): string {
   if (showAnterior) {
