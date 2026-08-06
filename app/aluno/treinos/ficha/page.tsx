@@ -877,15 +877,15 @@ function FichaContent() {
                   const hasTec = exercicio.series.some(s => !!s.tecnica?.trim());
                   const hasExtra = exercicio.series.some(s => !!s.tecnica_extra?.trim());
                   const showPeso = exercicioMostraPeso(exercicio.tipo_exercicio);
-                  const colParts = ['2.5rem', '1fr'];
+                  const colParts = ['2.5rem', 'minmax(4rem, 7rem)'];
                   if (showPeso) colParts.push('5rem');
                   if (hasTec) colParts.push('3.5rem');
                   if (hasExtra) colParts.push('5rem');
                   colParts.push('4rem', '2.75rem');
                   const gridTemplate = colParts.join(' ');
                   const mobileGridTemplate = showPeso
-                    ? '24px minmax(36px,1fr) 44px 36px 24px 24px 28px'
-                    : '24px minmax(36px,1fr) 36px 24px 24px 28px';
+                    ? '24px minmax(36px, 72px) 44px 48px minmax(0, 1fr) 24px 24px 28px'
+                    : '24px minmax(36px, 72px) 48px minmax(0, 1fr) 24px 24px 28px';
                   return (
                     <>
                       {/* Cabeçalhos desktop */}
@@ -929,13 +929,14 @@ function FichaContent() {
                           Ant.
                         </span>
                         {showPeso && (
-                          <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'right' }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                             Peso
                           </span>
                         )}
                         <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                           Reps
                         </span>
+                        <span aria-hidden />
                         <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                           T1
                         </span>
@@ -1017,7 +1018,7 @@ function FichaContent() {
 
                               {/* PESO */}
                               {showPeso && (
-                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <div style={{ display: 'flex', justifyContent: 'center' }}>
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -1057,6 +1058,9 @@ function FichaContent() {
                               >
                                 {serie.reps || '0'}
                               </span>
+
+                              {/* Spacer: T1/T2/check à direita */}
+                              <div aria-hidden />
 
                               {/* T1 */}
                               <div style={{ textAlign: 'center' }}>

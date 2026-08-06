@@ -129,7 +129,7 @@ function estimateDurationMinFromBlocks(blocks: WorkoutBlock[]): number {
 
 const SERIES_GRID_GAP = '8px';
 /** Espaço extra só na coluna Ant. da lista (não mexe no SET) */
-const ANT_COL_PAD_LEFT = 14;
+const ANT_COL_PAD_LEFT = 4;
 const HISTORICO_COL_GAP = '8px';
 const HISTORICO_ROW_PAD_X = 12;
 
@@ -350,7 +350,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
           disabled={!treinoIniciado}
           aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
           className={cn(
-            'w-full max-w-[36px] bg-transparent border-0 text-center font-sans',
+            'w-full max-w-[48px] bg-transparent border-0 text-center font-sans',
             'tabular-nums lining-nums focus:outline-none disabled:opacity-50',
             'placeholder:text-text-secondary',
           )}
@@ -375,6 +375,9 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
           }}
         />
       </div>
+
+      {/* Spacer: empurra T1/T2/check para a direita sem mover PESO/REPS */}
+      <div aria-hidden className="min-w-0" />
 
       <div className="flex justify-center">
         <span className="text-[11px] font-medium leading-tight text-center" style={{ color: 'var(--text-tertiary)' }}>
@@ -535,6 +538,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
             <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>PESO</span>
           )}
           <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>REPS</span>
+          <span aria-hidden className="min-w-0" />
           <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T1</span>
           <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T2</span>
           <span className="text-[10px] text-center" style={{ color: 'var(--text-disabled)' }} />
@@ -2371,23 +2375,14 @@ export default function ExecucaoTreinoPage() {
                           padding: `6px ${HISTORICO_ROW_PAD_X}px`,
                         }}
                       >
-                        {[
-                          { label: 'SET', align: 'text-center' },
-                          { label: 'ANT.', align: 'text-left' },
-                          ...(modalShowPeso ? [{ label: 'PESO', align: 'text-right' }] : []),
-                          { label: 'REPS', align: 'text-center' },
-                          { label: 'TÉC', align: 'text-left' },
-                        ].map(({ label, align }) => (
-                          <span
-                            key={label}
-                            className={cn(
-                              'text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled',
-                              align,
-                            )}
-                          >
-                            {label}
-                          </span>
-                        ))}
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled text-center">SET</span>
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled text-left">ANT.</span>
+                        {modalShowPeso && (
+                          <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled text-center">PESO</span>
+                        )}
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled text-center">REPS</span>
+                        <span aria-hidden className="min-w-0" />
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled text-left">TÉC</span>
                       </div>
                       {modalEx.series.map((s, idx) => {
                         const isAtual = idx === modalRodadaIdx;
@@ -2439,7 +2434,7 @@ export default function ExecucaoTreinoPage() {
                             </span>
 
                             {modalShowPeso && (
-                              <div className="flex items-baseline justify-end gap-0.5 min-w-0">
+                              <div className="flex items-baseline justify-center gap-0.5 min-w-0">
                                 <input
                                   type="number"
                                   inputMode="decimal"
@@ -2454,7 +2449,7 @@ export default function ExecucaoTreinoPage() {
                                   }}
                                   placeholder="—"
                                   aria-label={`Editar peso da série ${idx + 1}`}
-                                  className="w-full max-w-[44px] bg-transparent text-right tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                  className="w-full max-w-[44px] bg-transparent text-center tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                   style={{
                                     fontSize: 14,
                                     fontWeight: 700,
@@ -2503,7 +2498,7 @@ export default function ExecucaoTreinoPage() {
                                   }}
                                   aria-label={`Reps da série ${idx + 1}. Prescrito: ${s.reps}`}
                                   className={cn(
-                                    'w-full max-w-[36px] mx-auto bg-transparent text-center',
+                                    'w-full max-w-[48px] mx-auto bg-transparent text-center',
                                     'tabular-nums lining-nums font-sans focus:outline-none',
                                     'placeholder:text-text-primary placeholder:opacity-90',
                                   )}
@@ -2521,6 +2516,8 @@ export default function ExecucaoTreinoPage() {
                                 />
                               );
                             })()}
+
+                            <div aria-hidden className="min-w-0" />
 
                             <div className="flex gap-1 justify-start items-center flex-wrap">
                               {t1 ? (
