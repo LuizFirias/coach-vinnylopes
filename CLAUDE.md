@@ -13,7 +13,7 @@
 - **Aluno** executa treinos, registra cargas, acompanha medidas e segue plano alimentar
 - **Stack**: Next.js App Router · Supabase (Postgres + Auth + Edge Functions) · Tailwind CSS · Phosphor Icons
 - **Cor primária**: `#9333ea` (roxo — `--brand-primary`)
-- **Design reference**: `SKILL.md` no projeto — fonte de verdade para tokens, componentes e regras
+- **Design reference**: `.claude/skills/auron-design/SKILL.md` — fonte de verdade para tokens, componentes, inputs flat, dropdowns e filtros
 
 ---
 
@@ -23,9 +23,10 @@ Inspirado no princípio do Superpowers: **verificar antes de agir**.
 
 ```
 [ ] Leia o arquivo relevante antes de editá-lo
+[ ] UI (busca, filtro, dropdown, listagem): leia .claude/skills/auron-design/SKILL.md
 [ ] Verifique se o componente já existe em @/components/ui/ antes de criar um novo
 [ ] Verifique se a função/helper já existe em /lib/ ou /utils/ antes de recriar
-[ ] Se for alterar lógica de banco: confirme a migration number mais recente (última foi 0063)
+[ ] Se for alterar lógica de banco: confirme a migration number mais recente
 [ ] Se for tocar em tela "quase pronta": pergunte ao usuário antes de modificar
 [ ] Se houver dúvida sobre escopo: pergunte. Não assuma.
 ```
@@ -86,7 +87,8 @@ SEMPRE ao criar migration SQL:
 
 ## 5. Design system — regras críticas
 
-O design system completo está em `SKILL.md`. Abaixo as regras mais frequentemente violadas:
+O design system completo está em `.claude/skills/auron-design/SKILL.md` (skill Cursor).
+**Antes de criar/editar qualquer listagem, busca, filtro, Select ou dropdown: leia esse skill.**
 
 ### Cores
 ```
@@ -106,10 +108,31 @@ O design system completo está em `SKILL.md`. Abaixo as regras mais frequentemen
 ### Componentes — reutilizar, nunca recriar
 ```
 Button     → @/components/ui/Button     (variants: primary, secondary, ghost, danger, success)
-Input      → @/components/ui/Input      (nunca <input> nativo estilizado)
-Select     → @/components/ui/Select     (nunca <select> nativo estilizado)
+Input      → @/components/ui/Input      (formulários longos — nunca inventar caixa cinza)
+Select     → @/components/ui/Select     (nunca <select> nativo; listbox ancorado)
 Card       → @/components/ui/Card       (variants: default, primary, interactive)
 GlassPanel → @/components/ui/GlassPanel (só em tooltips, sheets e modais — nunca em listas)
+```
+
+### Busca / input de listagem (padrão flat)
+```
+Referência: app/admin/alunos/page.tsx + classe .field-flat-input
+
+✅ Card rounded-2xl + border-border-subtle; input bg-transparent border-0
+✅ Ícone MagnifyingGlass absoluto à esquerda
+❌ Input “caixa” bg-surface-2 / h-7.5 solto em listagens coach
+❌ Misturar padrão de formulário (Input ui) com busca de lista
+```
+
+### Dropdown / filtros — ancoragem (erros recorrentes)
+```
+✅ Lista absolute saindo do botão ou do CARD âncora (Select pattern)
+✅ Mobile: left-3 right-3 no card da barra — NÃO right-0 em botão estreito (vaza da tela)
+✅ Fechar: click fora + Escape; SEM modal/backdrop full-screen para filtro simples
+✅ >3–4 categorias: botão "Filtros" + chips selecionáveis com X ao lado
+❌ Fila de 6+ tabs de filtro sempre visíveis
+❌ Bottom-sheet / modal centrado só para escolher tags
+❌ overflow-hidden no pai da listbox absoluta
 ```
 
 ### Anti-padrões — NUNCA fazer
@@ -123,6 +146,7 @@ GlassPanel → @/components/ui/GlassPanel (só em tooltips, sheets e modais — 
 ❌ Delete sem modal de confirmação
 ❌ Hex hardcoded (sempre usar tokens CSS)
 ❌ GlassPanel em card estático de lista
+❌ Dropdown de filtro que abre fora da viewport no mobile
 ```
 
 ### Tipografia e números
@@ -265,7 +289,9 @@ Métodos extra: Cluster Set, Drop Set, Rest Pause, Giant Set, Myo Reps,
 
 ```
 [ ] Não há hex hardcoded — todos os valores usam tokens CSS
-[ ] Não há <select> ou <input> nativo estilizado
+[ ] Não há <select> ou <input> nativo estilizado (listagem = field-flat-input)
+[ ] Dropdowns/filtros ancorados no card — não vazam da viewport no mobile
+[ ] Filtros com várias categorias: botão Filtros + chips (não fila de tabs)
 [ ] Não há novo componente que duplica algo de @/components/ui/
 [ ] Cards usam bg-surface-1 (#111827) — nunca surface-2
 [ ] Botão primário usa gradiente + glow (não bg-brand sólido)

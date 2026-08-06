@@ -1381,6 +1381,7 @@ export default function ExecucaoTreinoPage() {
         dados_sessao: {
           nome_rotina: nomeRotina,
           nome_exercicio: ex.nome,
+          tipo_exercicio: ex.tipo_exercicio,
           series: ex.series.map(s => ({
             ordem: s.ordem,
             reps_prescritas: s.reps,

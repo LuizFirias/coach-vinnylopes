@@ -216,7 +216,7 @@ export default function MedidasPage() {
     <>
       <MeasurementsView
         medicoes={medicoes}
-        backHref="/aluno/dashboard"
+        backHref="/aluno/perfil"
         submitting={submitting}
         inputError={inputError}
         successMessage={successMsg}

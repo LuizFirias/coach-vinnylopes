@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleNotch, FloppyDisk, Gear, FileArrowDown } from "@phosphor-icons/react";
+import { CircleNotch, FloppyDisk, FileArrowDown } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 import { BackButton } from "@/app/components/ui/BackButton";
 
@@ -27,7 +27,8 @@ interface WorkoutBuilderHeaderProps {
   onRotinaChange: (nome: string) => void;
   onSave: () => void;
   onExportPdf?: () => void;
-  onOpenSettings?: () => void;
+  /** Abre seletor de aluno (mobile) */
+  onOpenAlunoPicker?: () => void;
 }
 
 export function WorkoutBuilderHeader({
@@ -46,33 +47,48 @@ export function WorkoutBuilderHeader({
   onRotinaChange,
   onSave,
   onExportPdf,
-  onOpenSettings,
+  onOpenAlunoPicker,
 }: WorkoutBuilderHeaderProps) {
   const alunoLabel =
-    alunos.find((a) => a.id === alunoSelecionado)?.coaching_reference || "Sem aluno";
+    alunos.find((a) => a.id === alunoSelecionado)?.coaching_reference || null;
+  const hasAluno = Boolean(alunoSelecionado && alunoLabel);
 
   if (isMobile) {
     return (
       <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <BackButton onClick={onBack} />
-          <button type="button" onClick={onOpenSettings} className="min-w-0 text-left flex-1">
-            <p className="text-sm font-bold text-text-primary truncate">
-              {nomeRotina || (alunoLocked ? "Editar ficha" : "Nova ficha")}
-            </p>
-            <p className="text-[11px] text-text-secondary truncate">{alunoLabel}</p>
-          </button>
+          <input
+            type="text"
+            value={nomeRotina}
+            onChange={(e) => onRotinaChange(e.target.value)}
+            placeholder={alunoLocked ? "Editar ficha" : "Nova ficha"}
+            aria-label="Nome da ficha"
+            className="min-w-0 flex-1 bg-transparent border-0 outline-none shadow-none text-[15.4px] font-bold text-text-primary placeholder:text-text-disabled placeholder:font-semibold p-0"
+          />
         </div>
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="w-9 h-9 shrink-0 rounded-lg border-0 flex items-center justify-center text-text-secondary"
-        >
-          <Gear size={18} />
-        </button>
+
+        {alunoLocked ? (
+          <span className="shrink-0 max-w-[42%] text-[12px] font-medium text-brand truncate text-right">
+            {alunoLabel || "sem aluno"}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenAlunoPicker}
+            className="shrink-0 max-w-[42%] text-[12px] font-medium text-brand truncate text-right border-0 bg-transparent p-0 cursor-pointer"
+            aria-label="Selecionar aluno"
+          >
+            {hasAluno ? alunoLabel : "sem aluno"}
+          </button>
+        )}
       </div>
     );
   }
+
+  const alunosOrdenados = [...alunos].sort((a, b) =>
+    a.coaching_reference.localeCompare(b.coaching_reference, "pt-BR"),
+  );
 
   return (
     <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 md:px-0 py-3 mb-4">
@@ -88,15 +104,18 @@ export function WorkoutBuilderHeader({
                 Aluno
               </label>
               {alunoLocked ? (
-                <p className="text-sm text-text-primary truncate">{alunoLabel}</p>
+                <p className="text-sm text-brand truncate">{alunoLabel || "sem aluno"}</p>
               ) : (
                 <select
                   value={alunoSelecionado}
                   onChange={(e) => onAlunoChange(e.target.value)}
-                  className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary appearance-none cursor-pointer p-0"
+                  className={cn(
+                    "w-full bg-transparent border-0 outline-none shadow-none text-sm appearance-none cursor-pointer p-0",
+                    alunoSelecionado ? "text-text-primary" : "text-brand",
+                  )}
                 >
-                  <option value="">Selecione o aluno...</option>
-                  {alunos.map((aluno) => (
+                  <option value="">sem aluno</option>
+                  {alunosOrdenados.map((aluno) => (
                     <option key={aluno.id} value={aluno.id}>
                       {aluno.coaching_reference}
                     </option>
@@ -112,8 +131,8 @@ export function WorkoutBuilderHeader({
                 type="text"
                 value={nomeRotina}
                 onChange={(e) => onRotinaChange(e.target.value)}
-                placeholder="Ex: Lower A"
-                className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled p-0"
+                placeholder="Nova ficha"
+                className="w-full bg-transparent border-0 outline-none shadow-none text-[15.4px] font-bold text-text-primary placeholder:text-text-disabled p-0"
               />
             </div>
           </div>

@@ -506,7 +506,14 @@ function FichaContent() {
         ficha_id: ficha.id,
         aluno_id: userId,
         exercicio_id: exercicio.id,
-        dados_sessao: { nome_rotina: ficha.nome_rotina, nome_exercicio: exercicio.nome, series: exercicio.series, data_sessao: agora },
+        dados_sessao: {
+          nome_rotina: ficha.nome_rotina,
+          nome_exercicio: exercicio.nome,
+          tipo_exercicio: exercicio.tipo_exercicio,
+          series: exercicio.series,
+          data_sessao: agora,
+          duracao_segundos: seconds,
+        },
         data_conclusao: agora,
       }));
 

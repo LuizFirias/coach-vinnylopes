@@ -1651,7 +1651,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
-        <div className="rounded-xl border-0 bg-surface-1 px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+        <div className="rounded-xl border-0 bg-transparent sm:bg-surface-1 px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 text-center sm:text-left">
           <div>
             <p className="text-[10px] uppercase tracking-[1px] text-text-tertiary">Adesão</p>
             <p

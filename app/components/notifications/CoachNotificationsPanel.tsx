@@ -83,7 +83,7 @@ export function CoachNotificationsPanel({ open, onClose, chatNaoLidas = 0 }: Pro
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-2xl border border-border-subtle bg-surface-1 shadow-[0_20px_60px_rgba(0,0,0,0.35)] animate-sheet-up"
         >
-          <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-border-divider">
+          <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-border-subtle">
             <div className="flex items-center gap-2 min-w-0">
               <Bell size={16} weight="bold" className="text-brand shrink-0" />
               <p id="coach-notif-panel-title" className="text-sm font-bold text-text-primary">
@@ -118,7 +118,7 @@ export function CoachNotificationsPanel({ open, onClose, chatNaoLidas = 0 }: Pro
                   onClose();
                   router.push('/admin/chat');
                 }}
-                className="flex w-full items-start gap-3 px-4 py-3.5 text-left border-b border-border-divider transition-colors hover:bg-surface-2/60 active:bg-surface-2"
+                className="flex w-full items-start gap-3 px-4 py-3.5 text-left border-b border-border-subtle/80 transition-colors hover:bg-surface-2/60 active:bg-surface-2"
               >
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                   <ChatCircle size={16} weight="bold" />
@@ -149,7 +149,7 @@ export function CoachNotificationsPanel({ open, onClose, chatNaoLidas = 0 }: Pro
                       if (n.link) router.push(n.link);
                     }}
                     className={cn(
-                      'flex w-full items-start gap-3 px-4 py-3.5 text-left border-b border-border-divider transition-colors hover:bg-surface-2/60 active:bg-surface-2',
+                      'flex w-full items-start gap-3 px-4 py-3.5 text-left border-b border-border-subtle/80 last:border-b-0 transition-colors hover:bg-surface-2/60 active:bg-surface-2',
                       unread && 'bg-brand/[0.04]',
                     )}
                   >

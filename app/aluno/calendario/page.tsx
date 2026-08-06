@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { toBrazilDateString } from "@/lib/dateUtils";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import SubscriptionGuard from "@/app/components/SubscriptionGuard";
 import { WorkoutCalendarHeader } from "@/app/components/calendar/WorkoutCalendarHeader";
@@ -14,14 +15,9 @@ import {
 
 function toWorkoutDateKey(value: string | null | undefined): string {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value.slice(0, 10);
-  }
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  // Sempre no fuso de Brasília — evita "voltar um dia" quando o navegador
+  // não está no mesmo fuso do servidor (o bug do treino de dia 4 mostrando dia 3).
+  return toBrazilDateString(value);
 }
 
 function getISOString(date: Date | null): string {
@@ -62,6 +58,7 @@ export default function AlunoCalendario() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDayISO, setSelectedDayISO] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [alunoNome, setAlunoNome] = useState("");
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -110,11 +107,19 @@ export default function AlunoCalendario() {
             };
           });
 
+          const duracaoSegundos =
+            typeof ds0.duracao_segundos === "number"
+              ? ds0.duracao_segundos
+              : typeof ds0.duracao_segundos === "string" && ds0.duracao_segundos !== ""
+                ? Number(ds0.duracao_segundos)
+                : null;
+
           return {
             data_conclusao: data,
             nome_rotina,
             volumeTotal,
             totalSets,
+            duracaoSegundos,
             exercises: parsedExercises,
             satisfacao: (ds0.satisfacao_treino as string | null | undefined) || null,
             nivelDor:
@@ -143,6 +148,12 @@ export default function AlunoCalendario() {
         router.replace("/login");
         return;
       }
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      setAlunoNome((profile?.full_name as string | null)?.split(" ")[0] || "");
       fetchHistory(user.id);
     } catch (err) {
       console.error("Erro:", err);
@@ -234,6 +245,7 @@ export default function AlunoCalendario() {
                 selectedDayISO={selectedDayISO}
                 workouts={selectedWorkouts}
                 formatWorkoutDate={formatWorkoutDate}
+                alunoNome={alunoNome}
               />
             </div>
           </div>

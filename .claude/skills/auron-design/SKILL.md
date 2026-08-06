@@ -2,12 +2,13 @@
 name: auron-design
 description: >-
   Design system e diretrizes visuais do AURON — app de gestão de treinos para coaches e alunos.
-  Use este skill sempre que for criar, refatorar ou avaliar qualquer componente visual do AURON:
-  telas do coach (dashboard, alunos, treinos, ficha digital), telas do aluno (execução, medidas,
-  histórico), e-mails transacionais, cards de compartilhamento Instagram, e qualquer outro
-  elemento de UI do produto. Contém: paleta de cores, tipografia, tokens de espaçamento,
-  padrões de componentes, regras anti-template, comportamento mobile e exemplos reais de
-  decisões de design tomadas no projeto.
+  Use este skill SEMPRE que for criar, refatorar ou avaliar qualquer componente visual do AURON:
+  telas do coach (dashboard, alunos, treinos, ficha digital, feedbacks, nutrição), telas do aluno
+  (execução, medidas, histórico), e-mails, cards Instagram, e qualquer UI.
+  OBRIGATÓRIO também quando a tarefa envolver: campos de busca/input, Select/dropdown/listbox,
+  filtros compactos (botão Filtros + chips), ancoragem de listas, modais/sheets, ou barras de
+  busca+filtro em listagens. Contém: paleta, tipografia, tokens, padrões de input flat,
+  dropdown ancorado, compactação de filtros, anti-template e exemplos reais do projeto.
 ---
 
 # AURON Design Skill
@@ -272,6 +273,82 @@ Footer:
 - NUNCA: mostrar o bloco quando está preenchido (renderização condicional)
 ```
 
+### Busca + input flat (padrão coach — Alunos / Treinos / Feedbacks / Nutrição)
+```
+Referência canônica: app/admin/alunos/page.tsx (barra de busca)
+CSS: classe .field-flat-input em globals.css (zera caixa cinza do input nativo)
+
+Estrutura obrigatória:
+  <div className="field-flat-input bg-surface-1 border border-border-subtle rounded-2xl">
+    <div className="flex … px-4 py-3.5">
+      <div className="relative … pl-6">
+        <MagnifyingGlass className="absolute left-0 … text-text-disabled" />
+        <input
+          className="w-full bg-transparent border-0 outline-none shadow-none
+                     text-sm text-text-primary placeholder:text-text-disabled"
+        />
+      </div>
+      … filtros / ações …
+    </div>
+  </div>
+
+Regras:
+  ✅ Input transparente dentro do card — SEM bg-surface-2 / caixa cinza no campo
+  ✅ Ícone MagnifyingGlass absoluto à esquerda (pl-6 no wrapper)
+  ✅ touchAction: "manipulation" no input de busca
+  ✅ Resposta/texto curto: mesmo padrão field-flat-input + border-border-subtle rounded-xl
+  ❌ NUNCA input com h-7.5 + bg-surface-2 + border-input “solto” em listagens coach
+  ❌ NUNCA <select> nativo estilizado — usar @/components/ui/Select
+  ❌ NÃO misturar Input “caixa” de formulário (cadastro) com busca de listagem
+     Formulários longos (novo aluno): Input/Select de @/components/ui/
+     Listagens / filtros: field-flat-input
+```
+
+### Dropdown / listbox — ancoragem (NUNCA modal “que sai da tela”)
+```
+Referência: components/ui/Select.tsx
+  - selectListboxClassName
+  - selectOptionClassName(active)
+  - container relative + fechar em mousedown/touchstart fora + Escape
+
+Regras de ancoragem (já quebramos várias vezes — seguir à risca):
+  1. Lista abre DO botão / DO card âncora — NÃO bottom-sheet modal full-screen
+     só por ser um dropdown de filtro.
+  2. Pai âncora: position relative. Listbox: absolute z-50 mt-1.5 …
+  3. Mobile (< sm): ancorar no CARD da barra (largura quase total), NÃO no botão estreito.
+       left-3 right-3 w-auto   ← fica dentro da viewport
+       sm:left-auto sm:right-3 sm:w-52
+  4. NUNCA right-0 num botão estreito à esquerda da linha (lista w-52 vaza para fora).
+  5. Pai NÃO pode ter overflow-hidden se a lista for filha absoluta (corta ou empurra).
+  6. Preferir reutilizar selectListboxClassName / selectOptionClassName.
+  7. Fechar: click fora + Escape. Sem backdrop blur cobrindo a tela inteira.
+
+Quando USAR modal/sheet (exceção):
+  - Formulário com vários campos (filtros complexos de Alunos: plano + ordenação)
+  - Confirmação destrutiva
+  - NÃO para 5–8 opções de filtro simples (Feedbacks) — aí é dropdown do botão
+```
+
+### Filtros compactos (várias categorias)
+```
+Quando há > 3–4 categorias de filtro em listagem:
+
+  ✅ Botão "Filtros" (SlidersHorizontal) abre LISTA dropdown ancorada
+  ✅ Opções selecionadas viram CHIPS ao lado do botão, com X para remover
+  ✅ Badge numérico no botão = quantidade ativa
+  ✅ "Limpar filtros" no rodapé da lista (se houver seleção)
+  ✅ Pares exclusivos (ex.: Pendentes ↔ Respondidos) se substituem ao selecionar
+
+  ❌ NUNCA fila horizontal de 6–7 tabs/chips de filtro sempre visíveis
+  ❌ NUNCA modal bottom-sheet só para escolher 1–N tags simples
+
+Referências:
+  - Compactação + chips: app/admin/feedbacks/page.tsx
+  - Busca + botão Filtros (sheet com selects): app/admin/alunos/page.tsx
+  - Replicar o de Feedbacks para listas de tags; o de Alunos quando o filtro
+    for campo (plano / ordenação), não toggle de categoria.
+```
+
 ### Gráfico de linha (métricas de progresso)
 ```
 - Background: #0f0f0f (dentro de card #111827)
@@ -330,9 +407,11 @@ Atividade: agrupar eventos do mesmo aluno no mesmo dia
   "Luiz — 3 treinos concluídos" NÃO "Luiz — Lower A / Luiz — Lower A / Luiz — Lower A"
 ```
 
-### Telas de listagem (alunos, treinos)
+### Telas de listagem (alunos, treinos, feedbacks, nutrição)
 ```
-- Filtros + busca + ordenação sempre na mesma linha
+- Busca + filtros na mesma barra (field-flat-input) — ver secção "Busca + input flat"
+- Categorias de filtro: compactar em botão Filtros + chips (ver "Filtros compactos")
+- Dropdowns: ancorados no card/botão, nunca modal full-bleed no mobile (ver "Dropdown / listbox")
 - Tabela full width — sem painéis laterais que duplicam o header
 - Delete sempre com confirmação modal (título + descrição + botão danger)
 - Agrupamento quando mesmo aluno tem múltiplos itens (header colapsável)

@@ -702,7 +702,7 @@ export function WorkoutBuilderScreen({
       markDirty();
     },
     onSave: handleSalvarFicha,
-    onOpenSettings: () => setSettingsOpen(true),
+    onOpenAlunoPicker: () => setSettingsOpen(true),
   };
 
   return (
@@ -872,15 +872,10 @@ export function WorkoutBuilderScreen({
         <WorkoutBuilderSettingsSheet
           alunos={alunos}
           alunoSelecionado={alunoSelecionado}
-          nomeRotina={nomeRotina}
           alunoLocked={isEdit || alunoFromParam}
           onAlunoChange={(id) => {
             if (isEdit) return;
             setAlunoSelecionado(id);
-            markDirty();
-          }}
-          onRotinaChange={(n) => {
-            setNomeRotina(n);
             markDirty();
           }}
           onClose={() => setSettingsOpen(false)}

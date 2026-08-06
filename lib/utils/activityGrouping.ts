@@ -1,7 +1,7 @@
 export type ActivityType =
   | "workout_completed"
-  | "workout_manual"
-  | "checkin_sent"
+  | "cardio_completed"
+  | "meal_done"
   | "measurement_added"
   | "photo_sent";
 
@@ -63,14 +63,16 @@ export function formatActivityLabel(
       return count > 1
         ? `${count} treinos concluídos`
         : `Concluiu o treino: ${workoutName || "Treino"}`;
-    case "workout_manual":
+    case "cardio_completed":
       return count > 1
-        ? `${count} treinos manuais`
-        : description || `Registrou treino manual`;
-    case "checkin_sent":
-      return count > 1 ? `${count} feedbacks enviados` : "Enviou feedback";
+        ? `${count} cardios concluídos`
+        : description
+          ? `Concluiu cardio: ${description}`
+          : "Concluiu cardio";
+    case "meal_done":
+      return count > 1 ? `${count} refeições feitas` : "Refeição feita";
     case "measurement_added":
-      return count > 1 ? `${count} medidas registradas` : "Registrou medidas";
+      return count > 1 ? `${count} medidas atualizadas` : "Medidas atualizadas";
     case "photo_sent":
       return count > 1 ? `${count} fotos enviadas` : "Foto enviada";
     default:

@@ -101,19 +101,32 @@ export function PlanDistributionCard({
     </span>
   );
 
-  const legend = (
-    <div className="flex flex-col gap-2 items-end shrink-0">
+  const renderLegend = (opts?: { alignEnd?: boolean }) => (
+    <div
+      className={cn(
+        "flex flex-col gap-2 min-w-0",
+        opts?.alignEnd ? "items-end" : "w-full",
+      )}
+    >
       {visible.map((p) => {
         const pct = total > 0 ? Math.round((p.count / total) * 100) : 0;
         return (
-          <div key={p.name} className="flex items-center justify-end gap-2 text-xs whitespace-nowrap">
+          <div
+            key={p.name}
+            className={cn(
+              "flex items-center gap-1.5 text-[11px] sm:text-xs min-w-0",
+              opts?.alignEnd && "justify-end",
+            )}
+          >
             <span
               aria-hidden
               className="w-2.5 h-2.5 rounded-[3px] shrink-0"
               style={{ backgroundColor: p.color }}
             />
-            <span className="font-medium text-text-secondary capitalize">{p.name}</span>
-            <span className="font-semibold text-text-primary tabular-nums">
+            <span className="truncate font-medium text-text-secondary capitalize">
+              {p.name}
+            </span>
+            <span className="shrink-0 font-semibold text-text-primary tabular-nums">
               {p.count}
               <span className="text-text-tertiary font-normal ml-1">({pct}%)</span>
             </span>
@@ -124,62 +137,69 @@ export function PlanDistributionCard({
   );
 
   const donut = (
-    <svg
-      viewBox={`0 0 ${SIZE} ${SIZE}`}
-      role="img"
-      aria-label={`Distribuição de alunos por plano: ${visible
-        .map((p) => `${p.name} ${p.count}`)
-        .join(", ")}`}
-      className={cn(
-        "shrink-0 h-auto drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)]",
-        collapsed ? "w-32" : "w-40 sm:w-44 lg:w-48"
-      )}
-    >
-      {slices.map((s) => (
-        <path key={s.name} d={s.path} fill={s.color} />
-      ))}
-      {visible.length > 1 &&
-        slices
-          .filter((s) => s.frac >= 0.07 && s.frac < 0.92)
-          .map((s) => (
-            <text
-              key={`label-${s.name}`}
-              x={s.labelX}
-              y={s.labelY}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill="#000000"
-              fontSize={s.frac >= 0.15 ? 17 : 13}
-              fontWeight={800}
-              className="tabular-nums"
-            >
-              {s.count}
-            </text>
-          ))}
-      <text
-        x={CX}
-        y={CX - 6}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="var(--text-primary)"
-        fontSize={30}
-        fontWeight={800}
-        className="tabular-nums"
+    <div className="relative shrink-0 overflow-visible">
+      {/* Glow circular — evita sombra com bordas retas do drop-shadow/clip */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-[6%] rounded-full bg-black/25 blur-2xl dark:bg-black/45"
+      />
+      <svg
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        role="img"
+        aria-label={`Distribuição de alunos por plano: ${visible
+          .map((p) => `${p.name} ${p.count}`)
+          .join(", ")}`}
+        className={cn(
+          "relative z-[1] shrink-0 h-auto",
+          collapsed ? "w-28" : "w-32 sm:w-36 lg:w-40",
+        )}
       >
-        {total}
-      </text>
-      <text
-        x={CX}
-        y={CX + 18}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="var(--text-secondary)"
-        fontSize={11}
-        fontWeight={500}
-      >
-        {total === 1 ? "aluno" : "alunos"}
-      </text>
-    </svg>
+        {slices.map((s) => (
+          <path key={s.name} d={s.path} fill={s.color} />
+        ))}
+        {visible.length > 1 &&
+          slices
+            .filter((s) => s.frac >= 0.07 && s.frac < 0.92)
+            .map((s) => (
+              <text
+                key={`label-${s.name}`}
+                x={s.labelX}
+                y={s.labelY}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="#000000"
+                fontSize={s.frac >= 0.15 ? 17 : 13}
+                fontWeight={800}
+                className="tabular-nums"
+              >
+                {s.count}
+              </text>
+            ))}
+        <text
+          x={CX}
+          y={CX - 6}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="var(--text-primary)"
+          fontSize={30}
+          fontWeight={800}
+          className="tabular-nums"
+        >
+          {total}
+        </text>
+        <text
+          x={CX}
+          y={CX + 18}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="var(--text-secondary)"
+          fontSize={11}
+          fontWeight={500}
+        >
+          {total === 1 ? "aluno" : "alunos"}
+        </text>
+      </svg>
+    </div>
   );
 
   if (visible.length === 0) {
@@ -195,12 +215,11 @@ export function PlanDistributionCard({
 
   if (collapsed) {
     return (
-      <div className={cn("flex flex-col gap-3", className)}>
+      <div className={cn("flex flex-col gap-3 min-w-0", className)}>
         <div className="flex justify-start">{title}</div>
-        <div className="relative flex items-center justify-center min-h-[140px]">
-          {/* Mobile: 20% + 30% = 50% à esquerda */}
-          <div className="-translate-x-[50%] -translate-y-2">{donut}</div>
-          <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+0.5rem)]">{legend}</div>
+        <div className="flex items-center justify-between gap-4 min-w-0">
+          <div className="shrink-0">{donut}</div>
+          <div className="min-w-0 overflow-hidden">{renderLegend({ alignEnd: true })}</div>
         </div>
       </div>
     );
@@ -209,36 +228,29 @@ export function PlanDistributionCard({
   return (
     <div
       className={cn(
-        "h-full flex flex-col",
+        "h-full flex flex-col min-w-0",
         align === "start" ? "min-h-0" : "min-h-[240px]",
         className,
       )}
     >
-      {/* Título — na dashboard mantém faixa do KPI; no Financeiro fica compacto */}
       <div
         className={cn(
-          "flex items-start justify-start",
+          "flex items-start justify-start shrink-0",
           align === "start" ? "mb-2" : "mb-3 min-h-[52px] pt-0.5",
         )}
       >
         {title}
       </div>
 
-      {align === "start" ? (
-        <div className="flex items-center justify-between gap-4">
-          <div className="shrink-0">{donut}</div>
-          <div className="shrink-0">{legend}</div>
-        </div>
-      ) : (
-        <div className="relative flex-1 min-h-0">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="pointer-events-auto -translate-x-[20%] -translate-y-9">{donut}</div>
-          </div>
-          <div className="absolute right-0 top-1/2 -translate-y-[calc(50%+2.25rem)] z-10">
-            {legend}
-          </div>
-        </div>
-      )}
+      <div
+        className={cn(
+          "flex-1 flex items-center gap-3 sm:gap-4 min-w-0",
+          align === "start" ? "justify-start" : "justify-between",
+        )}
+      >
+        <div className="shrink-0 overflow-visible">{donut}</div>
+        <div className="min-w-0 flex-1 overflow-hidden pl-1">{renderLegend()}</div>
+      </div>
     </div>
   );
 }
