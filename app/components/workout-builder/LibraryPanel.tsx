@@ -143,6 +143,7 @@ export function LibraryPanel({
             onSelect={setFiltroMusculo}
             aberto={dropdownAberto === "musculo"}
             onToggle={() => toggleDropdown("musculo")}
+            align="left"
           />
           <FiltroDropdown
             label="Equipamento"
@@ -151,6 +152,7 @@ export function LibraryPanel({
             onSelect={setFiltroEquipamento}
             aberto={dropdownAberto === "equipamento"}
             onToggle={() => toggleDropdown("equipamento")}
+            align="right"
           />
         </div>
 

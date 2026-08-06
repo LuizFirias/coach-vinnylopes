@@ -8,7 +8,7 @@ import { getPublicStorageUrl } from '@/lib/storageUrls';
 import Link from "next/link";
 import { ArrowRight, WarningCircle } from '@phosphor-icons/react';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
-import { getTodayBrazil } from '@/lib/dateUtils';
+import { getTodayBrazil, toBrazilDateString } from '@/lib/dateUtils';
 import { CoachCard } from '@/app/components/dashboard/CoachCard';
 import { HeroHeader } from '@/app/components/dashboard/home/HeroHeader';
 import { WorkoutCard } from '@/app/components/dashboard/home/WorkoutCard';
@@ -66,54 +66,69 @@ interface WorkoutOption {
   type: 'ficha' | 'pdf' | 'manual';
 }
 
+interface WeekStats {
+  treinos: number;
+  meta: number;
+  /** Minutos de cardio registrados na semana ISO corrente (seg-dom) */
+  cardioMin: number;
+  /** Minutos de cardio prescritos para a semana (soma das prescrições ativas nos dias cadastrados) */
+  cardioMetaMin: number;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getWeekDays(weekOffset: number): DiaSemana[] {
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0=dom
-  // Segunda como início da semana
+const WEEKDAY_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+
+function toIsoDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Semana corrente (segunda a domingo) que contém "hoje" — "Esta semana" zera toda segunda. */
+function getCurrentIsoWeekRange(): { monday: string; sunday: string } {
+  const today = new Date(`${getTodayBrazil()}T12:00:00`);
+  const diffToMonday = (today.getDay() + 6) % 7; // 0=Seg
   const monday = new Date(today);
-  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7) + weekOffset * 7);
+  monday.setDate(today.getDate() - diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { monday: toIsoDate(monday), sunday: toIsoDate(sunday) };
+}
+
+/**
+ * Janela rolável de dias a partir de ontem (estilo Gympass): ontem + `count - 1` dias à frente.
+ * O dia anterior fica visível para o aluno confirmar manualmente um treino esquecido.
+ */
+function getUpcomingDays(count = 16): DiaSemana[] {
+  const today = new Date();
+  const tYear = today.getFullYear();
+  const tMonth = String(today.getMonth() + 1).padStart(2, '0');
+  const tDay = String(today.getDate()).padStart(2, '0');
+  const tIso = `${tYear}-${tMonth}-${tDay}`;
 
   const dias: DiaSemana[] = [];
-  const labels = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    
+  for (let i = -1; i < count - 1; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     const isoDate = `${year}-${month}-${day}`;
-    
-    // check isHoje using local date format
-    const tYear = today.getFullYear();
-    const tMonth = String(today.getMonth() + 1).padStart(2, '0');
-    const tDay = String(today.getDate()).padStart(2, '0');
-    const tIso = `${tYear}-${tMonth}-${tDay}`;
-    
-    const isHoje = isoDate === tIso;
-    
+
     dias.push({
       data: isoDate,
-      label: labels[i],
+      label: WEEKDAY_LABELS[d.getDay()],
+      mesLabel: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase(),
       numero: d.getDate(),
-      isHoje,
+      isHoje: isoDate === tIso,
       treinoConcluido: false,
       temTreino: false,
     });
   }
   return dias;
-}
-
-function getWeekLabel(weekOffset: number): string {
-  const days = getWeekDays(weekOffset);
-  const first = days[0];
-  const last = days[6];
-  const firstDate = new Date(first.data + 'T12:00:00');
-  const lastDate = new Date(last.data + 'T12:00:00');
-  const mes = firstDate.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-  return `${first.numero}–${last.numero} ${mes}.`;
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -162,10 +177,16 @@ export default function AlunoDashboardPage() {
   const [metaCopos] = useState(8);
   const [savingAgua, setSavingAgua] = useState(false);
 
-  // Agenda semanal
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [diasSemana, setDiasSemana] = useState<DiaSemana[]>(() => getWeekDays(0));
+  // Agenda (hoje + 15 dias)
+  const [diasSemana, setDiasSemana] = useState<DiaSemana[]>(() => getUpcomingDays());
   const [selectedDia, setSelectedDia] = useState<DiaSemana | null>(null);
+  // Resumo da semana corrente (segunda a domingo) — independente da janela rolável do calendário
+  const [weekStats, setWeekStats] = useState<WeekStats>({
+    treinos: 0,
+    meta: 0,
+    cardioMin: 0,
+    cardioMetaMin: 0,
+  });
 
   // Configuração da agenda semanal
   const [availableWorkouts, setAvailableWorkouts] = useState<WorkoutOption[]>([]);
@@ -176,7 +197,6 @@ export default function AlunoDashboardPage() {
   // ── Carregar dados ──────────────────────────────────────────────────────────
 
   const didFetchRef = useRef(false);
-  const skipInitialAgendaEffect = useRef(true);
 
   useEffect(() => {
     if (didFetchRef.current) return;
@@ -195,7 +215,7 @@ export default function AlunoDashboardPage() {
     setIncompleteData(cached.incompleteData);
     setKpis(cached.kpis);
     setDiasSemana(cached.diasSemana);
-    setWeekOffset(cached.weekOffset);
+    setWeekStats(cached.weekStats);
     setTreinoHoje(cached.treinoHoje);
     setPlanoNutricao(cached.planoNutricao);
     setAgua(cached.agua);
@@ -204,34 +224,32 @@ export default function AlunoDashboardPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    if (!userId) return;
-    // Semana 0 já é carregada dentro de fetchDashboard — evita request duplicado
-    if (skipInitialAgendaEffect.current && weekOffset === 0) {
-      skipInitialAgendaEffect.current = false;
-      return;
-    }
-    void fetchWeeklyAgenda(userId, weekOffset);
-  }, [weekOffset, userId]);
-
-  const fetchWeeklyAgenda = async (uid: string, offset: number): Promise<DiaSemana[]> => {
-    const days = getWeekDays(offset);
-    const startOfWeek = days[0].data;
-    const endOfWeek = days[6].data;
+  const fetchWeeklyAgenda = async (
+    uid: string,
+  ): Promise<{ days: DiaSemana[]; weekStats: WeekStats }> => {
+    const days = getUpcomingDays();
+    const { monday: weekMonday, sunday: weekSunday } = getCurrentIsoWeekRange();
+    // A janela de busca cobre tanto os dias visíveis no calendário quanto a semana
+    // ISO corrente (seg-dom) inteira, mesmo quando ela começa antes do "ontem" exibido.
+    const startOfWeek = days[0].data < weekMonday ? days[0].data : weekMonday;
+    const endOfWeek = days[days.length - 1].data > weekSunday ? days[days.length - 1].data : weekSunday;
 
     try {
       const [
         { data: agendaSemana },
         { data: agendaDiaria },
         { data: checkinsSemana },
+        { data: historicoSemana },
+        { data: cardioSessoesSemana },
+        { data: cardioPrescricoesAtivas },
       ] = await Promise.all([
         supabaseClient
           .from('agenda_semanal')
-          .select('dia_semana, ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina)')
+          .select('dia_semana, ficha_id, treino_pdf_id, is_off, is_cardio, fichas_treino(nome_rotina)')
           .eq('aluno_id', uid),
         supabaseClient
           .from('agenda_diaria')
-          .select('data, ficha_id, treino_pdf_id, is_off, fichas_treino(nome_rotina)')
+          .select('data, ficha_id, treino_pdf_id, is_off, is_cardio, fichas_treino(nome_rotina)')
           .eq('aluno_id', uid)
           .gte('data', startOfWeek)
           .lte('data', endOfWeek),
@@ -242,21 +260,52 @@ export default function AlunoDashboardPage() {
           .eq('concluido', true)
           .gte('data_treino', startOfWeek)
           .lte('data_treino', endOfWeek),
+        // Conclusão automática: ficha realmente executada (não depende de check-in manual)
+        supabaseClient
+          .from('historico_treinos')
+          .select('data_conclusao')
+          .eq('aluno_id', uid)
+          .gte('data_conclusao', `${startOfWeek}T00:00:00-03:00`)
+          .lte('data_conclusao', `${endOfWeek}T23:59:59-03:00`),
+        // Cardio realmente registrado — conta minutos e marca o dia como concluído
+        supabaseClient
+          .from('cardio_sessoes')
+          .select('data, duracao_min')
+          .eq('aluno_id', uid)
+          .gte('data', startOfWeek)
+          .lte('data', endOfWeek),
+        // Meta de cardio da semana: soma das prescrições ativas nos dias que caem nela
+        supabaseClient
+          .from('cardio_prescricoes')
+          .select('duracao_min, dias_semana')
+          .eq('aluno_id', uid)
+          .eq('ativo', true),
       ]);
 
       const overrideByDate = new Map(
         (agendaDiaria ?? []).map((item: any) => [item.data as string, item]),
       );
 
-      const updatedDays = days.map((dia) => {
-        const dateObj = new Date(dia.data + 'T12:00:00');
+      const concluidoAutoSet = new Set(
+        (historicoSemana ?? []).map((h: any) => toBrazilDateString(h.data_conclusao)),
+      );
+
+      const cardioMinutosPorDia = new Map<string, number>();
+      for (const s of cardioSessoesSemana ?? []) {
+        const atual = cardioMinutosPorDia.get(s.data) ?? 0;
+        cardioMinutosPorDia.set(s.data, atual + (s.duracao_min ?? 0));
+      }
+
+      const resolveDay = (dataIso: string) => {
+        const dateObj = new Date(dataIso + 'T12:00:00');
         const jsDay = dateObj.getDay();
-        const override = overrideByDate.get(dia.data);
+        const override = overrideByDate.get(dataIso);
         const agendaItem =
           override ?? agendaSemana?.find((item: any) => item.dia_semana === jsDay);
 
         let temTreino = false;
         let isOff = false;
+        let isCardio = false;
         let nomeRotina = undefined;
         let fichaId = undefined;
         let treinoPdfId = undefined;
@@ -264,6 +313,7 @@ export default function AlunoDashboardPage() {
         if (agendaItem) {
           temTreino = !!(agendaItem.ficha_id || agendaItem.treino_pdf_id);
           isOff = !!agendaItem.is_off;
+          isCardio = !temTreino && !!agendaItem.is_cardio;
           nomeRotina =
             (agendaItem as any).fichas_treino?.nome_rotina ||
             (agendaItem.treino_pdf_id ? 'Treino PDF' : undefined);
@@ -271,24 +321,63 @@ export default function AlunoDashboardPage() {
           treinoPdfId = agendaItem.treino_pdf_id;
         }
 
-        const checkin = checkinsSemana?.find((c) => c.data_treino === dia.data);
-        const concluido = !!checkin;
+        // Concluído se houve check-in manual, ficha realmente executada OU cardio registrado
+        const checkin = checkinsSemana?.find((c) => c.data_treino === dataIso);
+        const concluido =
+          !!checkin || concluidoAutoSet.has(dataIso) || cardioMinutosPorDia.has(dataIso);
 
+        return { temTreino, isOff, isCardio, nomeRotina, fichaId, treinoPdfId, concluido };
+      };
+
+      const updatedDays = days.map((dia) => {
+        const resolved = resolveDay(dia.data);
         return {
           ...dia,
-          temTreino,
-          isOff,
-          nomeRotina,
-          fichaId,
-          treinoPdfId,
-          treinoConcluido: concluido,
+          temTreino: resolved.temTreino,
+          isOff: resolved.isOff,
+          isCardio: resolved.isCardio,
+          nomeRotina: resolved.nomeRotina,
+          fichaId: resolved.fichaId,
+          treinoPdfId: resolved.treinoPdfId,
+          treinoConcluido: resolved.concluido,
         };
       });
 
       setDiasSemana(updatedDays);
-      patchDashboardAlunoCache(uid, { diasSemana: updatedDays, weekOffset: offset });
+      patchDashboardAlunoCache(uid, { diasSemana: updatedDays });
       const hojeDia = updatedDays.find((d) => d.isHoje);
       setSelectedDia(hojeDia || updatedDays[0]);
+
+      // Resumo da semana corrente (segunda a domingo) — sempre a semana ISO real,
+      // independente de quantos dias dela aparecem na janela rolável do calendário.
+      let treinosSemanaCount = 0;
+      let metaSemanaCount = 0;
+      let cardioMinCount = 0;
+      let cardioMetaMinCount = 0;
+      const cursor = new Date(`${weekMonday}T12:00:00`);
+      const weekEndCursor = new Date(`${weekSunday}T12:00:00`);
+      while (cursor <= weekEndCursor) {
+        const iso = toIsoDate(cursor);
+        const jsDay = cursor.getDay();
+        const resolved = resolveDay(iso);
+        if (resolved.temTreino && !resolved.isOff) metaSemanaCount++;
+        if (resolved.concluido) treinosSemanaCount++;
+        cardioMinCount += cardioMinutosPorDia.get(iso) ?? 0;
+        for (const p of cardioPrescricoesAtivas ?? []) {
+          if (Array.isArray(p.dias_semana) && p.dias_semana.includes(jsDay)) {
+            cardioMetaMinCount += p.duracao_min ?? 0;
+          }
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      const nextWeekStats: WeekStats = {
+        treinos: treinosSemanaCount,
+        meta: metaSemanaCount,
+        cardioMin: cardioMinCount,
+        cardioMetaMin: cardioMetaMinCount,
+      };
+      setWeekStats(nextWeekStats);
+      patchDashboardAlunoCache(uid, { weekStats: nextWeekStats });
 
       // Pontos do check-in de hoje (se houver)
       const todayStr = getTodayBrazil();
@@ -298,10 +387,10 @@ export default function AlunoDashboardPage() {
         setCheckinPontos(todayCheckin.pontos_earn || 20);
       }
 
-      return updatedDays;
+      return { days: updatedDays, weekStats: nextWeekStats };
     } catch (err) {
       console.error('[Dashboard] Erro ao buscar agenda semanal:', err);
-      return days;
+      return { days, weekStats };
     }
   };
 
@@ -511,7 +600,7 @@ export default function AlunoDashboardPage() {
       const coachIdValue = profile.coach_id ?? null;
 
       // ── Dados principais em paralelo (sem duplicar agenda do dia) ─────────
-      const [kpiResult, coachResult, aguaResult, weekDays] = await Promise.all([
+      const [kpiResult, coachResult, aguaResult, weekResult] = await Promise.all([
         supabaseClient.rpc('get_kpis_aluno', { p_aluno_id: uid }).then(
           (r) => r,
           () => ({ data: null, error: true }),
@@ -529,7 +618,7 @@ export default function AlunoDashboardPage() {
           .eq('aluno_id', uid)
           .eq('data_registro', today)
           .maybeSingle(),
-        fetchWeeklyAgenda(uid, 0),
+        fetchWeeklyAgenda(uid),
       ]);
 
       let nextKpis: KpisAluno | null = null;
@@ -591,6 +680,7 @@ export default function AlunoDashboardPage() {
       }
 
       // Treino de hoje derivado da agenda semanal (já carregada)
+      const weekDays = weekResult.days;
       const hoje = weekDays.find((d) => d.isHoje) ?? weekDays.find((d) => d.data === today);
       let nextTreinoHoje: typeof treinoHoje = null;
       if (!hoje || (!hoje.temTreino && !hoje.isOff)) {
@@ -640,7 +730,7 @@ export default function AlunoDashboardPage() {
           !profile.date_of_birth,
         kpis: nextKpis,
         diasSemana: weekDays,
-        weekOffset: 0,
+        weekStats: weekResult.weekStats,
         treinoHoje: nextTreinoHoje,
         planoNutricao: null,
         agua: nextAgua,
@@ -655,25 +745,33 @@ export default function AlunoDashboardPage() {
     }
   };
 
-  const handleSaveDayConfig = async (dayOfWeek: number, option: WorkoutOption | 'rest') => {
+  const handleSaveDayConfig = async (
+    dayOfWeek: number,
+    option: WorkoutOption | 'rest' | 'cardio',
+  ) => {
     if (!userId) return;
 
     const targetDate =
       selectedDia?.data ??
       diasSemana.find((d) => new Date(`${d.data}T12:00:00`).getDay() === dayOfWeek)?.data;
 
-    const useDateOverride = weekOffset !== 0;
+    // O calendário começa em "ontem" (índice 0); a semana corrente (hoje..+6, índices 1-7)
+    // edita o padrão semanal recorrente. Ontem e dias além da semana corrente são
+    // ajustes pontuais só para aquela data (agenda_diaria).
+    const targetIndex = diasSemana.findIndex((d) => d.data === targetDate);
+    const useDateOverride = targetIndex <= 0 || targetIndex >= 8;
     if (useDateOverride && !targetDate) return;
 
     setSavingConfig(true);
     try {
       const workoutFields: Record<string, unknown> = {
         is_off: option === 'rest',
+        is_cardio: option === 'cardio',
         ficha_id: null,
         treino_pdf_id: null,
       };
 
-      if (option !== 'rest') {
+      if (option !== 'rest' && option !== 'cardio') {
         if (option.type === 'ficha') {
           workoutFields.ficha_id = option.id;
         } else if (option.type === 'pdf') {
@@ -708,7 +806,18 @@ export default function AlunoDashboardPage() {
         if (error) throw error;
       }
 
-      await fetchWeeklyAgenda(userId, weekOffset);
+      // Reatribuir o dia (novo treino ou descanso) invalida qualquer check-in manual
+      // antigo daquela data — evita mostrar "concluído" sem o aluno ter feito nada.
+      if (targetDate) {
+        await supabaseClient
+          .from('treinos_manuais')
+          .update({ concluido: false })
+          .eq('aluno_id', userId)
+          .eq('data_treino', targetDate)
+          .eq('concluido', true);
+      }
+
+      await fetchWeeklyAgenda(userId);
 
       const todayJS = new Date().getDay();
       if (!useDateOverride && dayOfWeek === todayJS) {
@@ -800,13 +909,21 @@ export default function AlunoDashboardPage() {
   }
 
   const streakSemanas = kpis?.streak_atual ?? 0;
-  const treinosSemana = diasSemana.filter(dia => dia.treinoConcluido).length;
-  const metaSemana = diasSemana.filter(dia => dia.temTreino && !dia.isOff).length;
-  const weekLabel = getWeekLabel(weekOffset);
+  // "Esta semana" é sempre a semana ISO real (segunda a domingo) — zera toda segunda,
+  // independente da janela rolável do calendário. Ver weekStats em fetchWeeklyAgenda.
+  const treinosSemana = weekStats.treinos;
+  const metaSemana = weekStats.meta;
   const today = getTodayBrazil();
 
-  const cardioMeta = treinoHoje?.status === 'pendente' ? 1 : treinoHoje?.status === 'concluido' ? 1 : 0;
-  const cardioAtual = checkinFeito ? 1 : 0;
+  // "Treino" no topo reflete só o dia de hoje: 0/1 pendente, 1/1 ao concluir a ficha
+  const treinoHojeMeta =
+    treinoHoje && treinoHoje.status !== 'sem-plano' && treinoHoje.status !== 'off' ? 1 : 0;
+  const treinoHojeAtual = treinoHoje?.status === 'concluido' ? 1 : 0;
+
+  // "Cardio" no topo mostra minutos realizados x prescritos na semana (formato 00:00),
+  // não unidade de dias — ver weekStats.cardioMin/cardioMetaMin em fetchWeeklyAgenda.
+  const cardioAtual = weekStats.cardioMin;
+  const cardioMeta = weekStats.cardioMetaMin;
 
   return (
     <div className="dashboard-aluno min-h-screen scroll-content overflow-y-auto">
@@ -828,7 +945,7 @@ export default function AlunoDashboardPage() {
               atual: planoNutricao?.refeicoesConcluidas ?? 0,
               meta: planoNutricao?.totalRefeicoes ?? 0,
             }}
-            treinos={{ atual: treinosSemana, meta: metaSemana }}
+            treinos={{ atual: treinoHojeAtual, meta: treinoHojeMeta }}
             cardio={{ atual: cardioAtual, meta: cardioMeta }}
           />
 
@@ -887,11 +1004,8 @@ export default function AlunoDashboardPage() {
 
         <WeekCalendar
           diasSemana={diasSemana}
-          weekOffset={weekOffset}
-          weekLabel={weekLabel}
           today={today}
           selectedDia={selectedDia}
-          onWeekChange={(delta) => setWeekOffset((w) => w + delta)}
           onSelectDia={setSelectedDia}
           onEditDay={setEditingDay}
           editModeExternal={calendarEditMode}
@@ -909,6 +1023,10 @@ export default function AlunoDashboardPage() {
           onSelectRest={() => {
             if (editingDay === null) return;
             void handleSaveDayConfig(editingDay, 'rest');
+          }}
+          onSelectCardio={() => {
+            if (editingDay === null) return;
+            void handleSaveDayConfig(editingDay, 'cardio');
           }}
           onSelectWorkout={(option) => {
             if (editingDay === null) return;

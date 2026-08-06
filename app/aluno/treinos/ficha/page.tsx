@@ -5,11 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getSafeSession } from "@/lib/authErrorHandler";
 import {
-  Clock, Check, Video, ArrowLeft, X, Play, Trophy,
+  Check, Video, ArrowLeft, X, Play, Trophy,
   Barbell, WarningCircle, FileArrowDown, CircleNotch, Lightning,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
+import { descansoToSeconds } from "@/lib/utils/restTime";
+import { exercicioMostraPeso } from "@/app/components/workout-builder/exerciseColumns";
+import { sendTreinoIniciadoNotification } from "@/lib/notifications/sendTreinoIniciadoNotification";
+import { useRestTimer } from "@/lib/hooks/useRestTimer";
+import { RestTimerBar } from "@/app/components/treino/execucao/RestTimerBar";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { YouTubePlayer } from "@/app/components/YouTubePlayer";
 import TecnicaInfoModal from "@/app/components/TecnicaInfoModal";
@@ -19,10 +24,27 @@ interface Serie {
   ordem: number;
   anterior: string;
   peso_atual: number;
+  /** Texto exatamente como o aluno digitou (aceita vírgula) — evita reformatar enquanto ele digita. */
+  pesoInputStr?: string;
+  /** true assim que o aluno edita o peso desta série específica — trava o preenchimento fantasma. */
+  pesoManual?: boolean;
   reps: string | number;
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
+}
+
+/** Aceita "," ou "." como separador decimal — trata os dois do mesmo jeito (ex.: "7,5" ou "7.5"). */
+function parsePesoInput(raw: string): number {
+  const normalized = raw.replace(',', '.').replace(/[^0-9.]/g, '');
+  const num = parseFloat(normalized);
+  return isNaN(num) ? 0 : num;
+}
+
+/** Formata um peso numérico para exibição com vírgula (padrão brasileiro). */
+function formatPesoDisplay(value: number): string {
+  if (!value) return '';
+  return String(value).replace('.', ',');
 }
 
 interface Exercicio {
@@ -31,6 +53,7 @@ interface Exercicio {
   descanso: string;
   video_url?: string;
   observacoes?: string;
+  tipo_exercicio?: string;
   series: Serie[];
 }
 
@@ -78,17 +101,14 @@ function FichaContent() {
 
   const [exercicioAtivo, setExercicioAtivo] = useState<number | null>(null);
   const [serieAtual, setSerieAtual] = useState(0);
-  const [descansoAtivo, setDescansoAtivo] = useState(false);
-  const [descansoExpirado, setDescansoExpirado] = useState(false);
-  const [tempoDescanso, setTempoDescanso] = useState(0);
-  const [descansoEndAt, setDescansoEndAt] = useState<number | null>(null);
   const [cargaTemporaria, setCargaTemporaria] = useState(0);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [tecnicaInfoModal, setTecnicaInfoModal] = useState<string | null>(null);
   const [showTecnicasTooltip, setShowTecnicasTooltip] = useState(false);
-  const [restTimer, setRestTimer] = useState<number | null>(null);
+  // Timer de descanso — barra discreta no rodapé, some sozinha ao zerar
+  const restTimer = useRestTimer();
 
   // Chave de progresso no localStorage
   const progressKey = fichaId ? `treino_progress_${fichaId}` : null;
@@ -222,6 +242,7 @@ function FichaContent() {
         const historicoEx = historicoMap[ex.id];
         return {
           ...ex,
+          tipo_exercicio: ex.tipo_exercicio,
           video_url: videosBiblioteca[ex.id] || undefined,
           series: (ex.series || []).map((serie: any, idx: number) => {
             const ordem = serie.ordem || idx + 1;
@@ -295,15 +316,13 @@ function FichaContent() {
     setTreinoIniciado(true);
     setTimerStartAt(null);
     setSeconds(0);
+    void sendTreinoIniciadoNotification(ficha?.nome_rotina);
     localStorage.setItem(`treino_ativo_${fichaId}`, JSON.stringify({ fichaId, inicio: null, preparadoEm: Date.now() }));
     // Abrir modal do primeiro exercício automaticamente
     if (ficha && ficha.exercicios.length > 0) {
       setExercicioAtivo(0);
       setSerieAtual(0);
-      setDescansoAtivo(false);
-      setDescansoExpirado(false);
-      setTempoDescanso(0);
-      setDescansoEndAt(null);
+      restTimer.reset();
       setCargaTemporaria(ficha.exercicios[0]?.series[0]?.peso_atual || 0);
     }
   };
@@ -323,6 +342,11 @@ function FichaContent() {
 
   const handleCheckSerie = (exercicioId: string, serieOrdem: number) => {
     if (treinoIniciado) garantirTimerIniciado();
+
+    const exercicio = ficha?.exercicios.find((ex) => ex.id === exercicioId);
+    const serie = exercicio?.series.find((s) => s.ordem === serieOrdem);
+    const vaiCompletar = serie ? !serie.completado : false;
+
     setFicha((prev) => {
       if (!prev) return prev;
       return {
@@ -336,6 +360,14 @@ function FichaContent() {
         }),
       };
     });
+
+    // Marcou a série como feita → dispara o descanso (barra discreta no rodapé)
+    if (vaiCompletar && exercicio) {
+      restTimer.start(descansoToSeconds(exercicio.descanso), () => proximaSerie(), {
+        title: 'Descanso',
+        subtitle: exercicio.nome,
+      });
+    }
   };
 
   const handleUpdateSerie = (exercicioId: string, serieOrdem: number, field: "peso_atual" | "reps", value: number | string) => {
@@ -354,15 +386,45 @@ function FichaContent() {
     });
   };
 
+  /**
+   * Peso digitado numa série "vaza" pra frente — as próximas séries do mesmo
+   * exercício (ainda não concluídas e que o aluno não editou o peso à mão)
+   * já aparecem pré-preenchidas ("fantasma") com esse valor, prontas pra
+   * concluir. Editar uma série trava ela como manual — deixa de receber o vazamento.
+   */
+  const handlePesoInputChange = (exercicioId: string, serieOrdem: number, rawValue: string) => {
+    const parsed = parsePesoInput(rawValue);
+    setFicha((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercicios: prev.exercicios.map((ex) => {
+          if (ex.id !== exercicioId) return ex;
+          let cascata = false;
+          return {
+            ...ex,
+            series: ex.series.map((s) => {
+              if (s.ordem === serieOrdem) {
+                cascata = true;
+                return { ...s, peso_atual: parsed, pesoInputStr: rawValue, pesoManual: true };
+              }
+              if (cascata && !s.completado && !s.pesoManual) {
+                return { ...s, peso_atual: parsed, pesoInputStr: formatPesoDisplay(parsed) };
+              }
+              return s;
+            }),
+          };
+        }),
+      };
+    });
+  };
+
   const iniciarExercicio = (index: number) => {
     if (!treinoIniciado) { alert("Inicie o treino primeiro!"); return; }
     garantirTimerIniciado();
     setExercicioAtivo(index);
     setSerieAtual(0);
-    setDescansoAtivo(false);
-    setDescansoExpirado(false);
-    setTempoDescanso(0);
-    setDescansoEndAt(null);
+    restTimer.reset();
     const ex = ficha?.exercicios[index];
     setCargaTemporaria(ex?.series[0] ? ex.series[0].peso_atual || 0 : 0);
   };
@@ -373,20 +435,6 @@ function FichaContent() {
     const serie = exercicio.series[serieAtual];
     handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", cargaTemporaria);
     handleCheckSerie(exercicio.id, serie.ordem);
-    if (serieAtual >= exercicio.series.length - 1) return;
-    const descansoStr = exercicio.descanso || "1:30";
-    let tempoTotal = 90;
-    if (descansoStr.includes(":")) {
-      const [min, seg] = descansoStr.split(":").map(Number);
-      tempoTotal = (isNaN(min) ? 0 : min) * 60 + (isNaN(seg) ? 0 : seg || 0);
-    } else {
-      const num = parseInt(descansoStr);
-      if (!isNaN(num)) tempoTotal = num;
-    }
-    setTempoDescanso(tempoTotal);
-    setDescansoEndAt(Date.now() + tempoTotal * 1000);
-    setDescansoAtivo(true);
-    setRestTimer(60);
   };
 
   const concluirExercicio = () => {
@@ -396,7 +444,6 @@ function FichaContent() {
     handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", cargaTemporaria);
     handleCheckSerie(exercicio.id, serie.ordem);
     if (exercicioAtivo < ficha.exercicios.length - 1) {
-      setRestTimer(60);
       iniciarExercicio(exercicioAtivo + 1);
     } else {
       setExercicioAtivo(null);
@@ -409,45 +456,10 @@ function FichaContent() {
     const exercicio = ficha.exercicios[exercicioAtivo];
     if (serieAtual < exercicio.series.length - 1) {
       setSerieAtual(serieAtual + 1);
-      setDescansoAtivo(false);
-      setDescansoExpirado(false);
-      setTempoDescanso(0);
-      setDescansoEndAt(null);
       const prox = exercicio.series[serieAtual + 1];
       if (prox) setCargaTemporaria(prox.peso_atual || cargaTemporaria);
     }
   };
-
-  useEffect(() => {
-    if (!descansoAtivo || !descansoEndAt) return;
-    const tick = () => {
-      const restante = Math.max(0, Math.ceil((descansoEndAt - Date.now()) / 1000));
-      setTempoDescanso(restante);
-      if (restante <= 0) setDescansoExpirado(true);
-    };
-    tick();
-    const timer = setInterval(tick, 250);
-    const onVisible = () => { if (document.visibilityState === "visible") tick(); };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", tick);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", tick);
-    };
-  }, [descansoAtivo, descansoEndAt]);
-
-  const formatarTempoDescanso = (s: number) =>
-    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
-
-  useEffect(() => {
-    if (restTimer === null || restTimer <= 0) {
-      if (restTimer === 0) setRestTimer(null);
-      return;
-    }
-    const t = setTimeout(() => setRestTimer(r => r !== null ? r - 1 : null), 1000);
-    return () => clearTimeout(t);
-  }, [restTimer]);
 
   const handleFinalizarTreino = async () => {
     if (!ficha) return;
@@ -471,10 +483,7 @@ function FichaContent() {
     setTimerStartAt(null);
     setSeconds(0);
     setExercicioAtivo(null);
-    setDescansoAtivo(false);
-    setDescansoExpirado(false);
-    setTempoDescanso(0);
-    setDescansoEndAt(null);
+    restTimer.reset();
     setShowDiscardModal(false);
     setShowConfirmModal(false);
     router.push("/aluno/treinos");
@@ -497,7 +506,14 @@ function FichaContent() {
         ficha_id: ficha.id,
         aluno_id: userId,
         exercicio_id: exercicio.id,
-        dados_sessao: { nome_rotina: ficha.nome_rotina, nome_exercicio: exercicio.nome, series: exercicio.series, data_sessao: agora },
+        dados_sessao: {
+          nome_rotina: ficha.nome_rotina,
+          nome_exercicio: exercicio.nome,
+          tipo_exercicio: exercicio.tipo_exercicio,
+          series: exercicio.series,
+          data_sessao: agora,
+          duracao_segundos: seconds,
+        },
         data_conclusao: agora,
       }));
 
@@ -518,10 +534,7 @@ function FichaContent() {
       setTimerStartAt(null);
       setSeconds(0);
       setExercicioAtivo(null);
-      setDescansoAtivo(false);
-      setDescansoExpirado(false);
-      setTempoDescanso(0);
-      setDescansoEndAt(null);
+      restTimer.reset();
       router.push("/aluno/treinos");
     } catch (err) {
       console.error("Erro ao salvar histórico:", err);
@@ -665,6 +678,9 @@ function FichaContent() {
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
+
+  const modalShowPeso =
+    exercicioAtivo !== null ? exercicioMostraPeso(ficha.exercicios[exercicioAtivo]?.tipo_exercicio) : true;
 
   return (
     <div className="min-h-screen bg-surface-0 p-3 pb-24">
@@ -860,18 +876,25 @@ function FichaContent() {
                 {(() => {
                   const hasTec = exercicio.series.some(s => !!s.tecnica?.trim());
                   const hasExtra = exercicio.series.some(s => !!s.tecnica_extra?.trim());
-                  const colParts = ['2.5rem', '1fr', '5rem'];
+                  const showPeso = exercicioMostraPeso(exercicio.tipo_exercicio);
+                  const colParts = ['2.5rem', '1fr'];
+                  if (showPeso) colParts.push('5rem');
                   if (hasTec) colParts.push('3.5rem');
                   if (hasExtra) colParts.push('5rem');
                   colParts.push('4rem', '2.75rem');
                   const gridTemplate = colParts.join(' ');
+                  const mobileGridTemplate = showPeso
+                    ? '24px minmax(36px,1fr) 44px 36px 24px 24px 28px'
+                    : '24px minmax(36px,1fr) 36px 24px 24px 28px';
                   return (
                     <>
                       {/* Cabeçalhos desktop */}
                       <div className="hidden md:grid gap-1.5 mb-1.5 px-1 min-w-max overflow-x-auto" style={{ gridTemplateColumns: gridTemplate }}>
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left">Set</span>
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left pl-2">Ant.</span>
-                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Peso</span>
+                        {showPeso && (
+                          <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Peso</span>
+                        )}
                         {hasTec && (
                           <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center flex items-center justify-center gap-1">
                             T1
@@ -893,7 +916,7 @@ function FichaContent() {
                         className="md:hidden select-none"
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '24px minmax(36px,1fr) 44px 36px 24px 24px 28px',
+                          gridTemplateColumns: mobileGridTemplate,
                           gap: '0 10px',
                           padding: '0 12px',
                           marginBottom: 6,
@@ -905,9 +928,11 @@ function FichaContent() {
                         <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)' }}>
                           Ant.
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'right' }}>
-                          Peso
-                        </span>
+                        {showPeso && (
+                          <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'right' }}>
+                            Peso
+                          </span>
+                        )}
                         <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
                           Reps
                         </span>
@@ -944,7 +969,7 @@ function FichaContent() {
                               className="md:hidden transition-all"
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: '24px minmax(36px,1fr) 44px 36px 24px 24px 28px',
+                                gridTemplateColumns: mobileGridTemplate,
                                 gap: '0 10px',
                                 padding: '10px 12px',
                                 alignItems: 'center',
@@ -991,30 +1016,33 @@ function FichaContent() {
                               </span>
 
                               {/* PESO */}
-                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <input
-                                  type="number"
-                                  inputMode="decimal"
-                                  value={serie.peso_atual || ""}
-                                  onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
-                                  disabled={!treinoIniciado || serie.completado}
-                                  placeholder="0"
-                                  style={{
-                                    width: 40,
-                                    height: 28,
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    background: 'var(--filter-bg)',
-                                    border: '1px solid var(--border-subtle)',
-                                    borderRadius: 6,
-                                    textAlign: 'center',
-                                    color: 'var(--text-primary)',
-                                    fontVariantNumeric: 'tabular-nums',
-                                    fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
-                                    outline: 'none',
-                                  }}
-                                />
-                              </div>
+                              {showPeso && (
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={serie.pesoInputStr ?? formatPesoDisplay(serie.peso_atual)}
+                                    onChange={(e) => handlePesoInputChange(exercicio.id, serie.ordem, e.target.value)}
+                                    disabled={!treinoIniciado || serie.completado}
+                                    placeholder="0"
+                                    style={{
+                                      width: 40,
+                                      height: 28,
+                                      fontSize: 14,
+                                      fontWeight: 500,
+                                      background: 'var(--filter-bg)',
+                                      border: '1px solid var(--border-subtle)',
+                                      borderRadius: 6,
+                                      textAlign: 'center',
+                                      color: !serie.pesoManual && serie.peso_atual ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                                      fontStyle: !serie.pesoManual && serie.peso_atual ? 'italic' : 'normal',
+                                      fontVariantNumeric: 'tabular-nums',
+                                      fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
+                                      outline: 'none',
+                                    }}
+                                  />
+                                </div>
+                              )}
 
                               {/* REPS */}
                               <span
@@ -1114,16 +1142,22 @@ function FichaContent() {
                               <div className="text-left pl-2">
                                 <span className="text-[11px] text-text-secondary font-mono">{serie.anterior || "—"}</span>
                               </div>
-                              <div className="flex justify-center">
-                                <input
-                                  type="number"
-                                  value={serie.peso_atual || ""}
-                                  onChange={(e) => handleUpdateSerie(exercicio.id, serie.ordem, "peso_atual", parseFloat(e.target.value) || 0)}
-                                  disabled={!treinoIniciado}
-                                  className="w-full h-8 bg-surface-3 border border-input rounded-md text-center text-xs font-semibold text-text-primary focus:border-brand/40 outline-none disabled:opacity-40"
-                                  placeholder="0"
-                                />
-                              </div>
+                              {showPeso && (
+                                <div className="flex justify-center">
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={serie.pesoInputStr ?? formatPesoDisplay(serie.peso_atual)}
+                                    onChange={(e) => handlePesoInputChange(exercicio.id, serie.ordem, e.target.value)}
+                                    disabled={!treinoIniciado}
+                                    className={cn(
+                                      "w-full h-8 bg-surface-3 border border-input rounded-md text-center text-xs font-semibold focus:border-brand/40 outline-none disabled:opacity-40",
+                                      !serie.pesoManual && serie.peso_atual ? "italic text-text-tertiary" : "text-text-primary",
+                                    )}
+                                    placeholder="0"
+                                  />
+                                </div>
+                              )}
                               {hasTec && (
                                 <div className="flex justify-center items-center">
                                   {serie.tecnica ? (
@@ -1328,27 +1362,21 @@ function FichaContent() {
         </div>
       )}
 
+      {/* ── Rest Timer: barra discreta no rodapé — não escurece a tela, some sozinha ao zerar ── */}
+      {restTimer.active && (
+        <RestTimerBar
+          remaining={restTimer.remaining}
+          total={restTimer.duration}
+          meta={restTimer.meta}
+          onAddSeconds={restTimer.addSeconds}
+          onSkip={restTimer.skip}
+        />
+      )}
+
       {/* ── Modal de Execução ── */}
       {exercicioAtivo !== null && ficha && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
           <div className="relative w-full max-w-lg max-h-[90vh] bg-surface-1 border border-brand/30 shadow-glow-brand rounded-2xl overflow-hidden flex flex-col">
-
-            {/* Rest Timer banner */}
-            {restTimer !== null && (
-              <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-2.5 bg-surface-1 border-b border-brand/30">
-                <span className="text-base">⏱</span>
-                <span className="text-xs text-text-secondary">Descanso</span>
-                <span className="flex-1 text-center text-xl font-bold text-brand tabular-nums lining-nums">
-                  {Math.floor(restTimer / 60)}:{String(restTimer % 60).padStart(2, '0')}
-                </span>
-                <button
-                  onClick={() => setRestTimer(null)}
-                  className="text-xs text-text-tertiary px-2 py-1 rounded-lg hover:bg-surface-3 transition-colors"
-                >
-                  Pular
-                </button>
-              </div>
-            )}
 
             {/* Fechar */}
             <button
@@ -1397,49 +1425,6 @@ function FichaContent() {
               </div>
             )}
 
-            {/* Overlay descanso */}
-            {descansoAtivo && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                <div className="bg-surface-1 border-2 border-brand shadow-glow-brand rounded-2xl p-7 text-center w-72">
-                  {descansoExpirado ? (
-                    <>
-                      <div className="w-12 h-12 rounded-full bg-success/20 border border-success flex items-center justify-center mx-auto mb-3">
-                        <Check className="w-6 h-6 text-success" />
-                      </div>
-                      <p className="text-xs font-semibold uppercase tracking-caps text-success mb-1">Descansado!</p>
-                      <p className="text-sm font-bold text-text-primary mb-5">Pronto para a próxima série</p>
-                      <button
-                        onClick={() => { setDescansoAtivo(false); setDescansoExpirado(false); setDescansoEndAt(null); proximaSerie(); }}
-                        className="w-full py-3 bg-success text-white rounded-xl font-semibold text-sm mb-2"
-                      >
-                        Iniciar próxima série
-                      </button>
-                      <button
-                        onClick={() => { setDescansoAtivo(false); setDescansoExpirado(false); setDescansoEndAt(null); }}
-                        className="w-full py-2 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs"
-                      >
-                        Cancelar
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 rounded-full bg-brand-subtle border border-brand-border flex items-center justify-center mx-auto mb-3 animate-pulse">
-                        <Clock className="w-6 h-6 text-brand" />
-                      </div>
-                      <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-1">Descanso</p>
-                      <p className="text-5xl font-bold text-text-primary font-mono mb-5 tabular-nums lining-nums tracking-display">{formatarTempoDescanso(tempoDescanso)}</p>
-                      <button
-                        onClick={() => { setDescansoAtivo(false); setDescansoExpirado(false); setDescansoEndAt(null); proximaSerie(); }}
-                        className="px-5 py-2 bg-surface-3 border border-card text-text-secondary rounded-xl text-xs"
-                      >
-                        Pular Descanso
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Conteúdo scrollável */}
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
 
@@ -1460,15 +1445,17 @@ function FichaContent() {
               </div>
 
               {/* Stats da série */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className={cn("grid gap-2", modalShowPeso ? "grid-cols-2" : "grid-cols-1")}>
                 <div className="bg-surface-2 border border-card rounded-xl p-3 text-center">
                   <p className="text-2xs text-text-tertiary mb-1">Repetições</p>
                   <p className="text-lg font-bold text-brand">{ficha.exercicios[exercicioAtivo].series[serieAtual]?.reps || "0"}</p>
                 </div>
-                <div className="bg-surface-2 border border-card rounded-xl p-3 text-center">
-                  <p className="text-2xs text-text-tertiary mb-1">Carga</p>
-                  <p className="text-lg font-bold text-text-primary">{cargaTemporaria} kg</p>
-                </div>
+                {modalShowPeso && (
+                  <div className="bg-surface-2 border border-card rounded-xl p-3 text-center">
+                    <p className="text-2xs text-text-tertiary mb-1">Carga</p>
+                    <p className="text-lg font-bold text-text-primary">{cargaTemporaria} kg</p>
+                  </div>
+                )}
               </div>
               {(() => {
                 const serie = ficha.exercicios[exercicioAtivo].series[serieAtual];
@@ -1497,30 +1484,32 @@ function FichaContent() {
               })()}
 
               {/* Ajuste de carga */}
-              <div className="bg-surface-2 border border-card rounded-xl p-3">
-                <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Ajustar Carga (kg)</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCargaTemporaria(Math.max(0, cargaTemporaria - 2.5))}
-                    className="w-[52px] h-[52px] bg-surface-3 border border-border-default rounded-xl text-xl font-light text-text-primary hover:border-brand/40 transition-colors flex items-center justify-center"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    value={cargaTemporaria}
-                    onChange={(e) => setCargaTemporaria(parseFloat(e.target.value) || 0)}
-                    className="flex-1 h-11 bg-surface-0 border border-input rounded-xl text-center text-xl font-bold text-text-primary focus:border-brand/40 outline-none"
-                    step="0.5"
-                  />
-                  <button
-                    onClick={() => setCargaTemporaria(cargaTemporaria + 2.5)}
-                    className="w-[52px] h-[52px] bg-surface-3 border border-border-default rounded-xl text-xl font-light text-text-primary hover:border-brand/40 transition-colors flex items-center justify-center"
-                  >
-                    +
-                  </button>
+              {modalShowPeso && (
+                <div className="bg-surface-2 border border-card rounded-xl p-3">
+                  <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Ajustar Carga (kg)</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCargaTemporaria(Math.max(0, cargaTemporaria - 2.5))}
+                      className="w-[52px] h-[52px] bg-surface-3 border border-border-default rounded-xl text-xl font-light text-text-primary hover:border-brand/40 transition-colors flex items-center justify-center"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      value={cargaTemporaria}
+                      onChange={(e) => setCargaTemporaria(parseFloat(e.target.value) || 0)}
+                      className="flex-1 h-11 bg-surface-0 border border-input rounded-xl text-center text-xl font-bold text-text-primary focus:border-brand/40 outline-none"
+                      step="0.5"
+                    />
+                    <button
+                      onClick={() => setCargaTemporaria(cargaTemporaria + 2.5)}
+                      className="w-[52px] h-[52px] bg-surface-3 border border-border-default rounded-xl text-xl font-light text-text-primary hover:border-brand/40 transition-colors flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Anterior */}
               {ficha.exercicios[exercicioAtivo].series[serieAtual]?.anterior && (
@@ -1543,7 +1532,7 @@ function FichaContent() {
                     concluirSerie();
                   }
                 }}
-                disabled={descansoAtivo}
+                disabled={restTimer.active}
                 className="w-full h-13 bg-brand text-text-on-brand rounded-xl font-semibold text-sm shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity disabled:opacity-40"
               >
                 {serieAtual >= ficha.exercicios[exercicioAtivo].series.length - 1

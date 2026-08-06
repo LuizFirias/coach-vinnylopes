@@ -19,7 +19,6 @@ import { MrrChartCard } from "@/app/components/dashboard/coach/MrrChartCard";
 import { PlanDistributionCard } from "@/app/components/dashboard/coach/PlanDistributionCard";
 import { PriorityActionsCard, type PriorityAction } from "@/app/components/dashboard/coach/PriorityActionsCard";
 import { RecentActivityFeed } from "@/app/components/dashboard/coach/RecentActivityFeed";
-import { StudentHealthTable } from "@/app/components/dashboard/coach/StudentHealthTable";
 import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
 import {
   fetchCoachCustomPlans,
@@ -28,6 +27,8 @@ import {
   type CoachPlan,
 } from "@/lib/coachPlans";
 import { useNaoLidasRealtime } from "@/lib/chat/realtime";
+import { useNotificacoesNaoLidas } from "@/lib/notifications/realtime";
+import { CoachNotificationsPanel } from "@/app/components/notifications/CoachNotificationsPanel";
 import { withReturnUrl } from "@/lib/utils/adminNav";
 
 const FROM_DASHBOARD = "/admin/dashboard";
@@ -67,26 +68,15 @@ function inicioDoCiclo(
   return null;
 }
 
-function timeAgo(dateStr: string | null | undefined): string | null {
-  if (!dateStr) return null;
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return "agora";
-  if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
-  const days = Math.floor(diff / 86400);
-  if (days === 1) return "ontem";
-  if (days < 30) return `${days} dias atrás`;
-  return `${Math.floor(days / 30)} meses atrás`;
-}
-
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const chatNaoLidas = useNaoLidasRealtime(user?.id ?? null, 'coach');
+  const notifNaoLidas = useNotificacoesNaoLidas(user?.id ?? null);
+  const [notifOpen, setNotifOpen] = useState(false);
   const isMobile = useBreakpoint("mobile");
   const hasDataRef = useRef(false);
-  
-  const today = new Date();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,7 +91,6 @@ export default function AdminDashboard() {
 
   // Lists & Panel States
   const [prioridades, setPrioridades] = useState<PriorityAction[]>([]);
-  const [saudeAlunos, setSaudeAlunos] = useState<ProfileRow[]>([]);
   const [groupedAtividades, setGroupedAtividades] = useState<GroupedActivity[]>([]);
   const [chartData, setChartData] = useState<{ mes: string; receita: number; futuro: boolean }[]>([]);
   const [alunosPorPlano, setAlunosPorPlano] = useState<{ name: string; count: number }[]>([]);
@@ -207,7 +196,6 @@ export default function AdminDashboard() {
 
       const rows = (profiles as ProfileRow[]) || [];
       setTotalAlunos(rows.length);
-      setSaudeAlunos(rows);
 
       const activePlanIds = new Set(activePlans?.map(p => p.id) || []);
       const checkins7d = (checkinsRaw || []).filter(c => activePlanIds.has(c.plan_id));
@@ -403,13 +391,15 @@ export default function AdminDashboard() {
       ]);
 
       // 5. Counts + feeds recentes em paralelo
+      // Feed de atividades: treinos, cardios, refeições, medidas, fotos
       const [
         { count: photosCount },
         { count: medidasCount },
-        { count: feedbacksCount },
         { data: recentWorkouts },
-        { data: recentManual },
-        { data: recentFeedbacks },
+        { data: recentCardios },
+        { data: recentMeals },
+        { data: recentMedidas },
+        { data: recentFotosFeed },
         { data: fotosRecentes },
       ] = await Promise.all([
         supabaseClient
@@ -423,29 +413,38 @@ export default function AdminDashboard() {
           .in('aluno_id', alunosIds)
           .gte('data_medicao', seteDiasAtrasIso),
         supabaseClient
-          .from('feedbacks_treinos')
-          .select('id', { count: 'exact', head: true })
-          .in('aluno_id', alunosIds)
-          .gte('created_at', seteDiasAtrasIso),
-        supabaseClient
           .from('historico_treinos')
           .select('id, aluno_id, ficha_id, data_conclusao, ficha:fichas_treino(nome_rotina)')
           .in('aluno_id', alunosIds)
+          .not('data_conclusao', 'is', null)
           .order('data_conclusao', { ascending: false })
-          .limit(30),
+          .limit(120),
         supabaseClient
-          .from('treinos_manuais')
-          .select('id, aluno_id, descricao, data_treino')
-          .in('aluno_id', alunosIds)
-          .eq('concluido', true)
-          .order('data_treino', { ascending: false })
-          .limit(20),
-        supabaseClient
-          .from('feedbacks_treinos')
-          .select('id, aluno_id, feedback, created_at')
+          .from('cardio_sessoes')
+          .select('id, aluno_id, modalidade, data, created_at')
           .in('aluno_id', alunosIds)
           .order('created_at', { ascending: false })
-          .limit(20),
+          .limit(40),
+        supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('id, student_id, checkin_date, status, created_at')
+          .in('student_id', alunosIds)
+          .in('status', ['done', 'substituted'])
+          .gte('checkin_date', seteDiasAtrasIso.slice(0, 10))
+          .order('created_at', { ascending: false })
+          .limit(60),
+        supabaseClient
+          .from('medidas_aluno')
+          .select('id, aluno_id, data_medicao')
+          .in('aluno_id', alunosIds)
+          .order('data_medicao', { ascending: false })
+          .limit(40),
+        supabaseClient
+          .from('fotos_evolucao')
+          .select('id, aluno_id, data_upload')
+          .in('aluno_id', alunosIds)
+          .order('data_upload', { ascending: false })
+          .limit(40),
         supabaseClient
           .from('fotos_evolucao')
           .select('aluno_id, data_upload')
@@ -499,67 +498,95 @@ export default function AdminDashboard() {
         }
       }
 
-      setCheckinsPendentes((photosCount || 0) + (medidasCount || 0) + (feedbacksCount || 0));
+      setCheckinsPendentes((photosCount || 0) + (medidasCount || 0));
 
       const rawActivities: RawActivity[] = [];
+      const studentLabel = (alunoId: string) => {
+        const student = rows.find((r) => r.id === alunoId);
+        return student?.coaching_reference || student?.full_name || "Atleta";
+      };
 
+      // historico_treinos grava 1 linha por exercício na conclusão —
+      // deduplicar por sessão (aluno + ficha + minuto da data_conclusao).
+      const seenWorkoutSessions = new Set<string>();
       (recentWorkouts || []).forEach((w) => {
-        const student = rows.find((r) => r.id === w.aluno_id);
+        const concluidoAt = w.data_conclusao ? new Date(w.data_conclusao) : null;
+        if (!concluidoAt || Number.isNaN(concluidoAt.getTime())) return;
+
+        const sessionKey = [
+          w.aluno_id,
+          w.ficha_id || "sem-ficha",
+          concluidoAt.toISOString().slice(0, 16),
+        ].join("|");
+        if (seenWorkoutSessions.has(sessionKey)) return;
+        seenWorkoutSessions.add(sessionKey);
+
         const routine = (w as any).ficha as { nome_rotina?: string } | null;
         rawActivities.push({
           id: w.id,
           studentId: w.aluno_id,
-          studentName: student?.coaching_reference || student?.full_name || "Atleta",
+          studentName: studentLabel(w.aluno_id),
           type: "workout_completed",
           workoutName: routine?.nome_rotina || "Treino Digital",
-          timestamp: new Date(w.data_conclusao),
+          timestamp: concluidoAt,
           link: fromDashboard(`/admin/aluno/${w.aluno_id}?tab=treinos`),
         });
       });
 
-      (recentManual || []).forEach((m) => {
-        const student = rows.find((r) => r.id === m.aluno_id);
+      (recentCardios || []).forEach((c) => {
+        const at = new Date(c.created_at || c.data);
+        if (Number.isNaN(at.getTime())) return;
         rawActivities.push({
-          id: m.id,
-          studentId: m.aluno_id,
-          studentName: student?.coaching_reference || student?.full_name || "Atleta",
-          type: "workout_manual",
-          description: m.descricao || "Treino livre",
-          timestamp: new Date(m.data_treino),
-          link: fromDashboard(`/admin/aluno/${m.aluno_id}?tab=treinos`),
+          id: c.id,
+          studentId: c.aluno_id,
+          studentName: studentLabel(c.aluno_id),
+          type: "cardio_completed",
+          description: c.modalidade || undefined,
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${c.aluno_id}?tab=cardio`),
         });
       });
 
-      (recentFeedbacks || []).forEach((f) => {
-        const student = rows.find((r) => r.id === f.aluno_id);
-        const snippet =
-          f.feedback.length > 40 ? `${f.feedback.substring(0, 38)}...` : f.feedback;
+      (recentMeals || []).forEach((m) => {
+        const at = new Date(m.created_at || `${m.checkin_date}T12:00:00`);
+        if (Number.isNaN(at.getTime())) return;
+        rawActivities.push({
+          id: m.id,
+          studentId: m.student_id,
+          studentName: studentLabel(m.student_id),
+          type: "meal_done",
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${m.student_id}?tab=nutricao`),
+        });
+      });
+
+      (recentMedidas || []).forEach((m) => {
+        const at = new Date(m.data_medicao);
+        if (Number.isNaN(at.getTime())) return;
+        rawActivities.push({
+          id: m.id,
+          studentId: m.aluno_id,
+          studentName: studentLabel(m.aluno_id),
+          type: "measurement_added",
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${m.aluno_id}?tab=evolucao`),
+        });
+      });
+
+      (recentFotosFeed || []).forEach((f) => {
+        const at = new Date(f.data_upload);
+        if (Number.isNaN(at.getTime())) return;
         rawActivities.push({
           id: f.id,
           studentId: f.aluno_id,
-          studentName: student?.coaching_reference || student?.full_name || "Atleta",
-          type: "checkin_sent",
-          description: `Enviou feedback: "${snippet}"`,
-          timestamp: new Date(f.created_at),
-          link: fromDashboard(`/admin/aluno/${f.aluno_id}?tab=visao-geral`),
+          studentName: studentLabel(f.aluno_id),
+          type: "photo_sent",
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${f.aluno_id}?tab=fotos`),
         });
       });
 
       setGroupedAtividades(groupActivities(rawActivities));
-
-      // Append feedbacks alerts to priorities
-      (recentFeedbacks || []).forEach(f => {
-        const student = rows.find(r => r.id === f.aluno_id);
-        tempPrioridades.push({
-          id: `feedback-${f.id}`,
-          aluno_id: f.aluno_id,
-          nome: student?.coaching_reference || student?.full_name || "Atleta",
-          tipo: 'info',
-          descricao: `Novo feedback enviado`,
-          acao: 'Visualizar',
-          link: `/admin/feedbacks`
-        });
-      });
 
       setPrioridades(tempPrioridades);
 
@@ -649,6 +676,13 @@ export default function AdminDashboard() {
           linkedStudentCount={linkedStudentCount}
           coachAccountType={coachAccountType}
           showNotificationBadge={checkinsPendentes > 0}
+          chatNaoLidas={chatNaoLidas + notifNaoLidas}
+          onNotificationsClick={() => setNotifOpen(true)}
+        />
+
+        <CoachNotificationsPanel
+          open={notifOpen}
+          onClose={() => setNotifOpen(false)}
           chatNaoLidas={chatNaoLidas}
         />
 
@@ -685,16 +719,10 @@ export default function AdminDashboard() {
               limit={3}
               showViewAll
             />
-            <StudentHealthTable
-              students={saudeAlunos}
-              today={today}
-              formatLastWorkout={(d) => timeAgo(d) ?? "Sem treinos"}
-              isMobile
-              returnUrl={FROM_DASHBOARD}
-            />
           </div>
         ) : (
           <div className="flex flex-col gap-6">
+            <PriorityActionsCard actions={prioridades} />
             <DashboardKpiRow
               activeStudents={alunosAtivos}
               mrr={mrr}
@@ -702,22 +730,13 @@ export default function AdminDashboard() {
               pendingCheckIns={checkinsPendentes}
               activeStudentsSubtitle={activeStudentsSubtitle}
             />
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              <MrrChartCard currentMrr={mrr} chartData={chartData} className="lg:col-span-7" />
-              <PlanDistributionCard
-                plans={alunosPorPlano}
-                totalStudents={totalAlunos}
-                className="lg:col-span-5 h-full"
-              />
-            </div>
-            <PriorityActionsCard actions={prioridades} />
-            <RecentActivityFeed activities={groupedAtividades} />
-            <StudentHealthTable
-              students={saudeAlunos}
-              today={today}
-              formatLastWorkout={(d) => timeAgo(d) ?? "Sem treinos"}
-              returnUrl={FROM_DASHBOARD}
+            <MrrChartCard currentMrr={mrr} chartData={chartData} className="w-full" />
+            <PlanDistributionCard
+              plans={alunosPorPlano}
+              totalStudents={totalAlunos}
+              className="w-full"
             />
+            <RecentActivityFeed activities={groupedAtividades} />
           </div>
         )}
       </div>

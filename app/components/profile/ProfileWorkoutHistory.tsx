@@ -19,13 +19,15 @@ interface ProfileWorkoutHistoryProps {
 function formatWorkoutDateShort(isoString: string): string {
   const date = new Date(isoString);
   if (Number.isNaN(date.getTime())) return isoString;
+  // Sempre no fuso de Brasília — independe do fuso do navegador do aluno
+  const tz = { timeZone: "America/Sao_Paulo" } as const;
   const weekday = date
-    .toLocaleDateString("pt-BR", { weekday: "short" })
+    .toLocaleDateString("pt-BR", { weekday: "short", ...tz })
     .replace(".", "")
     .replace(/^\w/, (c) => c.toUpperCase());
-  const day = date.getDate();
+  const day = date.toLocaleDateString("pt-BR", { day: "numeric", ...tz });
   const month = date
-    .toLocaleDateString("pt-BR", { month: "short" })
+    .toLocaleDateString("pt-BR", { month: "short", ...tz })
     .replace(".", "");
   return `${weekday}, ${day} ${month}`;
 }

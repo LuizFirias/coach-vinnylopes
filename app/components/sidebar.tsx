@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
+import { useUnreadFeedbacksCount } from '@/lib/feedbacks/useUnreadFeedbacksCount';
 import {
   Barbell,
   ForkKnife,
@@ -100,6 +101,7 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const { userRole, loading, user } = useAuth();
   const pathname = usePathname();
+  const { hasUnread: hasUnreadFeedbacks } = useUnreadFeedbacksCount();
 
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -157,6 +159,7 @@ export default function Sidebar() {
   const renderNavLink = (m: MenuItem, opts?: { onNavigate?: () => void; mobile?: boolean }) => {
     const Icon = m.icon;
     const isActive = pathname === m.href;
+    const showBadge = m.id === 'feedbacks' && hasUnreadFeedbacks;
 
     if (opts?.mobile) {
       return (
@@ -168,10 +171,13 @@ export default function Sidebar() {
           }`}
           onClick={opts.onNavigate}
         >
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border ${
+          <div className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border ${
             isActive ? 'bg-brand/20 border-brand/30' : 'bg-surface-2 border-card'
           }`}>
             <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
+            {showBadge && (
+              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand ring-2 ring-surface-1" aria-hidden />
+            )}
           </div>
           {m.name}
         </Link>
@@ -192,10 +198,15 @@ export default function Sidebar() {
         )}
       >
         {isActive && !isExpanded && <div className="absolute left-0 w-1 h-4 bg-brand rounded-r-full" />}
-        <Icon size={14} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform shrink-0')} />
+        <span className="relative shrink-0">
+          <Icon size={14} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform')} />
+          {showBadge && (
+            <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-brand ring-1 ring-black/40" aria-hidden />
+          )}
+        </span>
 
         {isExpanded && (
-          <span className="text-[10px] font-semibold tracking-wide truncate">
+          <span className="text-[10px] font-semibold tracking-wide truncate flex-1">
             {m.name}
           </span>
         )}

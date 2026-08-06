@@ -43,6 +43,14 @@ function CurvedDivider() {
   );
 }
 
+/** Minutos -> "HH:MM" (ex.: 90 -> "01:30") */
+function formatMinutosHM(min: number): string {
+  const totalMin = Math.max(0, Math.round(min));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 function HabitBar({
   agua,
   dieta,
@@ -79,7 +87,11 @@ function HabitBar({
     {
       icon: Heartbeat,
       label: 'Cardio',
-      value: cardio.meta > 0 ? `${cardio.atual}/${cardio.meta}` : '—',
+      // atual/meta em minutos na semana — mostrado como duração (00:00), não dias
+      value:
+        cardio.meta > 0
+          ? `${formatMinutosHM(cardio.atual)}/${formatMinutosHM(cardio.meta)}`
+          : formatMinutosHM(cardio.atual),
       done: cardio.meta > 0 && cardio.atual >= cardio.meta,
     },
   ];

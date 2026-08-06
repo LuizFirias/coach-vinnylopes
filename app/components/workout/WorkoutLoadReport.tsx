@@ -4,6 +4,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils/cn';
 import { FilePdf, ChartBar, Barbell, Clock, CalendarBlank, CaretDown, CaretLeft, CaretRight, Lightning, Repeat, Trophy } from '@phosphor-icons/react';
+import { PeriodSelect } from '@/app/components/ui/PeriodSelect';
+import { selectListboxClassName, selectOptionClassName } from '@/components/ui/Select';
+import { exercicioMostraPeso } from '@/app/components/workout-builder/exerciseColumns';
+import { CANONICAL_MUSCLE_GROUPS } from '@/lib/constants/muscle-groups';
+import { formatRestTime } from '@/lib/utils/restTime';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +33,7 @@ interface DadosSessao {
   nome_exercicio?: string;
   duracao_segundos?: number;
   duracao?: number;
+  tipo_exercicio?: string;
 }
 
 interface HistoricoRow {
@@ -103,6 +109,9 @@ const PRESET_OPTIONS: { value: PeriodPreset; label: string }[] = [
   { value: 'custom', label: 'Personalizado' },
 ];
 
+// Filtro próprio de "Músculos menos trabalhados" — sem "Personalizado" (evita duplicar o date-range picker)
+const MUSCLE_PERIOD_OPTIONS = PRESET_OPTIONS.filter(o => o.value !== 'custom');
+
 // RGB equivalents for jsPDF chart drawing
 const GRUPO_COLORS_RGB: Record<string, [number, number, number]> = {
   'Quadríceps': [59, 130, 246],
@@ -150,6 +159,18 @@ const GRUPO_COLORS: Record<string, string> = {
 
 function grupoColor(g: string) {
   return GRUPO_COLORS[g] ?? '#7a8aab';
+}
+
+/**
+ * Exercícios sem carga (ex.: Barra fixa = "Repetições", Prancha = "Duração") não têm o que
+ * progredir em kg — a progressão passa a ser medida na métrica certa para cada tipo.
+ */
+function progressionMeta(tipo?: string | null): { unit: string; maxLabel: string; isTime: boolean } {
+  if (exercicioMostraPeso(tipo)) return { unit: 'kg', maxLabel: 'Carga máxima', isTime: false };
+  if (tipo === 'Duração' || tipo === 'Distância e Duração') {
+    return { unit: 's', maxLabel: 'Tempo máximo', isTime: true };
+  }
+  return { unit: 'reps', maxLabel: 'Repetições máximas', isTime: false };
 }
 
 // ─── DatePickerPopover ───────────────────────────────────────────────────────
@@ -406,6 +427,117 @@ function HorizontalBar({
   );
 }
 
+function TopExerciseBar({
+  nome,
+  count,
+  pct,
+  color,
+}: {
+  nome: string;
+  count: number;
+  pct: number;
+  color: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-8 flex-1 overflow-hidden rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div
+          className="flex h-full items-center px-3 transition-all duration-500"
+          style={{ width: `${pct}%`, minWidth: '46%', background: color, borderRadius: 8 }}
+        >
+          <span className="truncate text-[12px] font-semibold text-white">{nome}</span>
+        </div>
+      </div>
+      <span
+        className="shrink-0 text-[12px] font-bold tabular-nums lining-nums"
+        style={{ color }}
+      >
+        {count}×
+      </span>
+    </div>
+  );
+}
+
+interface ExercicioFilterOption {
+  id: string;
+  nome: string;
+}
+
+/** Campo sem preenchimento (flat) + lista no padrão AURON — mesmo do Select. */
+function ExercicioFilterDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: ExercicioFilterOption[];
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find(o => o.id === value);
+  // Lista sempre em ordem alfabética — a seleção padrão continua sendo o mais feito
+  const sortedOptions = useMemo(
+    () => [...options].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [options],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex max-w-45 items-center gap-1 bg-transparent border-0 p-0 cursor-pointer touch-manipulation"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Selecionar exercício"
+      >
+        <span className="truncate text-[11px] font-semibold text-brand">
+          {selected?.nome ?? 'Selecionar'}
+        </span>
+        <CaretDown
+          size={10}
+          weight="bold"
+          className={cn('shrink-0 text-brand transition-transform', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <div role="listbox" className={cn(selectListboxClassName, 'right-0 w-52')}>
+          {sortedOptions.map(opt => {
+            const active = opt.id === value;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => { onChange(opt.id); setOpen(false); }}
+                className={selectOptionClassName(active)}
+              >
+                <span className="flex-1 min-w-0 truncate">{opt.nome}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProgressionChart({
   data,
   unit = 'kg',
@@ -498,6 +630,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [selectedExercicio, setSelectedExercicio] = useState('');
+  const [muscleFilterPreset, setMuscleFilterPreset] = useState<PeriodPreset>('this_month');
   const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
@@ -635,7 +768,52 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
       .slice(0, 10);
   }, [filteredRows, exerciciosMap]);
 
-  // Progression for selected exercise
+  // Músculos menos trabalhados — período próprio, independente do filtro principal
+  const muscleFilterRange = useMemo(
+    () => getPeriodRange(muscleFilterPreset, '', ''),
+    [muscleFilterPreset],
+  );
+
+  const muscleFilteredRows = useMemo(
+    () =>
+      rows.filter(r => {
+        const day = (r.data_conclusao || '').slice(0, 10);
+        return day >= muscleFilterRange.start && day <= muscleFilterRange.end;
+      }),
+    [rows, muscleFilterRange],
+  );
+
+  const gruposMenosTrabalhados = useMemo(() => {
+    // Começa com todos os grupos musculares disponíveis no app zerados — assim um grupo que
+    // o aluno nunca treinou aparece como "menos trabalhado", não só os que já têm registro.
+    const map = new Map<string, number>(CANONICAL_MUSCLE_GROUPS.map(g => [g, 0]));
+
+    for (const row of muscleFilteredRows) {
+      const exId = row.exercicio_id;
+      if (!exId) continue;
+      const ex = exerciciosMap.get(exId);
+      const grupo = ex?.grupo_muscular || 'Outro';
+      const series = (row.dados_sessao?.series ?? []).filter(s => s.completado).length;
+      map.set(grupo, (map.get(grupo) || 0) + series);
+    }
+
+    return [...map.entries()]
+      .map(([grupo, series]) => ({ grupo, series }))
+      .sort((a, b) => a.series - b.series)
+      .slice(0, 5);
+  }, [muscleFilteredRows, exerciciosMap]);
+
+  // Tipo do exercício selecionado (vem do que foi salvo na sessão; fichas antigas sem esse
+  // dado assumem "Peso & Repetições", mantendo o comportamento de sempre).
+  const selectedTipoExercicio = useMemo(() => {
+    const row = filteredRows.find(r => r.exercicio_id === selectedExercicio && r.dados_sessao?.tipo_exercicio);
+    return row?.dados_sessao?.tipo_exercicio;
+  }, [filteredRows, selectedExercicio]);
+
+  const progMeta = useMemo(() => progressionMeta(selectedTipoExercicio), [selectedTipoExercicio]);
+
+  // Progression for selected exercise — carga (kg) para exercícios com peso,
+  // repetições ou tempo para os que não têm (barra fixa, prancha, etc.)
   const progressao = useMemo(() => {
     if (!selectedExercicio) return [];
 
@@ -644,8 +822,13 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
       if (row.exercicio_id !== selectedExercicio) continue;
       const day = (row.data_conclusao || '').slice(0, 10);
       const series = (row.dados_sessao?.series ?? []).filter(s => s.completado);
-      const maxPeso = series.reduce((m, s) => Math.max(m, Number(s.peso_atual) || 0), 0);
-      if (maxPeso > 0) byDate.set(day, Math.max(byDate.get(day) || 0, maxPeso));
+      const maxVal = series.reduce((m, s) => {
+        const v = progMeta.isTime || progMeta.unit === 'reps'
+          ? parseFloat(String(s.reps)) || 0
+          : Number(s.peso_atual) || 0;
+        return Math.max(m, v);
+      }, 0);
+      if (maxVal > 0) byDate.set(day, Math.max(byDate.get(day) || 0, maxVal));
     }
 
     return [...byDate.entries()]
@@ -657,7 +840,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
         }),
         value,
       }));
-  }, [filteredRows, selectedExercicio]);
+  }, [filteredRows, selectedExercicio, progMeta]);
 
   // Weekly volume (for PDF chart)
   const volumeSemanal = useMemo(() => {
@@ -936,20 +1119,24 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
 
         // Last value label
         const last = data[data.length - 1];
+        const lastLabel = progMeta.isTime ? formatRestTime(Math.round(last.value)) : `${last.value} ${progMeta.unit}`;
         doc.setTextColor(147, 51, 234);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.5);
-        doc.text(`${last.value} kg`, toX(data.length - 1), toY(last.value) - 2.5, { align: 'center' });
+        doc.text(lastLabel, toX(data.length - 1), toY(last.value) - 2.5, { align: 'center' });
 
         // Delta annotation (first → last)
         const delta = last.value - data[0].value;
         if (delta !== 0) {
           const sign = delta > 0 ? '+' : '';
           const r = delta > 0 ? 57 : 224, g2 = delta > 0 ? 199 : 85, b2 = delta > 0 ? 90 : 85;
+          const deltaLabel = progMeta.isTime
+            ? `${sign}${formatRestTime(Math.abs(Math.round(delta)))} no período`
+            : `${sign}${progMeta.unit === 'kg' ? delta.toFixed(1) : Math.round(delta)} ${progMeta.unit} no período`;
           doc.setTextColor(r, g2, b2);
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(8);
-          doc.text(`${sign}${delta.toFixed(1)} kg no período`, L + padL, startY + 7, { align: 'left' });
+          doc.text(deltaLabel, L + padL, startY + 7, { align: 'left' });
         }
 
         return startY + chartH + 2;
@@ -1040,6 +1227,27 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
         drawProgressionChart(cursor2, 55);
       }
 
+      // ── Página 3 — Músculos menos trabalhados ──────────────────────────────
+      if (gruposMenosTrabalhados.length > 0) {
+        doc.addPage();
+        const muscleLabel = MUSCLE_PERIOD_OPTIONS.find(o => o.value === muscleFilterPreset)?.label ?? '';
+        addHeader(periodLabel);
+
+        sectionTitle(`MÚSCULOS MENOS TRABALHADOS — ${muscleLabel.toUpperCase()}`, 39);
+        autoTable(doc, {
+          startY: 42,
+          head: [['Grupo muscular', 'Séries completadas no período']],
+          body: gruposMenosTrabalhados.map(g => [g.grupo, `${g.series}`]),
+          theme: 'striped',
+          headStyles: { fillColor: [147, 51, 234], textColor: [255, 255, 255], fontSize: 8.5, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8.5, textColor: [31, 31, 35] },
+          columnStyles: {
+            0: { cellWidth: 120 },
+            1: { cellWidth: 60, halign: 'right' as const, fontStyle: 'bold' as const },
+          },
+        });
+      }
+
       // ── Footers ───────────────────────────────────────────────────────────
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
@@ -1071,24 +1279,14 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
           </span>
         </div>
 
-        {/* Preset selector */}
-        <div className="flex items-center gap-1 flex-wrap">
-          {PRESET_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setPreset(opt.value)}
-              className={cn(
-                'px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all',
-                preset === opt.value
-                  ? 'bg-brand text-white'
-                  : 'bg-surface-2 text-text-secondary hover:text-text-primary',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        {/* Preset selector — colapsado, mesmo padrão da aba Evolução */}
+        <PeriodSelect
+          value={preset}
+          options={PRESET_OPTIONS}
+          onChange={(v) => setPreset(v as PeriodPreset)}
+          align="left"
+          aria-label="Selecionar período"
+        />
 
         {/* Export button */}
         <button
@@ -1200,14 +1398,13 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
               {topExercicios.length === 0 ? (
                 <p className="text-[12px] text-text-disabled text-center py-4">Sem dados</p>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                   {topExercicios.map((ex, i) => (
-                    <HorizontalBar
+                    <TopExerciseBar
                       key={ex.id}
-                      label={ex.nome}
-                      value={ex.count}
-                      maxValue={topExercicios[0].count}
-                      formattedValue={`${ex.count}× · ${ex.maxPeso > 0 ? `${ex.maxPeso} kg` : '—'}`}
+                      nome={ex.nome}
+                      count={ex.count}
+                      pct={Math.round((ex.count / topExercicios[0].count) * 100)}
                       color={i === 0 ? '#9333ea' : i === 1 ? '#751BB4' : '#7a8aab'}
                     />
                   ))}
@@ -1253,30 +1450,28 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
                   </span>
                 </div>
 
-                {/* Exercise selector */}
-                <div className="relative">
-                  <select
-                    value={selectedExercicio}
-                    onChange={e => setSelectedExercicio(e.target.value)}
-                    className="appearance-none rounded-lg border border-border-input bg-surface-2 py-1.5 pl-3 pr-7 text-[11px] font-medium text-text-primary focus:outline-none focus:border-brand cursor-pointer max-w-45"
-                  >
-                    {topExercicios.map(ex => (
-                      <option key={ex.id} value={ex.id}>
-                        {ex.nome}
-                      </option>
-                    ))}
-                  </select>
-                  <CaretDown
-                    size={10}
-                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary"
-                  />
-                </div>
+                {/* Exercise selector — campo flat + lista no padrão AURON */}
+                <ExercicioFilterDropdown
+                  value={selectedExercicio}
+                  options={topExercicios.map(ex => ({ id: ex.id, nome: ex.nome }))}
+                  onChange={setSelectedExercicio}
+                />
               </div>
 
-              {/* Max weight big number */}
+              {/* Valor máximo por sessão — kg, repetições ou tempo, conforme o tipo do exercício */}
               {progressao.length > 0 && (() => {
                 const last = progressao[progressao.length - 1].value;
                 const delta = progressao.length >= 2 ? last - progressao[0].value : null;
+                const displayValue = progMeta.isTime
+                  ? formatRestTime(Math.round(last))
+                  : progMeta.unit === 'kg'
+                    ? String(Math.round(last * 10) / 10)
+                    : String(Math.round(last));
+                const deltaLabel = delta === null
+                  ? ''
+                  : progMeta.isTime
+                    ? `${delta > 0 ? '+' : delta < 0 ? '-' : ''}${formatRestTime(Math.abs(Math.round(delta)))} no período`
+                    : `${delta > 0 ? '+' : ''}${progMeta.unit === 'kg' ? delta.toFixed(1) : Math.round(delta)} ${progMeta.unit} no período`;
                 return (
                   <div className="w-full flex flex-col items-center gap-1 py-1">
                     {delta !== null && (
@@ -1286,7 +1481,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
                           delta > 0 ? 'text-[#39c75a]' : delta < 0 ? 'text-[#e05555]' : 'text-text-secondary',
                         )}
                       >
-                        {delta > 0 ? '+' : ''}{delta.toFixed(1)} kg no período
+                        {deltaLabel}
                       </span>
                     )}
                     <div className="flex items-end gap-1">
@@ -1294,23 +1489,65 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
                         className="tabular-nums lining-nums font-black leading-none"
                         style={{ fontSize: 40, color: '#9333ea', letterSpacing: '-0.02em' }}
                       >
-                        {last}
+                        {displayValue}
                       </span>
-                      <span className="mb-1 text-[18px] font-bold text-text-secondary">kg</span>
+                      {!progMeta.isTime && (
+                        <span className="mb-1 text-[18px] font-bold text-text-secondary">{progMeta.unit}</span>
+                      )}
                     </div>
                   </div>
                 );
               })()}
 
-              <ProgressionChart data={progressao} />
+              <ProgressionChart data={progressao} unit={progMeta.unit} />
 
               {progressao.length > 0 && selectedExNome && (
                 <p className="text-[10px] text-text-disabled">
-                  Carga máxima por sessão — {selectedExNome}
+                  {progMeta.maxLabel} por sessão — {selectedExNome}
                 </p>
               )}
             </div>
           )}
+
+          {/* Músculos menos trabalhados */}
+          <div className="rounded-xl bg-surface-1 p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <Barbell size={13} className="text-brand shrink-0" />
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-text-secondary">
+                  Músculos Menos Trabalhados
+                </span>
+              </div>
+              <PeriodSelect
+                value={muscleFilterPreset}
+                options={MUSCLE_PERIOD_OPTIONS}
+                onChange={(v) => setMuscleFilterPreset(v as PeriodPreset)}
+                aria-label="Período — músculos menos trabalhados"
+              />
+            </div>
+
+            {gruposMenosTrabalhados.length === 0 ? (
+              <p className="text-[12px] text-text-disabled text-center py-4">
+                Nenhuma série registrada nesse período
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {gruposMenosTrabalhados.map(g => (
+                  <HorizontalBar
+                    key={g.grupo}
+                    label={g.grupo}
+                    value={g.series}
+                    maxValue={Math.max(...gruposMenosTrabalhados.map(x => x.series), 1)}
+                    formattedValue={`${g.series} séries`}
+                    color={grupoColor(g.grupo)}
+                  />
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-text-disabled">
+              Grupos com menos séries completadas no período selecionado
+            </p>
+          </div>
         </>
       )}
     </div>

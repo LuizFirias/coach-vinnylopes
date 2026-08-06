@@ -295,6 +295,8 @@ export interface ExercicioExecucao {
   observacoes?: string;
   grupo_muscular?: string;
   equipamento?: string;
+  /** "Repetições", "Duração", "Peso & Repetições" etc — define se o campo peso aparece */
+  tipo_exercicio?: string;
   series: Array<{
     ordem: number;
     peso_atual: number;
@@ -408,6 +410,7 @@ function buildHalfExecucao(
     observacoes: half.observacoes,
     grupo_muscular: meta.gruposMusculares[eid] || "",
     equipamento: meta.equipamentos[eid] || "",
+    tipo_exercicio: half.tipo_exercicio,
     series: (half.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries)),
   };
 }
@@ -426,6 +429,7 @@ function buildSimpleExecucao(ex: ExercicioSimplesPrescricao, meta: BibMeta): Exe
     observacoes: ex.observacoes,
     grupo_muscular: meta.gruposMusculares[eid] || "",
     equipamento: meta.equipamentos[eid] || "",
+    tipo_exercicio: ex.tipo_exercicio,
     series: (ex.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries)),
   };
 }

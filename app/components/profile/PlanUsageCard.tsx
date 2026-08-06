@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CaretRight, Crown, TrendUp } from "@phosphor-icons/react";
+import { CreditCard, Crown, TrendUp } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 
 type PlanUsageCardProps = {
@@ -85,7 +85,7 @@ export function PlanUsageCard({
         <span className="flex-1 text-[10px] font-semibold text-brand">
           Gerenciar plano
         </span>
-        <CaretRight size={11} className="text-brand shrink-0" />
+        <CreditCard size={12} className="text-brand shrink-0" weight="regular" />
       </div>
     </Link>
   );

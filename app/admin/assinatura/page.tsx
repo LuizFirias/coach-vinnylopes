@@ -4,17 +4,15 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
 import { Check, Lock } from "@phosphor-icons/react";
 import { BackButton } from "@/app/components/ui/BackButton";
+import { MeuPlanoView } from "@/app/components/subscriptions/MeuPlanoView";
 import { cn } from "@/lib/utils/cn";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import {
   BILLING_PERIOD_LABELS,
   formatCurrencyBRL,
-  formatStudentUsage,
   formatPlanStudentCap,
   getBillingMonths,
   getMonthlyEquivalent,
@@ -183,25 +181,6 @@ function PriceHero({
   );
 }
 
-function StatusDot({ color }: { color: string }) {
-  return (
-    <span
-      className="inline-block w-1.5 h-1.5 rounded-full mr-1.5"
-      style={{ backgroundColor: color }}
-    />
-  );
-}
-
-function InlineStatus({ status }: { status: DisplayStatus }) {
-  const cfg = STATUS_LINE[status];
-  return (
-    <p className="text-[11px] font-semibold flex items-center" style={{ color: cfg.color }}>
-      <StatusDot color={cfg.color} />
-      {cfg.label}
-    </p>
-  );
-}
-
 function getPlanPrice(
   data: SubscriptionData,
   selectedPlan: { billing: { price: number } } | null,
@@ -227,17 +206,6 @@ function AlertLine({
       style={{ borderLeft: `2px solid ${borderColor}` }}
     >
       {children}
-    </div>
-  );
-}
-
-function MetaRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <div className="flex justify-between gap-4 text-[12px] py-1">
-      <span className="text-[#7a8aab]">{label}</span>
-      <span className="font-medium" style={{ color: valueColor || "#c5cdd8" }}>
-        {value}
-      </span>
     </div>
   );
 }
@@ -329,12 +297,13 @@ export default function AssinaturaPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [brickReady, setBrickReady] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [pollingTimedOut, setPollingTimedOut] = useState(false);
   const [pollingActive, setPollingActive] = useState(false);
   /** Só true após submit do Brick — nunca após cancelamento. */
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+  /** Alterar plano/cartão com assinatura ativa — abre checkout sem exigir expiração. */
+  const [forceCheckout, setForceCheckout] = useState(false);
 
   const [selectedTier, setSelectedTier] = useState<PlanTier>("iniciante");
   const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod>("monthly");
@@ -540,17 +509,29 @@ export default function AssinaturaPage() {
     subscriptionStatus !== "authorized" &&
     subscriptionStatus !== "past_due" &&
     subscriptionStatus !== "paused" &&
-    (subscriptionStatus === "canceling" ||
-      subscriptionStatus === "expired" ||
+    subscriptionStatus !== "canceling" &&
+    (subscriptionStatus === "expired" ||
       subscriptionStatus === "cancelled" ||
       !data.isActive);
+
+  const showCheckout = needsCheckout || forceCheckout;
 
   const canCancel =
     !!data &&
     !data.isSuperAdmin &&
     (subscriptionStatus === "authorized" || subscriptionStatus === "past_due");
 
-  const priceDimmed = displayStatus === "expired" || displayStatus === "cancelled";
+  const openCheckout = useCallback(
+    (tier: PlanTier, period: BillingPeriod) => {
+      setSelectedTier(tier);
+      setSelectedPeriod(period);
+      setCheckoutSelection({ tier, period });
+      setForceCheckout(true);
+      setError(null);
+      setSuccess(null);
+    },
+    [],
+  );
 
   const handleCancel = async () => {
     setCanceling(true);
@@ -576,7 +557,6 @@ export default function AssinaturaPage() {
         return;
       }
 
-      setShowCancelModal(false);
       setSuccess(
         json.access_until
           ? `Assinatura cancelada. Acesso até ${new Date(json.access_until).toLocaleDateString("pt-BR")}.`
@@ -586,6 +566,7 @@ export default function AssinaturaPage() {
       stopPolling();
       setPollingTimedOut(false);
       setCheckoutSelection(null);
+      setForceCheckout(false);
       setLoading(true);
       await loadStatus();
       router.refresh();
@@ -596,10 +577,10 @@ export default function AssinaturaPage() {
     }
   };
 
-  // Brick só monta após Assinar
+  // Brick só monta após Assinar / Alterar
   useEffect(() => {
     if (
-      !needsCheckout ||
+      !showCheckout ||
       !checkoutSelection ||
       !checkoutPlan ||
       !data?.publicKey ||
@@ -701,6 +682,8 @@ export default function AssinaturaPage() {
                 const latest = await loadStatus();
                 if (json.status === "authorized" || latest?.isActive) {
                   setAwaitingPayment(false);
+                  setForceCheckout(false);
+                  setCheckoutSelection(null);
                   stopPolling();
                   router.refresh();
                 }
@@ -736,7 +719,7 @@ export default function AssinaturaPage() {
       brickControllerRef.current = null;
     };
   }, [
-    needsCheckout,
+    showCheckout,
     checkoutSelection?.tier,
     checkoutSelection?.period,
     checkoutPlan?.billing.price,
@@ -756,12 +739,6 @@ export default function AssinaturaPage() {
   }
 
   const subscription = data?.subscription;
-  const studentUsage =
-    data?.studentLimit != null
-      ? formatStudentUsage(data.activeStudentCount, data.studentLimit)
-      : data?.isSuperAdmin
-        ? `${data.activeStudentCount} alunos`
-        : null;
 
   const statusPlanLabel = data?.currentPlan?.label ?? selectedPlan?.label ?? "—";
   const statusPrice = getPlanPrice(data!, selectedPlan);
@@ -787,38 +764,14 @@ export default function AssinaturaPage() {
         : periodEnd,
   );
 
-  const dateLine = (() => {
-    if (!accessEndDate) return null;
-    if (displayStatus === "canceling") {
-      return { label: "Acesso até", date: accessEndDate, color: "#7a8aab" };
-    }
-    if (displayStatus === "active" || displayStatus === "super_admin") {
-      return { label: "Próximo ciclo", date: accessEndDate, color: "#7a8aab" };
-    }
-    if (displayStatus === "past_due") {
-      return { label: "Acesso até", date: accessEndDate, color: "#f59e0b" };
-    }
-    if (displayStatus === "expired" || displayStatus === "cancelled") {
-      return { label: "Expirou em", date: accessEndDate, color: "#e05555" };
-    }
-    return null;
-  })();
-
   const monthlyRef = selectedPlan?.billingOptions.find((b) => b.period === "monthly");
   const cardLastFour = subscription?.card_last_four || null;
-  const billingLabel = statusPeriod ? BILLING_PERIOD_LABELS[statusPeriod] : null;
   const cancelAccessUntil = resolveAccessUntilOnCancel({
     currentPeriodEnd: subscription?.current_period_end,
     billingPeriod: data?.billingPeriod ?? data?.currentPlan?.period ?? null,
     planTier: data?.planTier ?? data?.currentPlan?.tier ?? null,
   });
   const cancelAccessUntilLabel = formatDateBR(cancelAccessUntil);
-  const showFinancialMeta =
-    displayStatus === "active" ||
-    displayStatus === "canceling" ||
-    displayStatus === "past_due" ||
-    displayStatus === "expired" ||
-    displayStatus === "cancelled";
 
   const planTabs = data && (
     <div className="flex flex-wrap gap-0 border-b border-divider">
@@ -925,15 +878,45 @@ export default function AssinaturaPage() {
     </div>
   );
 
+  const canReturnToManage =
+    displayStatus === "active" ||
+    displayStatus === "canceling" ||
+    displayStatus === "past_due" ||
+    displayStatus === "super_admin";
+
+  const showManageView = !forceCheckout && canReturnToManage;
+
+  const statusBadgeLabel =
+    displayStatus === "canceling"
+      ? "Cancelando"
+      : displayStatus === "past_due"
+        ? "Pendente"
+        : STATUS_LINE[displayStatus]?.label ?? "Ativo";
+
   return (
     <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <ScreenHeader
-        title="Assinatura"
-        subtitle={data?.siteUrl?.replace(/^https?:\/\//, "") || "auronfit.com.br"}
-        action={<BackButton href="/admin/perfil" aria-label="Voltar ao perfil" />}
-      />
+      <header className="sticky top-0 z-40 bg-surface-0 border-b border-border-divider">
+        <div className="relative flex items-center justify-center px-4 py-3 max-w-[min(1600px,96vw)] mx-auto">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            {forceCheckout && canReturnToManage ? (
+              <BackButton
+                onClick={() => {
+                  setForceCheckout(false);
+                  setCheckoutSelection(null);
+                }}
+                aria-label="Voltar ao meu plano"
+              />
+            ) : (
+              <BackButton href="/admin/perfil" aria-label="Voltar ao perfil" />
+            )}
+          </div>
+          <h1 className="text-base font-semibold text-text-primary">
+            {forceCheckout ? "Alterar plano" : "Meu plano"}
+          </h1>
+        </div>
+      </header>
 
-      <div className="px-4 w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-0">
+      <div className="px-4 pt-4 w-full max-w-[min(720px,96vw)] mx-auto flex flex-col gap-4">
         {data?.testDailyCycle && selectedTier === "test" && (
           <AlertLine borderColor="#e05555">
             <span className="text-[#e05555]">
@@ -950,7 +933,7 @@ export default function AssinaturaPage() {
         )}
 
         {success && (
-          <p className="text-[11px] font-semibold text-[#39c75a] py-3">{success}</p>
+          <p className="text-[11px] font-semibold text-success py-1">{success}</p>
         )}
 
         {awaitingPayment &&
@@ -958,147 +941,74 @@ export default function AssinaturaPage() {
           !data?.isActive &&
           data?.subscription?.status !== "canceling" &&
           displayStatus !== "canceling" && (
-          <p className="text-[11px] font-semibold text-[#f59e0b] py-3">
+          <p className="text-[11px] font-semibold text-warning py-1">
             {pollingTimedOut
               ? "Ainda não recebemos a confirmação. Você pode atualizar a página ou voltar em alguns minutos."
               : "Confirmando pagamento..."}
           </p>
         )}
 
-        {/* ── Status line ── */}
-        <section className="py-8 border-b border-divider">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-[#7a8aab] mb-2">
-                {data?.isSuperAdmin ? "Acesso admin" : statusPlanLabel}
-              </p>
-              {data?.isSuperAdmin ? (
-                <p className="text-2xl font-black text-white tracking-tight">Sem cobrança</p>
-              ) : (
-                <PriceHero price={statusPrice} period={statusPeriod} dimmed={priceDimmed} />
-              )}
-              {studentUsage && (
-                <p className="text-[11px] text-[#7a8aab] mt-3">{studentUsage} ativos</p>
-              )}
-            </div>
-
-            <div className="flex flex-col items-start sm:items-end justify-center gap-2">
-              <InlineStatus status={displayStatus} />
-              {dateLine && (
-                <p className="text-[11px] text-[#7a8aab]">
-                  {dateLine.label}{" "}
-                  <span style={{ color: dateLine.color }}>{dateLine.date}</span>
-                </p>
-              )}
-
-              {showFinancialMeta && !data?.isSuperAdmin && (
-                <div className="w-full sm:w-auto sm:min-w-[220px] mt-3 space-y-0.5">
-                  <MetaRow
-                    label="Forma de pagamento"
-                    value={cardLastFour ? `•••• ${cardLastFour}` : "—"}
-                  />
-                  {displayStatus === "past_due" ? (
-                    <MetaRow
-                      label="Última tentativa"
-                      value="recusada"
-                      valueColor="#f59e0b"
-                    />
-                  ) : displayStatus === "canceling" ? (
-                    <>
-                      <MetaRow label="Próxima cobrança" value="cancelada" />
-                      <MetaRow
-                        label="Cobrança"
-                        value="encerrada · sem novas cobranças"
-                      />
-                    </>
-                  ) : displayStatus === "active" ? (
-                    <>
-                      <MetaRow
-                        label="Próxima cobrança"
-                        value={
-                          accessEndDate
-                            ? `${accessEndDate} · ${formatCurrencyBRL(statusPrice)}`
-                            : "—"
-                        }
-                      />
-                      <MetaRow
-                        label="Cobrança"
-                        value={billingLabel ? `${billingLabel} · recorrente` : "—"}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <MetaRow label="Próxima cobrança" value="—" />
-                      <MetaRow label="Cobrança" value="—" />
-                    </>
-                  )}
-                </div>
-              )}
-
-              {canCancel && (
-                <button
-                  type="button"
-                  onClick={() => setShowCancelModal(true)}
-                  className="text-[11px] text-[#7a8aab] hover:text-[#e05555] underline underline-offset-[3px] transition-colors sm:ml-auto mt-2"
-                >
-                  cancelar assinatura
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <ConfirmModal
-          open={showCancelModal}
-          title="Cancelar assinatura?"
-          description={
-            cancelAccessUntilLabel
-              ? `Você mantém o acesso até ${cancelAccessUntilLabel}. Após essa data o painel será bloqueado. Não haverá novas cobranças.`
-              : "Após o cancelamento, o painel permanece ativo até o fim do ciclo atual. Não haverá novas cobranças."
-          }
-          confirmLabel="Sim, cancelar"
-          confirmVariant="danger"
-          loading={canceling}
-          onConfirm={handleCancel}
-          onClose={() => !canceling && setShowCancelModal(false)}
-        />
-
-        {displayStatus === "canceling" && accessEndDate && (
-          <section className="py-5 border-b border-divider">
-            <AlertLine borderColor="#7a8aab">
-              Renovação cancelada. Seu acesso continua até{" "}
-              <span className="text-white font-medium">{accessEndDate}</span>
-              . Não haverá novas cobranças. Se quiser continuar depois, escolha um
-              plano abaixo para reativar.
-            </AlertLine>
-          </section>
+        {displayStatus === "canceling" && accessEndDate && showManageView && (
+          <AlertLine borderColor="#7a8aab">
+            Renovação cancelada. Seu acesso continua até{" "}
+            <span className="text-text-primary font-medium">{accessEndDate}</span>
+            . Não haverá novas cobranças.
+          </AlertLine>
         )}
 
-        {displayStatus === "past_due" && accessEndDate && (
-          <section className="py-5 border-b border-divider">
-            <AlertLine borderColor="#f59e0b">
-              Cobrança recusada. Atualize seu cartão ou aguarde a retentativa.
-              <br />
-              Acesso garantido até{" "}
-              <span className="text-[#f59e0b] font-semibold">{accessEndDate}</span>.
-            </AlertLine>
-          </section>
+        {displayStatus === "past_due" && accessEndDate && showManageView && (
+          <AlertLine borderColor="#f59e0b">
+            Cobrança recusada. Atualize seu cartão ou aguarde a retentativa.
+            <br />
+            Acesso garantido até{" "}
+            <span className="text-warning font-semibold">{accessEndDate}</span>.
+          </AlertLine>
         )}
 
         {(displayStatus === "expired" || displayStatus === "cancelled") && needsCheckout && (
-          <section className="py-5 border-b border-divider">
-            <AlertLine borderColor="#e05555">
-              <span className="text-[#e05555] font-medium">Seu acesso foi pausado.</span>
-              <br />
-              Todos os dados dos seus alunos estão preservados.
-              <br />
-              Reative para continuar prescrevendo.
-            </AlertLine>
-          </section>
+          <AlertLine borderColor="#e05555">
+            <span className="text-danger font-medium">Seu acesso foi pausado.</span>
+            <br />
+            Todos os dados dos seus alunos estão preservados.
+            <br />
+            Reative para continuar prescrevendo.
+          </AlertLine>
         )}
 
-        {needsCheckout && data!.plans.length > 0 && (
-          <section className="pt-8 pb-12 border-b border-divider">
+        {showManageView && data && (
+          <MeuPlanoView
+            planLabel={data.isSuperAdmin ? "ADMIN" : statusPlanLabel}
+            price={data.isSuperAdmin ? 0 : statusPrice}
+            billingPeriod={statusPeriod}
+            renewalDateLabel={accessEndDate}
+            statusBadge={statusBadgeLabel}
+            isActive={displayStatus === "active" || displayStatus === "super_admin"}
+            cardLastFour={cardLastFour}
+            canCancel={canCancel}
+            canceling={canceling}
+            cancelAccessUntilLabel={cancelAccessUntilLabel}
+            onCancel={handleCancel}
+            onAlterarPlano={(tier, period) => openCheckout(tier, period)}
+            onAlterarPagamento={() => {
+              const tier = data.currentPlan?.tier ?? data.planTier ?? selectedTier;
+              const period =
+                data.currentPlan?.period ?? data.billingPeriod ?? selectedPeriod;
+              openCheckout(tier, period);
+            }}
+            plans={data.plans}
+            currentTier={data.currentPlan?.tier ?? data.planTier}
+            currentPeriod={data.currentPlan?.period ?? data.billingPeriod}
+          />
+        )}
+
+        {showCheckout && data!.plans.length > 0 && (
+          <section className="pt-2 pb-12">
+            {forceCheckout && (
+              <p className="text-sm text-text-secondary mb-4">
+                Confirme o novo plano e a forma de pagamento abaixo.
+              </p>
+            )}
+
             {!data?.publicKey && (
               <div className="mb-6">
                 <AlertLine borderColor="#f59e0b">
@@ -1110,11 +1020,10 @@ export default function AssinaturaPage() {
 
             {planTabs}
 
-            {/* Desktop ≥1024 com Brick: resumo sticky + formulário */}
             {checkoutSelection && isDesktop && data?.publicKey ? (
               <div className="grid gap-12 mt-8" style={{ gridTemplateColumns: "320px 1fr" }}>
                 <aside className="sticky top-6 self-start">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-[#7a8aab] mb-2">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary mb-2">
                     {selectedPlan?.label}
                   </p>
                   {selectedPlan && (
@@ -1124,7 +1033,7 @@ export default function AssinaturaPage() {
                       size="md"
                     />
                   )}
-                  <p className="text-[11px] text-[#7a8aab] mt-2">
+                  <p className="text-[11px] text-text-secondary mt-2">
                     {selectedPeriod ? BILLING_PERIOD_LABELS[selectedPeriod] : ""}
                   </p>
                   {periodControl}
@@ -1138,10 +1047,10 @@ export default function AssinaturaPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <div>
                       <PriceHero price={selectedPlan.billing.price} period={selectedPeriod} />
-                      <p className="text-xs text-[#7a8aab] mt-3 leading-relaxed">
+                      <p className="text-xs text-text-secondary mt-3 leading-relaxed">
                         {selectedPlan.description}
                       </p>
-                      <p className="text-[11px] text-[#7a8aab] mt-2">
+                      <p className="text-[11px] text-text-secondary mt-2">
                         {formatPlanStudentCap(selectedPlan.tier, selectedPlan.studentLimit)} · cobrança recorrente
                       </p>
                       {periodControl}
@@ -1166,10 +1075,10 @@ export default function AssinaturaPage() {
                 )}
 
                 {checkoutSelection && data?.publicKey && (
-                  <div className="mt-8 border-t border-divider pt-6">
+                  <div className="mt-8 border-t border-border-divider pt-6">
                     {selectedPlan && (
                       <div className="mb-6 sm:hidden">
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-[#7a8aab] mb-2">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary mb-2">
                           Resumo
                         </p>
                         <PriceHero
@@ -1188,12 +1097,13 @@ export default function AssinaturaPage() {
           </section>
         )}
 
-        {!needsCheckout &&
+        {!showCheckout &&
+          !showManageView &&
           !data?.isActive &&
           !data?.isSuperAdmin &&
           subscription?.status === "pending" && (
-            <section className="py-8 border-b border-divider">
-              <p className="text-xs text-[#7a8aab] mb-4">
+            <section className="py-8">
+              <p className="text-xs text-text-secondary mb-4">
                 Assinatura pendente de confirmação. Aguarde alguns instantes.
               </p>
               <Button

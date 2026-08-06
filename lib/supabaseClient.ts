@@ -30,17 +30,36 @@ function isPublicAuthPath(pathname: string) {
 
 // Global error handler for auth errors
 if (typeof window !== 'undefined') {
+  // Ao voltar de segundo plano (troca de app no PWA), o Supabase tenta renovar o
+  // token sozinho — às vezes emite SIGNED_OUT de forma transitória antes desse
+  // refresh terminar (rede ainda reconectando). Em vez de deslogar na hora,
+  // espera um instante e confirma se a sessão realmente sumiu antes de redirecionar.
+  let signOutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const cancelPendingSignOut = () => {
+    if (signOutTimer) {
+      clearTimeout(signOutTimer);
+      signOutTimer = null;
+    }
+  };
+
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' && !isPublicAuthPath(window.location.pathname)) {
       if (!navigator.onLine) return;
-      localStorage.removeItem('sb-auth-token');
-      window.location.href = '/login';
+      cancelPendingSignOut();
+      signOutTimer = setTimeout(async () => {
+        signOutTimer = null;
+        const { data } = await supabaseClient.auth.getSession();
+        if (!data.session) {
+          window.location.href = '/login';
+        }
+      }, 1500);
+      return;
     }
 
-    if (event === 'TOKEN_REFRESHED' && !session) {
-      if (isPublicAuthPath(window.location.pathname)) return;
-      localStorage.removeItem('sb-auth-token');
-      window.location.href = '/login';
+    // Sessão confirmada (login ou refresh com sucesso) — cancela o logout pendente
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+      cancelPendingSignOut();
     }
   });
 }

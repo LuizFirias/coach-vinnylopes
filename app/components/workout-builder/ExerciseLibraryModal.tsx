@@ -47,6 +47,8 @@ type FiltroDropdownProps = {
   onSelect: (v: FiltroValor) => void;
   aberto: boolean;
   onToggle: () => void;
+  /** Alinhamento do menu — músculo (primeiro) usa left para não cortar no mobile */
+  align?: "left" | "right";
 };
 
 export function FiltroDropdown({
@@ -56,6 +58,7 @@ export function FiltroDropdown({
   onSelect,
   aberto,
   onToggle,
+  align = "left",
 }: FiltroDropdownProps) {
   const ativo = valor !== null;
   const rootRef = useRef<HTMLDivElement>(null);
@@ -108,7 +111,10 @@ export function FiltroDropdown({
       {aberto && (
         <div
           role="listbox"
-          className="absolute top-[calc(100%+6px)] right-0 z-[80] min-w-[180px] max-h-60 overflow-y-auto rounded-[10px] border border-brand/20 bg-surface-1 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          className={cn(
+            "absolute top-[calc(100%+6px)] z-[80] w-max min-w-[180px] max-w-[min(240px,calc(100vw-2.5rem))] max-h-60 overflow-y-auto rounded-[10px] border border-brand/20 bg-surface-1 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]",
+            align === "left" ? "left-0" : "right-0",
+          )}
         >
           <button
             type="button"
@@ -366,6 +372,7 @@ export function ExerciseLibraryModal({
               onSelect={setFiltroMusculo}
               aberto={dropdownAberto === "musculo"}
               onToggle={() => toggleDropdown("musculo")}
+              align="left"
             />
             <FiltroDropdown
               label="Equipamento"
@@ -374,6 +381,7 @@ export function ExerciseLibraryModal({
               onSelect={setFiltroEquipamento}
               aberto={dropdownAberto === "equipamento"}
               onToggle={() => toggleDropdown("equipamento")}
+              align="left"
             />
             <FiltroDropdown
               label="Tipo"
@@ -382,6 +390,7 @@ export function ExerciseLibraryModal({
               onSelect={setFiltroTipo}
               aberto={dropdownAberto === "tipo"}
               onToggle={() => toggleDropdown("tipo")}
+              align="right"
             />
           </div>
 

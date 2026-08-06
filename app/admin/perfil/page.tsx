@@ -16,16 +16,17 @@ import {
   SignOut,
   Lock,
   Camera,
-  CreditCard,
   FloppyDisk,
   CircleNotch,
   Plus,
   X,
-  Gear,
-  CaretLeft,
   CaretRight,
   Envelope,
   Tag,
+  Bell,
+  PencilSimple,
+  Check,
+  CaretDown,
 } from "@phosphor-icons/react";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
@@ -39,6 +40,12 @@ import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { formatStudentUsage, getPlanLabel } from "@/lib/subscriptions/plans";
 import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
 import { invalidateBootstrapProfile } from "@/lib/auth/bootstrapProfile";
+import {
+  getPushPermission,
+  isSubscribedToPush,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "@/lib/push/client";
 import {
   COACH_COVER_SPECS,
   EMPTY_PUBLIC_PROFILE,
@@ -146,7 +153,6 @@ function SettingsSection({
 
 export default function CoachPerfilPage() {
   const router = useRouter();
-  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -160,6 +166,8 @@ export default function CoachPerfilPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [mercadoNotice, setMercadoNotice] = useState<string | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"loading" | "unsupported" | "on" | "off" | "denied">("loading");
+  const [pushBusy, setPushBusy] = useState(false);
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [planName, setPlanName] = useState("AuronFit");
   const [studentUsage, setStudentUsage] = useState<string | null>(null);
@@ -168,6 +176,8 @@ export default function CoachPerfilPage() {
   const [coachSinceYear, setCoachSinceYear] = useState<number | null>(null);
   const [publicForm, setPublicForm] = useState<CoachPublicProfileForm>(EMPTY_PUBLIC_PROFILE);
   const [certDraft, setCertDraft] = useState("");
+  const [editingIdentity, setEditingIdentity] = useState(false);
+  const [painelOpen, setPainelOpen] = useState(false);
   const baselineRef = useRef("");
 
   const snapshot = useCallback(
@@ -390,6 +400,45 @@ export default function CoachPerfilPage() {
     }
   };
 
+  const refreshPushStatus = useCallback(async () => {
+    const permission = getPushPermission();
+    if (permission === "unsupported") {
+      setPushStatus("unsupported");
+      return;
+    }
+    if (permission === "denied") {
+      setPushStatus("denied");
+      return;
+    }
+    const subscribed = await isSubscribedToPush();
+    setPushStatus(subscribed ? "on" : "off");
+  }, []);
+
+  useEffect(() => {
+    void refreshPushStatus();
+  }, [refreshPushStatus]);
+
+  const handleTogglePush = async () => {
+    if (pushBusy) return;
+    setPushBusy(true);
+    try {
+      if (pushStatus === "on") {
+        await unsubscribeFromPush();
+        setPushStatus("off");
+      } else {
+        const result = await subscribeToPush();
+        if (result.ok) {
+          setPushStatus("on");
+        } else {
+          setError(result.error);
+          await refreshPushStatus();
+        }
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   const validateProfessional = (): string | null => {
     if (publicForm.handle && !isValidHandle(normalizeHandle(publicForm.handle))) {
       return "Instagram @ inválido (3–30 caracteres: letras, números, . e _)";
@@ -428,7 +477,6 @@ export default function CoachPerfilPage() {
     const validationError = validateProfessional();
     if (validationError) {
       setError(validationError);
-      setShowSettings(false);
       return;
     }
 
@@ -497,44 +545,153 @@ export default function CoachPerfilPage() {
   const primeiroNome =
     (fullName ?? "").trim().split(/\s+/).filter(Boolean)[0] || "Coach";
   const saveDisabled = saving || uploadingAvatar || !isDirty;
+  const emailDisplay =
+    email.length > 22 ? `${email.slice(0, 20)}…` : email;
 
-  const headerActions = (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => setShowSettings(true)}
-        className="w-11 h-11 shrink-0 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors active:scale-95 cursor-pointer touch-manipulation"
-        title="Configurações da conta"
-        aria-label="Abrir configurações da conta"
-      >
-        <Gear size={20} />
-      </button>
-    </div>
-  );
+  return (
+    <div className="perfil-page min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
+      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
+        <div className="px-4 max-w-2xl mx-auto pt-3 pb-4">
+          <h1 className="perfil-page-heading min-w-0 text-xl md:text-2xl font-extrabold tracking-tight font-display">
+            Olá, <span className="text-brand">{primeiroNome}</span>
+          </h1>
+        </div>
+      </div>
 
-  if (showSettings) {
-    const emailDisplay =
-      email.length > 22 ? `${email.slice(0, 20)}…` : email;
+      <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4 pt-4">
+        {error && (
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle text-danger text-xs font-semibold">
+            <div className="w-1.5 h-1.5 rounded-full bg-danger shrink-0 animate-pulse" />
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-success-subtle text-success text-xs font-semibold">
+            <div className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+            {success}
+          </div>
+        )}
+        {mercadoNotice && (
+          <div className="px-4 py-2.5 rounded-lg bg-brand/5 text-xs text-text-secondary">
+            {mercadoNotice}
+          </div>
+        )}
 
-    return (
-      <div className="perfil-page min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
-        <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
-          <div className="px-4 max-w-2xl mx-auto pt-4 pb-3 flex items-center gap-3">
+        <form
+          onSubmit={(e) => void handleSave(e)}
+          className="flex flex-col gap-4 min-w-0"
+        >
+          <Card className="perfil-form-card relative rounded-xl border-0 p-3.5 sm:p-4">
             <button
               type="button"
-              onClick={() => setShowSettings(false)}
-              className="inline-flex items-center gap-1.5 min-h-11 text-xs text-text-tertiary hover:text-text-primary transition-colors touch-manipulation"
+              onClick={() => setEditingIdentity((v) => !v)}
+              className="absolute top-2.5 right-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-lg text-text-tertiary hover:text-brand hover:bg-brand/5 transition-colors border-0 bg-transparent cursor-pointer touch-manipulation"
+              aria-label={editingIdentity ? "Concluir edição da identidade" : "Editar identidade"}
+              title={editingIdentity ? "Concluir" : "Editar"}
             >
-              <CaretLeft size={16} />
-              Voltar
+              {editingIdentity ? (
+                <Check size={16} weight="bold" />
+              ) : (
+                <PencilSimple size={16} />
+              )}
             </button>
-            <h1 className="perfil-page-heading flex-1 text-lg font-bold tracking-tight">
-              Configurações
-            </h1>
-          </div>
-        </div>
 
-        <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4 pt-4">
+            <div className="flex items-start gap-3.5 pr-10">
+              <div className="relative shrink-0">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-surface-3 border-0 flex items-center justify-center">
+                  {uploadingAvatar ? (
+                    <CircleNotch size={20} className="animate-spin text-brand" />
+                  ) : avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={
+                        avatarUrl.startsWith("data:")
+                          ? avatarUrl
+                          : getPublicStorageUrl("avatars", avatarUrl) || ""
+                      }
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-lg font-bold text-text-tertiary">
+                      {fullName?.charAt(0)?.toUpperCase() || "C"}
+                    </span>
+                  )}
+                </div>
+                <label
+                  className={cn(
+                    "absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-md cursor-pointer",
+                    "bg-brand hover:bg-brand/90 active:scale-95 transition-all",
+                    "flex items-center justify-center text-text-on-brand",
+                    uploadingAvatar && "pointer-events-none opacity-50",
+                  )}
+                >
+                  <Camera className="w-3 h-3" />
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    disabled={uploadingAvatar}
+                    onChange={handleAvatarChange}
+                  />
+                </label>
+              </div>
+
+              <div className="field-flat-input flex-1 min-w-0 pt-0.5">
+                <div className="min-w-0">
+                  {editingIdentity ? (
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Nome de exibição"
+                      autoFocus
+                      aria-label="Nome de exibição"
+                      className="w-full text-sm font-semibold text-text-primary placeholder:text-text-disabled placeholder:font-medium leading-tight"
+                    />
+                  ) : (
+                    <p className="text-sm font-semibold text-text-primary truncate leading-tight">
+                      {fullName.trim() || "Nome de exibição"}
+                    </p>
+                  )}
+
+                  {editingIdentity ? (
+                    <div className="mt-1 flex items-baseline gap-0.5">
+                      <span className="text-xs font-medium text-brand shrink-0 leading-tight">
+                        @
+                      </span>
+                      <input
+                        type="text"
+                        name="handle"
+                        value={publicForm.handle}
+                        onChange={(e) =>
+                          patchPublic("handle", normalizeHandle(e.target.value))
+                        }
+                        placeholder="instagram"
+                        aria-label="@ do Instagram"
+                        className="min-w-0 flex-1 text-xs font-medium text-brand placeholder:text-text-disabled placeholder:font-normal leading-tight"
+                      />
+                    </div>
+                  ) : (
+                    <p
+                      className={cn(
+                        "text-xs mt-1 truncate leading-tight",
+                        publicForm.handle
+                          ? "text-brand font-medium"
+                          : "text-text-tertiary",
+                      )}
+                    >
+                      {publicForm.handle
+                        ? `@${publicForm.handle}`
+                        : "@ do Instagram"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <SettingsSection title="Assinatura">
             {studentLimit != null ? (
               <div className="px-3 pb-3">
@@ -551,100 +708,29 @@ export default function CoachPerfilPage() {
                 {studentUsage ? ` · ${studentUsage}` : null}
               </div>
             )}
-            <SettingsRow
-              icon={CreditCard}
-              label="Gerenciar assinatura"
-              href="/admin/assinatura"
-            />
           </SettingsSection>
 
-          <SettingsSection title="Negócio">
-            <SettingsRow
-              icon={Tag}
-              label="Planos de venda"
-              value="Personalize suas modalidades"
-              href="/admin/planos"
-            />
-          </SettingsSection>
-
-          <SettingsSection title="Acesso">
-            <SettingsRow icon={Envelope} label="E-mail" value={emailDisplay} />
-            <SettingsRow
-              icon={Lock}
-              label="Trocar senha"
-              onClick={() => setChangePasswordModalOpen(true)}
-            />
-          </SettingsSection>
-
-          <SettingsSection title="Sessão">
-            <SettingsRow
-              icon={SignOut}
-              label="Sair da conta"
-              onClick={() => void handleLogout()}
-              danger
-            />
-          </SettingsSection>
-        </div>
-
-        <ChangePasswordModal
-          isOpen={changePasswordModalOpen}
-          onClose={() => setChangePasswordModalOpen(false)}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="perfil-page min-h-screen bg-surface-0 pb-24 lg:pb-12 lg:pl-28">
-      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
-        <div className="px-4 max-w-[min(1200px,96vw)] mx-auto pt-3 pb-4 flex items-center justify-between gap-3">
-          <h1 className="perfil-page-heading min-w-0 text-xl md:text-2xl font-extrabold tracking-tight font-display">
-            Olá, <span className="text-brand">{primeiroNome}</span>
-          </h1>
-          {headerActions}
-        </div>
-      </div>
-
-      <div className="px-4 max-w-[min(1200px,96vw)] mx-auto flex flex-col gap-4 pt-4">
-        {error && (
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle text-danger text-xs font-semibold">
-            <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-success-subtle text-success text-xs font-semibold">
-            <div className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
-            {success}
-          </div>
-        )}
-        {mercadoNotice && (
-          <div className="px-4 py-2.5 rounded-lg bg-brand/5 text-xs text-text-secondary">
-            {mercadoNotice}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
-            {/* Desktop: mesma linha do topo que Identidade */}
-            <aside className="hidden lg:block lg:sticky lg:top-16 self-start space-y-3">
-              <PublicProfilePreviewCard
-                form={publicForm}
-                fullName={fullName}
-                avatarUrl={avatarUrl}
-                activeStudents={activeStudents}
-                coachSinceYear={coachSinceYear}
-              />
-              <p className="text-[10px] text-text-tertiary px-1">
-                Preview ao vivo do card público no Mercado
-              </p>
-            </aside>
-
-            <form
-              onSubmit={(e) => void handleSave(e)}
-              className="flex flex-col gap-5 min-w-0"
+          <div className="rounded-xl bg-surface-1 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setPainelOpen((v) => !v)}
+              aria-expanded={painelOpen}
+              className="w-full text-left border-0 bg-transparent cursor-pointer touch-manipulation"
             >
-              {/* Mobile: imediatamente acima de Identidade */}
-              <div className="lg:hidden">
+              <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+                <span className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+                  Painel profissional
+                </span>
+                <CaretDown
+                  size={14}
+                  weight="bold"
+                  className={cn(
+                    "text-text-tertiary shrink-0 transition-transform duration-200",
+                    painelOpen && "rotate-180",
+                  )}
+                />
+              </div>
+              <div className="px-3 pb-3 pointer-events-none">
                 <PublicProfilePreviewCard
                   form={publicForm}
                   fullName={fullName}
@@ -653,199 +739,132 @@ export default function CoachPerfilPage() {
                   coachSinceYear={coachSinceYear}
                   compact
                 />
+                <p className="text-[10px] text-text-tertiary px-1 mt-2">
+                  {painelOpen
+                    ? "Preview do card público no Mercado — edite os campos abaixo"
+                    : "Preview do card público no Mercado — toque para editar"}
+                </p>
+              </div>
+            </button>
+
+            {painelOpen && (
+            <div className="px-4 pb-5 space-y-5 border-t border-border-divider pt-4">
+              <Input
+                label="Headline"
+                name="headline"
+                value={publicForm.headline}
+                maxLength={60}
+                onChange={(e) => patchPublic("headline", e.target.value)}
+                placeholder="Especialista em Hipertrofia e Emagrecimento"
+                helperText={`${publicForm.headline.length}/60`}
+              />
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="bio"
+                  className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary"
+                >
+                  Bio / Sobre mim
+                </label>
+                <textarea
+                  id="bio"
+                  value={publicForm.bio}
+                  maxLength={500}
+                  rows={4}
+                  onChange={(e) => patchPublic("bio", e.target.value)}
+                  placeholder="Conte sua abordagem, experiência e para quem você trabalha…"
+                  className="w-full min-h-[96px] resize-y rounded-[10px] bg-surface-2 border-0 px-3.5 pt-3.5 pb-3 text-[16px] font-medium text-text-primary placeholder:text-text-disabled placeholder:font-normal placeholder:text-[12px] focus:outline-none focus:ring-1 focus:ring-brand/30"
+                />
+                <p className="text-[12px] text-text-tertiary leading-tight">
+                  {publicForm.bio.length}/500
+                </p>
+              </div>
+              <Input
+                label="CREF"
+                name="cref"
+                value={publicForm.cref}
+                onChange={(e) =>
+                  patchPublic("cref", formatCrefInput(e.target.value))
+                }
+                placeholder="000000-G/SP"
+                helperText="Opcional, mas reforça confiança"
+              />
+              <Input
+                label="Anos de experiência"
+                name="years"
+                type="number"
+                min={0}
+                max={60}
+                value={publicForm.yearsExperience}
+                onChange={(e) => patchPublic("yearsExperience", e.target.value)}
+                placeholder="Ex: 8"
+              />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary mb-2">
+                  Certificações / formação
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={certDraft}
+                    onChange={(e) => setCertDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCertification();
+                      }
+                    }}
+                    placeholder="Ex: Pós em Fisiologia — USP"
+                    className="flex-1 h-11 rounded-[10px] px-3.5 text-sm bg-surface-2 border-0 text-text-primary placeholder:text-text-disabled"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCertification}
+                    className="h-11 w-11 rounded-lg border-0 text-brand flex items-center justify-center touch-manipulation"
+                    aria-label="Adicionar"
+                  >
+                    <Plus size={16} weight="bold" />
+                  </button>
+                </div>
+                {publicForm.certifications.length > 0 && (
+                  <ul className="mt-2 space-y-1.5">
+                    {publicForm.certifications.map((c, i) => (
+                      <li
+                        key={`${c}-${i}`}
+                        className="flex items-center gap-2 text-xs text-text-primary bg-surface-2 border-0 rounded-lg px-3 py-2"
+                      >
+                        <span className="flex-1 min-w-0">{c}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            patchPublic(
+                              "certifications",
+                              publicForm.certifications.filter((_, idx) => idx !== i),
+                            )
+                          }
+                          className="text-text-tertiary hover:text-danger"
+                          aria-label="Remover"
+                        >
+                          <X size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
-              {/* Identidade */}
-              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-4">
-                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
-                  Identidade
-                </h3>
-                <div className="flex items-center gap-4">
-                  <div className="relative shrink-0">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-3 border-0 flex items-center justify-center">
-                      {uploadingAvatar ? (
-                        <CircleNotch size={22} className="animate-spin text-brand" />
-                      ) : avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={
-                            avatarUrl.startsWith("data:")
-                              ? avatarUrl
-                              : getPublicStorageUrl("avatars", avatarUrl) || ""
-                          }
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-xl font-bold text-text-tertiary">
-                          {fullName?.charAt(0)?.toUpperCase() || "C"}
-                        </span>
-                      )}
-                    </div>
-                    <label
-                      className={cn(
-                        "absolute -bottom-1 -right-1 w-7 h-7 rounded-lg cursor-pointer",
-                        "bg-brand hover:bg-brand/90 active:scale-95 transition-all",
-                        "flex items-center justify-center text-text-on-brand",
-                        uploadingAvatar && "pointer-events-none opacity-50",
-                      )}
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        disabled={uploadingAvatar}
-                        onChange={handleAvatarChange}
-                      />
-                    </label>
-                  </div>
-                  <div className="flex-1 grid gap-3">
-                    <Input
-                      label="Nome de exibição"
-                      name="fullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Ex: Prof. Ricardo Silva"
-                    />
-                    <Input
-                      label="@ do Instagram"
-                      name="handle"
-                      value={publicForm.handle}
-                      onChange={(e) =>
-                        patchPublic("handle", normalizeHandle(e.target.value))
-                      }
-                      placeholder="seu_usuario"
-                      helperText="Mesmo @ da sua conta. Aparece no rodapé das imagens compartilháveis no fim do treino do aluno."
-                    />
-                  </div>
-                </div>
-              </Card>
-
-              {/* Profissional */}
-              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-4">
-                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
-                  Perfil profissional
-                </h3>
-                <Input
-                  label="Headline"
-                  name="headline"
-                  value={publicForm.headline}
-                  maxLength={60}
-                  onChange={(e) => patchPublic("headline", e.target.value)}
-                  placeholder="Especialista em Hipertrofia e Emagrecimento"
-                  helperText={`${publicForm.headline.length}/60`}
-                />
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="bio"
-                    className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary"
-                  >
-                    Bio / Sobre mim
-                  </label>
-                  <textarea
-                    id="bio"
-                    value={publicForm.bio}
-                    maxLength={500}
-                    rows={4}
-                    onChange={(e) => patchPublic("bio", e.target.value)}
-                    placeholder="Conte sua abordagem, experiência e para quem você trabalha…"
-                    className="w-full min-h-[96px] resize-y rounded-[10px] bg-surface-2 border-0 px-3.5 pt-3.5 pb-3 text-[16px] font-medium text-text-primary placeholder:text-text-disabled placeholder:font-normal placeholder:text-[12px] focus:outline-none focus:ring-1 focus:ring-brand/30"
-                  />
-                  <p id="bio-helper" className="text-[12px] text-text-tertiary leading-tight">
-                    {publicForm.bio.length}/500
-                  </p>
-                </div>
-                <Input
-                  label="CREF"
-                  name="cref"
-                  value={publicForm.cref}
-                  onChange={(e) =>
-                    patchPublic("cref", formatCrefInput(e.target.value))
-                  }
-                  placeholder="000000-G/SP"
-                  helperText="Opcional, mas reforça confiança"
-                />
-                <Input
-                  label="Anos de experiência"
-                  name="years"
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={publicForm.yearsExperience}
-                  onChange={(e) => patchPublic("yearsExperience", e.target.value)}
-                  placeholder="Ex: 8"
-                />
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary mb-2">
-                    Certificações / formação
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      value={certDraft}
-                      onChange={(e) => setCertDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addCertification();
-                        }
-                      }}
-                      placeholder="Ex: Pós em Fisiologia — USP"
-                      className="flex-1 h-11 rounded-[10px] px-3.5 text-sm bg-surface-2 border-0 text-text-primary placeholder:text-text-disabled"
-                    />
-                    <button
-                      type="button"
-                      onClick={addCertification}
-                      className="h-11 w-11 rounded-lg border-0 text-brand flex items-center justify-center touch-manipulation"
-                      aria-label="Adicionar"
-                    >
-                      <Plus size={16} weight="bold" />
-                    </button>
-                  </div>
-                  {publicForm.certifications.length > 0 && (
-                    <ul className="mt-2 space-y-1.5">
-                      {publicForm.certifications.map((c, i) => (
-                        <li
-                          key={`${c}-${i}`}
-                          className="flex items-center gap-2 text-xs text-text-primary bg-surface-2 border-0 rounded-lg px-3 py-2"
-                        >
-                          <span className="flex-1 min-w-0">{c}</span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              patchPublic(
-                                "certifications",
-                                publicForm.certifications.filter((_, idx) => idx !== i),
-                              )
-                            }
-                            className="text-text-tertiary hover:text-danger"
-                            aria-label="Remover"
-                          >
-                            <X size={14} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </Card>
-
-              {/* Especialidades */}
-              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
-                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+              <div>
+                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px] mb-3">
                   Especialidades
-                </h3>
+                </p>
                 <SpecialtyTagSelector
                   value={publicForm.specialties}
                   onChange={(next) => patchPublic("specialties", next)}
                 />
-              </Card>
+              </div>
 
-              {/* Atendimento */}
-              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-4">
-                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+              <div className="space-y-4">
+                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Atendimento
-                </h3>
+                </p>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                     Modalidade
@@ -884,21 +903,17 @@ export default function CoachPerfilPage() {
                     ...PRICE_PRESETS.map((p) => ({ value: p, label: p })),
                   ]}
                 />
-              </Card>
+              </div>
 
-              {/* Galeria */}
-              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
-                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+              <div className="space-y-3">
+                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Galeria e capa
-                </h3>
-                <div className="rounded-lg border-0 bg-surface-1 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
+                </p>
+                <div className="rounded-lg border-0 bg-surface-2/60 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
                   <p className="font-semibold text-text-primary mb-0.5">
                     Capa sugerida: {COACH_COVER_SPECS.displayLabel} ({COACH_COVER_SPECS.ratioLabel})
                   </p>
                   <p>{COACH_COVER_SPECS.tip}</p>
-                  <p className="mt-1 text-text-tertiary">
-                    A 1ª foto vira a capa do card. No desktop o preview lateral usa ~360×144; no mobile do Mercado a mesma proporção evita corte estranho.
-                  </p>
                 </div>
                 {profileId && (
                   <PhotoGalleryUploader
@@ -908,37 +923,30 @@ export default function CoachPerfilPage() {
                     onUploadError={(msg) => setError(msg)}
                   />
                 )}
-              </Card>
+              </div>
 
-              {/* Redes */}
-              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
-                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
-                  Redes
-                </h3>
-                <Input
-                  label="Link do Instagram"
-                  name="instagram"
-                  value={publicForm.instagram}
-                  onChange={(e) => patchPublic("instagram", e.target.value)}
-                  onBlur={() => {
-                    const normalized = normalizeInstagramUrl(
-                      publicForm.instagram,
-                      publicForm.handle,
-                    );
-                    if (normalized && normalized !== publicForm.instagram) {
-                      patchPublic("instagram", normalized);
-                    }
-                  }}
-                  placeholder="https://instagram.com/seu_usuario"
-                  helperText="Cole o link completo. Quando o aluno tocar, abre direto o perfil no Instagram."
-                />
-              </Card>
+              <Input
+                label="Link do Instagram"
+                name="instagram"
+                value={publicForm.instagram}
+                onChange={(e) => patchPublic("instagram", e.target.value)}
+                onBlur={() => {
+                  const normalized = normalizeInstagramUrl(
+                    publicForm.instagram,
+                    publicForm.handle,
+                  );
+                  if (normalized && normalized !== publicForm.instagram) {
+                    patchPublic("instagram", normalized);
+                  }
+                }}
+                placeholder="https://instagram.com/seu_usuario"
+                helperText="Link completo — abre o perfil no Instagram."
+              />
 
-              {/* Mercado */}
-              <Card className="perfil-form-card rounded-xl border-0 p-5 space-y-3">
-                <h3 className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+              <div className="space-y-3">
+                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
                   Mercado
-                </h3>
+                </p>
                 <AvailabilityToggle
                   emphasized
                   checked={publicForm.disponivelNoMercado}
@@ -958,9 +966,57 @@ export default function CoachPerfilPage() {
                   label="Exibir nº de alunos ativos"
                   description="Selo social no card público."
                 />
-              </Card>
-            </form>
+              </div>
+            </div>
+            )}
           </div>
+        </form>
+
+        <SettingsSection title="Negócio">
+          <SettingsRow
+            icon={Tag}
+            label="Planos de venda"
+            value="Personalize suas modalidades"
+            href="/admin/planos"
+          />
+        </SettingsSection>
+
+        {pushStatus !== "unsupported" && (
+          <SettingsSection title="Notificações">
+            <SettingsRow
+              icon={Bell}
+              label="Avisos no celular"
+              value={
+                pushBusy
+                  ? "Aguarde…"
+                  : pushStatus === "on"
+                    ? "Ativado"
+                    : pushStatus === "denied"
+                      ? "Bloqueado no navegador"
+                      : "Desativado — toque pra ativar"
+              }
+              onClick={pushStatus === "denied" ? undefined : () => void handleTogglePush()}
+            />
+          </SettingsSection>
+        )}
+
+        <SettingsSection title="Acesso">
+          <SettingsRow icon={Envelope} label="E-mail" value={emailDisplay} />
+          <SettingsRow
+            icon={Lock}
+            label="Trocar senha"
+            onClick={() => setChangePasswordModalOpen(true)}
+          />
+        </SettingsSection>
+
+        <SettingsSection title="Sessão">
+          <SettingsRow
+            icon={SignOut}
+            label="Sair da conta"
+            onClick={() => void handleLogout()}
+            danger
+          />
+        </SettingsSection>
       </div>
 
       {(isDirty || saving) && (
@@ -979,7 +1035,6 @@ export default function CoachPerfilPage() {
             "disabled:opacity-60",
           )}
         >
-          {/* Brilho interno */}
           <span
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.42)_0%,rgba(255,255,255,0.08)_38%,transparent_62%)]"

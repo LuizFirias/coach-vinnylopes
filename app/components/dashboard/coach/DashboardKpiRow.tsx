@@ -223,20 +223,20 @@ export function DashboardKpiRow({
         )}
       >
         <CoachKpiCard
-          dot="green"
-          label="Alunos ativos"
-          value={activeStudents}
-          subtitle={activeStudentsSubtitle}
-          infoText="Alunos com plano pago e vigente na sua consultoria."
-          compact={compact}
-        />
-        <CoachKpiCard
           dot="blue"
           label="MRR ativo"
           value={formatCurrency(mrr)}
           subtitle="Recorrência mensal"
           infoText="Receita mensal estimada a partir dos planos ativos — mensal, trimestral, semestral ou anual rateados."
           delta={mrrDeltaPercent}
+          compact={compact}
+        />
+        <CoachKpiCard
+          dot="green"
+          label="Alunos ativos"
+          value={activeStudents}
+          subtitle={activeStudentsSubtitle}
+          infoText="Alunos com plano pago e vigente na sua consultoria."
           compact={compact}
         />
         <CoachKpiCard
@@ -253,7 +253,7 @@ export function DashboardKpiRow({
           label="Atualizações"
           value={pendingCheckIns}
           subtitle="Nos últimos 7 dias"
-          infoText="Fotos de evolução, medidas corporais e feedbacks de treino enviados pelos alunos na última semana."
+          infoText="Fotos de evolução e medidas corporais enviadas pelos alunos na última semana."
           compact={compact}
         />
       </div>
