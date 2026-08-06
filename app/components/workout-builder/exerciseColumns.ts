@@ -15,11 +15,18 @@ export { TIPOS_EXERCICIO };
 export function showPesoColumn(tipo: string): boolean {
   return [
     "Peso & Repetições",
-    "Repetições",
     "Peso Corporal com Peso Acrescido",
     "Duração e Peso",
     "Peso e Distância",
   ].includes(tipo);
+}
+
+/**
+ * Mostra o campo peso na execução do aluno? Fichas antigas sem `tipo_exercicio`
+ * salvo continuam mostrando peso, como sempre (default "Peso & Repetições").
+ */
+export function exercicioMostraPeso(tipoExercicio?: string | null): boolean {
+  return showPesoColumn(tipoExercicio || "Peso & Repetições");
 }
 
 export function getColunasPorTipo(tipo: string): ColunaSerie[] {

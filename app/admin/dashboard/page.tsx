@@ -28,6 +28,8 @@ import {
   type CoachPlan,
 } from "@/lib/coachPlans";
 import { useNaoLidasRealtime } from "@/lib/chat/realtime";
+import { useNotificacoesNaoLidas } from "@/lib/notifications/realtime";
+import { CoachNotificationsPanel } from "@/app/components/notifications/CoachNotificationsPanel";
 import { withReturnUrl } from "@/lib/utils/adminNav";
 
 const FROM_DASHBOARD = "/admin/dashboard";
@@ -83,6 +85,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const chatNaoLidas = useNaoLidasRealtime(user?.id ?? null, 'coach');
+  const notifNaoLidas = useNotificacoesNaoLidas(user?.id ?? null);
+  const [notifOpen, setNotifOpen] = useState(false);
   const isMobile = useBreakpoint("mobile");
   const hasDataRef = useRef(false);
   
@@ -649,6 +653,13 @@ export default function AdminDashboard() {
           linkedStudentCount={linkedStudentCount}
           coachAccountType={coachAccountType}
           showNotificationBadge={checkinsPendentes > 0}
+          chatNaoLidas={chatNaoLidas + notifNaoLidas}
+          onNotificationsClick={() => setNotifOpen(true)}
+        />
+
+        <CoachNotificationsPanel
+          open={notifOpen}
+          onClose={() => setNotifOpen(false)}
           chatNaoLidas={chatNaoLidas}
         />
 

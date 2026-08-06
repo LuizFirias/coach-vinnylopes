@@ -7,6 +7,7 @@ export type AlunoObservacao = {
   conteudo: string;
   criada_em: string;
   visualizada_em: string | null;
+  finalizada_em: string | null;
 };
 
 function isMissingRelation(error: { code?: string; message?: string } | null): boolean {
@@ -22,7 +23,7 @@ function isMissingRelation(error: { code?: string; message?: string } | null): b
 export async function listObservacoesAluno(alunoId: string): Promise<AlunoObservacao[]> {
   const { data, error } = await supabaseClient
     .from('aluno_observacoes')
-    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em')
+    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em, finalizada_em')
     .eq('aluno_id', alunoId)
     .order('criada_em', { ascending: false });
 
@@ -49,7 +50,7 @@ export async function criarObservacao(
       coach_id: coachId,
       conteudo: texto,
     })
-    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em')
+    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em, finalizada_em')
     .single();
 
   if (error) {
@@ -80,5 +81,18 @@ export async function marcarObservacaoVisualizada(id: string): Promise<void> {
 
   if (error) {
     console.error('[observacoes] marcar visualizada', error);
+  }
+}
+
+export async function finalizarObservacao(id: string): Promise<void> {
+  const { error } = await supabaseClient
+    .from('aluno_observacoes')
+    .update({ finalizada_em: new Date().toISOString() })
+    .eq('id', id)
+    .is('finalizada_em', null);
+
+  if (error) {
+    console.error('[observacoes] finalizar', error);
+    throw new Error(error.message || 'Erro ao concluir observação');
   }
 }

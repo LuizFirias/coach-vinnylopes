@@ -20,6 +20,7 @@ interface DashboardHeaderProps {
   coachAccountType: string;
   showNotificationBadge?: boolean;
   chatNaoLidas?: number;
+  onNotificationsClick?: () => void;
 }
 
 const DASHBOARD = '/admin/dashboard';
@@ -116,6 +117,7 @@ export function DashboardHeader({
   coachAccountType,
   showNotificationBadge,
   chatNaoLidas,
+  onNotificationsClick,
 }: DashboardHeaderProps) {
   const primeiroNome =
     (userName ?? '').trim().split(/\s+/).filter(Boolean)[0] || 'Coach';
@@ -143,6 +145,7 @@ export function DashboardHeader({
             compact
             showNotificationBadge={showNotificationBadge}
             chatNaoLidas={chatNaoLidas}
+            onNotificationsClick={onNotificationsClick}
             notificationsHref="/admin/chat"
             notificationButtonId="btn-notificacoes-coach-dashboard"
           />

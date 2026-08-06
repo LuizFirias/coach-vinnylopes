@@ -32,7 +32,7 @@ export function NextActionCard({
           <div className="min-w-0">
             <p className="text-xs font-bold text-text-primary leading-tight">Nenhum treino ativo</p>
             <p className="text-[10px] text-text-tertiary leading-none mt-0.5">
-              Peça ao seu coach para liberar sua ficha.
+              Aproveite para descansar e se alimentar bem.
             </p>
           </div>
         </div>

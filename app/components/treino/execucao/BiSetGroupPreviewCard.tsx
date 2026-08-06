@@ -7,6 +7,8 @@ import type { WorkoutBlock } from "@/lib/utils/biset";
 import { formatRestTime } from "@/lib/utils/restTime";
 import { isPerSideLoadEquipment } from "@/lib/constants/equipment";
 import { CargaPorLadoInfoButton } from "@/app/components/treino/execucao/CargaPorLadoInfoModal";
+import { exercicioMostraPeso } from "@/app/components/workout-builder/exerciseColumns";
+import { getSeriesGridCols } from "@/lib/utils/seriesGrid";
 
 interface SeriePreview {
   ordem: number;
@@ -63,9 +65,10 @@ function GradientPlayIcon({ size = 22 }: { size?: number }) {
 interface HalfPreviewProps {
   nome: string;
   equipamento?: string;
+  tipoExercicio?: string;
   series: SeriePreview[];
   showAnteriorCol: boolean;
-  gridCols: string;
+  isDesktop?: boolean;
   showSemDescanso?: boolean;
   videoUrl?: string;
   treinoIniciado: boolean;
@@ -74,14 +77,17 @@ interface HalfPreviewProps {
   onCheck: (ordem: number) => void;
   onVideoOpen?: (url: string) => void;
   onCargaInfo?: () => void;
+  /** Abre este bi-set no card de execução, sem exigir que o anterior esteja concluído. */
+  onOpenCard?: () => void;
 }
 
 function HalfPreview({
   nome,
   equipamento,
+  tipoExercicio,
   series,
   showAnteriorCol,
-  gridCols,
+  isDesktop = false,
   showSemDescanso,
   videoUrl,
   treinoIniciado,
@@ -90,20 +96,35 @@ function HalfPreview({
   onCheck,
   onVideoOpen,
   onCargaInfo,
+  onOpenCard,
 }: HalfPreviewProps) {
   const all = series.every((s) => s.completado);
   const showCargaInfo = isPerSideLoadEquipment(equipamento, nome);
+  const showPeso = exercicioMostraPeso(tipoExercicio);
+  const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop, showPeso);
   return (
     <div>
       <div className="flex items-start gap-3 pb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <h3
-              className="text-[14px] font-bold leading-snug truncate min-w-0"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {toTitleCase(nome)}
-            </h3>
+            {onOpenCard ? (
+              <button
+                type="button"
+                onClick={onOpenCard}
+                className="text-[14px] font-bold leading-snug truncate min-w-0 text-left bg-transparent border-0 p-0"
+                style={{ color: "var(--text-primary)" }}
+                aria-label={`Abrir ${nome} no card de execução`}
+              >
+                {toTitleCase(nome)}
+              </button>
+            ) : (
+              <h3
+                className="text-[14px] font-bold leading-snug truncate min-w-0"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {toTitleCase(nome)}
+              </h3>
+            )}
             {showCargaInfo && onCargaInfo && (
               <CargaPorLadoInfoButton onClick={onCargaInfo} size={14} />
             )}
@@ -137,7 +158,9 @@ function HalfPreview({
           {showAnteriorCol && (
             <span className="text-[10px] font-semibold uppercase" style={{ color: "var(--text-disabled)", paddingLeft: 4 }}>Ant.</span>
           )}
-          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Peso</span>
+          {showPeso && (
+            <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Peso</span>
+          )}
           <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Reps</span>
           <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T1</span>
           <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T2</span>
@@ -159,29 +182,31 @@ function HalfPreview({
                 {serie.anterior || "—"}
               </span>
             )}
-            <input
-              type="number"
-              inputMode="decimal"
-              value={serie.peso_atual || ""}
-              onChange={(e) => onPesoChange(serie.ordem, parseFloat(e.target.value) || 0)}
-              className="w-full max-w-[40px] mx-auto bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
-              style={{
-                height: 28,
-                fontSize: "15px",
-                color: "var(--text-secondary)",
-                fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
-                fontVariantNumeric: "tabular-nums lining-nums",
-                fontWeight: 400,
-                borderBottom: "1.5px solid transparent",
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderBottomColor = "rgba(117, 27, 180,0.45)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderBottomColor = "transparent";
-              }}
-              disabled={!treinoIniciado}
-            />
+            {showPeso && (
+              <input
+                type="number"
+                inputMode="decimal"
+                value={serie.peso_atual || ""}
+                onChange={(e) => onPesoChange(serie.ordem, parseFloat(e.target.value) || 0)}
+                className="w-full max-w-[40px] mx-auto bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+                style={{
+                  height: 28,
+                  fontSize: "15px",
+                  color: "var(--text-secondary)",
+                  fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                  fontVariantNumeric: "tabular-nums lining-nums",
+                  fontWeight: 400,
+                  borderBottom: "1.5px solid transparent",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderBottomColor = "rgba(117, 27, 180,0.45)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderBottomColor = "transparent";
+                }}
+                disabled={!treinoIniciado}
+              />
+            )}
             {(() => {
               const { abaixo } = resolveRepsPreview(serie);
               return (
@@ -238,7 +263,7 @@ function HalfPreview({
               className="mx-auto w-5 h-5 rounded-[4px] flex items-center justify-center transition-colors disabled:opacity-30"
               style={
                 serie.completado
-                  ? { background: "#751BB4", border: "1.5px solid #751BB4", color: "#fff" }
+                  ? { background: "#39c75a", border: "1.5px solid #39c75a", color: "#fff" }
                   : { background: "transparent", border: "1.5px solid var(--border-default)" }
               }
             >
@@ -256,7 +281,7 @@ interface BiSetGroupPreviewCardProps {
   blockIdx: number;
   treinoIniciado: boolean;
   showAnteriorCol: boolean;
-  gridCols: string;
+  isDesktop?: boolean;
   onPesoChangeA: (ordem: number, peso: number) => void;
   onPesoChangeB: (ordem: number, peso: number) => void;
   onRepsChangeA: (ordem: number, reps: number | string) => void;
@@ -265,13 +290,15 @@ interface BiSetGroupPreviewCardProps {
   onCheckB: (ordem: number) => void;
   onVideoOpen?: (url: string) => void;
   onCargaInfo?: () => void;
+  /** Abre este bi-set no card de execução, sem exigir que o anterior esteja concluído. */
+  onOpenCard?: () => void;
 }
 
 export function BiSetGroupPreviewCard({
   block,
   treinoIniciado,
   showAnteriorCol,
-  gridCols,
+  isDesktop = false,
   onPesoChangeA,
   onPesoChangeB,
   onRepsChangeA,
@@ -280,6 +307,7 @@ export function BiSetGroupPreviewCard({
   onCheckB,
   onVideoOpen,
   onCargaInfo,
+  onOpenCard,
 }: BiSetGroupPreviewCardProps) {
   return (
     <div
@@ -297,9 +325,10 @@ export function BiSetGroupPreviewCard({
       <HalfPreview
         nome={block.exercicioA.nome}
         equipamento={block.exercicioA.equipamento}
+        tipoExercicio={block.exercicioA.tipo_exercicio}
         series={block.exercicioA.series}
         showAnteriorCol={showAnteriorCol}
-        gridCols={gridCols}
+        isDesktop={isDesktop}
         showSemDescanso
         videoUrl={block.exercicioA.video_url}
         treinoIniciado={treinoIniciado}
@@ -308,6 +337,7 @@ export function BiSetGroupPreviewCard({
         onCheck={onCheckA}
         onVideoOpen={onVideoOpen}
         onCargaInfo={onCargaInfo}
+        onOpenCard={onOpenCard}
       />
 
       <div className="flex items-center justify-center gap-1.5 py-2 my-1">
@@ -318,9 +348,10 @@ export function BiSetGroupPreviewCard({
       <HalfPreview
         nome={block.exercicioB.nome}
         equipamento={block.exercicioB.equipamento}
+        tipoExercicio={block.exercicioB.tipo_exercicio}
         series={block.exercicioB.series}
         showAnteriorCol={showAnteriorCol}
-        gridCols={gridCols}
+        isDesktop={isDesktop}
         videoUrl={block.exercicioB.video_url}
         treinoIniciado={treinoIniciado}
         onPesoChange={onPesoChangeB}
@@ -328,6 +359,7 @@ export function BiSetGroupPreviewCard({
         onCheck={onCheckB}
         onVideoOpen={onVideoOpen}
         onCargaInfo={onCargaInfo}
+        onOpenCard={onOpenCard}
       />
 
       <div

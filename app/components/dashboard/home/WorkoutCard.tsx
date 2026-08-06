@@ -47,7 +47,7 @@ export function WorkoutCard({
         />
         <p className="text-lg font-bold dashboard-text">Sem treino hoje</p>
         <p className="mt-1 text-sm dashboard-text-subtle">
-          Peça ao seu coach para liberar sua ficha
+          Aproveite para descansar e se alimentar bem.
         </p>
         <Link
           href="/aluno/treinos"

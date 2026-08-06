@@ -23,7 +23,8 @@ export type DashboardAlunoSnapshot = {
     streak_atual: number;
   } | null;
   diasSemana: DiaSemana[];
-  weekOffset: number;
+  /** Resumo da semana ISO corrente (segunda a domingo) — zera toda segunda-feira. */
+  weekStats: { treinos: number; meta: number; cardioMin: number; cardioMetaMin: number };
   treinoHoje: {
     status: 'pendente' | 'concluido' | 'off' | 'sem-plano';
     nome?: string;

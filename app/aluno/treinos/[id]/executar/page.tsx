@@ -5,9 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, Check, X, Clock, CaretLeft, CaretRight, Lightning, Minus, Plus, Info, CaretDown, CaretUp, Trash, ChatCircle } from '@phosphor-icons/react';
-import { RestTimerOverlay } from '@/app/components/treino/execucao/RestTimerOverlay';
+import { RestTimerBar } from '@/app/components/treino/execucao/RestTimerBar';
+import { useRestTimer } from '@/lib/hooks/useRestTimer';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
+import { sendTreinoIniciadoNotification } from '@/lib/notifications/sendTreinoIniciadoNotification';
 import { resolveCoachShareHandle } from '@/lib/utils/workoutShare';
 import { formatDuration, formatVolume } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
@@ -21,6 +23,8 @@ import {
   CargaPorLadoInfoModal,
 } from '@/app/components/treino/execucao/CargaPorLadoInfoModal';
 import { isPerSideLoadEquipment } from '@/lib/constants/equipment';
+import { exercicioMostraPeso } from '@/app/components/workout-builder/exerciseColumns';
+import { getSeriesGridCols, GRID_COLS_HISTORICO, GRID_COLS_HISTORICO_NO_PESO } from '@/lib/utils/seriesGrid';
 import type { WorkoutBlock } from '@/lib/utils/biset';
 import {
   buildWorkoutBlocksFromConfig,
@@ -87,8 +91,9 @@ interface ExercicioConfig {
   series: SerieConfig[];
   biset_parceiro_id?: string;
   tipo?: string;
-  exercicioA?: { exercicio_id: string; nome: string; series: SerieConfig[] };
-  exercicioB?: { exercicio_id: string; nome: string; series: SerieConfig[] };
+  tipo_exercicio?: string;
+  exercicioA?: { exercicio_id: string; nome: string; series: SerieConfig[]; tipo_exercicio?: string };
+  exercicioB?: { exercicio_id: string; nome: string; series: SerieConfig[]; tipo_exercicio?: string };
 }
 
 interface SerieState {
@@ -111,6 +116,7 @@ interface ExercicioState {
   observacoes?: string;
   grupo_muscular?: string;
   equipamento?: string;
+  tipo_exercicio?: string;
   series: SerieState[];
   biset_parceiro_id?: string;
 }
@@ -121,23 +127,11 @@ function estimateDurationMinFromBlocks(blocks: WorkoutBlock[]): number {
   return Math.max(15, Math.round(countWorkoutBlocks(blocks) * 3 + totalSets * 2));
 }
 
-const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(96px, 1.6fr) 40px 34px 30px 30px 30px';
-const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px 40px 32px 32px 32px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(110px, 1.5fr) 48px 48px 44px 44px 36px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px 48px 44px 44px 36px';
-const GRID_COLS_HISTORICO = '28px 52px 60px 40px auto';
 const SERIES_GRID_GAP = '8px';
 /** Espaço extra só na coluna Ant. da lista (não mexe no SET) */
 const ANT_COL_PAD_LEFT = 14;
 const HISTORICO_COL_GAP = '8px';
 const HISTORICO_ROW_PAD_X = 12;
-
-function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean): string {
-  if (showAnterior) {
-    return isDesktop ? GRID_COLS_SERIES_WITH_ANT_DESKTOP : GRID_COLS_SERIES_WITH_ANT_MOBILE;
-  }
-  return isDesktop ? GRID_COLS_SERIES_NO_ANT_DESKTOP : GRID_COLS_SERIES_NO_ANT_MOBILE;
-}
 
 function GradientPlayIcon({ size = 22 }: { size?: number }) {
   const gradId = useId().replace(/:/g, '');
@@ -254,6 +248,7 @@ interface SetRowProps {
   idx: number;
   treinoIniciado: boolean;
   showAnteriorCol: boolean;
+  showPeso?: boolean;
   gridCols: string;
   isDesktop?: boolean;
   onPesoChange: (peso: number) => void;
@@ -261,7 +256,7 @@ interface SetRowProps {
   onCheck: () => void;
 }
 
-function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDesktop = false, onPesoChange, onRepsChange, onCheck }: SetRowProps) {
+function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, gridCols, isDesktop = false, onPesoChange, onRepsChange, onCheck }: SetRowProps) {
   const { abaixo } = resolveReps(serie);
   return (
     <div
@@ -282,14 +277,12 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
     >
       <div className="flex justify-center">
         <span
-          className="rounded-md flex items-center justify-center text-[11px] font-semibold font-sans shrink-0"
+          className="flex items-center justify-center text-[11px] font-semibold font-sans shrink-0"
           style={{
             width: 22,
             height: 22,
             minWidth: 22,
-            ...(serie.completado
-              ? { background: '#39c75a', color: '#fff' }
-              : { background: 'var(--surface-2)', color: 'var(--text-tertiary)' }),
+            color: 'var(--text-tertiary)',
           }}
         >
           {idx + 1}
@@ -311,32 +304,34 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
         </div>
       )}
 
-      <div className="flex justify-center min-w-0">
-        <input
-          type="number"
-          inputMode="decimal"
-          value={serie.peso_atual || ''}
-          onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          disabled={!treinoIniciado}
-          placeholder="0"
-          className="w-full max-w-[40px] bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
-          style={{
-            height: 28,
-            fontSize: '15px',
-            color: 'var(--text-secondary)',
-            fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
-            fontVariantNumeric: 'tabular-nums lining-nums',
-            fontWeight: 400,
-            borderBottom: '1.5px solid transparent',
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderBottomColor = 'rgba(117, 27, 180,0.45)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderBottomColor = 'transparent';
-          }}
-        />
-      </div>
+      {showPeso && (
+        <div className="flex justify-center min-w-0">
+          <input
+            type="number"
+            inputMode="decimal"
+            value={serie.peso_atual || ''}
+            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            disabled={!treinoIniciado}
+            placeholder="0"
+            className="w-full max-w-[40px] bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+            style={{
+              height: 28,
+              fontSize: '15px',
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+              fontVariantNumeric: 'tabular-nums lining-nums',
+              fontWeight: 400,
+              borderBottom: '1.5px solid transparent',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderBottomColor = 'rgba(117, 27, 180,0.45)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderBottomColor = 'transparent';
+            }}
+          />
+        </div>
+      )}
 
       <div className="flex justify-center">
         <input
@@ -402,7 +397,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, gridCols, isDeskt
             width: 28,
             height: 28,
             ...(serie.completado
-              ? { background: '#751BB4', border: '1.5px solid #751BB4', color: '#fff' }
+              ? { background: '#39c75a', border: '1.5px solid #39c75a', color: '#fff' }
               : { background: 'transparent', border: '1.5px solid var(--border-default)', color: 'var(--text-tertiary)' }),
           }}
         >
@@ -425,13 +420,16 @@ interface ExercicioCardProps {
   onCheck: (ordem: number) => void;
   onVideoOpen: (url: string) => void;
   onCargaInfo?: () => void;
+  /** Abre este exercício no card de execução, sem exigir que o anterior esteja concluído. */
+  onOpenCard?: () => void;
 }
 
-function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onRepsChange, onCheck, onVideoOpen, onCargaInfo }: ExercicioCardProps) {
+function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onRepsChange, onCheck, onVideoOpen, onCargaInfo, onOpenCard }: ExercicioCardProps) {
   const completadas = exercicio.series.filter(s => s.completado).length;
   const total = exercicio.series.length;
   const all = completadas === total;
-  const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop);
+  const showPeso = exercicioMostraPeso(exercicio.tipo_exercicio);
+  const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop, showPeso);
   const showCargaInfo = isPerSideLoadEquipment(exercicio.equipamento, exercicio.nome);
 
   return (
@@ -448,12 +446,24 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 min-w-0">
-            <h3
-              className="font-semibold leading-tight truncate min-w-0"
-              style={{ fontSize: 15, color: '#751BB4' }}
-            >
-              {toTitleCase(exercicio.nome)}
-            </h3>
+            {onOpenCard ? (
+              <button
+                type="button"
+                onClick={onOpenCard}
+                className="font-semibold leading-tight truncate min-w-0 text-left bg-transparent border-0 p-0"
+                style={{ fontSize: 15, color: '#751BB4' }}
+                aria-label={`Abrir ${exercicio.nome} no card de execução`}
+              >
+                {toTitleCase(exercicio.nome)}
+              </button>
+            ) : (
+              <h3
+                className="font-semibold leading-tight truncate min-w-0"
+                style={{ fontSize: 15, color: '#751BB4' }}
+              >
+                {toTitleCase(exercicio.nome)}
+              </h3>
+            )}
             {showCargaInfo && onCargaInfo && (
               <CargaPorLadoInfoButton onClick={onCargaInfo} size={15} />
             )}
@@ -521,7 +531,9 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
               ANT.
             </span>
           )}
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>PESO</span>
+          {showPeso && (
+            <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>PESO</span>
+          )}
           <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>REPS</span>
           <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T1</span>
           <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T2</span>
@@ -536,6 +548,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
               idx={idx}
               treinoIniciado={treinoIniciado}
               showAnteriorCol={showAnteriorCol}
+              showPeso={showPeso}
               gridCols={gridCols}
               isDesktop={isDesktop}
               onPesoChange={(peso) => onPesoChange(serie.ordem, peso)}
@@ -580,20 +593,14 @@ export default function ExecucaoTreinoPage() {
   const [timerStartAt, setTimerStartAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
 
-  // Rest timer (bottom bar)
-  const [restActive, setRestActive] = useState(false);
-  const [restEndAt, setRestEndAt] = useState<number | null>(null);
-  const [restRemaining, setRestRemaining] = useState(0);
-  const [restExpired, setRestExpired] = useState(false);
-  const [restDuration, setRestDuration] = useState(90);
-  const restPendingCb = useRef<(() => void) | null>(null);
+  // Rest timer (barra discreta no rodapé — some sozinha ao zerar)
+  const restTimer = useRestTimer();
 
   // Modal de execução (por bloco)
   const [modalBlockIdx, setModalBlockIdx] = useState<number | null>(null);
   const [modalRodadaIdx, setModalRodadaIdx] = useState(0);
   const [bisetFase, setBisetFase] = useState<'a' | 'b' | 'transicao' | null>(null);
   const [bisetTransitionName, setBisetTransitionName] = useState<string | null>(null);
-  const [restTimerMeta, setRestTimerMeta] = useState<{ title?: string; subtitle?: string; subtitleHighlight?: string }>({});
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
   const [showSeriesHistory, setShowSeriesHistory] = useState(true);
@@ -601,6 +608,7 @@ export default function ExecucaoTreinoPage() {
   const [techniqueCardExpanded, setTechniqueCardExpanded] = useState(false);
   const tecnicaKpiRef = useRef<HTMLButtonElement>(null);
   const tecnicaPanelRef = useRef<HTMLDivElement>(null);
+  const modalTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const ajustarCarga = useCallback((delta: number) => {
     setModalCarga((prev) => {
@@ -955,66 +963,12 @@ export default function ExecucaoTreinoPage() {
     };
   }, [fichaId, userId]);
 
-  // ── Rest timer ──────────────────────────────────────────────────────────────
+  // ── Rest timer (estado mora em useRestTimer — some sozinho ao zerar) ────────
 
-  useEffect(() => {
-    if (!restActive || !restEndAt) return;
-    const tick = () => {
-      const r = Math.max(0, Math.ceil((restEndAt - Date.now()) / 1000));
-      setRestRemaining(r);
-      if (r <= 0) setRestExpired(true);
-    };
-    tick();
-    const id = setInterval(tick, 250);
-    const onVisible = () => { if (document.visibilityState === 'visible') tick(); };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', tick);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', tick);
-    };
-  }, [restActive, restEndAt]);
-
-  function iniciarRest(
-    durationSecs: number,
-    onDone: () => void,
-    meta?: { title?: string; subtitle?: string; subtitleHighlight?: string }
-  ) {
-    setRestTimerMeta(meta || {});
-    const endAt = Date.now() + durationSecs * 1000;
-    restPendingCb.current = onDone;
-    setRestDuration(durationSecs);
-    setRestEndAt(endAt);
-    setRestRemaining(durationSecs);
-    setRestExpired(false);
-    setRestActive(true);
-  }
-
-  function restAddSecs(secs: number) {
-    haptic('light');
-    const novoEnd = (restEndAt || Date.now()) + secs * 1000;
-    setRestEndAt(novoEnd);
-    setRestExpired(false);
-  }
-
-  function restSkip() {
-    haptic('light');
-    setRestActive(false);
-    setRestEndAt(null);
-    const cb = restPendingCb.current;
-    restPendingCb.current = null;
-    cb?.();
-  }
-
-  function restAdvance() {
-    haptic('success');
-    setRestActive(false);
-    setRestEndAt(null);
-    const cb = restPendingCb.current;
-    restPendingCb.current = null;
-    cb?.();
-  }
+  const iniciarRest = restTimer.start;
+  const restAddSecs = restTimer.addSeconds;
+  const restSkip = restTimer.skip;
+  const restAdvance = restTimer.skip;
 
   // ── Iniciar treino → abre modal do 1º exercício ─────────────────────────────
 
@@ -1038,6 +992,7 @@ export default function ExecucaoTreinoPage() {
     setTreinoIniciado(true);
     setTimerStartAt(agora);
     haptic('medium');
+    void sendTreinoIniciadoNotification(nomeRotina);
     // Abre modal do primeiro exercício
     abrirModalBlock(0);
   };
@@ -1074,6 +1029,32 @@ export default function ExecucaoTreinoPage() {
     setBisetFase(fase);
     setModalCarga(carga);
     setModalCargaStr(carga > 0 ? String(carga) : '');
+  }
+
+  /** Troca de exercício por swipe lateral — não exige ter concluído o anterior. */
+  function navegarBlocoPorSwipe(delta: number) {
+    if (modalBlockIdx === null) return;
+    const proximo = modalBlockIdx + delta;
+    if (proximo < 0 || proximo >= blocks.length) return;
+    haptic('light');
+    abrirModalBlock(proximo);
+  }
+
+  function handleModalTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    modalTouchStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function handleModalTouchEnd(e: React.TouchEvent) {
+    const start = modalTouchStartRef.current;
+    modalTouchStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Só conta como swipe horizontal — ignora se o gesto foi mais vertical (scroll)
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    navegarBlocoPorSwipe(dx < 0 ? 1 : -1);
   }
 
   /** Retomar: 1ª incompleta, ou último exercício da ficha se a lista já concluiu tudo. */
@@ -1208,6 +1189,7 @@ export default function ExecucaoTreinoPage() {
       });
       if (toggled) {
         haptic('success');
+        iniciarRest(descanso, () => {});
       } else {
         haptic('light');
       }
@@ -1337,32 +1319,38 @@ export default function ExecucaoTreinoPage() {
         : undefined;
 
       if (isUltimaRodada) {
-        setRestTimerMeta({
-          title: 'Descanso do Bi-Set',
-          subtitle: nextBlockLabel ? `Próximo exercício: ${nextBlockLabel}` : undefined,
-          subtitleHighlight: 'Bi-Set concluído ✓',
-        });
-        iniciarRest(descanso, () => {
-          if (isUltimoBloco) {
-            setModalBlockIdx(null);
-            handleFinalizar();
-          } else {
-            abrirModalBlock(modalBlockIdx + 1);
-          }
-        });
+        iniciarRest(
+          descanso,
+          () => {
+            if (isUltimoBloco) {
+              setModalBlockIdx(null);
+              handleFinalizar();
+            } else {
+              abrirModalBlock(modalBlockIdx + 1);
+            }
+          },
+          {
+            title: 'Descanso do Bi-Set',
+            subtitle: nextBlockLabel ? `Próximo exercício: ${nextBlockLabel}` : undefined,
+            subtitleHighlight: 'Bi-Set concluído ✓',
+          },
+        );
       } else {
         const proxRodada = modalRodadaIdx + 1;
-        setRestTimerMeta({
-          title: 'Descanso do Bi-Set',
-          subtitle: `Próxima rodada: ${bisetBlock.exercicioA.nome} · série ${proxRodada + 1}/${totalRodadas}`,
-        });
-        iniciarRest(descanso, () => {
-          const carga = bisetBlock.exercicioA.series[proxRodada]?.peso_atual || 0;
-          setModalRodadaIdx(proxRodada);
-          setBisetFase('a');
-          setModalCarga(carga);
-          setModalCargaStr(carga > 0 ? String(carga) : '');
-        });
+        iniciarRest(
+          descanso,
+          () => {
+            const carga = bisetBlock.exercicioA.series[proxRodada]?.peso_atual || 0;
+            setModalRodadaIdx(proxRodada);
+            setBisetFase('a');
+            setModalCarga(carga);
+            setModalCargaStr(carga > 0 ? String(carga) : '');
+          },
+          {
+            title: 'Descanso do Bi-Set',
+            subtitle: `Próxima rodada: ${bisetBlock.exercicioA.nome} · série ${proxRodada + 1}/${totalRodadas}`,
+          },
+        );
       }
     }
   }
@@ -1510,10 +1498,7 @@ export default function ExecucaoTreinoPage() {
     setElapsed(0);
     setTimerStartAt(null);
     setModalBlockIdx(null);
-    setRestActive(false);
-    setRestEndAt(null);
-    setRestExpired(false);
-    restPendingCb.current = null;
+    restTimer.reset();
     // Restaura a ficha limpa — não zerar blocks (sumia a lista de exercícios)
     const base = blocksBaseRef.current;
     if (base.length > 0) {
@@ -1574,6 +1559,7 @@ export default function ExecucaoTreinoPage() {
       : modalBlock.exercicioA.series.length
     : 0;
   const modalPartnerEx = modalBlock?.kind === 'biset' ? modalBlock.exercicioB : null;
+  const modalShowPeso = exercicioMostraPeso(modalEx?.tipo_exercicio);
 
   const hasHistorico = exercicios.some((ex) =>
     ex.series.some((s) => s.anterior && s.anterior !== '—')
@@ -1785,6 +1771,7 @@ export default function ExecucaoTreinoPage() {
                       onCheck={(ordem) => handleCheck(block.exercise.id, ordem)}
                       onVideoOpen={setVideoUrl}
                       onCargaInfo={() => setCargaInfoOpen(true)}
+                      onOpenCard={treinoIniciado ? () => abrirModalBlock(index) : undefined}
                     />
                   ) : (
                     <BiSetGroupPreviewCard
@@ -1792,7 +1779,7 @@ export default function ExecucaoTreinoPage() {
                       blockIdx={index}
                       treinoIniciado={treinoIniciado}
                       showAnteriorCol={hasHistorico}
-                      gridCols={getSeriesGridCols(hasHistorico, isDesktop)}
+                      isDesktop={isDesktop}
                       onPesoChangeA={(ordem, peso) => handlePesoChange(block.exercicioA.id, ordem, peso)}
                       onPesoChangeB={(ordem, peso) => handlePesoChange(block.exercicioB.id, ordem, peso)}
                       onRepsChangeA={(ordem, reps) => handleRepsChange(block.exercicioA.id, ordem, reps)}
@@ -1801,6 +1788,7 @@ export default function ExecucaoTreinoPage() {
                       onCheckB={(ordem) => handleCheck(block.exercicioB.id, ordem)}
                       onVideoOpen={setVideoUrl}
                       onCargaInfo={() => setCargaInfoOpen(true)}
+                      onOpenCard={treinoIniciado ? () => abrirModalBlock(index) : undefined}
                     />
                   )}
                 </div>
@@ -1810,51 +1798,15 @@ export default function ExecucaoTreinoPage() {
         </div>
       </div>
 
-      {/* ── Rest Timer: bottom bar (só quando o modal de exercício está fechado) ── */}
-      {restActive && modalBlockIdx === null && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-8px_32px_var(--border-subtle)]"
-          style={{ background: 'var(--surface-1)', borderTop: '1px solid var(--border-subtle)' }}
-        >
-          <div className="max-w-lg mx-auto px-4 py-2.5 flex items-center gap-2">
-            <button
-              onClick={() => restAddSecs(-15)}
-              className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
-              style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
-            >
-              −15
-            </button>
-
-            <div className="flex-1 text-center">
-              {restExpired ? (
-                <button
-                  onClick={restAdvance}
-                  className="w-full py-2 bg-success text-white rounded-xl text-sm font-bold"
-                >
-                  Pronto! →
-                </button>
-              ) : (
-                <p className="font-sans text-3xl font-bold tabular-nums lining-nums tracking-display" style={{ color: 'var(--text-primary)' }}>
-                  {Math.floor(restRemaining / 60).toString().padStart(2, '0')}:{(restRemaining % 60).toString().padStart(2, '0')}
-                </p>
-              )}
-            </div>
-
-            <button
-              onClick={() => restAddSecs(15)}
-              className="w-12 h-10 rounded-xl text-xs font-bold transition-colors flex-shrink-0"
-              style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
-            >
-              +15
-            </button>
-
-            <button
-              onClick={restSkip}
-              className="h-10 px-3.5 bg-brand text-text-on-brand rounded-xl text-xs font-bold shadow-sm shadow-brand/30 hover:opacity-90 transition-opacity flex-shrink-0"
-            >
-              Skip
-            </button>
-          </div>
-        </div>
+      {/* ── Rest Timer: barra discreta no rodapé — não escurece a tela, some sozinha ao zerar ── */}
+      {restTimer.active && (
+        <RestTimerBar
+          remaining={restTimer.remaining}
+          total={restTimer.duration}
+          meta={restTimer.meta}
+          onAddSeconds={restAddSecs}
+          onSkip={restSkip}
+        />
       )}
 
       {/* ── Modal de Termômetro de Treino (Feedback) ── */}
@@ -2017,22 +1969,10 @@ export default function ExecucaoTreinoPage() {
       {modalEx && modalSerie && (
         <div
           className="fixed inset-0 z-50 flex flex-col lg:max-w-[640px] lg:mx-auto lg:left-1/2 lg:-translate-x-1/2"
+          onTouchStart={handleModalTouchStart}
+          onTouchEnd={handleModalTouchEnd}
           style={{ background: 'var(--surface-0)' }}
         >
-          {restActive && (
-            <RestTimerOverlay
-              remaining={restRemaining}
-              total={restDuration}
-              expired={restExpired}
-              isDesktop={isDesktop}
-              title={restTimerMeta.title}
-              subtitle={restTimerMeta.subtitle}
-              subtitleHighlight={restTimerMeta.subtitleHighlight}
-              onAddSeconds={restAddSecs}
-              onSkip={restSkip}
-              onAdvance={restAdvance}
-            />
-          )}
 
           {bisetTransitionName && (
             <div
@@ -2108,7 +2048,7 @@ export default function ExecucaoTreinoPage() {
               >
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   ↓ Em seguida: {modalPartnerEx.nome} · {modalPartnerEx.series[modalRodadaIdx]?.reps} reps
-                  {modalPartnerEx.series[modalRodadaIdx]?.peso_atual
+                  {exercicioMostraPeso(modalPartnerEx.tipo_exercicio) && modalPartnerEx.series[modalRodadaIdx]?.peso_atual
                     ? ` · ${modalPartnerEx.series[modalRodadaIdx]?.peso_atual} kg`
                     : ''}
                 </p>
@@ -2162,102 +2102,106 @@ export default function ExecucaoTreinoPage() {
               />
             </div>
 
-            {/* Display de carga (placar) */}
-            <div className="flex flex-col items-center gap-1 py-3 px-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
-                Carga
-                {isPerSideLoadEquipment(modalEx.equipamento, modalEx.nome) ? (
-                  <span className="normal-case tracking-normal font-medium text-text-tertiary"> · por lado</span>
-                ) : null}
-              </p>
+            {modalShowPeso && (
+              <>
+                {/* Display de carga (placar) */}
+                <div className="flex flex-col items-center gap-1 py-3 px-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
+                    Carga
+                    {isPerSideLoadEquipment(modalEx.equipamento, modalEx.nome) ? (
+                      <span className="normal-case tracking-normal font-medium text-text-tertiary"> · por lado</span>
+                    ) : null}
+                  </p>
 
-              <div className="flex items-center gap-5">
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    ajustarCarga(-2.5);
-                  }}
-                  className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
-                  aria-label="Diminuir carga"
-                >
-                  <Minus size={20} weight="bold" />
-                </button>
-
-                <div className="min-w-[100px] text-center">
-                  <div className="relative">
-                    <span
-                      className="block text-5xl font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none"
-                      aria-hidden
+                  <div className="flex items-center gap-5">
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        ajustarCarga(-2.5);
+                      }}
+                      className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
+                      aria-label="Diminuir carga"
                     >
-                      {modalCargaStr === '' ? '—' : modalCargaStr}
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={modalCargaStr}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(',', '.');
-                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
-                          setModalCargaStr(raw);
-                          const num = parseFloat(raw);
-                          setModalCarga(isNaN(num) ? 0 : num);
-                        }
+                      <Minus size={20} weight="bold" />
+                    </button>
+
+                    <div className="min-w-[100px] text-center">
+                      <div className="relative">
+                        <span
+                          className="block text-5xl font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none"
+                          aria-hidden
+                        >
+                          {modalCargaStr === '' ? '—' : modalCargaStr}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={modalCargaStr}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(',', '.');
+                            if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                              setModalCargaStr(raw);
+                              const num = parseFloat(raw);
+                              setModalCarga(isNaN(num) ? 0 : num);
+                            }
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.select();
+                          }}
+                          onBlur={() => {
+                            if (modalCargaStr !== '' && !isNaN(parseFloat(modalCargaStr))) {
+                              const normalized = String(Math.max(0, Math.round(parseFloat(modalCargaStr) * 100) / 100));
+                              setModalCargaStr(normalized);
+                              setModalCarga(parseFloat(normalized));
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
+                          style={{ fontSize: '16px' }}
+                          aria-label="Editar carga em kg"
+                        />
+                      </div>
+                      <span className="block text-base font-bold text-brand mt-0.5">kg</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        ajustarCarga(2.5);
                       }}
-                      onFocus={(e) => {
-                        e.currentTarget.select();
-                      }}
-                      onBlur={() => {
-                        if (modalCargaStr !== '' && !isNaN(parseFloat(modalCargaStr))) {
-                          const normalized = String(Math.max(0, Math.round(parseFloat(modalCargaStr) * 100) / 100));
-                          setModalCargaStr(normalized);
-                          setModalCarga(parseFloat(normalized));
-                        }
-                      }}
-                      className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
-                      style={{ fontSize: '16px' }}
-                      aria-label="Editar carga em kg"
-                    />
+                      className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
+                      aria-label="Aumentar carga"
+                    >
+                      <Plus size={20} weight="bold" />
+                    </button>
                   </div>
-                  <span className="block text-base font-bold text-brand mt-0.5">kg</span>
                 </div>
 
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    ajustarCarga(2.5);
-                  }}
-                  className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
-                  aria-label="Aumentar carga"
-                >
-                  <Plus size={20} weight="bold" />
-                </button>
-              </div>
-            </div>
-
-            {/* Ajustes rápidos */}
-            <div className="flex gap-2 justify-center px-4">
-              {[
-                { delta: -5, label: '−5' },
-                { delta: -2.5, label: '−2.5' },
-                { delta: 2.5, label: '+2.5' },
-                { delta: 5, label: '+5' },
-              ].map(({ delta, label }) => (
-                <button
-                  key={delta}
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    ajustarCarga(delta);
-                  }}
-                  className="min-w-[60px] h-11 rounded-[10px] bg-surface-2 text-sm font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
-                  aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} kg`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+                {/* Ajustes rápidos */}
+                <div className="flex gap-2 justify-center px-4">
+                  {[
+                    { delta: -5, label: '−5' },
+                    { delta: -2.5, label: '−2.5' },
+                    { delta: 2.5, label: '+2.5' },
+                    { delta: 5, label: '+5' },
+                  ].map(({ delta, label }) => (
+                    <button
+                      key={delta}
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        ajustarCarga(delta);
+                      }}
+                      className="min-w-[60px] h-11 rounded-[10px] bg-surface-2 text-sm font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
+                      aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} kg`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* Observação do coach — preenche o espaço entre ajustes e histórico */}
             {modalEx.observacoes?.trim() ? (
@@ -2308,38 +2252,43 @@ export default function ExecucaoTreinoPage() {
                                 rodadaIdx === modalRodadaIdx &&
                                 ((label === 'A' && bisetFase === 'a') || (label === 'B' && bisetFase !== 'a'));
                               const pesoExibido = isAtualRow ? modalCarga : s.peso_atual;
+                              const showPesoRow = exercicioMostraPeso(
+                                label === 'A' ? modalBlock.exercicioA.tipo_exercicio : modalBlock.exercicioB.tipo_exercicio,
+                              );
                               return (
                                 <div
                                   key={label}
-                                  className={cn(
-                                    'flex items-center justify-between gap-2 py-2 text-xs',
-                                    s.completado && 'opacity-80',
-                                  )}
+                                  className="flex items-center justify-between gap-2 py-2 px-2 -mx-2 rounded-md text-xs"
+                                  style={{
+                                    background: s.completado
+                                      ? 'rgba(57,199,90,0.06)'
+                                      : isAtualRow
+                                        ? 'rgba(117, 27, 180, 0.04)'
+                                        : 'transparent',
+                                  }}
                                 >
-                                  <span
-                                    className={cn(
-                                      'w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold',
-                                      s.completado
-                                        ? 'bg-success text-white'
-                                        : 'bg-surface-2 text-text-secondary',
-                                    )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCheck(exId, s.ordem)}
+                                    className="w-5 h-5 flex items-center justify-center shrink-0 text-[9px] font-bold border-0 bg-transparent"
+                                    style={{ color: s.completado ? '#39c75a' : 'var(--text-secondary)' }}
                                     aria-label={
                                       s.completado
-                                        ? `Rodada ${rodadaIdx + 1} ${label} concluída`
+                                        ? `Rodada ${rodadaIdx + 1} ${label} concluída — toque para desmarcar`
                                         : `Rodada ${rodadaIdx + 1} ${label}`
                                     }
                                   >
                                     {s.completado ? (
-                                      <Check size={10} weight="bold" className="text-white" />
+                                      <Check size={12} weight="bold" />
                                     ) : (
                                       label
                                     )}
-                                  </span>
+                                  </button>
                                   <span className="truncate flex-1 text-text-secondary">{nome}</span>
                                   <span className="text-text-disabled tabular-nums lining-nums shrink-0">
                                     {s.anterior || '—'}
                                   </span>
-                                  {isAtualRow ? (
+                                  {showPesoRow && (isAtualRow ? (
                                     <span className="font-bold tabular-nums lining-nums text-brand font-sans shrink-0">
                                       {pesoExibido ? (
                                         <>
@@ -2360,7 +2309,7 @@ export default function ExecucaoTreinoPage() {
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
                                       className="w-14 h-7 bg-transparent px-1 text-right font-bold font-sans tabular-nums lining-nums text-brand focus:outline-none border-b border-brand/30"
                                     />
-                                  )}
+                                  ))}
                                   {(() => {
                                     const { abaixo } = resolveReps(s);
                                     return (
@@ -2416,7 +2365,7 @@ export default function ExecucaoTreinoPage() {
                       <div
                         className="grid items-center border-b border-border-divider"
                         style={{
-                          gridTemplateColumns: GRID_COLS_HISTORICO,
+                          gridTemplateColumns: modalShowPeso ? GRID_COLS_HISTORICO : GRID_COLS_HISTORICO_NO_PESO,
                           columnGap: HISTORICO_COL_GAP,
                           padding: `6px ${HISTORICO_ROW_PAD_X}px`,
                         }}
@@ -2424,7 +2373,7 @@ export default function ExecucaoTreinoPage() {
                         {[
                           { label: 'SET', align: 'text-center' },
                           { label: 'ANT.', align: 'text-left' },
-                          { label: 'PESO', align: 'text-right' },
+                          ...(modalShowPeso ? [{ label: 'PESO', align: 'text-right' }] : []),
                           { label: 'REPS', align: 'text-center' },
                           { label: 'TÉC', align: 'text-left' },
                         ].map(({ label, align }) => (
@@ -2449,36 +2398,37 @@ export default function ExecucaoTreinoPage() {
                             className={cn(
                               'grid items-center',
                               idx < modalEx.series.length - 1 && 'border-b border-border-divider',
-                              s.completado && 'opacity-80',
-                              isAtual && !s.completado && 'bg-brand/[0.04]',
                             )}
                             style={{
-                              gridTemplateColumns: GRID_COLS_HISTORICO,
+                              gridTemplateColumns: modalShowPeso ? GRID_COLS_HISTORICO : GRID_COLS_HISTORICO_NO_PESO,
                               columnGap: HISTORICO_COL_GAP,
                               padding: `10px ${HISTORICO_ROW_PAD_X}px`,
+                              background: s.completado
+                                ? 'rgba(57,199,90,0.06)'
+                                : isAtual
+                                  ? 'rgba(117, 27, 180, 0.04)'
+                                  : 'transparent',
                             }}
                           >
-                            <span
-                              className={cn(
-                                'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mx-auto font-sans tabular-nums',
-                                s.completado
-                                  ? 'bg-success text-white'
-                                  : isAtual
-                                    ? 'bg-brand text-white'
-                                    : 'bg-surface-2 text-text-secondary',
-                              )}
+                            <button
+                              type="button"
+                              onClick={() => handleCheck(modalEx.id, s.ordem)}
+                              className="w-6 h-6 flex items-center justify-center text-[10px] font-bold mx-auto font-sans tabular-nums border-0 bg-transparent"
+                              style={{
+                                color: s.completado ? '#39c75a' : isAtual ? 'var(--brand-primary)' : 'var(--text-tertiary)',
+                              }}
                               aria-label={
                                 s.completado
-                                  ? `Série ${idx + 1} concluída`
+                                  ? `Série ${idx + 1} concluída — toque para desmarcar`
                                   : `Série ${idx + 1}`
                               }
                             >
                               {s.completado ? (
-                                <Check size={12} weight="bold" className="text-white" />
+                                <Check size={14} weight="bold" />
                               ) : (
                                 idx + 1
                               )}
-                            </span>
+                            </button>
 
                             <span
                               className="text-xs text-text-disabled tabular-nums lining-nums font-sans truncate"
@@ -2487,50 +2437,48 @@ export default function ExecucaoTreinoPage() {
                               {s.anterior || '—'}
                             </span>
 
-                            {/* PESO — sempre <input> (mesma tipografia em todas as linhas) */}
-                            <div className="flex items-baseline justify-end gap-0.5 min-w-0">
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                value={isAtual ? (modalCarga || '') : (s.peso_atual || '')}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
-                                  if (isAtual) {
-                                    setModalCarga(val);
-                                    setModalCargaStr(e.target.value === '' ? '' : String(val));
-                                  }
-                                  handlePesoChange(modalEx.id, s.ordem, val);
-                                }}
-                                placeholder="—"
-                                aria-label={`Editar peso da série ${idx + 1}`}
-                                className="w-full max-w-[44px] bg-transparent text-right tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                style={{
-                                  fontSize: 14,
-                                  fontWeight: 700,
-                                  lineHeight: '22px',
-                                  height: 22,
-                                  fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
-                                  fontVariantNumeric: 'tabular-nums lining-nums',
-                                  color: 'var(--brand-primary)',
-                                  borderBottom: isAtual
-                                    ? '1.5px solid transparent'
-                                    : '1.5px solid rgba(117, 27, 180, 0.3)',
-                                  WebkitTextFillColor: 'var(--brand-primary)',
-                                }}
-                              />
-                              {(isAtual ? modalCarga : s.peso_atual) ? (
-                                <span
-                                  className="shrink-0 text-text-tertiary"
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 500,
-                                    lineHeight: '22px',
+                            {modalShowPeso && (
+                              <div className="flex items-baseline justify-end gap-0.5 min-w-0">
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  value={isAtual ? (modalCarga || '') : (s.peso_atual || '')}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    if (isAtual) {
+                                      setModalCarga(val);
+                                      setModalCargaStr(e.target.value === '' ? '' : String(val));
+                                    }
+                                    handlePesoChange(modalEx.id, s.ordem, val);
                                   }}
-                                >
-                                  kg
-                                </span>
-                              ) : null}
-                            </div>
+                                  placeholder="—"
+                                  aria-label={`Editar peso da série ${idx + 1}`}
+                                  className="w-full max-w-[44px] bg-transparent text-right tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                    lineHeight: '22px',
+                                    height: 22,
+                                    fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                                    fontVariantNumeric: 'tabular-nums lining-nums',
+                                    color: 'var(--brand-primary)',
+                                    WebkitTextFillColor: 'var(--brand-primary)',
+                                  }}
+                                />
+                                {(isAtual ? modalCarga : s.peso_atual) ? (
+                                  <span
+                                    className="shrink-0 text-text-tertiary"
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 500,
+                                      lineHeight: '22px',
+                                    }}
+                                  >
+                                    kg
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
 
                             {(() => {
                               const { abaixo } = resolveReps(s);
@@ -2567,14 +2515,7 @@ export default function ExecucaoTreinoPage() {
                                       : abaixo
                                         ? 'var(--warning)'
                                         : 'var(--text-primary)',
-                                    borderBottom: '1.5px solid rgba(117, 27, 180, 0.35)',
                                     height: 22,
-                                  }}
-                                  onFocus={(e) => {
-                                    e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.7)';
-                                  }}
-                                  onBlur={(e) => {
-                                    e.currentTarget.style.borderBottomColor = 'rgba(117, 27, 180, 0.35)';
                                   }}
                                 />
                               );
@@ -2640,7 +2581,7 @@ export default function ExecucaoTreinoPage() {
                 }
                 concluirSerieModal();
               }}
-              disabled={restActive || bisetFase === 'transicao'}
+              disabled={restTimer.active || bisetFase === 'transicao'}
               className="btn-primary w-full min-h-[52px] rounded-[14px] flex items-center justify-center gap-2 text-[15px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-40 touch-manipulation"
             >
               <Check size={18} weight="bold" />

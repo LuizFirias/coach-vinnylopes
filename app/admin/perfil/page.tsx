@@ -26,6 +26,7 @@ import {
   CaretRight,
   Envelope,
   Tag,
+  Bell,
 } from "@phosphor-icons/react";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
@@ -39,6 +40,12 @@ import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { formatStudentUsage, getPlanLabel } from "@/lib/subscriptions/plans";
 import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
 import { invalidateBootstrapProfile } from "@/lib/auth/bootstrapProfile";
+import {
+  getPushPermission,
+  isSubscribedToPush,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "@/lib/push/client";
 import {
   COACH_COVER_SPECS,
   EMPTY_PUBLIC_PROFILE,
@@ -160,6 +167,8 @@ export default function CoachPerfilPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [mercadoNotice, setMercadoNotice] = useState<string | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"loading" | "unsupported" | "on" | "off" | "denied">("loading");
+  const [pushBusy, setPushBusy] = useState(false);
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [planName, setPlanName] = useState("AuronFit");
   const [studentUsage, setStudentUsage] = useState<string | null>(null);
@@ -390,6 +399,45 @@ export default function CoachPerfilPage() {
     }
   };
 
+  const refreshPushStatus = useCallback(async () => {
+    const permission = getPushPermission();
+    if (permission === "unsupported") {
+      setPushStatus("unsupported");
+      return;
+    }
+    if (permission === "denied") {
+      setPushStatus("denied");
+      return;
+    }
+    const subscribed = await isSubscribedToPush();
+    setPushStatus(subscribed ? "on" : "off");
+  }, []);
+
+  useEffect(() => {
+    if (showSettings) void refreshPushStatus();
+  }, [showSettings, refreshPushStatus]);
+
+  const handleTogglePush = async () => {
+    if (pushBusy) return;
+    setPushBusy(true);
+    try {
+      if (pushStatus === "on") {
+        await unsubscribeFromPush();
+        setPushStatus("off");
+      } else {
+        const result = await subscribeToPush();
+        if (result.ok) {
+          setPushStatus("on");
+        } else {
+          setError(result.error);
+          await refreshPushStatus();
+        }
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   const validateProfessional = (): string | null => {
     if (publicForm.handle && !isValidHandle(normalizeHandle(publicForm.handle))) {
       return "Instagram @ inválido (3–30 caracteres: letras, números, . e _)";
@@ -566,6 +614,25 @@ export default function CoachPerfilPage() {
               href="/admin/planos"
             />
           </SettingsSection>
+
+          {pushStatus !== "unsupported" && (
+            <SettingsSection title="Notificações">
+              <SettingsRow
+                icon={Bell}
+                label="Avisos no celular"
+                value={
+                  pushBusy
+                    ? "Aguarde…"
+                    : pushStatus === "on"
+                      ? "Ativado"
+                      : pushStatus === "denied"
+                        ? "Bloqueado no navegador"
+                        : "Desativado — toque pra ativar"
+                }
+                onClick={pushStatus === "denied" ? undefined : () => void handleTogglePush()}
+              />
+            </SettingsSection>
+          )}
 
           <SettingsSection title="Acesso">
             <SettingsRow icon={Envelope} label="E-mail" value={emailDisplay} />

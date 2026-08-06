@@ -1,6 +1,6 @@
 import { supabaseClient } from '@/lib/supabaseClient';
 
-export type NotificacaoTipo = 'checkin_reminder' | 'photos_reminder';
+export type NotificacaoTipo = 'checkin_reminder' | 'photos_reminder' | 'treino_iniciado';
 
 export type Notificacao = {
   id: string;

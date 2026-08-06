@@ -166,7 +166,10 @@ export function AlunoObservacoesCard({ alunoId, coachId, legacyOrientacoes }: Pr
                   <button
                     type="button"
                     onClick={() => setExpandedId(open ? null : obs.id)}
-                    className="min-w-0 flex-1 text-left bg-transparent border-0 p-0"
+                    className={cn(
+                      'min-w-0 flex-1 text-left bg-transparent border-0 p-0',
+                      obs.finalizada_em && 'opacity-50',
+                    )}
                   >
                     <p
                       className={cn(
@@ -178,6 +181,7 @@ export function AlunoObservacoesCard({ alunoId, coachId, legacyOrientacoes }: Pr
                     </p>
                     <p className="mt-0.5 text-[10px] text-text-tertiary">
                       {formatDate(obs.criada_em)}
+                      {obs.finalizada_em && ' · Concluída pelo aluno'}
                     </p>
                   </button>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Moon, X } from '@phosphor-icons/react';
+import { Check, Heartbeat, Moon, X } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
 import type { DiaSemana } from './WeekCalendar';
 
@@ -14,6 +14,7 @@ export interface DayConfigWorkoutOption {
 type PickerItem =
   | { kind: 'status'; value: 'done' | 'missed'; label: string }
   | { kind: 'rest'; label: string }
+  | { kind: 'cardio'; label: string }
   | { kind: 'workout'; option: DayConfigWorkoutOption; label: string };
 
 interface DayConfigPickerProps {
@@ -25,6 +26,7 @@ interface DayConfigPickerProps {
   saving?: boolean;
   onClose: () => void;
   onSelectRest: () => void;
+  onSelectCardio: () => void;
   onSelectWorkout: (option: DayConfigWorkoutOption) => void;
   onSelectStatus?: (status: 'done' | 'missed') => void;
 }
@@ -56,29 +58,36 @@ export function DayConfigPicker({
   saving = false,
   onClose,
   onSelectRest,
+  onSelectCardio,
   onSelectWorkout,
   onSelectStatus,
 }: DayConfigPickerProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
 
+  // Confirmação manual de "treino realizado" só existe para o dia anterior — se o
+  // aluno esquecer de marcar em qualquer outro dia, o treino já conta como não realizado.
+  const yesterday = useMemo(() => {
+    const d = new Date(`${today}T12:00:00`);
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, [today]);
+
   const canChangeStatus = Boolean(
     dia &&
       !dia.isOff &&
-      dia.temTreino &&
-      dia.data <= today &&
+      (dia.temTreino || dia.isCardio) &&
+      dia.data === yesterday &&
       onSelectStatus,
   );
 
   const items = useMemo<PickerItem[]>(() => {
     const list: PickerItem[] = [];
     if (canChangeStatus) {
-      list.push(
-        { kind: 'status', value: 'done', label: 'Treino realizado' },
-        { kind: 'status', value: 'missed', label: 'Não realizado' },
-      );
+      list.push({ kind: 'status', value: 'done', label: 'Treino realizado' });
     }
     list.push({ kind: 'rest', label: 'Descanso' });
+    list.push({ kind: 'cardio', label: 'Cardio' });
     for (const w of workouts) {
       list.push({ kind: 'workout', option: w, label: w.name });
     }
@@ -87,13 +96,9 @@ export function DayConfigPicker({
 
   useEffect(() => {
     if (!open) return;
+    const start = canChangeStatus ? 1 : 0;
     let initial = 0;
-    if (canChangeStatus && dia) {
-      initial = dia.treinoConcluido ? 0 : 1;
-    } else if (dia?.isOff) {
-      initial = canChangeStatus ? 2 : 0;
-    } else if (dia?.fichaId || dia?.treinoPdfId) {
-      const start = canChangeStatus ? 2 : 0;
+    if (dia?.fichaId || dia?.treinoPdfId) {
       const idx = items.findIndex(
         (it) =>
           it.kind === 'workout' &&
@@ -101,6 +106,12 @@ export function DayConfigPicker({
             (dia.treinoPdfId && it.option.id === dia.treinoPdfId)),
       );
       initial = idx >= 0 ? idx : start;
+    } else if (dia?.isCardio) {
+      initial = start + 1;
+    } else if (dia?.isOff) {
+      initial = start;
+    } else if (canChangeStatus && dia) {
+      initial = dia.treinoConcluido ? 0 : start;
     }
     setIndex(Math.max(0, Math.min(initial, items.length - 1)));
   }, [open, canChangeStatus, dia, items]);
@@ -128,6 +139,10 @@ export function DayConfigPicker({
     }
     if (item.kind === 'rest') {
       onSelectRest();
+      return;
+    }
+    if (item.kind === 'cardio') {
+      onSelectCardio();
       return;
     }
     onSelectWorkout(item.option);
@@ -226,7 +241,7 @@ export function DayConfigPicker({
               const active = i === index;
               return (
                 <button
-                  key={`${item.kind}-${item.kind === 'workout' ? item.option.id : item.kind === 'status' ? item.value : 'rest'}`}
+                  key={`${item.kind}-${item.kind === 'workout' ? item.option.id : item.kind === 'status' ? item.value : item.kind}`}
                   type="button"
                   onClick={() => {
                     setIndex(i);
@@ -242,6 +257,13 @@ export function DayConfigPicker({
                 >
                   {item.kind === 'rest' && (
                     <Moon size={14} weight={active ? 'fill' : 'regular'} />
+                  )}
+                  {item.kind === 'cardio' && (
+                    <Heartbeat
+                      size={14}
+                      weight={active ? 'fill' : 'regular'}
+                      className={active ? 'text-danger' : undefined}
+                    />
                   )}
                   {item.kind === 'status' && item.value === 'done' && (
                     <Check

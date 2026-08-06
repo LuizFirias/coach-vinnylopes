@@ -111,7 +111,7 @@ export default function AlunoTreinosPage() {
       <div className="min-h-screen pb-24" style={{ background: 'var(--surface-0)' }}>
         <div className="px-4 pt-6 pb-4 max-w-[680px] mx-auto lg:pt-10 lg:pb-6">
           <h1
-            className="text-[22px] lg:text-[26px] font-extrabold tracking-tight"
+            className="text-[22px] lg:text-[26px] font-bold tracking-tight"
             style={{ color: 'var(--text-primary)' }}
           >
             Minhas Rotinas
