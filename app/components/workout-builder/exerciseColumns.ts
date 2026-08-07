@@ -29,6 +29,11 @@ export function exercicioMostraPeso(tipoExercicio?: string | null): boolean {
   return showPesoColumn(tipoExercicio || "Peso & Repetições");
 }
 
+/** Exercício prescrito por tempo (Duração / Duração e Peso) — usa tempo_sugerido, não reps_sugerido. */
+export function exercicioEhPorTempo(tipoExercicio?: string | null): boolean {
+  return tipoExercicio === "Duração" || tipoExercicio === "Duração e Peso";
+}
+
 export function getColunasPorTipo(tipo: string): ColunaSerie[] {
   switch (tipo) {
     case "Peso & Repetições":
