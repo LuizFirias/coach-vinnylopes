@@ -13,6 +13,7 @@ import {
 import { RestBadge } from "./RestBadge";
 import { SetRow, SetsTableHeader } from "./SetRow";
 import { getColunasPorTipo, showPesoColumn } from "./exerciseColumns";
+import { BodyPortal, useLockBodyScroll } from "@/app/components/ui/BodyPortal";
 import type { BiSetGroupFicha } from "@/lib/utils/biset";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
@@ -56,27 +57,19 @@ export function BiSetGroupCard({
   const [showUndoModal, setShowUndoModal] = useState(false);
   const [showObsA, setShowObsA] = useState(Boolean(group.exercicioA.observacoes));
   const [showObsB, setShowObsB] = useState(Boolean(group.exercicioB?.observacoes));
-
+  useLockBodyScroll(showUndoModal);
   const halfA = group.exercicioA;
   const halfB = group.exercicioB;
   const isComplete = halfB !== null;
 
   const renderHalfGrid = (half: "a" | "b") => {
     const data = half === "a" ? halfA : halfB!;
-    const baseCols = getColunasPorTipo(data.tipo_exercicio);
-    const temIsometria = data.series.some((s) => s.tecnica_extra === "Isometria");
-    const colunas = temIsometria
-      ? baseCols.map((c) =>
-          c.key === "reps_sugerido"
-            ? { key: "tempo_sugerido", label: "Tempo", type: "text" as const, timeInput: true }
-            : c
-        )
-      : baseCols;
+    const colunas = getColunasPorTipo(data.tipo_exercicio);
     const showPeso = showPesoColumn(data.tipo_exercicio);
 
     return (
       <>
-        <SetsTableHeader colunas={colunas} showPeso={showPeso} />
+        <SetsTableHeader colunas={colunas} showPeso={showPeso} showExtra={false} />
         {data.series.map((serie, sIndex) => (
           <SetRow
             key={`${half}-${sIndex}`}
@@ -84,6 +77,7 @@ export function BiSetGroupCard({
             serieIndex={sIndex}
             colunas={colunas}
             showPeso={showPeso}
+            showExtra={false}
             onChange={(field, value) => onUpdateSerie(half, sIndex, field, value)}
             onDelete={() => onRemoveSerie(sIndex)}
           />
@@ -99,6 +93,11 @@ export function BiSetGroupCard({
           "bg-surface-1 border-0 rounded-[14px] overflow-hidden transition-opacity",
           isDragging && "opacity-95 ring-1 ring-brand/40 shadow-elev-3"
         )}
+        style={{
+          boxShadow: isDragging
+            ? undefined
+            : "0 0 0 1px rgba(147,51,234,0.3), 0 0 18px rgba(147,51,234,0.28)",
+        }}
       >
         {/* Exercício A */}
         <div className="px-3.5 py-2.5">
@@ -294,7 +293,8 @@ export function BiSetGroupCard({
       </div>
 
       {showUndoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm">
+        <BodyPortal>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-surface-1 border-0 rounded-xl p-5">
             <h3 className="text-sm font-bold text-text-primary mb-2">Desfazer Bi-Set?</h3>
             <p className="text-xs text-text-secondary mb-4 leading-relaxed">
@@ -318,6 +318,7 @@ export function BiSetGroupCard({
             </div>
           </div>
         </div>
+        </BodyPortal>
       )}
     </>
   );

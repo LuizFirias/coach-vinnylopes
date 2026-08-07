@@ -6,6 +6,11 @@ export interface SerieDefinicao {
   peso_sugerido?: number | null;
   tecnica?: string;
   tecnica_extra?: string;
+
+  // Cluster Set — só usado quando tecnica ou tecnica_extra === "Cluster Set"
+  cluster_qtd?: number;
+  cluster_reps?: number;
+  cluster_descanso_seg?: number;
 }
 
 export interface ExercicioFicha {

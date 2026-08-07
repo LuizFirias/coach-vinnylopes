@@ -84,20 +84,6 @@ type DisplayStatus =
 
 type CheckoutSelection = { tier: PlanTier; period: BillingPeriod };
 
-declare global {
-  interface Window {
-    MercadoPago?: new (publicKey: string, options?: { locale: string }) => {
-      bricks: () => {
-        create: (
-          brick: string,
-          containerId: string,
-          settings: Record<string, unknown>,
-        ) => Promise<unknown>;
-      };
-    };
-  }
-}
-
 function formatDateBR(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -161,19 +147,19 @@ function PriceHero({
     <div className={cn("flex items-end gap-0.5", dimmed && "opacity-40")}>
       <span
         className={cn(intCls, "font-black leading-none tracking-[-0.03em]")}
-        style={{ color: dimmed ? "#6b7280" : "#ffffff" }}
+        style={{ color: dimmed ? "var(--text-disabled)" : "var(--text-primary)" }}
       >
         R$ {int}
       </span>
       <span
         className={cn(decCls, "font-black leading-none pb-1 tracking-[-0.01em]")}
-        style={{ color: dimmed ? "#6b7280" : "#ffffff" }}
+        style={{ color: dimmed ? "var(--text-disabled)" : "var(--text-primary)" }}
       >
         ,{dec}
       </span>
       <span
         className={cn(unitCls, "font-medium ml-1")}
-        style={{ color: dimmed ? "#4b5563" : "#751BB4" }}
+        style={{ color: dimmed ? "var(--text-disabled)" : "var(--brand-primary)" }}
       >
         {unit}
       </span>
@@ -202,7 +188,7 @@ function AlertLine({
 }) {
   return (
     <div
-      className="py-2 pl-3 text-xs leading-relaxed text-[#7a8aab]"
+      className="py-2 pl-3 text-xs leading-relaxed text-text-tertiary"
       style={{ borderLeft: `2px solid ${borderColor}` }}
     >
       {children}
@@ -222,72 +208,42 @@ function OrderSummary({
   return (
     <div className="border-t border-divider py-4">
       <div className="flex justify-between text-[12px] py-1">
-        <span className="text-[#7a8aab]">Plano</span>
-        <span className="text-white font-medium">{planLabel}</span>
+        <span className="text-text-tertiary">Plano</span>
+        <span className="text-text-primary font-medium">{planLabel}</span>
       </div>
       <div className="flex justify-between text-[12px] py-1">
-        <span className="text-[#7a8aab]">Periodicidade</span>
-        <span className="text-white font-medium">{periodLabel}</span>
+        <span className="text-text-tertiary">Periodicidade</span>
+        <span className="text-text-primary font-medium">{periodLabel}</span>
       </div>
       <div className="flex justify-between text-[12px] py-1.5">
-        <span className="text-[#7a8aab]">Total</span>
-        <span className="text-white text-[14px] font-bold">{priceDisplay}</span>
+        <span className="text-text-tertiary">Total</span>
+        <span className="text-text-primary text-[14px] font-bold">{priceDisplay}</span>
       </div>
-      <p className="text-[10px] text-[#7a8aab] mt-3">
+      <p className="text-[10px] text-text-tertiary mt-3">
         Cobrança recorrente · cancele quando quiser
       </p>
-      <p className="text-[10px] text-[#7a8aab] mt-1 flex items-center gap-1">
+      <p className="text-[10px] text-text-tertiary mt-1 flex items-center gap-1">
         <Lock className="w-3 h-3" weight="fill" />
-        Processado por Mercado Pago
+        Processado por Asaas
       </p>
     </div>
   );
 }
 
-const BRICK_VISUAL = {
-  style: {
-    theme: "dark",
-    customVariables: {
-      baseColor: "#751BB4",
-      buttonTextColor: "#ffffff",
-      formBackgroundColor: "transparent",
-      inputBackgroundColor: "#222222",
-      textPrimaryColor: "#ffffff",
-      textSecondaryColor: "#7a8aab",
-      outlinePrimaryColor: "#751BB4",
-      outlineSecondaryColor: "#282828",
-      baseColorFirstVariant: "#8B2FD4",
-      // Fundo de listas/dropdowns — evita texto preto ilegível no dark
-      baseColorSecondVariant: "#222222",
-      errorColor: "#e05555",
-      successColor: "#39c75a",
-      borderRadiusSmall: "8px",
-      borderRadiusMedium: "8px",
-      borderRadiusLarge: "10px",
-      inputVerticalPadding: "16px",
-      inputHorizontalPadding: "12px",
-      // Padding inferior grande = espaço entre e-mail e botão Pagar
-      formPadding: "12px 0 48px 0",
-      inputBorderWidth: "1px",
-      inputFocusedBorderWidth: "1px",
-    },
-  },
-};
+type PaymentMethod = "PIX" | "BOLETO" | "CREDIT_CARD";
 
-/** Assinatura recorrente: só à vista — evita dropdown de parcelas com contraste ruim. */
-const BRICK_PAYMENT_METHODS = {
-  minInstallments: 1,
-  maxInstallments: 1,
-};
+const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: "PIX", label: "Pix" },
+  { value: "BOLETO", label: "Boleto" },
+  { value: "CREDIT_CARD", label: "Cartão de crédito" },
+];
 
 export default function AssinaturaPage() {
   const router = useRouter();
   const isBelowDesktop = useBreakpoint("tablet");
   const isDesktop = !isBelowDesktop;
 
-  const brickAreaRef = useRef<HTMLDivElement>(null);
-  const brickContainerRef = useRef<HTMLDivElement>(null);
-  const brickControllerRef = useRef<{ unmount?: () => void } | null>(null);
+  const paymentAreaRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollAttemptsRef = useRef(0);
 
@@ -296,11 +252,13 @@ export default function AssinaturaPage() {
   const [data, setData] = useState<SubscriptionData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [brickReady, setBrickReady] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [cpfCnpj, setCpfCnpj] = useState("");
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [pollingTimedOut, setPollingTimedOut] = useState(false);
   const [pollingActive, setPollingActive] = useState(false);
-  /** Só true após submit do Brick — nunca após cancelamento. */
+  /** Só true após gerar a fatura Asaas — nunca após cancelamento. */
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   /** Alterar plano/cartão com assinatura ativa — abre checkout sem exigir expiração. */
   const [forceCheckout, setForceCheckout] = useState(false);
@@ -481,7 +439,7 @@ export default function AssinaturaPage() {
     }
   }, [selectedTier, selectedPeriod, data?.plans]);
 
-  // Se trocar tab/período enquanto Brick está aberto, sincroniza seleção do checkout
+  // Se trocar tab/período enquanto o checkout está aberto, sincroniza a seleção
   useEffect(() => {
     if (!checkoutSelection) return;
     if (
@@ -495,7 +453,7 @@ export default function AssinaturaPage() {
   useEffect(() => {
     if (!checkoutSelection) return;
     const t = window.setTimeout(() => {
-      brickAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      paymentAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
     return () => window.clearTimeout(t);
   }, [checkoutSelection?.tier, checkoutSelection?.period]);
@@ -577,158 +535,59 @@ export default function AssinaturaPage() {
     }
   };
 
-  // Brick só monta após Assinar / Alterar
-  useEffect(() => {
-    if (
-      !showCheckout ||
-      !checkoutSelection ||
-      !checkoutPlan ||
-      !data?.publicKey ||
-      !brickContainerRef.current
-    ) {
+  /** Confirma o checkout: cria a assinatura no Asaas e abre a fatura hospedada (Pix/Boleto/Cartão). */
+  const handleConfirmPayment = useCallback(async () => {
+    if (!checkoutSelection || !paymentMethod) return;
+
+    const digits = cpfCnpj.replace(/\D/g, "");
+    if (digits.length !== 11 && digits.length !== 14) {
+      setError("Informe um CPF ou CNPJ válido.");
       return;
     }
 
-    let cancelled = false;
-    const amount = checkoutPlan.billing.price;
-    const tier = checkoutSelection.tier;
-    const period = checkoutSelection.period;
+    setSubmitting(true);
+    setError(null);
+    setInvoiceUrl(null);
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      if (!session?.access_token) throw new Error("Sessão expirada");
 
-    const initBrick = async () => {
-      try {
-        setBrickReady(false);
+      const res = await fetch("/api/subscriptions/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          planTier: checkoutSelection.tier,
+          billingPeriod: checkoutSelection.period,
+          billingType: paymentMethod,
+          cpfCnpj: digits,
+        }),
+      });
 
-        if (!window.MercadoPago) {
-          await new Promise<void>((resolve, reject) => {
-            const existing = document.querySelector('script[src*="mercadopago.com/js/v2"]');
-            if (existing) {
-              existing.addEventListener("load", () => resolve());
-              return;
-            }
-            const script = document.createElement("script");
-            script.src = "https://sdk.mercadopago.com/js/v2";
-            script.async = true;
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error("Falha ao carregar Mercado Pago"));
-            document.body.appendChild(script);
-          });
-        }
-
-        if (cancelled || !window.MercadoPago) return;
-
-        brickControllerRef.current?.unmount?.();
-        brickControllerRef.current = null;
-
-        const mp = new window.MercadoPago(data.publicKey!, { locale: "pt-BR" });
-        const bricksBuilder = mp.bricks();
-
-        const controller = await bricksBuilder.create("cardPayment", "mp-card-brick", {
-          initialization: { amount },
-          customization: {
-            visual: BRICK_VISUAL,
-            paymentMethods: BRICK_PAYMENT_METHODS,
-          },
-          callbacks: {
-            onReady: () => {
-              if (!cancelled) setBrickReady(true);
-            },
-            onSubmit: async (formData: { token?: string; payer?: { email?: string } }) => {
-              setSubmitting(true);
-              setError(null);
-              try {
-                const {
-                  data: { session },
-                } = await supabaseClient.auth.getSession();
-                if (!session?.access_token) throw new Error("Sessão expirada");
-
-                const res = await fetch("/api/subscriptions/checkout", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${session.access_token}`,
-                  },
-                  body: JSON.stringify({
-                    cardTokenId: formData.token,
-                    payerEmail: formData.payer?.email,
-                    planTier: tier,
-                    billingPeriod: period,
-                  }),
-                });
-
-                const json = await res.json();
-                if (!res.ok) {
-                  const detail =
-                    json.mpCause != null
-                      ? `${json.error || "Erro ao processar assinatura"} (MP ${json.mpStatus ?? "?"} · ${json.mpCause})`
-                      : json.error || "Erro ao processar assinatura";
-                  console.error("[assinatura:checkout] falhou", json);
-                  throw new Error(detail);
-                }
-
-                // TEMP debug — resposta síncrona do checkout vs o que o status API lê
-                console.log("[assinatura:checkout]", {
-                  status: json.status,
-                  notificationUrl: json.notificationUrl,
-                  planTier: json.planTier,
-                });
-
-                setSuccess(
-                  json.status === "authorized"
-                    ? "Assinatura confirmada."
-                    : "Pagamento enviado. Confirmando assinatura...",
-                );
-                setAwaitingPayment(true);
-                startPolling();
-                const latest = await loadStatus();
-                if (json.status === "authorized" || latest?.isActive) {
-                  setAwaitingPayment(false);
-                  setForceCheckout(false);
-                  setCheckoutSelection(null);
-                  stopPolling();
-                  router.refresh();
-                }
-                return;
-              } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : "Erro ao assinar";
-                setError(msg);
-                throw err;
-              } finally {
-                setSubmitting(false);
-              }
-            },
-            onError: (err: unknown) => {
-              console.error("[MP-BRICK]", err);
-            },
-          },
-        });
-
-        brickControllerRef.current = controller as { unmount?: () => void };
-      } catch (err: unknown) {
-        if (!cancelled) {
-          const msg = err instanceof Error ? err.message : "Erro ao inicializar pagamento";
-          setError(msg);
-        }
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Erro ao processar assinatura");
       }
-    };
 
-    void initBrick();
+      if (json.invoiceUrl) {
+        setInvoiceUrl(json.invoiceUrl);
+        window.open(json.invoiceUrl, "_blank", "noopener,noreferrer");
+      }
 
-    return () => {
-      cancelled = true;
-      brickControllerRef.current?.unmount?.();
-      brickControllerRef.current = null;
-    };
-  }, [
-    showCheckout,
-    checkoutSelection?.tier,
-    checkoutSelection?.period,
-    checkoutPlan?.billing.price,
-    data?.publicKey,
-    loadStatus,
-    startPolling,
-    stopPolling,
-    router,
-  ]);
+      setSuccess("Fatura gerada. Finalize o pagamento na aba aberta pelo Asaas.");
+      setAwaitingPayment(true);
+      startPolling();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao assinar";
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [checkoutSelection, paymentMethod, cpfCnpj, startPolling]);
 
   if (loading) {
     return (
@@ -788,10 +647,10 @@ export default function AssinaturaPage() {
               isSelected
                 ? isTest
                   ? "text-[#e05555] border-[#e05555]"
-                  : "text-white border-[#751BB4]"
+                  : "text-text-primary border-[#751BB4]"
                 : isTest
                   ? "text-[#e05555]/70 border-transparent hover:text-[#e05555]"
-                  : "text-[#7a8aab] border-transparent hover:text-white",
+                  : "text-text-tertiary border-transparent hover:text-text-primary",
             )}
           >
             {plan.label}
@@ -820,14 +679,14 @@ export default function AssinaturaPage() {
               idx > 0 && "border-l border-divider",
               active
                 ? "bg-[#111111] text-white z-1 ring-1 ring-[#751BB4] ring-inset"
-                : "bg-transparent text-[#7a8aab] hover:text-white",
+                : "bg-transparent text-text-tertiary hover:text-text-primary",
             )}
           >
             <span className="block text-[11px] font-medium uppercase">{opt.periodLabel}</span>
             <span
               className={cn(
                 "block text-[12px] font-bold mt-0.5",
-                active ? "text-white" : "text-[#a8b4c8]",
+                active ? "text-white" : "text-text-secondary",
               )}
             >
               {months === 1
@@ -859,22 +718,65 @@ export default function AssinaturaPage() {
     </ul>
   );
 
-  const brickSection = checkoutSelection && checkoutPlan && data?.publicKey && (
-    <div ref={brickAreaRef} className="pt-2">
+  const paymentSection = checkoutSelection && checkoutPlan && (
+    <div ref={paymentAreaRef} className="pt-2">
       <OrderSummary
         planLabel={checkoutPlan.label}
         periodLabel={BILLING_PERIOD_LABELS[checkoutSelection.period]}
         priceDisplay={checkoutPlan.billing.priceDisplay}
       />
-      <div
-        key={`${checkoutSelection.tier}-${checkoutSelection.period}`}
-        id="mp-card-brick"
-        ref={brickContainerRef}
-        className={cn("mp-card-brick min-h-[200px] mt-2 pb-8", !brickReady && "opacity-50")}
-      />
-      {submitting && (
-        <p className="text-[11px] text-[#7a8aab] mt-4">Confirmando pagamento...</p>
-      )}
+      <div key={`${checkoutSelection.tier}-${checkoutSelection.period}`} className="pt-2 pb-8">
+        <label className="block text-[11px] font-medium text-text-tertiary mb-1.5" htmlFor="cpf-cnpj">
+          CPF ou CNPJ
+        </label>
+        <input
+          id="cpf-cnpj"
+          type="text"
+          inputMode="numeric"
+          value={cpfCnpj}
+          onChange={(e) => setCpfCnpj(e.target.value)}
+          placeholder="000.000.000-00"
+          className="w-full h-11 px-3 rounded-lg bg-surface-2 border border-input text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+        />
+
+        <p className="text-[11px] font-medium text-text-tertiary mt-5 mb-2">Forma de pagamento</p>
+        <div className="grid grid-cols-3 gap-2">
+          {PAYMENT_METHOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setPaymentMethod(opt.value)}
+              className={cn(
+                "h-11 rounded-lg text-xs font-semibold border transition-colors",
+                paymentMethod === opt.value
+                  ? "border-brand bg-brand/10 text-brand"
+                  : "border-input text-text-secondary hover:border-brand/40",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleConfirmPayment}
+          disabled={!paymentMethod || submitting}
+          className="mt-6 w-full h-12 rounded-md text-sm font-bold text-white bg-brand hover:bg-brand-hover transition-colors disabled:opacity-50"
+        >
+          {submitting ? "Gerando fatura..." : "Ir para pagamento"}
+        </button>
+
+        {invoiceUrl && (
+          <p className="text-[11px] text-text-tertiary mt-3">
+            A aba de pagamento não abriu?{" "}
+            <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-brand underline">
+              Clique aqui
+            </a>
+            .
+          </p>
+        )}
+      </div>
     </div>
   );
 
@@ -1009,18 +911,9 @@ export default function AssinaturaPage() {
               </p>
             )}
 
-            {!data?.publicKey && (
-              <div className="mb-6">
-                <AlertLine borderColor="#f59e0b">
-                  Mercado Pago não configurado. Defina NEXT_PUBLIC_MP_PUBLIC_KEY nas variáveis de
-                  ambiente.
-                </AlertLine>
-              </div>
-            )}
-
             {planTabs}
 
-            {checkoutSelection && isDesktop && data?.publicKey ? (
+            {checkoutSelection && isDesktop ? (
               <div className="grid gap-12 mt-8" style={{ gridTemplateColumns: "320px 1fr" }}>
                 <aside className="sticky top-6 self-start">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary mb-2">
@@ -1039,7 +932,7 @@ export default function AssinaturaPage() {
                   {periodControl}
                   {featuresList}
                 </aside>
-                <div>{brickSection}</div>
+                <div>{paymentSection}</div>
               </div>
             ) : (
               <div className="max-w-3xl mt-8">
@@ -1074,7 +967,7 @@ export default function AssinaturaPage() {
                   </div>
                 )}
 
-                {checkoutSelection && data?.publicKey && (
+                {checkoutSelection && (
                   <div className="mt-8 border-t border-border-divider pt-6">
                     {selectedPlan && (
                       <div className="mb-6 sm:hidden">
@@ -1089,7 +982,7 @@ export default function AssinaturaPage() {
                         {featuresList}
                       </div>
                     )}
-                    {brickSection}
+                    {paymentSection}
                   </div>
                 )}
               </div>

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { MagnifyingGlass, X, Check } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
+import { BodyPortal, useLockBodyScroll } from "@/app/components/ui/BodyPortal";
 
 interface AlunoOption {
   id: string;
@@ -26,6 +27,7 @@ export function WorkoutBuilderSettingsSheet({
   onClose,
 }: WorkoutBuilderSettingsSheetProps) {
   const [busca, setBusca] = useState("");
+  useLockBodyScroll(true);
 
   const alunoLabel =
     alunos.find((a) => a.id === alunoSelecionado)?.coaching_reference || "sem aluno";
@@ -47,7 +49,8 @@ export function WorkoutBuilderSettingsSheet({
   }, [alunosOrdenados, busca]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+    <BodyPortal>
+    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-surface-1 border-0 rounded-t-2xl w-full max-w-lg flex flex-col max-h-[85dvh]">
         <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
           <h3 className="text-sm font-semibold text-text-primary">Selecionar aluno</h3>
@@ -183,5 +186,6 @@ export function WorkoutBuilderSettingsSheet({
         </div>
       </div>
     </div>
+    </BodyPortal>
   );
 }

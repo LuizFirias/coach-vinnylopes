@@ -879,31 +879,27 @@ function FichaContent() {
                   const showPeso = exercicioMostraPeso(exercicio.tipo_exercicio);
                   const colParts = ['2.5rem', 'minmax(4rem, 7rem)'];
                   if (showPeso) colParts.push('5rem');
-                  if (hasTec) colParts.push('3.5rem');
                   if (hasExtra) colParts.push('5rem');
                   colParts.push('4rem', '2.75rem');
                   const gridTemplate = colParts.join(' ');
                   const mobileGridTemplate = showPeso
-                    ? '24px minmax(36px, 72px) 44px 48px minmax(0, 1fr) 24px 24px 28px'
-                    : '24px minmax(36px, 72px) 48px minmax(0, 1fr) 24px 24px 28px';
+                    ? '24px minmax(36px, 72px) 44px 48px minmax(0, 1fr) 24px 28px'
+                    : '24px minmax(36px, 72px) 48px minmax(0, 1fr) 24px 28px';
                   return (
                     <>
                       {/* Cabeçalhos desktop */}
                       <div className="hidden md:grid gap-1.5 mb-1.5 px-1 min-w-max overflow-x-auto" style={{ gridTemplateColumns: gridTemplate }}>
-                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left">Set</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left flex items-center gap-1">
+                          Set
+                          {hasTec && <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} />}
+                        </span>
                         <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-left pl-2">Ant.</span>
                         {showPeso && (
                           <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center">Peso</span>
                         )}
-                        {hasTec && (
-                          <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center flex items-center justify-center gap-1">
-                            T1
-                            <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} />
-                          </span>
-                        )}
                         {hasExtra && (
                           <span className="text-[10px] font-semibold uppercase tracking-caps text-text-disabled text-center flex items-center justify-center gap-1">
-                            T2
+                            Téc
                             {!hasTec && <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} />}
                           </span>
                         )}
@@ -937,9 +933,6 @@ function FichaContent() {
                           Reps
                         </span>
                         <span aria-hidden />
-                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
-                          T1
-                        </span>
                         <span
                           style={{
                             fontSize: 9,
@@ -954,7 +947,7 @@ function FichaContent() {
                             gap: 2,
                           }}
                         >
-                          T2
+                          Téc
                           <TecnicasTooltipTrigger compact onClick={() => setShowTecnicasTooltip(true)} className="text-[8px]" />
                         </span>
                         <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)', textAlign: 'center' }}>
@@ -990,15 +983,23 @@ function FichaContent() {
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  fontSize: 10,
+                                  fontSize: serie.tecnica ? 9 : 10,
                                   fontWeight: 700,
                                   margin: '0 auto',
                                   flexShrink: 0,
-                                  background: serie.completado ? '#39c75a' : 'var(--filter-bg)',
-                                  color: serie.completado ? '#fff' : 'var(--text-tertiary)',
+                                  background: serie.completado
+                                    ? '#39c75a'
+                                    : serie.tecnica
+                                      ? 'rgba(117, 27, 180,0.12)'
+                                      : 'var(--filter-bg)',
+                                  color: serie.completado
+                                    ? '#fff'
+                                    : serie.tecnica
+                                      ? 'var(--brand-primary)'
+                                      : 'var(--text-tertiary)',
                                 }}
                               >
-                                {sIdx + 1}
+                                {serie.tecnica ? serie.tecnica : sIdx + 1}
                               </div>
 
                               {/* ANT. */}
@@ -1059,33 +1060,10 @@ function FichaContent() {
                                 {serie.reps || '0'}
                               </span>
 
-                              {/* Spacer: T1/T2/check à direita */}
+                              {/* Spacer: TÉC/check à direita */}
                               <div aria-hidden />
 
-                              {/* T1 */}
-                              <div style={{ textAlign: 'center' }}>
-                                {serie.tecnica ? (
-                                  <button
-                                    onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                    style={{
-                                      padding: '2px 4px',
-                                      background: 'var(--filter-bg)',
-                                      border: '1px solid var(--border-subtle)',
-                                      borderRadius: 4,
-                                      fontSize: 8,
-                                      fontWeight: 700,
-                                      color: 'var(--text-secondary)',
-                                      textTransform: 'uppercase',
-                                    }}
-                                  >
-                                    {serie.tecnica.substring(0, 2).toUpperCase()}
-                                  </button>
-                                ) : (
-                                  <span style={{ fontSize: 10, color: 'var(--text-disabled)' }}>—</span>
-                                )}
-                              </div>
-
-                              {/* T2 */}
+                              {/* TÉC */}
                               <div style={{ textAlign: 'center' }}>
                                 {serie.tecnica_extra ? (
                                   <button
@@ -1139,9 +1117,13 @@ function FichaContent() {
                             )} style={{ gridTemplateColumns: gridTemplate }}>
                               <div className={cn(
                                 "w-7 h-7 rounded-full flex items-center justify-center border font-bold text-xs",
-                                serie.completado ? "bg-success border-success text-white" : "bg-surface-3 border-border-default text-text-primary"
+                                serie.completado
+                                  ? "bg-success border-success text-white"
+                                  : serie.tecnica
+                                    ? "bg-brand/10 border-brand/30 text-brand"
+                                    : "bg-surface-3 border-border-default text-text-primary"
                               )}>
-                                {sIdx + 1}
+                                {serie.tecnica ? serie.tecnica : sIdx + 1}
                               </div>
                               <div className="text-left pl-2">
                                 <span className="text-[11px] text-text-secondary font-mono">{serie.anterior || "—"}</span>
@@ -1160,18 +1142,6 @@ function FichaContent() {
                                     )}
                                     placeholder="0"
                                   />
-                                </div>
-                              )}
-                              {hasTec && (
-                                <div className="flex justify-center items-center">
-                                  {serie.tecnica ? (
-                                    <button
-                                      onClick={() => setTecnicaInfoModal(serie.tecnica!)}
-                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md text-text-tertiary bg-surface-3 border border-card/50 hover:opacity-80 transition-opacity"
-                                    >
-                                      {serie.tecnica}
-                                    </button>
-                                  ) : <span className="text-xs text-text-disabled">—</span>}
                                 </div>
                               )}
                               {hasExtra && (
