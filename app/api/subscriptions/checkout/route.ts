@@ -1,250 +1,124 @@
 import { NextResponse } from "next/server";
-
 import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
-
-import { buildMpPreapprovalBody, mpFetch, MpApiError, getMpCredentialDiagnostics } from "@/lib/mercadopago/client";
-
-import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-
-import { mapMpPreapprovalStatus } from "@/lib/mercadopago/statusMapping";
-
-import { setUserAccess } from "@/lib/access/setUserAccess";
-
 import {
+  criarOuObterCustomer,
+  criarAssinatura,
+  AsaasApiError,
+  type AsaasBillingType,
+} from "@/lib/asaas/client";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { isValidPlanCombo, getPlanOption, type PlanTier, type BillingPeriod } from "@/lib/subscriptions/plans";
 
-  isValidPlanCombo,
+const VALID_BILLING_TYPES: AsaasBillingType[] = ["PIX", "BOLETO", "CREDIT_CARD"];
 
-  getPlanOption,
-
-  type PlanTier,
-
-  type BillingPeriod,
-
-} from "@/lib/subscriptions/plans";
-
-import { getSiteUrl } from "@/lib/subscriptions/siteUrl";
-import { resolvePeriodEndFromMp } from "@/lib/subscriptions/billingPeriod";
-
-
-
-interface MpPreapprovalResponse {
-
-  id: string;
-
-  status: string;
-
-  init_point?: string;
-
-  next_payment_date?: string;
-
-  preapproval_plan_id?: string;
-
+function isValidCpfCnpjLength(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 11 || digits.length === 14;
 }
 
-
-
+/**
+ * POST /api/subscriptions/checkout
+ * Cria (ou reaproveita) o customer Asaas do coach + a assinatura recorrente.
+ * Retorna invoiceUrl — o coach paga na fatura hospedada pelo Asaas (Pix/Boleto/Cartão).
+ * O acesso só é liberado quando o webhook confirmar o pagamento (ver lib/asaas/handlePaymentEvent.ts).
+ */
 export async function POST(req: Request) {
-
   try {
-
     const auth = await getAuthenticatedCoach(req);
-
     if ("error" in auth) {
-
       return NextResponse.json({ error: auth.error }, { status: auth.status });
-
     }
-
-
 
     if (auth.role === "super_admin") {
-
       return NextResponse.json({
-
         success: true,
-
         message: "Super admin não requer assinatura",
-
       });
-
     }
 
+    const { planTier, billingPeriod, billingType, cpfCnpj } = await req.json();
 
-
-    const { cardTokenId, payerEmail, planTier, billingPeriod } = await req.json();
-
-
-
-    if (!cardTokenId) {
-
-      return NextResponse.json({ error: "Token do cartão é obrigatório" }, { status: 400 });
-
+    if (!billingType || !VALID_BILLING_TYPES.includes(billingType)) {
+      return NextResponse.json({ error: "Forma de pagamento inválida" }, { status: 400 });
     }
-
-
 
     if (!planTier || !billingPeriod || !isValidPlanCombo(planTier, billingPeriod)) {
-
-      return NextResponse.json(
-
-        { error: "Plano ou periodicidade inválidos" },
-
-        { status: 400 }
-
-      );
-
+      return NextResponse.json({ error: "Plano ou periodicidade inválidos" }, { status: 400 });
     }
-
-
 
     const tier = planTier as PlanTier;
-
     const period = billingPeriod as BillingPeriod;
-
     const planOption = getPlanOption(tier, period);
-
-
-
-    const email = payerEmail || auth.email;
-
-    if (!email) {
-
-      return NextResponse.json({ error: "E-mail do pagador é obrigatório" }, { status: 400 });
-
-    }
-
-
 
     const supabase = getSupabaseAdmin();
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, email, cpf_cnpj")
+      .eq("id", auth.userId)
+      .maybeSingle();
+
+    const email = profile?.email || auth.email;
+    if (!email) {
+      return NextResponse.json({ error: "E-mail do coach é obrigatório" }, { status: 400 });
+    }
+
+    const finalCpfCnpj: string = profile?.cpf_cnpj || cpfCnpj || "";
+    if (!finalCpfCnpj || !isValidCpfCnpjLength(finalCpfCnpj)) {
+      return NextResponse.json(
+        { error: "CPF ou CNPJ é obrigatório para assinar", needsCpfCnpj: true },
+        { status: 400 },
+      );
+    }
+
+    if (!profile?.cpf_cnpj) {
+      await supabase.from("profiles").update({ cpf_cnpj: finalCpfCnpj }).eq("id", auth.userId);
+    }
+
     const { data: existing } = await supabase
       .from("subscriptions")
-      .select("id, status, mp_preapproval_id")
+      .select("id, status")
       .eq("user_id", auth.userId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    // authorized bloqueia; canceling/expired/cancelled/past_due podem reativar via checkout
     if (existing?.status === "authorized") {
-      return NextResponse.json(
-        { error: "Você já possui uma assinatura ativa" },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "Você já possui uma assinatura ativa" }, { status: 409 });
     }
 
-    const siteUrl = getSiteUrl();
-
-    const mpBody = buildMpPreapprovalBody(tier, period, {
-      userId: auth.userId,
+    const customerId = await criarOuObterCustomer({
+      id: auth.userId,
+      nome: profile?.full_name || auth.fullName || "Coach",
       email,
-      cardTokenId,
-      backUrl: `${siteUrl}/admin/assinatura?status=success`,
+      cpfCnpj: finalCpfCnpj,
     });
 
-    console.log("[checkout] notification_url enviado:", mpBody.notification_url, {
-      siteUrl,
-      tier,
-      period,
-      userId: auth.userId,
-      hasCardToken: Boolean(cardTokenId),
-      existingStatus: existing?.status ?? null,
-    });
-
-    const creds = getMpCredentialDiagnostics();
-    console.log("[checkout] public key usada:", creds.publicKeyMasked);
-    console.log("[checkout] access token usado:", creds.accessTokenMasked);
-    console.log("[checkout] credenciais:", {
-      nodeEnv: creds.nodeEnv,
-      expectedMode: creds.expectedMode,
-      publicKeyMode: creds.publicKeyMode,
-      accessTokenMode: creds.accessTokenMode,
-      pairMatch: creds.pairMatch,
-    });
-    if (!creds.pairMatch) {
-      console.error(
-        "[checkout] ALERTA: Public Key e Access Token parecem de ambientes diferentes (TEST vs APP_USR). Isso costuma causar token inválido no MP.",
-      );
-    }
-
-    let preapproval: MpPreapprovalResponse;
+    let assinatura;
     try {
-      preapproval = await mpFetch<MpPreapprovalResponse>("/preapproval", {
-        method: "POST",
-        body: JSON.stringify(mpBody),
+      assinatura = await criarAssinatura({
+        coachId: auth.userId,
+        customerId,
+        plano: tier,
+        ciclo: period,
+        billingType: billingType as AsaasBillingType,
       });
     } catch (err: unknown) {
-      if (err instanceof MpApiError) {
-        console.error("[checkout] erro MP:", {
-          status: err.status,
-          path: err.path,
-          causeCode: err.causeCode,
-          message: err.message,
-          body: err.body,
-          credentials: {
-            publicKey: creds.publicKeyMasked,
-            accessToken: creds.accessTokenMasked,
-            publicKeyMode: creds.publicKeyMode,
-            accessTokenMode: creds.accessTokenMode,
-            pairMatch: creds.pairMatch,
-          },
-          request: {
-            tier,
-            period,
-            userId: auth.userId,
-            notification_url: mpBody.notification_url,
-            has_preapproval_plan_id: Boolean(mpBody.preapproval_plan_id),
-            has_auto_recurring: Boolean(mpBody.auto_recurring),
-          },
-        });
-        // 4xx do MP → 400 (mensagem real); 5xx do MP → 502
+      if (err instanceof AsaasApiError) {
+        console.error("[checkout] erro Asaas:", { status: err.status, path: err.path, message: err.message, body: err.body });
         const httpStatus = err.status >= 400 && err.status < 500 ? 400 : 502;
-        return NextResponse.json(
-          {
-            error: err.message,
-            mpStatus: err.status,
-            mpCause: err.causeCode,
-            mpBody: err.body,
-            credentialPairMatch: creds.pairMatch,
-            credentialMode: {
-              publicKey: creds.publicKeyMode,
-              accessToken: creds.accessTokenMode,
-              expected: creds.expectedMode,
-            },
-          },
-          { status: httpStatus },
-        );
+        return NextResponse.json({ error: err.message, asaasStatus: err.status, asaasBody: err.body }, { status: httpStatus });
       }
       throw err;
     }
 
-    const status = mapMpPreapprovalStatus(preapproval.status);
-    const periodEnd = resolvePeriodEndFromMp({
-      nextPaymentDate: preapproval.next_payment_date || null,
-      billingPeriod: period,
-      planTier: tier,
-    });
-
-    console.log("[SUBSCRIPTIONS-CHECKOUT] MP preapproval", {
-      id: preapproval.id,
-      mpStatus: preapproval.status,
-      mappedStatus: status,
-      mpNextPaymentDate: preapproval.next_payment_date || null,
-      periodEnd,
-    });
-
-    const planInfo = {
-      planTier: tier,
-      billingPeriod: period,
-      studentLimit: planOption.studentLimit,
-    };
-
     const row = {
       user_id: auth.userId,
-      mp_preapproval_id: preapproval.id,
-      mp_plan_id: preapproval.preapproval_plan_id || mpBody.preapproval_plan_id || null,
-      status,
-      current_period_end: periodEnd,
+      provider: "asaas",
+      asaas_subscription_id: assinatura.id,
+      asaas_customer_id: customerId,
+      status: "pending",
+      current_period_end: null,
       grace_period_end: null,
       plan_tier: tier,
       billing_period: period,
@@ -254,64 +128,34 @@ export async function POST(req: Request) {
     };
 
     if (existing?.id) {
-      const { error: updateError } = await supabase
-        .from("subscriptions")
-        .update(row)
-        .eq("id", existing.id);
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
+      const { error: updateError } = await supabase.from("subscriptions").update(row).eq("id", existing.id);
+      if (updateError) throw new Error(updateError.message);
     } else {
       const { error: insertError } = await supabase.from("subscriptions").insert(row);
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
+      if (insertError) throw new Error(insertError.message);
     }
 
-    await setUserAccess(auth.userId, status, periodEnd, planInfo);
-
-    console.log("[SUBSCRIPTIONS-CHECKOUT] setUserAccess aplicado", {
-      userId: auth.userId,
-      status,
-      accessGranted: status === "authorized",
-    });
+    // Acesso só é liberado quando o webhook confirmar o pagamento da 1ª fatura
+    // (ver lib/asaas/handlePaymentEvent.ts) — não concede aqui.
 
     return NextResponse.json({
       success: true,
-      status,
+      status: "pending",
       planTier: tier,
       billingPeriod: period,
       studentLimit: planOption.studentLimit,
-      initPoint: preapproval.init_point || null,
-      notificationUrl: mpBody.notification_url,
+      invoiceUrl: assinatura.invoiceUrl || null,
     });
-
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erro interno";
 
-    if (err instanceof MpApiError) {
-      console.error("[checkout] erro MP (catch geral):", {
-        status: err.status,
-        path: err.path,
-        causeCode: err.causeCode,
-        message: err.message,
-        body: err.body,
-      });
+    if (err instanceof AsaasApiError) {
+      console.error("[checkout] erro Asaas (catch geral):", { status: err.status, path: err.path, message: err.message, body: err.body });
       const httpStatus = err.status >= 400 && err.status < 500 ? 400 : 502;
-      return NextResponse.json(
-        {
-          error: err.message,
-          mpStatus: err.status,
-          mpCause: err.causeCode,
-          mpBody: err.body,
-        },
-        { status: httpStatus },
-      );
+      return NextResponse.json({ error: err.message, asaasStatus: err.status, asaasBody: err.body }, { status: httpStatus });
     }
 
     console.error("[checkout] erro:", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

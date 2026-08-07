@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { cancelMPPreapproval } from "@/lib/mercadopago/client";
+import { cancelarAssinatura as cancelAsaasSubscription } from "@/lib/asaas/client";
 import { setUserAccess } from "@/lib/access/setUserAccess";
 import { resolveAccessUntilOnCancel } from "@/lib/subscriptions/billingPeriod";
 import type { BillingPeriod, PlanTier } from "@/lib/subscriptions/plans";
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     const { data: sub, error } = await supabase
       .from("subscriptions")
       .select(
-        "id, mp_preapproval_id, status, current_period_end, plan_tier, billing_period, student_limit",
+        "id, provider, mp_preapproval_id, asaas_subscription_id, status, current_period_end, plan_tier, billing_period, student_limit",
       )
       .eq("user_id", auth.userId)
       .order("created_at", { ascending: false })
@@ -54,14 +55,20 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!sub.mp_preapproval_id) {
-      return NextResponse.json(
-        { error: "Assinatura sem vínculo Mercado Pago" },
-        { status: 400 },
-      );
+    if (sub.provider === "asaas") {
+      if (!sub.asaas_subscription_id) {
+        return NextResponse.json({ error: "Assinatura sem vínculo Asaas" }, { status: 400 });
+      }
+      await cancelAsaasSubscription(sub.asaas_subscription_id);
+    } else {
+      if (!sub.mp_preapproval_id) {
+        return NextResponse.json(
+          { error: "Assinatura sem vínculo Mercado Pago" },
+          { status: 400 },
+        );
+      }
+      await cancelMPPreapproval(sub.mp_preapproval_id);
     }
-
-    await cancelMPPreapproval(sub.mp_preapproval_id);
 
     const accessUntil = resolveAccessUntilOnCancel({
       currentPeriodEnd: sub.current_period_end,

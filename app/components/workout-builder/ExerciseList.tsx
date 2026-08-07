@@ -17,6 +17,7 @@ interface ExerciseListProps {
   onAddSetSimple: (index: number) => void;
   onUpdateSerieSimple: (exIndex: number, serieIndex: number, field: string, value: unknown) => void;
   onDeleteSerieSimple: (exIndex: number, serieIndex: number) => void;
+  onUpdateClusterDescanso?: (exIndex: number, segundos: number) => void;
   onUpdateBiSetDescanso: (index: number, descanso: string) => void;
   onUpdateBiSetHalf: (index: number, half: "a" | "b", patch: { nome?: string; observacoes?: string }) => void;
   onUpdateBiSetSerie: (index: number, half: "a" | "b", serieIndex: number, field: string, value: unknown) => void;
@@ -110,6 +111,7 @@ export function ExerciseList({
   onAddSetSimple,
   onUpdateSerieSimple,
   onDeleteSerieSimple,
+  onUpdateClusterDescanso,
   onUpdateBiSetDescanso,
   onUpdateBiSetHalf,
   onUpdateBiSetSerie,
@@ -333,6 +335,7 @@ export function ExerciseList({
                   onAddSet={onAddSetSimple}
                   onUpdateSerie={onUpdateSerieSimple}
                   onDeleteSerie={onDeleteSerieSimple}
+                  onUpdateClusterDescanso={onUpdateClusterDescanso}
                 />
               )}
             </div>

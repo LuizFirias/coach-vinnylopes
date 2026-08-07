@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { DotsSixVertical, DotsThree, Trash, Play, Barbell } from "@phosphor-icons/react";
+import { DotsSixVertical, DotsThree, Trash, Play, Barbell, Timer } from "@phosphor-icons/react";
 import { RestBadge } from "./RestBadge";
 import { SetRow, SetsTableHeader } from "./SetRow";
 import { getColunasPorTipo, showPesoColumn } from "./exerciseColumns";
+import { isClusterSet } from "@/lib/constants/workout-techniques";
 import type { ExercicioFicha } from "./types";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
@@ -21,6 +22,7 @@ interface ExerciseCardProps {
   onAddSet: (index: number) => void;
   onUpdateSerie: (exIndex: number, serieIndex: number, field: string, value: unknown) => void;
   onDeleteSerie: (exIndex: number, serieIndex: number) => void;
+  onUpdateClusterDescanso?: (exIndex: number, segundos: number) => void;
 }
 
 export function ExerciseCard({
@@ -33,21 +35,15 @@ export function ExerciseCard({
   onAddSet,
   onUpdateSerie,
   onDeleteSerie,
+  onUpdateClusterDescanso,
 }: ExerciseCardProps) {
   const isMobile = useBreakpoint("mobile");
   const [showObservation, setShowObservation] = useState(Boolean(exercicio.observacoes));
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const baseCols = getColunasPorTipo(exercicio.tipo_exercicio);
-  const temIsometria = exercicio.series.some((s) => s.tecnica_extra === "Isometria");
-  const colunas = temIsometria
-    ? baseCols.map((c) =>
-        c.key === "reps_sugerido"
-          ? { key: "tempo_sugerido", label: "Tempo", type: "text" as const, timeInput: true }
-          : c
-      )
-    : baseCols;
+  const colunas = getColunasPorTipo(exercicio.tipo_exercicio);
   const showPeso = showPesoColumn(exercicio.tipo_exercicio);
+  const temClusterSet = exercicio.series.some((s) => isClusterSet(s));
 
   const hasVideo = Boolean(exercicio.video_url?.trim());
 
@@ -158,6 +154,23 @@ export function ExerciseCard({
           >
             + adicionar série
           </button>
+
+          {temClusterSet && onUpdateClusterDescanso && (
+            <div className="mt-2 flex items-center gap-2 border-t border-border-divider pt-2">
+              <Timer size={13} weight="bold" className="text-brand shrink-0" />
+              <span className="text-xs text-text-tertiary">Descanso entre clusters</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={exercicio.series.find((s) => isClusterSet(s))?.cluster_descanso_seg ?? ""}
+                onChange={(e) => onUpdateClusterDescanso(exIndex, parseInt(e.target.value, 10) || 0)}
+                placeholder="15"
+                className="w-10 rounded border border-border-subtle bg-transparent text-center text-xs tabular-nums lining-nums focus:outline-none focus:border-brand/40"
+                aria-label="Descanso entre clusters em segundos"
+              />
+              <span className="text-xs text-text-tertiary">s</span>
+            </div>
+          )}
 
           {showObservation && (
             <textarea

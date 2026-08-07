@@ -13,6 +13,7 @@ import {
   CANONICAL_EQUIPMENTS,
   canonicalizeEquipment,
 } from "@/lib/constants/equipment";
+import { BodyPortal, useLockBodyScroll } from "@/app/components/ui/BodyPortal";
 
 export interface LibraryExercise {
   id: string;
@@ -202,6 +203,7 @@ export function ExerciseLibraryModal({
   const [filtroEquipamento, setFiltroEquipamento] = useState<FiltroValor>(null);
   const [filtroTipo, setFiltroTipo] = useState<FiltroValor>(null);
   const [dropdownAberto, setDropdownAberto] = useState<DropdownKey>(null);
+  useLockBodyScroll(true);
 
   // Mantém pré-seleção se existingIds chegar após mount
   useEffect(() => {
@@ -300,8 +302,9 @@ export function ExerciseLibraryModal({
   };
 
   return (
+    <BodyPortal>
     <div className={cn(
-      "fixed inset-0 z-[100] flex items-center justify-center px-4 backdrop-blur-sm",
+      "coach-app-typography fixed inset-0 z-[200] flex items-center justify-center px-4 backdrop-blur-sm",
       pickMode ? "bg-black/75" : "bg-surface-0/80",
     )}>
       <div
@@ -506,5 +509,6 @@ export function ExerciseLibraryModal({
         </div>
       </div>
     </div>
+    </BodyPortal>
   );
 }

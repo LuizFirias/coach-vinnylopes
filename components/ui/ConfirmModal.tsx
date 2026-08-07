@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { BodyPortal, useLockBodyScroll } from "@/app/components/ui/BodyPortal";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -26,43 +27,46 @@ export function ConfirmModal({
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
+  useLockBodyScroll(open);
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-modal-title"
-      onClick={onClose}
-    >
-      <Card
-        className="w-full max-w-sm"
-        onClick={(e) => e.stopPropagation()}
+    <BodyPortal>
+      <div
+        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        onClick={onClose}
       >
-        <h3
-          id="confirm-modal-title"
-          className="text-lg font-semibold text-text-primary mb-2"
+        <Card
+          className="w-full max-w-sm"
+          onClick={(e) => e.stopPropagation()}
         >
-          {title}
-        </h3>
-        <p className="text-sm text-text-secondary mb-6 leading-relaxed">
-          {description}
-        </p>
-        <div className="flex flex-col gap-2">
-          <Button
-            variant={confirmVariant}
-            onClick={onConfirm}
-            loading={loading}
-            disabled={loading}
+          <h3
+            id="confirm-modal-title"
+            className="text-lg font-semibold text-text-primary mb-2"
           >
-            {confirmLabel}
-          </Button>
-          <Button variant="secondary" onClick={onClose} disabled={loading}>
-            {cancelLabel}
-          </Button>
-        </div>
-      </Card>
-    </div>
+            {title}
+          </h3>
+          <p className="text-sm text-text-secondary mb-6 leading-relaxed">
+            {description}
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant={confirmVariant}
+              onClick={onConfirm}
+              loading={loading}
+              disabled={loading}
+            >
+              {confirmLabel}
+            </Button>
+            <Button variant="secondary" onClick={onClose} disabled={loading}>
+              {cancelLabel}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </BodyPortal>
   );
 }

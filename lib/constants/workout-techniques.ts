@@ -268,3 +268,21 @@ export function getExtraInfo(value: string | null | undefined): TechniqueOption 
   const item = getExtraByValue(value);
   return item.studentInstruction ? item : null;
 }
+
+/** A série usa Cluster Set (em qualquer um dos dois campos de técnica)? */
+export function isClusterSet(serie: { tecnica?: string | null; tecnica_extra?: string | null }): boolean {
+  return serie.tecnica === "Cluster Set" || serie.tecnica_extra === "Cluster Set";
+}
+
+/** Formata a notação de cluster para exibição/retrocompat: 4 × 5 → "4×5" */
+export function formatClusterReps(qtd: number, reps: number): string {
+  return `${qtd}×${reps}`;
+}
+
+/**
+ * A série usa Isometria (em qualquer um dos dois campos de técnica)?
+ * Efeito: só a linha daquela série vira campo de Tempo em vez de Reps — não afeta as outras séries do exercício.
+ */
+export function isIsometria(serie: { tecnica?: string | null; tecnica_extra?: string | null }): boolean {
+  return serie.tecnica === "Isometria" || serie.tecnica_extra === "Isometria";
+}

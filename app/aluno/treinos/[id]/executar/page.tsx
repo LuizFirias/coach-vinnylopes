@@ -105,6 +105,11 @@ interface SerieState {
   tecnica_extra?: string;
   completado: boolean;
   anterior?: string;
+
+  // Cluster Set — não usados na execução (reps já vem formatado como "4×5"), só para não quebrar leitura
+  cluster_qtd?: number;
+  cluster_reps?: number;
+  cluster_descanso_seg?: number;
 }
 
 interface ExercicioState {
@@ -282,10 +287,10 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
             width: 22,
             height: 22,
             minWidth: 22,
-            color: 'var(--text-tertiary)',
+            color: serie.tecnica ? 'var(--brand-primary)' : 'var(--text-tertiary)',
           }}
         >
-          {idx + 1}
+          {serie.tecnica ? serie.tecnica : idx + 1}
         </span>
       </div>
 
@@ -376,18 +381,12 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
         />
       </div>
 
-      {/* Spacer: empurra T1/T2/check para a direita sem mover PESO/REPS */}
+      {/* Spacer: empurra TÉC/check para a direita sem mover PESO/REPS */}
       <div aria-hidden className="min-w-0" />
 
       <div className="flex justify-center">
-        <span className="text-[11px] font-medium leading-tight text-center" style={{ color: 'var(--text-tertiary)' }}>
-          {duasLetrasTenica(serie.tecnica) || '—'}
-        </span>
-      </div>
-
-      <div className="flex justify-center">
         <span className="text-[11px] font-medium text-brand leading-tight text-center">
-          {abreviarTecnica(serie.tecnica_extra) || '—'}
+          {serie.tecnica_extra ? abreviarTecnica(serie.tecnica_extra) : '—'}
         </span>
       </div>
 
@@ -539,8 +538,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
           )}
           <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>REPS</span>
           <span aria-hidden className="min-w-0" />
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T1</span>
-          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>T2</span>
+          <span className="text-[10px] font-semibold tracking-[0.06em] text-center" style={{ color: 'var(--text-disabled)' }}>TÉC</span>
           <span className="text-[10px] text-center" style={{ color: 'var(--text-disabled)' }} />
         </div>
 
@@ -2411,7 +2409,13 @@ export default function ExecucaoTreinoPage() {
                               onClick={() => handleCheck(modalEx.id, s.ordem)}
                               className="w-6 h-6 flex items-center justify-center text-[10px] font-bold mx-auto font-sans tabular-nums border-0 bg-transparent"
                               style={{
-                                color: s.completado ? '#39c75a' : isAtual ? 'var(--brand-primary)' : 'var(--text-tertiary)',
+                                color: s.completado
+                                  ? '#39c75a'
+                                  : s.tecnica
+                                    ? 'var(--brand-primary)'
+                                    : isAtual
+                                      ? 'var(--brand-primary)'
+                                      : 'var(--text-tertiary)',
                               }}
                               aria-label={
                                 s.completado
@@ -2422,7 +2426,7 @@ export default function ExecucaoTreinoPage() {
                               {s.completado ? (
                                 <Check size={14} weight="bold" />
                               ) : (
-                                idx + 1
+                                t1 || idx + 1
                               )}
                             </button>
 
@@ -2520,19 +2524,13 @@ export default function ExecucaoTreinoPage() {
                             <div aria-hidden className="min-w-0" />
 
                             <div className="flex gap-1 justify-start items-center flex-wrap">
-                              {t1 ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand/15 text-brand border border-brand/20">
-                                  {t1}
-                                </span>
-                              ) : null}
                               {t2 ? (
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-surface-3 text-text-tertiary">
                                   {t2}
                                 </span>
-                              ) : null}
-                              {!t1 && !t2 ? (
+                              ) : (
                                 <span className="text-[9px] text-text-disabled">—</span>
-                              ) : null}
+                              )}
                             </div>
                           </div>
                         );

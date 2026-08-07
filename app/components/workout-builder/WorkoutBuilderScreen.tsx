@@ -38,6 +38,7 @@ import {
   isBiSetFichaItem,
 } from "@/lib/utils/biset";
 import { CANONICAL_EQUIPMENTS } from "@/lib/constants/equipment";
+import { isClusterSet } from "@/lib/constants/workout-techniques";
 
 export interface WorkoutBuilderScreenProps {
   mode?: "create" | "edit";
@@ -470,7 +471,33 @@ export function WorkoutBuilderScreen({
       if (!item || isBiSetFichaItem(item)) return prev;
       const novos = [...prev];
       const series = [...item.series];
-      series[serieIndex] = { ...series[serieIndex], [campo]: valor };
+      const atual = series[serieIndex];
+      let atualizada = { ...atual, [campo]: valor };
+      // Saiu do Cluster Set — volta pro campo de reps simples (só numeral)
+      if ((campo === "tecnica" || campo === "tecnica_extra") && isClusterSet(atual) && !isClusterSet(atualizada)) {
+        atualizada = {
+          ...atualizada,
+          reps_sugerido: atual.cluster_reps != null ? String(atual.cluster_reps) : "",
+          cluster_qtd: undefined,
+          cluster_reps: undefined,
+          cluster_descanso_seg: undefined,
+        };
+      }
+      series[serieIndex] = atualizada;
+      novos[exIndex] = { ...item, series };
+      return novos;
+    });
+    markDirty();
+  };
+
+  const atualizarDescansoClusters = (exIndex: number, segundos: number) => {
+    setExerciciosFicha((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const novos = [...prev];
+      const series = item.series.map((s) =>
+        isClusterSet(s) ? { ...s, cluster_descanso_seg: segundos } : s
+      );
       novos[exIndex] = { ...item, series };
       return novos;
     });
@@ -670,6 +697,7 @@ export function WorkoutBuilderScreen({
     onAddSetSimple: adicionarSerie,
     onUpdateSerieSimple: atualizarSerie,
     onDeleteSerieSimple: removerSerie,
+    onUpdateClusterDescanso: atualizarDescansoClusters,
     onUpdateBiSetDescanso: atualizarBiSetDescanso,
     onUpdateBiSetHalf: atualizarBiSetHalf,
     onUpdateBiSetSerie: atualizarBiSetSerie,

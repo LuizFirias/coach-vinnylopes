@@ -25,11 +25,6 @@ function toTitleCase(str: string) {
   return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function duasLetrasTenica(t?: string) {
-  if (!t) return "";
-  return t.length <= 3 ? t : t.slice(0, 2).toUpperCase();
-}
-
 function resolveRepsPreview(serie: SeriePreview): { abaixo: boolean } {
   const exec = serie.reps_executadas;
   const presc = serie.reps;
@@ -101,7 +96,7 @@ function HalfPreview({
   const all = series.every((s) => s.completado);
   const showCargaInfo = isPerSideLoadEquipment(equipamento, nome);
   const showPeso = exercicioMostraPeso(tipoExercicio);
-  const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop, showPeso);
+  const gridCols = getSeriesGridCols(showAnteriorCol, isDesktop, showPeso, false);
   return (
     <div>
       <div className="flex items-start gap-3 pb-3">
@@ -163,8 +158,6 @@ function HalfPreview({
           )}
           <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>Reps</span>
           <span aria-hidden className="min-w-0" />
-          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T1</span>
-          <span className="text-[10px] font-semibold uppercase text-center" style={{ color: "var(--text-disabled)" }}>T2</span>
           <span className="text-[10px] text-center" style={{ color: "var(--text-disabled)" }}>✓</span>
         </div>
         {series.map((serie, idx) => (
@@ -177,7 +170,12 @@ function HalfPreview({
               borderBottom: "1px solid rgba(0,0,0,0.06)",
             }}
           >
-            <span className="text-center text-xs font-bold font-sans" style={{ color: "var(--text-tertiary)" }}>{idx + 1}</span>
+            <span
+              className="text-center text-xs font-bold font-sans"
+              style={{ color: serie.tecnica ? "var(--brand-primary)" : "var(--text-tertiary)" }}
+            >
+              {serie.tecnica ? serie.tecnica : idx + 1}
+            </span>
             {showAnteriorCol && (
               <span className="text-[11px] font-sans truncate" style={{ color: "var(--text-tertiary)", paddingLeft: 4 }}>
                 {serie.anterior || "—"}
@@ -254,10 +252,6 @@ function HalfPreview({
               );
             })()}
             <div aria-hidden className="min-w-0" />
-            <span className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-              {duasLetrasTenica(serie.tecnica) || "—"}
-            </span>
-            <span className="text-center text-[11px] text-accent">{serie.tecnica_extra || "—"}</span>
             <button
               type="button"
               onClick={() => onCheck(serie.ordem)}

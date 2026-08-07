@@ -3,6 +3,8 @@
 import { Trash } from "@phosphor-icons/react";
 import TimeInput from "@/app/components/TimeInput";
 import { TechniqueCell } from "./TechniqueCell";
+import { RepsField } from "./RepsField";
+import { isIsometria } from "@/lib/constants/workout-techniques";
 import type { ColunaSerie, SerieDefinicao } from "./types";
 import { cn } from "@/lib/utils/cn";
 
@@ -11,6 +13,8 @@ interface SetRowProps {
   serieIndex: number;
   colunas: ColunaSerie[];
   showPeso?: boolean;
+  /** Bi-set já é uma técnica em si — some com a coluna Téc (tecnica_extra) para não misturar. */
+  showExtra?: boolean;
   onChange: (field: string, value: unknown) => void;
   onDelete: () => void;
 }
@@ -18,12 +22,15 @@ interface SetRowProps {
 const cellInputCls =
   "serie-metric-input w-full h-8 bg-transparent border-0 text-center text-sm font-medium text-text-primary placeholder:text-text-disabled focus:outline-none focus:text-brand tabular-nums lining-nums shadow-none";
 
-function gridTemplate(colunas: ColunaSerie[], showPeso: boolean): string {
+function gridTemplate(colunas: ColunaSerie[], showPeso: boolean, showExtra: boolean): string {
   const metricCols = colunas.map(() => "minmax(0,1fr)").join(" ");
   const parts = ["1.5rem", metricCols];
   if (showPeso) parts.push("minmax(2.5rem,1fr)");
-  // Espaço ~10% antes de Téc (empurra a coluna para a direita)
-  parts.push("10%", "2.25rem", "minmax(2.5rem,1.1fr)", "1.25rem");
+  if (showExtra) {
+    // Espaço ~10% antes de Téc (empurra a coluna para a direita)
+    parts.push("10%", "minmax(2.5rem,1.1fr)");
+  }
+  parts.push("1.25rem");
   return parts.join(" ");
 }
 
@@ -32,6 +39,7 @@ export function SetRow({
   serieIndex,
   colunas,
   showPeso = false,
+  showExtra = true,
   onChange,
   onDelete,
 }: SetRowProps) {
@@ -40,14 +48,28 @@ export function SetRow({
   return (
     <div
       className="grid gap-1 items-center py-1 border-b border-border-divider/40 last:border-0"
-      style={{ gridTemplateColumns: gridTemplate(colunas, showPeso) }}
+      style={{ gridTemplateColumns: gridTemplate(colunas, showPeso, showExtra) }}
     >
-      <div className="flex items-center justify-center text-xs font-bold text-text-muted tabular-nums lining-nums">
-        {serie.ordem ?? serieIndex + 1}
-      </div>
+      <TechniqueCell
+        type="technique"
+        value={serie.tecnica ?? ""}
+        onChange={(v) => onChange("tecnica", v)}
+        fallback={String(serie.ordem ?? serieIndex + 1)}
+        className="tabular-nums lining-nums"
+      />
 
       {colunas.map((col) =>
-        col.timeInput ? (
+        col.key === "reps_sugerido" && isIsometria(serie) ? (
+          // Isometria é por série — só essa linha vira Tempo, sem afetar as outras do exercício
+          <TimeInput
+            key={col.key}
+            value={String(serieRecord["tempo_sugerido"] ?? "00:00")}
+            onChange={(v) => onChange("tempo_sugerido", v)}
+            className={cn(cellInputCls, "text-center")}
+          />
+        ) : col.key === "reps_sugerido" ? (
+          <RepsField key={col.key} serie={serie} placeholder={col.placeholder} onChange={onChange} />
+        ) : col.timeInput ? (
           <TimeInput
             key={col.key}
             value={String(serieRecord[col.key] ?? "00:00")}
@@ -92,19 +114,17 @@ export function SetRow({
         />
       )}
 
-      <span aria-hidden className="block" />
+      {showExtra && (
+        <>
+          <span aria-hidden className="block" />
 
-      <TechniqueCell
-        type="technique"
-        value={serie.tecnica ?? ""}
-        onChange={(v) => onChange("tecnica", v)}
-      />
-
-      <TechniqueCell
-        type="extra"
-        value={serie.tecnica_extra ?? ""}
-        onChange={(v) => onChange("tecnica_extra", v)}
-      />
+          <TechniqueCell
+            type="extra"
+            value={serie.tecnica_extra ?? ""}
+            onChange={(v) => onChange("tecnica_extra", v)}
+          />
+        </>
+      )}
 
       <button
         type="button"
@@ -122,16 +142,18 @@ export function SetRow({
 export function SetsTableHeader({
   colunas,
   showPeso = false,
+  showExtra = true,
 }: {
   colunas: ColunaSerie[];
   showPeso?: boolean;
+  showExtra?: boolean;
 }) {
   return (
     <div
       className="grid gap-1 px-0 pb-1 border-b border-border-divider/50"
-      style={{ gridTemplateColumns: gridTemplate(colunas, showPeso) }}
+      style={{ gridTemplateColumns: gridTemplate(colunas, showPeso, showExtra) }}
     >
-      <span className="text-[10px] font-semibold text-text-muted uppercase text-center">#</span>
+      <span className="text-[10px] font-semibold text-text-muted uppercase text-center">Set</span>
       {colunas.map((col) => (
         <span
           key={col.key}
@@ -143,9 +165,12 @@ export function SetsTableHeader({
       {showPeso && (
         <span className="text-[10px] font-semibold text-text-muted uppercase text-center">kg</span>
       )}
-      <span aria-hidden className="block" />
-      <span className="text-[10px] font-semibold text-brand/80 uppercase text-center">Téc</span>
-      <span className="text-[10px] font-semibold text-brand/80 uppercase text-center">Extra</span>
+      {showExtra && (
+        <>
+          <span aria-hidden className="block" />
+          <span className="text-[10px] font-semibold text-brand/80 uppercase text-center">Téc</span>
+        </>
+      )}
       <span />
     </div>
   );

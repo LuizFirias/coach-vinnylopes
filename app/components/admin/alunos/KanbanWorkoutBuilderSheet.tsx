@@ -21,6 +21,7 @@ import {
   isBiSetFichaItem,
 } from "@/lib/utils/biset";
 import { Button } from "@/components/ui/Button";
+import { isClusterSet } from "@/lib/constants/workout-techniques";
 
 function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
   const base = {
@@ -328,7 +329,32 @@ export function KanbanWorkoutBuilderSheet({
       if (!item || isBiSetFichaItem(item)) return prev;
       const next = [...prev];
       const series = [...item.series];
-      series[serieIndex] = { ...series[serieIndex], [campo]: valor };
+      const atual = series[serieIndex];
+      let atualizada = { ...atual, [campo]: valor };
+      // Saiu do Cluster Set — volta pro campo de reps simples (só numeral)
+      if ((campo === "tecnica" || campo === "tecnica_extra") && isClusterSet(atual) && !isClusterSet(atualizada)) {
+        atualizada = {
+          ...atualizada,
+          reps_sugerido: atual.cluster_reps != null ? String(atual.cluster_reps) : "",
+          cluster_qtd: undefined,
+          cluster_reps: undefined,
+          cluster_descanso_seg: undefined,
+        };
+      }
+      series[serieIndex] = atualizada;
+      next[exIndex] = { ...item, series };
+      return next;
+    });
+  };
+
+  const atualizarDescansoClusters = (exIndex: number, segundos: number) => {
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const series = item.series.map((s) =>
+        isClusterSet(s) ? { ...s, cluster_descanso_seg: segundos } : s
+      );
       next[exIndex] = { ...item, series };
       return next;
     });
@@ -510,6 +536,7 @@ export function KanbanWorkoutBuilderSheet({
               onAddSetSimple={adicionarSerie}
               onUpdateSerieSimple={atualizarSerie}
               onDeleteSerieSimple={removerSerie}
+              onUpdateClusterDescanso={atualizarDescansoClusters}
               onUpdateBiSetDescanso={atualizarBiSetDescanso}
               onUpdateBiSetHalf={atualizarBiSetHalf}
               onUpdateBiSetSerie={atualizarBiSetSerie}
