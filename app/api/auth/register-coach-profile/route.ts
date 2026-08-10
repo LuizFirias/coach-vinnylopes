@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/getAuthenticatedUser";
 import { applyInviteCode } from "@/lib/invites/applyInviteCode";
+import { FREE_TIER_STUDENT_LIMIT } from "@/lib/subscriptions/plans";
 
 export async function POST(req: Request) {
   try {
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
 
     const cleanInsta = (instagram || "").replace("@", "").trim();
     const { accountType, studentLimit } = await applyInviteCode(inviteCode);
+    const isFreeTier = accountType === "padrao";
 
     const whatsappRaw =
       user.user_metadata?.phone || user.user_metadata?.whatsapp || user.phone || "";
@@ -45,7 +47,8 @@ export async function POST(req: Request) {
         sexo: gender,
         coaching_reference: cleanInsta,
         account_type: accountType,
-        student_limit: studentLimit,
+        student_limit: studentLimit ?? (isFreeTier ? FREE_TIER_STUDENT_LIMIT : null),
+        subscription_active: isFreeTier || accountType === "teste" || accountType === "parceiro",
         whatsapp,
         atualizado_em: new Date().toISOString(),
       });

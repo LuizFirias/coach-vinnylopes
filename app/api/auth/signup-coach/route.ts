@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { getPersonalWelcomeEmailHtml } from "@/lib/emailTemplates";
 import { applyInviteCode } from "@/lib/invites/applyInviteCode";
+import { FREE_TIER_STUDENT_LIMIT } from "@/lib/subscriptions/plans";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
 
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
     console.log("[SIGNUP-COACH] ✓ Usuário criado no Auth. ID:", newUserId);
 
     const { accountType, studentLimit } = await applyInviteCode(inviteCode);
+    const isFreeTier = accountType === "padrao";
 
     // ── 3. Salvar perfil com role='coach' via Admin (bypassa RLS e trigger) ──
     const { error: upsertError } = await adminClient
@@ -87,12 +89,14 @@ export async function POST(req: Request) {
         {
           id: newUserId,
           email: cleanEmail,
-          role: "coach",          // ← definido com segurança no servidor
+          role: "coach",
           full_name: fullName,
           sexo: gender || null,
           coaching_reference: cleanInsta || null,
           account_type: accountType,
-          student_limit: studentLimit,
+          student_limit: studentLimit ?? (isFreeTier ? FREE_TIER_STUDENT_LIMIT : null),
+          // Freemium: acesso imediato com teto de 3 alunos até assinar
+          subscription_active: isFreeTier || accountType === "teste" || accountType === "parceiro",
           status_pagamento: "pago",
           arquivado: false,
         },

@@ -2,7 +2,7 @@ import "server-only";
 import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getActiveStudentCount } from "@/lib/subscriptions/getActiveStudentCount";
-import { getPlanLabel } from "@/lib/subscriptions/plans";
+import { getPlanLabel, FREE_TIER_STUDENT_LIMIT } from "@/lib/subscriptions/plans";
 
 export interface StudentLimitCheck {
   allowed: boolean;
@@ -69,12 +69,17 @@ export async function checkStudentLimit(
   }
 
   if (count >= limit) {
-    const tierLabel = getPlanLabel(profile?.plan_tier);
+    const isFree =
+      !profile?.plan_tier &&
+      (profile?.student_limit ?? 0) > 0 &&
+      (profile?.student_limit ?? 0) <= FREE_TIER_STUDENT_LIMIT;
     return {
       allowed: false,
       count,
       limit,
-      message: `Limite do plano ${tierLabel} (${limit} alunos) atingido. Faça upgrade.`,
+      message: isFree
+        ? `Limite do plano gratuito (${limit} alunos) atingido. Assine um plano para adicionar mais.`
+        : `Limite do plano ${getPlanLabel(profile?.plan_tier)} (${limit} alunos) atingido. Faça upgrade.`,
     };
   }
 

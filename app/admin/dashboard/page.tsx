@@ -114,13 +114,17 @@ export default function AdminDashboard() {
     setError(null);
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
-      const coachId = session?.user?.id;
-      if (!coachId) { setError("Sessão inválida"); setLoading(false); return; }
+      const coachId = session?.user?.id ?? user?.id;
+      if (!coachId) {
+        // Race de hidratação — não tratar como erro definitivo
+        if (!opts?.silent) setLoading(false);
+        return;
+      }
 
-      // Status + alunos + nome de exibição + planos personalizados em paralelo
+      const accessToken = session?.access_token;
       const [statusResult, coachAlunosResult, coachProfileResult, customPlans] = await Promise.all([
-        session.access_token
-          ? fetchSubscriptionStatusCached(session.access_token)
+        accessToken
+          ? fetchSubscriptionStatusCached(accessToken)
           : Promise.resolve(null),
         supabaseClient
           .from('coach_alunos')
@@ -130,7 +134,7 @@ export default function AdminDashboard() {
           .from('profiles')
           .select('full_name')
           .eq('id', coachId)
-          .single(),
+          .maybeSingle(),
         fetchCoachCustomPlans(coachId).catch(() => [] as CoachPlan[]),
       ]);
 
@@ -632,7 +636,7 @@ export default function AdminDashboard() {
       hasDataRef.current = true;
       setLoading(false);
     }
-  }, [router]);
+  }, [router, user?.id]);
 
   useEffect(() => {
     if (authLoading) return;

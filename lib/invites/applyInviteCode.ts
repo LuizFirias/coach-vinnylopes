@@ -13,7 +13,7 @@ export async function applyInviteCode(
   inviteCode: string | undefined | null
 ): Promise<InviteApplication> {
   if (!inviteCode?.trim()) {
-    return { accountType: "padrao", studentLimit: null };
+    return { accountType: "padrao", studentLimit: 3 };
   }
 
   const normalizedCode = inviteCode.trim().toUpperCase();
@@ -28,7 +28,7 @@ export async function applyInviteCode(
   const valid = invite && invite.uses_count < invite.max_uses;
 
   if (!valid) {
-    return { accountType: "padrao", studentLimit: null };
+    return { accountType: "padrao", studentLimit: 3 };
   }
 
   const { error: updateError } = await supabase
@@ -38,7 +38,7 @@ export async function applyInviteCode(
 
   if (updateError) {
     console.warn("[applyInviteCode] Falha ao incrementar uses_count:", updateError.message);
-    return { accountType: "padrao", studentLimit: null };
+    return { accountType: "padrao", studentLimit: 3 };
   }
 
   const defaultLimit = invite.account_type === "teste" ? 15 : null;

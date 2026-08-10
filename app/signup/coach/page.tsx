@@ -172,19 +172,38 @@ function CoachSignupForm() {
 
       // Conta criada — encerrar sessão anterior (ex.: super_admin na mesma aba) antes do login
       await supabaseClient.auth.signOut({ scope: "local" });
+      try {
+        await fetch("/api/session", { method: "DELETE" });
+      } catch {
+        // ignore
+      }
       localStorage.removeItem("user_role");
       localStorage.removeItem("user_id");
 
-      const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
 
-      if (signInError) {
+      if (signInError || !signInData.session) {
         // Conta criada, mas login automático falhou — redirecionar para login manual
-        console.warn("Login automático falhou após cadastro:", signInError.message);
+        console.warn("Login automático falhou após cadastro:", signInError?.message);
         router.push(`/login?email=${encodeURIComponent(email.trim().toLowerCase())}&novo=true`);
         return;
+      }
+
+      try {
+        await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            access_token: signInData.session.access_token,
+            refresh_token: signInData.session.refresh_token,
+            expires_at: signInData.session.expires_at,
+          }),
+        });
+      } catch (err) {
+        console.warn("Could not set session cookie após signup", err);
       }
 
       // Login feito com sucesso — ir direto para o dashboard

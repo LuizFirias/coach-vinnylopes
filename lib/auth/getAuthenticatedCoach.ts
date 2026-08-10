@@ -21,18 +21,17 @@ export async function getAuthenticatedCoach(
   req: Request,
   options?: { allowedRoles?: readonly string[] }
 ): Promise<AuthenticatedCoachResult> {
-  let token = "";
+  // Preferir Bearer explícito (cliente com sessão fresca) sobre cookie HttpOnly,
+  // que pode ficar stale após signup/troca de conta na mesma aba.
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  let cookieToken = "";
   try {
     const cookieStore = await cookies();
-    token = cookieStore.get("sb-access-token")?.value || "";
+    cookieToken = cookieStore.get("sb-access-token")?.value || "";
   } catch {
     // ignore
   }
-
-  if (!token) {
-    const bearer = req.headers.get("authorization") || "";
-    token = bearer.replace("Bearer ", "").trim();
-  }
+  const token = bearer || cookieToken;
 
   if (!token) {
     return { error: "Não autorizado", status: 401 as const };

@@ -2,6 +2,7 @@ import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAccessGranted, type AuronSubscriptionStatus } from "@/lib/mercadopago/statusMapping";
 import type { BillingPeriod, PlanTier } from "@/lib/subscriptions/plans";
+import { restoreCoachFreeTier } from "@/lib/asaas/trialAccess";
 
 export interface PlanAccessInfo {
   planTier: PlanTier | null;
@@ -32,16 +33,15 @@ export async function setUserAccess(
   const update: Record<string, unknown> = {};
 
   // canceling: acesso permanece até current_period_end — NÃO forçar false aqui.
-  // O cron (expire-subscriptions) é quem seta expired + subscription_active=false.
+  // O cron (expire-subscriptions) é quem seta expired + freemium.
   if (status === "canceling") {
     update.subscription_active = active;
     if (active && currentPeriodEnd) {
       update.data_expiracao = currentPeriodEnd.split("T")[0];
       update.status_pagamento = "pago";
     } else {
-      // period_end já passou — só nesse caso revoga (espelha o cron)
-      update.subscription_active = false;
-      update.status_pagamento = "atrasado";
+      await restoreCoachFreeTier(userId);
+      return;
     }
     if (planInfo && active) {
       if (planInfo.planTier) update.plan_tier = planInfo.planTier;
@@ -49,6 +49,12 @@ export async function setUserAccess(
       if (planInfo.studentLimit != null) update.student_limit = planInfo.studentLimit;
     }
     await supabase.from("profiles").update(update).eq("id", userId);
+    return;
+  }
+
+  // Plano pago encerrado → freemium (3 alunos), não bloqueio total
+  if (status === "cancelled" || status === "expired") {
+    await restoreCoachFreeTier(userId);
     return;
   }
 
@@ -64,12 +70,10 @@ export async function setUserAccess(
     update.data_expiracao = currentPeriodEnd.split("T")[0];
     update.status_pagamento =
       status === "past_due" || status === "paused" ? "atrasado" : "pago";
-  } else if (status === "cancelled" || status === "expired") {
-    update.status_pagamento = "atrasado";
-    update.subscription_active = false;
   } else if (!active && status === "past_due") {
-    update.status_pagamento = "atrasado";
-    update.subscription_active = false;
+    // Grace acabou sem regularizar → freemium
+    await restoreCoachFreeTier(userId);
+    return;
   }
 
   await supabase.from("profiles").update(update).eq("id", userId);

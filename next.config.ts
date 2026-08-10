@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
   // Permite acesso ao dev server pelo celular na rede local (Next 16 bloqueia origens não listadas).
   // Inclua host com porta quando o IP mudar: http://SEU_IP:3000
   allowedDevOrigins: [
+    // Tunnel local (webhooks Asaas / abrir app via ngrok)
+    "*.ngrok-free.dev",
+    "*.ngrok-free.app",
+    "*.ngrok.io",
+    "retrain-deceased-charger.ngrok-free.dev",
     "192.168.15.*",
     "192.168.15.*:3000",
     "192.168.15.6",

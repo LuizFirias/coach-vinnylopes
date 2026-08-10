@@ -234,7 +234,7 @@ export default function StyleguidePage() {
               <div className="relative">
                 <p className="text-4xl md:text-5xl font-black tracking-tight">AURON</p>
                 <p className="mt-2 text-sm text-text-secondary max-w-md leading-relaxed">
-                  App de gestão de treinos para coaches e alunos. Visual dark-first,
+                  App de gestão de treinos para personal trainers e alunos. Visual dark-first,
                   tipografia Inter com hierarquia forte (800–900), azul só para ação.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">

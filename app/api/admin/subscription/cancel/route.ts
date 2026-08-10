@@ -57,7 +57,10 @@ export async function POST(req: Request) {
 
     if (sub.provider === "asaas") {
       if (!sub.asaas_subscription_id) {
-        return NextResponse.json({ error: "Assinatura sem vínculo Asaas" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Assinatura sem vínculo de pagamento" },
+          { status: 400 },
+        );
       }
       await cancelAsaasSubscription(sub.asaas_subscription_id);
     } else {
@@ -106,6 +109,20 @@ export async function POST(req: Request) {
 
     // Mantém acesso até accessUntil (isAccessGranted trata canceling)
     await setUserAccess(auth.userId, "canceling", accessUntil, planInfo, null);
+
+    // Cancelou durante o trial (ainda sem pagamento confirmado) → libera novo trial
+    const { data: profileTrial } = await supabase
+      .from("profiles")
+      .select("trial_ativo")
+      .eq("id", auth.userId)
+      .maybeSingle();
+
+    if (profileTrial?.trial_ativo) {
+      await supabase
+        .from("profiles")
+        .update({ trial_ativo: false, trial_fim: null })
+        .eq("id", auth.userId);
+    }
 
     return NextResponse.json({
       ok: true,
