@@ -45,13 +45,8 @@ export function WorkoutPrescriptionSummary({
 
   if (variant === "stats") {
     return (
-      <div
-        className={cn(
-          "grid grid-cols-2 rounded-2xl border-0 bg-surface-1 px-5 py-4",
-          className,
-        )}
-      >
-        <div>
+      <div className={cn("grid grid-cols-2 gap-3", className)}>
+        <div className="rounded-2xl border-0 bg-surface-1 px-5 py-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
             Exercícios
           </p>
@@ -59,7 +54,7 @@ export function WorkoutPrescriptionSummary({
             {stats.exerciseCount}
           </p>
         </div>
-        <div className="border-l border-border-divider pl-5">
+        <div className="rounded-2xl border-0 bg-surface-1 px-5 py-4">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
             Séries totais
           </p>

@@ -71,9 +71,13 @@ export default function BottomNav() {
     pathname === '/' ||
     pathname?.startsWith('/signup') ||
     pathname?.startsWith('/auth/') ||
+    pathname === '/termos' ||
+    pathname === '/privacidade' ||
     pathname === '/aluno/trocar-senha' ||
     pathname === '/admin/trocar-senha' ||
     pathname === '/aluno/onboarding' ||
+    pathname === '/admin/boas-vindas' ||
+    pathname?.startsWith('/admin/preview-aluno') ||
     loading ||
     pathname.endsWith('/executar') ||
     !!pathname?.match(/^\/aluno\/chat\/[^/]+$/) ||

@@ -13,6 +13,7 @@ import {
   type CoachPlan,
 } from "@/lib/coachPlans";
 import { readReturnUrl } from "@/lib/utils/adminNav";
+import { concluirPasso } from "@/lib/onboarding/concluirPasso";
 
 const DRAFT_KEY = "draft_novo_aluno";
 const INPUT: CSSProperties = {
@@ -159,7 +160,11 @@ function FieldCell({
 }) {
   return (
     <div
-      className={borderRight ? "px-5 py-3.5 md:border-r md:border-border-divider" : "px-5 py-3.5"}
+      className={
+        borderRight
+          ? "px-5 py-3.5 md:border-r md:border-border-divider lg:border-r-0 xl:border-r"
+          : "px-5 py-3.5"
+      }
     >
       {children}
     </div>
@@ -179,7 +184,8 @@ function FieldRow({
     <div
       className={
         cols === 2
-          ? `grid grid-cols-1 md:grid-cols-2${last ? "" : " border-b border-border-divider"}`
+          ? // md: 2 cols quando a página ainda é 1 coluna; lg: 1 col dentro de cada metade; xl: 2 cols de novo
+            `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2${last ? "" : " border-b border-border-divider"}`
           : `block${last ? "" : " border-b border-border-divider"}`
       }
     >
@@ -405,6 +411,9 @@ export default function NovoAlunoPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Falha ao criar aluno");
 
+      const coachId = sessionData?.session?.user?.id;
+      if (coachId) await concluirPasso(coachId, "cadastrar-aluno");
+
       setCreatedStudentName(fullName.trim());
       setCreatedStudentPhone(cleanedPhone);
       setCreatedStudentLink(data?.inviteLink || "https://www.auronfit.com.br/login");
@@ -457,14 +466,15 @@ export default function NovoAlunoPage() {
   return (
     <div className="min-h-screen pb-24 bg-surface-0">
       {/* MainWrapper já aplica ml do sidebar — não repetir aqui */}
-      <div className="w-full flex justify-center px-4 sm:px-8 py-10">
-        <div className="w-full max-w-2xl">
-        <BackButton onClick={goBack} className="mb-7" />
-
-        <p className="text-xl font-semibold text-text-primary mb-1">
-          Adicionar aluno
-        </p>
-        <p className="text-[13px] text-text-tertiary mb-7">
+      <div className="w-full flex justify-center px-4 sm:px-8 pt-4 pb-8 sm:pt-6 sm:pb-10">
+        <div className="w-full max-w-2xl lg:max-w-5xl">
+        <div className="flex items-center gap-2.5 mb-1">
+          <BackButton onClick={goBack} />
+          <p className="text-xl font-semibold text-text-primary leading-tight">
+            Adicionar aluno
+          </p>
+        </div>
+        <p className="text-[13px] text-text-tertiary mb-5 pl-[46px]">
           Preencha os dados para criar o acesso e vínculo.
         </p>
 
@@ -491,168 +501,166 @@ export default function NovoAlunoPage() {
         )}
 
         <form onSubmit={handleSubmit} className="field-flat-input">
-          <p className="text-[13px] font-semibold text-text-primary mb-3">
-            Dados pessoais
-          </p>
+          <div className="flex flex-col gap-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+            <section>
+              <p className="text-[13px] font-semibold text-text-primary mb-3">
+                Dados pessoais
+              </p>
 
-          <FieldGroup>
-            <FieldRow>
-              <FieldCell borderRight>
-                <FieldLabel required>Nome completo</FieldLabel>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Ex: João Vitor Silva"
-                  disabled={loading}
-                  required
-                  style={INPUT}
-                />
-              </FieldCell>
-              <FieldCell>
-                <FieldLabel required>E-mail de cadastro</FieldLabel>
-                <input
-                  type="email"
-                  name="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="aluno@email.com"
-                  disabled={loading}
-                  required
-                  style={INPUT}
-                />
-              </FieldCell>
-            </FieldRow>
+              <FieldGroup>
+                <FieldRow>
+                  <FieldCell borderRight>
+                    <FieldLabel required>Nome completo</FieldLabel>
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Ex: João Vitor Silva"
+                      disabled={loading}
+                      required
+                      style={INPUT}
+                    />
+                  </FieldCell>
+                  <FieldCell>
+                    <FieldLabel required>E-mail de cadastro</FieldLabel>
+                    <input
+                      type="email"
+                      name="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="aluno@email.com"
+                      disabled={loading}
+                      required
+                      style={INPUT}
+                    />
+                  </FieldCell>
+                </FieldRow>
 
-            <FieldRow>
-              <FieldCell borderRight>
-                <FieldLabel>WhatsApp (com DDD)</FieldLabel>
-                <input
-                  type="tel"
-                  name="whatsapp"
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="(11) 99999-9999"
-                  disabled={loading}
-                  style={INPUT}
-                />
-              </FieldCell>
-              <FieldCell>
-                <FieldLabel optional>Data de nascimento</FieldLabel>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  disabled={loading}
-                  style={INPUT}
-                />
-              </FieldCell>
-            </FieldRow>
+                <FieldRow>
+                  <FieldCell borderRight>
+                    <FieldLabel>WhatsApp (com DDD)</FieldLabel>
+                    <input
+                      type="tel"
+                      name="whatsapp"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                      disabled={loading}
+                      style={INPUT}
+                    />
+                  </FieldCell>
+                  <FieldCell>
+                    <FieldLabel optional>Data de nascimento</FieldLabel>
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                      disabled={loading}
+                      style={INPUT}
+                    />
+                  </FieldCell>
+                </FieldRow>
 
-            <FieldRow cols={1} last>
-              <FieldCell>
-                <FieldLabel>Objetivo</FieldLabel>
-                <FlatSelect
-                  value={objetivo}
-                  onChange={setObjetivo}
-                  disabled={loading}
-                  options={[
-                    { value: "bulking", label: "Hipertrofia (Bulking)" },
-                    { value: "cutting", label: "Emagrecimento (Cutting)" },
-                    { value: "recomposicao", label: "Definição (Recomposição)" },
-                    { value: "manutencao", label: "Condicionamento / Saúde / Outro" },
-                  ]}
-                />
-              </FieldCell>
-            </FieldRow>
-          </FieldGroup>
+                <FieldRow cols={1} last>
+                  <FieldCell>
+                    <FieldLabel>Objetivo</FieldLabel>
+                    <FlatSelect
+                      value={objetivo}
+                      onChange={setObjetivo}
+                      disabled={loading}
+                      options={[
+                        { value: "bulking", label: "Hipertrofia (Bulking)" },
+                        { value: "cutting", label: "Emagrecimento (Cutting)" },
+                        { value: "recomposicao", label: "Definição (Recomposição)" },
+                        { value: "manutencao", label: "Condicionamento / Saúde / Outro" },
+                      ]}
+                    />
+                  </FieldCell>
+                </FieldRow>
+              </FieldGroup>
+            </section>
 
-          <p className="text-[13px] font-semibold text-text-primary mb-3">
-            Plano e acesso
-          </p>
+            <section>
+              <p className="text-[13px] font-semibold text-text-primary mb-3">
+                Plano e acesso
+              </p>
 
-          <FieldGroup>
-            <FieldRow>
-              <FieldCell borderRight>
-                <FieldLabel required>Plano contratado</FieldLabel>
-                <FlatSelect
-                  value={tipoPlano}
-                  onChange={setTipoPlano}
-                  disabled={loading}
-                  options={[
-                    ...mergedPlans(planosPersonalizados).map((p) => ({
-                      value: p.slug,
-                      label: p.custom
-                        ? `${p.nome} (${p.duracao_meses} ${p.duracao_meses === 1 ? "mês" : "meses"})`
-                        : p.nome,
-                    })),
-                    { value: "outros", label: "Outros" },
-                  ]}
-                />
-              </FieldCell>
-              <FieldCell>
-                <FieldLabel required>Valor do plano (R$)</FieldLabel>
-                <input
-                  type="number"
-                  name="valorPlano"
-                  min="0"
-                  step="0.01"
-                  value={valorPlano}
-                  onChange={(e) => setValorPlano(e.target.value)}
-                  placeholder="350,00"
-                  disabled={loading}
-                  required
-                  style={INPUT}
-                />
-              </FieldCell>
-            </FieldRow>
+              <FieldGroup>
+                <FieldRow>
+                  <FieldCell borderRight>
+                    <FieldLabel required>Plano contratado</FieldLabel>
+                    <FlatSelect
+                      value={tipoPlano}
+                      onChange={setTipoPlano}
+                      disabled={loading}
+                      options={[
+                        ...mergedPlans(planosPersonalizados).map((p) => ({
+                          value: p.slug,
+                          label: p.custom
+                            ? `${p.nome} (${p.duracao_meses} ${p.duracao_meses === 1 ? "mês" : "meses"})`
+                            : p.nome,
+                        })),
+                        { value: "outros", label: "Outros" },
+                      ]}
+                    />
+                  </FieldCell>
+                  <FieldCell>
+                    <FieldLabel required>Valor do plano (R$)</FieldLabel>
+                    <input
+                      type="number"
+                      name="valorPlano"
+                      min="0"
+                      step="0.01"
+                      value={valorPlano}
+                      onChange={(e) => setValorPlano(e.target.value)}
+                      placeholder="350,00"
+                      disabled={loading}
+                      required
+                      style={INPUT}
+                    />
+                  </FieldCell>
+                </FieldRow>
 
-            <FieldRow last>
-              <FieldCell borderRight>
-                <FieldLabel>
-                  Data de início
-                  {tipoPlano === "outros" ? (
-                    <span className="text-text-disabled font-normal"> (manual)</span>
-                  ) : null}
-                </FieldLabel>
-                <input
-                  type="date"
-                  name="dataInicio"
-                  value={dataInicio}
-                  onChange={(e) => setDataInicio(e.target.value)}
-                  disabled={loading}
-                  style={INPUT}
-                />
-              </FieldCell>
-              <FieldCell>
-                <FieldLabel>
-                  {tipoPlano === "outros"
-                    ? "Vencimento (informe manualmente)"
-                    : "Vencimento / próxima renovação"}
-                </FieldLabel>
-                <input
-                  type="date"
-                  name="dataExpiracao"
-                  value={dataExpiracao}
-                  onChange={(e) => setDataExpiracao(e.target.value)}
-                  disabled={loading}
-                  style={INPUT}
-                />
-              </FieldCell>
-            </FieldRow>
-          </FieldGroup>
+                <FieldRow last>
+                  <FieldCell borderRight>
+                    <FieldLabel>
+                      Data de início
+                      {tipoPlano === "outros" ? (
+                        <span className="text-text-disabled font-normal"> (manual)</span>
+                      ) : null}
+                    </FieldLabel>
+                    <input
+                      type="date"
+                      name="dataInicio"
+                      value={dataInicio}
+                      onChange={(e) => setDataInicio(e.target.value)}
+                      disabled={loading}
+                      style={INPUT}
+                    />
+                  </FieldCell>
+                  <FieldCell>
+                    <FieldLabel>
+                      {tipoPlano === "outros"
+                        ? "Vencimento (informe manualmente)"
+                        : "Vencimento / próxima renovação"}
+                    </FieldLabel>
+                    <input
+                      type="date"
+                      name="dataExpiracao"
+                      value={dataExpiracao}
+                      onChange={(e) => setDataExpiracao(e.target.value)}
+                      disabled={loading}
+                      style={INPUT}
+                    />
+                  </FieldCell>
+                </FieldRow>
+              </FieldGroup>
+            </section>
+          </div>
 
           <div className="flex justify-end items-center flex-wrap gap-2.5">
-            <button
-              type="button"
-              onClick={goBack}
-              className="h-10 px-5 rounded-[10px] border border-border-subtle bg-transparent text-text-tertiary text-[13px] font-medium cursor-pointer hover:text-text-primary transition-colors"
-            >
-              Cancelar
-            </button>
-
             <button
               type="button"
               onClick={salvarRascunho}
@@ -674,7 +682,7 @@ export default function NovoAlunoPage() {
                 opacity: canSubmit ? 1 : 0.5,
               }}
             >
-              {loading ? "Cadastrando..." : "Cadastrar e liberar acesso"}
+              {loading ? "Cadastrando..." : "Cadastrar"}
             </button>
           </div>
 
@@ -714,7 +722,7 @@ export default function NovoAlunoPage() {
               <div className="w-12 h-12 rounded-full bg-success/15 border border-success-border flex items-center justify-center text-success">
                 <CheckCircle size={24} weight="fill" />
               </div>
-              <h3 className="font-display font-bold text-lg text-white">Aluno cadastrado!</h3>
+              <h3 className="font-display font-bold text-lg text-text-primary">Aluno cadastrado!</h3>
               <p className="text-xs text-text-secondary leading-relaxed">
                 O perfil de <strong>{createdStudentName}</strong> foi criado e ativado. Envie o link de acesso diretamente para o WhatsApp dele para criar a senha.
               </p>

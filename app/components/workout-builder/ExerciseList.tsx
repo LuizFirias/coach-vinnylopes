@@ -284,7 +284,7 @@ export function ExerciseList({
             {isActive && (
               <div
                 aria-hidden
-                className="absolute inset-0 rounded-xl border border-dashed border-brand/40 bg-brand/5"
+                className="absolute inset-0 rounded-xl bg-brand/5"
               />
             )}
             <div

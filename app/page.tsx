@@ -11,7 +11,6 @@ import {
   EyeSlash, 
   ShieldCheck, 
   ChatCircle, 
-  ArrowRight,
   Check
 } from "@phosphor-icons/react";
 import PWAInstall from "./components/PWAInstall";
@@ -22,6 +21,7 @@ import { cn } from "@/lib/utils/cn";
 import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
 import { loginComGoogle } from "@/lib/auth/googleOAuth";
 import { GoogleSignInButton } from "@/app/components/auth/GoogleSignInButton";
+import { AUTH_PILL_CTA, AUTH_UNDERLINE_INPUT } from "@/lib/auth/authFormStyles";
 
 function readStoredRoleTab(tabParam: string | null): "coach" | "aluno" {
   if (tabParam === "aluno" || tabParam === "coach") return tabParam;
@@ -43,7 +43,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [logoFailed, setLogoFailed] = useState(false);
 
-  const [mode, setMode] = useState<"login" | "recovery">("login");
+  const [mode, setMode] = useState<"login" | "register" | "recovery">("login");
   const [recoveryEmail, setRecoveryEmail] = useState("");
   const [recoverySent, setRecoverySent] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
@@ -59,6 +59,8 @@ function LoginForm() {
   const [capsLockActive, setCapsLockActive] = useState(false);
   const [coachCount, setCoachCount] = useState<number | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const resolveLoginErrorMessage = async (emailAddress: string): Promise<string> => {
     try {
@@ -126,10 +128,18 @@ function LoginForm() {
     setRoleTab(tab);
   }, [searchParams]);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (authMode: "login" | "register" = "login") => {
     setGoogleLoading(true);
     setError(null);
-    const intent = roleTabRef.current === "coach" ? "login-coach" : "login-aluno";
+    const isCoach = roleTabRef.current === "coach";
+    const intent =
+      authMode === "register"
+        ? isCoach
+          ? "signup-coach"
+          : "signup-aluno"
+        : isCoach
+          ? "login-coach"
+          : "login-aluno";
     const err = await loginComGoogle(intent);
     if (err) {
       setError(err);
@@ -173,7 +183,7 @@ function LoginForm() {
 
       const { data: profile } = await supabaseClient
         .from("profiles")
-        .select("role, must_change_password, first_access_completed")
+        .select("role, must_change_password, first_access_completed, onboarding_visto")
         .eq("id", session.user.id)
         .single();
 
@@ -309,7 +319,7 @@ function LoginForm() {
 
         const { data: profileData, error: profileError } = await supabaseClient
           .from("profiles")
-          .select("id, role, must_change_password, first_access_completed")
+          .select("id, role, must_change_password, first_access_completed, onboarding_visto")
           .eq("id", data.user.id)
           .single();
 
@@ -370,6 +380,125 @@ function LoginForm() {
       }
     } catch {
       setError("Não foi possível entrar. Tente novamente.");
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedName) {
+      setError("Informe seu nome completo.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Informe um e-mail válido.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (!termsAccepted) {
+      setError("Aceite os Termos de Uso e a Política de Privacidade.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const isCoach = roleTabRef.current === "coach";
+      const endpoint = isCoach ? "/api/auth/signup-coach" : "/api/auth/signup-aluno";
+      const inviteCode = searchParams?.get("convite") ?? undefined;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          isCoach
+            ? {
+                email: trimmedEmail,
+                password,
+                fullName: trimmedName,
+                inviteCode,
+              }
+            : {
+                email: trimmedEmail,
+                password,
+                fullName: trimmedName,
+              },
+        ),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(result.error || "Erro ao criar conta. Tente novamente.");
+        setLoading(false);
+        return;
+      }
+
+      await supabaseClient.auth.signOut({ scope: "local" });
+      try {
+        await fetch("/api/session", { method: "DELETE" });
+      } catch {
+        // ignore
+      }
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("user_id");
+
+      const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+
+      if (signInError || !signInData.session || !signInData.user) {
+        router.push(`/?email=${encodeURIComponent(trimmedEmail)}&novo=true&tab=${roleTabRef.current}`);
+        return;
+      }
+
+      if (typeof window !== "undefined" && signInData.session.access_token) {
+        try {
+          localStorage.setItem(
+            "sb-auth-token",
+            JSON.stringify({
+              access_token: signInData.session.access_token,
+              refresh_token: signInData.session.refresh_token,
+              expires_at: signInData.session.expires_at,
+            }),
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      try {
+        await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            access_token: signInData.session.access_token,
+            refresh_token: signInData.session.refresh_token,
+            expires_at: signInData.session.expires_at,
+          }),
+        });
+      } catch {
+        // ignore
+      }
+
+      const { data: profileData } = await supabaseClient
+        .from("profiles")
+        .select("role, must_change_password, first_access_completed, onboarding_visto")
+        .eq("id", signInData.user.id)
+        .single();
+
+      router.push(profileData ? getPostLoginPath(profileData) : isCoach ? "/admin/boas-vindas" : "/aluno/onboarding");
+    } catch {
+      setError("Erro inesperado ao criar conta. Tente novamente.");
       setLoading(false);
     }
   };
@@ -447,16 +576,54 @@ function LoginForm() {
           )}
         </div>
 
-        {/* Form — sem card cinza; campos soltos no fundo da página */}
+        {/* Form — estilo Mobills: tabs Entrar/Cadastrar + campos underline */}
         <div className="relative z-20 w-full max-w-[380px] px-6 md:px-7 lg:px-0">
-          {mode === "login" && (
+          {mode !== "recovery" && (
+            <div
+              role="tablist"
+              aria-label="Entrar ou cadastrar"
+              className="mb-6 flex w-full items-center justify-center gap-10"
+            >
+              {(
+                [
+                  { id: "login" as const, label: "Entrar" },
+                  { id: "register" as const, label: "Cadastrar" },
+                ] as const
+              ).map((tab) => {
+                const active = mode === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => {
+                      setMode(tab.id);
+                      setError(null);
+                    }}
+                    className={cn(
+                      "relative pb-2.5 text-[13px] font-bold uppercase tracking-[0.14em] transition-colors",
+                      active ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary",
+                    )}
+                  >
+                    {tab.label}
+                    {active && (
+                      <span className="absolute left-0 right-0 bottom-0 h-[3px] rounded-full bg-brand" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {(mode === "login" || mode === "register") && (
             <div
               role="tablist"
               aria-label="Tipo de acesso"
               className="relative z-50 mb-5 flex w-full gap-1 rounded-full p-1"
-              style={{ background: 'rgba(117, 27, 180,0.08)' }}
+              style={{ background: "rgba(117, 27, 180,0.08)" }}
             >
-              {(['coach', 'aluno'] as const).map((tab) => (
+              {(["coach", "aluno"] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -468,15 +635,15 @@ function LoginForm() {
                   }}
                   onClick={() => handleRoleTabChange(tab)}
                   className={cn(
-                    'relative z-10 min-h-[44px] flex-1 rounded-full px-4 py-2.5',
-                    'text-xs font-bold uppercase tracking-widest',
-                    'transition-all duration-200 ease-in-out touch-manipulation cursor-pointer select-none',
+                    "relative z-10 min-h-[40px] flex-1 rounded-full px-4 py-2",
+                    "text-[11px] font-bold uppercase tracking-widest",
+                    "transition-all duration-200 ease-in-out touch-manipulation cursor-pointer select-none",
                     roleTab === tab
-                      ? 'bg-brand text-white shadow-sm'
-                      : 'bg-transparent text-text-tertiary hover:text-text-secondary',
+                      ? "bg-brand text-white shadow-sm"
+                      : "bg-transparent text-text-tertiary hover:text-text-secondary",
                   )}
                 >
-                  {tab === 'coach' ? 'Coach' : 'Aluno'}
+                  {tab === "coach" ? "Coach" : "Aluno"}
                 </button>
               ))}
             </div>
@@ -491,7 +658,9 @@ function LoginForm() {
                 className="space-y-4 relative z-10"
               >
                 <div className="text-center mb-1">
-                  <p className="text-xs font-bold text-text-primary uppercase tracking-wider">Recuperar senha</p>
+                  <p className="text-xs font-bold text-text-primary uppercase tracking-wider">
+                    Recuperar senha
+                  </p>
                   <p className="text-[11px] text-text-secondary leading-relaxed mt-1">
                     Digite seu e-mail e enviaremos um link para criar uma nova senha.
                   </p>
@@ -502,31 +671,19 @@ function LoginForm() {
                     E-mail enviado! Verifique sua caixa de entrada (e pasta de spam se necessário).
                   </div>
                 ) : (
-                  <form onSubmit={handleRecovery} className="space-y-4">
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="recoveryEmail"
-                        className="text-[11px] font-semibold uppercase tracking-wider block ml-0.5"
-                        style={{ color: '#666' }}
-                      >
-                        E-mail de acesso
-                      </label>
-                      <input
-                        id="recoveryEmail"
-                        type="email"
-                        value={recoveryEmail}
-                        onChange={(e) => { setRecoveryEmail(e.target.value); setRecoveryError(null); }}
-                        placeholder="seu@email.com"
-                        required
-                        className="w-full h-11 border text-text-primary px-3.5 rounded-[10px] placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200"
-                        style={{
-                          fontSize: '16px',
-                          fontWeight: 500,
-                          background: '#ebebf0',
-                          borderColor: 'rgba(0,0,0,0.10)',
-                        }}
-                      />
-                    </div>
+                  <form onSubmit={handleRecovery} className="space-y-5">
+                    <input
+                      id="recoveryEmail"
+                      type="email"
+                      value={recoveryEmail}
+                      onChange={(e) => {
+                        setRecoveryEmail(e.target.value);
+                        setRecoveryError(null);
+                      }}
+                      placeholder="Seu e-mail"
+                      required
+                      className={AUTH_UNDERLINE_INPUT}
+                    />
 
                     <AnimatePresence>
                       {recoveryError && (
@@ -545,11 +702,12 @@ function LoginForm() {
                     <button
                       type="submit"
                       disabled={recoveryLoading}
-                      className="w-full h-11 rounded-[10px] font-semibold text-white flex items-center justify-center gap-2 transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                      className={AUTH_PILL_CTA}
                       style={{
-                        background: 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
-                        boxShadow: '0 4px 20px rgba(117, 27, 180,0.40)',
-                        fontSize: '15px',
+                        background:
+                          "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                        boxShadow: "0 4px 20px rgba(117, 27, 180,0.40)",
+                        fontSize: "13px",
                       }}
                     >
                       {recoveryLoading ? (
@@ -558,7 +716,7 @@ function LoginForm() {
                           <span>Enviando...</span>
                         </>
                       ) : (
-                        "Enviar link de recuperação"
+                        "Enviar link"
                       )}
                     </button>
                   </form>
@@ -566,12 +724,217 @@ function LoginForm() {
 
                 <button
                   type="button"
-                  onClick={() => { setMode("login"); setRecoverySent(false); setRecoveryError(null); }}
-                  className="w-full text-text-tertiary text-[10px] font-bold uppercase tracking-wider hover:text-text-secondary transition-colors pt-1"
+                  onClick={() => {
+                    setMode("login");
+                    setRecoverySent(false);
+                    setRecoveryError(null);
+                  }}
+                  className="w-full text-brand text-sm font-semibold hover:underline transition-colors pt-1"
                 >
-                  ← Voltar ao login
+                  Voltar ao login
                 </button>
               </motion.div>
+            )}
+
+            {/* ── Cadastrar ── */}
+            {mode === "register" && (
+              <motion.form
+                key="register"
+                initial={false}
+                onSubmit={handleRegister}
+                className="space-y-5 relative z-10"
+              >
+                <AnimatePresence mode="wait">
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-start gap-2 bg-red-500/10 border-l-4 border-red-500 rounded-md p-3 text-sm text-red-400"
+                    >
+                      <WarningCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>{error}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <GoogleSignInButton
+                  loading={googleLoading}
+                  disabled={loading}
+                  label="Cadastrar com Google"
+                  onClick={() => {
+                    void handleGoogleLogin("register");
+                  }}
+                />
+
+                <div className="flex items-center gap-3 py-1">
+                  <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.12)" }} />
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ color: "#aaa" }}
+                  >
+                    ou
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.12)" }} />
+                </div>
+
+                <input
+                  id="register-name"
+                  type="text"
+                  value={fullName}
+                  disabled={loading}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Nome"
+                  required
+                  autoComplete="name"
+                  className={AUTH_UNDERLINE_INPUT}
+                />
+
+                <input
+                  id="register-email"
+                  type="email"
+                  value={email}
+                  disabled={loading}
+                  onChange={handleEmailChange}
+                  placeholder="E-mail"
+                  required
+                  autoComplete="email"
+                  className={AUTH_UNDERLINE_INPUT}
+                />
+
+                <div className="relative">
+                  <input
+                    id="register-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    disabled={loading}
+                    onChange={handlePasswordChange}
+                    onKeyUp={handlePasswordKeyDown}
+                    onKeyDown={handlePasswordKeyDown}
+                    placeholder="Senha"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className={cn(AUTH_UNDERLINE_INPUT, "pr-9")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showPassword ? (
+                      <EyeSlash className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                {password.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3].map((level) => {
+                        const strength = getPasswordStrength(password);
+                        return (
+                          <div
+                            key={level}
+                            className={cn(
+                              "h-1 flex-1 rounded-full transition-colors",
+                              strength >= level
+                                ? strength === 1
+                                  ? "bg-red-400"
+                                  : strength === 2
+                                    ? "bg-amber-400"
+                                    : "bg-emerald-500"
+                                : "bg-black/10",
+                            )}
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-text-tertiary">
+                      {getPasswordStrength(password) <= 1
+                        ? "Senha fraca — use 8+ caracteres"
+                        : getPasswordStrength(password) === 2
+                          ? "Senha média"
+                          : "Senha forte"}
+                    </p>
+                  </div>
+                )}
+
+                {capsLockActive && (
+                  <div className="flex items-center gap-1.5 text-xs text-warning">
+                    <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
+                    <span>Caps Lock está ativado</span>
+                  </div>
+                )}
+
+                <label
+                  htmlFor="termsAccepted"
+                  className="relative z-20 flex min-h-[40px] cursor-pointer touch-manipulation select-none items-start gap-2.5"
+                >
+                  <input
+                    id="termsAccepted"
+                    type="checkbox"
+                    checked={termsAccepted}
+                    disabled={loading}
+                    onChange={(e) => {
+                      setTermsAccepted(e.target.checked);
+                      setError(null);
+                    }}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full transition-colors duration-200",
+                      termsAccepted ? "bg-brand" : "border-[1.5px] bg-transparent",
+                    )}
+                    style={!termsAccepted ? { borderColor: "rgba(0,0,0,0.2)" } : undefined}
+                  >
+                    {termsAccepted && <Check className="h-3 w-3 text-white" weight="bold" />}
+                  </span>
+                  <span className="text-[12px] leading-relaxed text-text-secondary">
+                    Li e concordo com os{" "}
+                    <Link href="/termos" className="text-brand font-semibold hover:underline">
+                      Termos de Uso
+                    </Link>{" "}
+                    e a{" "}
+                    <Link
+                      href="/privacidade"
+                      className="text-brand font-semibold hover:underline"
+                    >
+                      Política de Privacidade
+                    </Link>
+                    .
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={AUTH_PILL_CTA}
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                    boxShadow: "0 4px 20px rgba(117, 27, 180,0.40)",
+                    fontSize: "13px",
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <span>Criando conta...</span>
+                    </>
+                  ) : (
+                    "Concordar e cadastrar"
+                  )}
+                </button>
+              </motion.form>
             )}
 
             {/* ── Login ── */}
@@ -580,7 +943,7 @@ function LoginForm() {
                 key="login"
                 initial={false}
                 onSubmit={handleLogin}
-                className="space-y-4 relative z-10"
+                className="space-y-5 relative z-10"
               >
                 <AnimatePresence mode="wait">
                   {error && (
@@ -600,109 +963,72 @@ function LoginForm() {
                   loading={googleLoading}
                   disabled={loading}
                   label="Entrar com Google"
-                  onClick={() => { void handleGoogleLogin(); }}
+                  onClick={() => {
+                    void handleGoogleLogin("login");
+                  }}
                 />
 
                 <div className="flex items-center gap-3 py-1">
-                  <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.12)' }} />
+                  <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.12)" }} />
                   <span
                     className="text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: '#aaa' }}
+                    style={{ color: "#aaa" }}
                   >
                     ou
                   </span>
-                  <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.12)' }} />
+                  <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.12)" }} />
                 </div>
 
-                {/* Email — validação inline só no cadastro */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="text-[11px] font-semibold uppercase tracking-wider block ml-0.5"
-                    style={{ color: '#666' }}
-                  >
-                    E-mail de acesso
-                  </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  disabled={loading}
+                  onChange={handleEmailChange}
+                  placeholder="Seu e-mail"
+                  required
+                  autoComplete="email"
+                  className={AUTH_UNDERLINE_INPUT}
+                />
+
+                <div className="relative">
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
                     disabled={loading}
-                    onChange={handleEmailChange}
-                    placeholder="seu@email.com"
+                    onChange={handlePasswordChange}
+                    onKeyUp={handlePasswordKeyDown}
+                    onKeyDown={handlePasswordKeyDown}
+                    placeholder="Senha"
                     required
-                    className="w-full h-11 border text-text-primary px-3.5 rounded-[10px] placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
-                    style={{
-                      fontSize: '16px',
-                      fontWeight: 500,
-                      background: '#ebebf0',
-                      borderColor: 'rgba(0,0,0,0.10)',
-                    }}
+                    autoComplete="current-password"
+                    className={cn(AUTH_UNDERLINE_INPUT, "pr-9")}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showPassword ? (
+                      <EyeSlash className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
 
-                {/* Senha Input com medidor de força e Caps Lock */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center ml-0.5">
-                    <label
-                      htmlFor="password"
-                      className="text-[11px] font-semibold uppercase tracking-wider block"
-                      style={{ color: '#666' }}
-                    >
-                      Senha
-                    </label>
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => { setMode("recovery"); setRecoveryEmail(email); }}
-                      className="text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
-                      style={{ color: '#751BB4' }}
-                    >
-                      Recuperar senha
-                    </button>
+                {capsLockActive && (
+                  <div className="flex items-center gap-1.5 text-xs text-warning">
+                    <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
+                    <span>Caps Lock está ativado</span>
                   </div>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      disabled={loading}
-                      onChange={handlePasswordChange}
-                      onKeyUp={handlePasswordKeyDown}
-                      onKeyDown={handlePasswordKeyDown}
-                      placeholder="••••••••"
-                      required
-                      className="w-full h-11 border text-text-primary px-3.5 pr-10 rounded-[10px] placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
-                      style={{
-                        fontSize: '16px',
-                        fontWeight: 500,
-                        background: '#ebebf0',
-                        borderColor: 'rgba(0,0,0,0.10)',
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
-                    >
-                      {showPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                )}
 
-
-                  {/* Alerta de Caps Lock */}
-                  {capsLockActive && (
-                    <div className="mt-2 flex items-center gap-1.5 text-xs text-warning animate-fade-in">
-                      <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
-                      <span>Caps Lock está ativado</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Lembrar-me Checkbox */}
                 <label
                   htmlFor="rememberMe"
-                  className="relative z-20 flex min-h-[44px] cursor-pointer touch-manipulation select-none items-center gap-2.5 py-1"
+                  className="relative z-20 flex min-h-[40px] cursor-pointer touch-manipulation select-none items-center gap-2.5"
                 >
                   <input
                     id="rememberMe"
@@ -715,56 +1041,63 @@ function LoginForm() {
                   <span
                     aria-hidden
                     className={cn(
-                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] transition-colors duration-200",
-                      rememberMe
-                        ? "bg-brand"
-                        : "border-[1.5px] bg-transparent"
+                      "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full transition-colors duration-200",
+                      rememberMe ? "bg-brand" : "border-[1.5px] bg-transparent",
                     )}
-                    style={!rememberMe ? { borderColor: 'rgba(0,0,0,0.2)' } : undefined}
+                    style={!rememberMe ? { borderColor: "rgba(0,0,0,0.2)" } : undefined}
                   >
                     {rememberMe && <Check className="h-3 w-3 text-white" weight="bold" />}
                   </span>
-                  <span className="text-sm text-text-secondary">Lembrar-me neste dispositivo</span>
+                  <span className="text-sm text-text-secondary">Manter conectado</span>
                 </label>
 
-                <div className="pt-1">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full h-11 rounded-[10px] font-semibold text-white flex items-center justify-center gap-2 transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{
-                      background: 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
-                      boxShadow: '0 4px 20px rgba(117, 27, 180,0.40)',
-                      fontSize: '15px',
-                    }}
-                  >
-                    {loading ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        <span>Entrando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{roleTab === "coach" ? "Entrar como Coach" : "Entrar como Aluno"}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={AUTH_PILL_CTA}
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                    boxShadow: "0 4px 20px rgba(117, 27, 180,0.40)",
+                    fontSize: "13px",
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <span>Entrando...</span>
+                    </>
+                  ) : (
+                    "Entrar"
+                  )}
+                </button>
 
-                  <div className="mt-3 text-center">
-                    <Link
-                      href="/signup"
-                      className="block w-full rounded-[10px] py-3 text-[14px] font-semibold transition-all duration-150 hover:opacity-80 touch-manipulation"
-                      style={{
-                        border: '1.5px solid #751BB4',
-                        color: '#751BB4',
-                        background: 'transparent',
-                      }}
-                    >
-                      Criar minha conta gratuita →
-                    </Link>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setMode("recovery");
+                    setRecoveryEmail(email);
+                  }}
+                  className="w-full text-center text-sm font-semibold text-brand hover:underline disabled:opacity-50"
+                >
+                  Esqueceu a senha?
+                </button>
+
+                <p className="text-center text-[11px] text-text-tertiary leading-relaxed px-1">
+                  Ao usar o Auronfit, você concorda com os{" "}
+                  <Link href="/termos" className="text-brand font-semibold hover:underline">
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link
+                    href="/privacidade"
+                    className="text-brand font-semibold hover:underline"
+                  >
+                    Política de Privacidade
+                  </Link>
+                  .
+                </p>
               </motion.form>
             )}
           </AnimatePresence>

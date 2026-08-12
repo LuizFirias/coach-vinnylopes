@@ -22,6 +22,7 @@ import {
 } from "@/lib/utils/biset";
 import { Button } from "@/components/ui/Button";
 import { isClusterSet } from "@/lib/constants/workout-techniques";
+import { concluirPasso } from "@/lib/onboarding/concluirPasso";
 
 function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
   const base = {
@@ -432,6 +433,7 @@ export function KanbanWorkoutBuilderSheet({
         ativo: true,
       });
       if (insertError) throw insertError;
+      await concluirPasso(user.id, "montar-ficha");
       onSaved();
       onClose();
     } catch (err: unknown) {
@@ -513,7 +515,7 @@ export function KanbanWorkoutBuilderSheet({
           </div>
 
           {items.length === 0 ? (
-            <div className="border border-dashed border-divider rounded-xl p-8 flex flex-col items-center text-center">
+            <div className="rounded-xl p-8 flex flex-col items-center text-center">
               <Barbell size={28} className="text-[#555555] mb-2" />
               <p className="text-xs text-[#555555] mb-4">
                 Adicione exercícios e configure séries, técnicas e Bi-Sets aqui.

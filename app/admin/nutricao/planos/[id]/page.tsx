@@ -18,7 +18,7 @@ import {
   PlanEditMealModal,
   type MealDraft,
 } from '@/app/components/nutrition/PlanEditMealModal';
-import { calculateItemMacros, sumMacros, type CalculatedMacro } from '@/lib/nutrition/calculateMacros';
+import { calculateItemMacros, sumMacros, kcalFromMacros, type CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import {
   loadFoodLibrary,
   MEAL_TYPE_LABELS,
@@ -340,7 +340,12 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
       await persistPlan(
         buildSavePayload({
           planPatch: {
-            calories_target: macrosDraft.calories ? Number(macrosDraft.calories) : null,
+            calories_target:
+              kcalFromMacros(
+                Number(macrosDraft.protein) || 0,
+                Number(macrosDraft.carbs) || 0,
+                Number(macrosDraft.fat) || 0,
+              ) || null,
             protein_target: macrosDraft.protein ? Number(macrosDraft.protein) : null,
             carbs_target: macrosDraft.carbs ? Number(macrosDraft.carbs) : null,
             fat_target: macrosDraft.fat ? Number(macrosDraft.fat) : null,

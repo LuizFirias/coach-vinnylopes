@@ -30,7 +30,7 @@ export function WorkoutBuilderSettingsSheet({
   useLockBodyScroll(true);
 
   const alunoLabel =
-    alunos.find((a) => a.id === alunoSelecionado)?.coaching_reference || "sem aluno";
+    alunos.find((a) => a.id === alunoSelecionado)?.coaching_reference || "selecione um aluno";
 
   const alunosOrdenados = useMemo(
     () =>
@@ -112,7 +112,7 @@ export function WorkoutBuilderSettingsSheet({
                         !alunoSelecionado ? "text-brand" : "text-text-secondary",
                       )}
                     >
-                      sem aluno
+                      selecione um aluno
                     </span>
                     {!alunoSelecionado && (
                       <Check size={14} className="shrink-0 text-brand" weight="bold" />

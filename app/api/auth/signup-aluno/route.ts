@@ -19,11 +19,12 @@ export async function POST(req: Request) {
 
     const { email, password, fullName, goal } = await req.json();
 
-    if (!email || !password || !fullName || !goal) {
+    if (!email || !password || !fullName) {
       return NextResponse.json({ error: "Dados obrigatórios ausentes" }, { status: 400 });
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanGoal = typeof goal === "string" && goal.trim() ? goal.trim() : null;
 
     console.log("[SIGNUP-ALUNO] 🚀 Iniciando cadastro de aluno para:", cleanEmail);
 
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
       user_metadata: {
         full_name: fullName,
         role: "aluno",
-        objetivo: goal
+        ...(cleanGoal ? { objetivo: cleanGoal } : {}),
       },
     });
 
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
           email: cleanEmail,
           role: "aluno",
           full_name: fullName,
-          objetivo: goal,
+          objetivo: cleanGoal,
           status_pagamento: "pago",
           arquivado: false,
         },
@@ -102,11 +103,12 @@ export async function POST(req: Request) {
     // ── 4. Enviar e-mail de boas-vindas via Resend ────────────────────────
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.auronfit.com.br";
-      const goalLabel = 
-        goal === "cutting" ? "Emagrecimento (Definição)" : 
-        goal === "bulking" ? "Ganho de Massa (Hipertrofia)" : 
-        goal === "manutencao" ? "Manutenção de Peso" : 
-        "Recomposição Corporal";
+      const goalLabel =
+        cleanGoal === "cutting" ? "Emagrecimento (Definição)" :
+        cleanGoal === "bulking" ? "Ganho de Massa (Hipertrofia)" :
+        cleanGoal === "manutencao" ? "Manutenção de Peso" :
+        cleanGoal === "recomposicao" ? "Recomposição Corporal" :
+        null;
 
       await resend.emails.send({
         from: "Auronfit <contato@auronfit.com.br>",
@@ -116,11 +118,13 @@ export async function POST(req: Request) {
           <div style="background-color: #09090B; color: #FAFAFA; font-family: sans-serif; padding: 40px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #751BB4; font-size: 28px; margin-bottom: 16px;">Bem-vindo ao Auronfit, ${fullName}!</h1>
             <p style="font-size: 16px; line-height: 1.5; color: #A1A1AA;">Sua conta de aluno/atleta foi criada com sucesso.</p>
-            
-            <div style="background-color: #111113; padding: 20px; border: 1px solid #27272A; border-radius: 8px; margin: 24px 0;">
+            ${
+              goalLabel
+                ? `<div style="background-color: #111113; padding: 20px; border: 1px solid #27272A; border-radius: 8px; margin: 24px 0;">
               <p style="margin: 0; font-size: 14px; color: #A1A1AA;"><strong>Objetivo Inicial:</strong> ${goalLabel}</p>
-            </div>
-
+            </div>`
+                : ""
+            }
             <p style="font-size: 14px; color: #A1A1AA; line-height: 1.5;">Acesse seu painel para começar a registrar seus treinos, cargas e ver sua dieta.</p>
             
             <div style="margin-top: 32px;">

@@ -184,7 +184,7 @@ export function LibraryPanel({
           : "Todos os exercícios"}
       </p>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain px-3 pb-3 space-y-1">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-3 space-y-1">
         {filtered.map((ex) => {
           const alreadyIn = !pickMode && existingIds?.has(ex.id);
           const blocked = pickMode && pickExcludeId === ex.id;

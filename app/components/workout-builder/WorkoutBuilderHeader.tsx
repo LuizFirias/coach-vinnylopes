@@ -1,8 +1,10 @@
 "use client";
 
-import { CircleNotch, FloppyDisk, FileArrowDown } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import { CaretDown, Check } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 import { BackButton } from "@/app/components/ui/BackButton";
+import { AUTH_UNDERLINE_INPUT } from "@/lib/auth/authFormStyles";
 
 interface AlunoOption {
   id: string;
@@ -31,22 +33,127 @@ interface WorkoutBuilderHeaderProps {
   onOpenAlunoPicker?: () => void;
 }
 
+function AlunoSelectInline({
+  alunos,
+  value,
+  onChange,
+  disabled,
+}: {
+  alunos: AlunoOption[];
+  value: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const alunosOrdenados = [...alunos].sort((a, b) =>
+    a.coaching_reference.localeCompare(b.coaching_reference, "pt-BR"),
+  );
+  const selected = alunosOrdenados.find((a) => a.id === value);
+  const label = selected?.coaching_reference || "selecione um aluno";
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Selecionar aluno"
+        className={cn(
+          AUTH_UNDERLINE_INPUT,
+          "flex items-center justify-between gap-2 text-left cursor-pointer disabled:cursor-not-allowed",
+          selected ? "text-text-primary" : "text-text-disabled font-normal",
+        )}
+      >
+        <span className="truncate text-[15px] font-medium">{label}</span>
+        <CaretDown
+          size={14}
+          weight="bold"
+          className="text-brand shrink-0 transition-transform"
+          style={{ transform: open ? "rotate(180deg)" : undefined }}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-0 right-0 z-50 mt-2 max-h-56 overflow-y-auto rounded-xl border border-brand-border bg-surface-2 p-1.5 shadow-[var(--elev-3)]"
+        >
+          <button
+            type="button"
+            role="option"
+            aria-selected={!value}
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center justify-between gap-2 text-left px-3 py-2.5 rounded-lg text-[13px] cursor-pointer border-0",
+              !value
+                ? "font-semibold bg-brand/15 text-brand"
+                : "font-medium text-text-primary hover:bg-brand/10 bg-transparent",
+            )}
+          >
+            <span>selecione um aluno</span>
+            {!value && <Check size={14} weight="bold" />}
+          </button>
+          {alunosOrdenados.map((aluno) => {
+            const active = aluno.id === value;
+            return (
+              <button
+                key={aluno.id}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  onChange(aluno.id);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full flex items-center justify-between gap-2 text-left px-3 py-2.5 rounded-lg text-[13px] cursor-pointer border-0",
+                  active
+                    ? "font-semibold bg-brand/15 text-brand"
+                    : "font-medium text-text-primary hover:bg-brand/10 bg-transparent",
+                )}
+              >
+                <span className="truncate">{aluno.coaching_reference}</span>
+                {active && <Check size={14} weight="bold" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function WorkoutBuilderHeader({
   isMobile,
   alunos,
   alunoSelecionado,
   nomeRotina,
-  saving,
-  exporting,
-  canSave,
-  isDirty,
   alunoLocked = false,
-  saveLabel = "Salvar ficha",
   onBack,
   onAlunoChange,
   onRotinaChange,
-  onSave,
-  onExportPdf,
   onOpenAlunoPicker,
 }: WorkoutBuilderHeaderProps) {
   const alunoLabel =
@@ -55,112 +162,79 @@ export function WorkoutBuilderHeader({
 
   if (isMobile) {
     return (
-      <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 py-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <BackButton onClick={onBack} />
-          <input
-            type="text"
-            value={nomeRotina}
-            onChange={(e) => onRotinaChange(e.target.value)}
-            placeholder={alunoLocked ? "Editar ficha" : "Nova ficha"}
-            aria-label="Nome da ficha"
-            className="min-w-0 flex-1 bg-transparent border-0 outline-none shadow-none text-[15.4px] font-bold text-text-primary placeholder:text-text-disabled placeholder:font-semibold p-0"
-          />
+      <div className="sticky top-0 z-20 bg-surface-0 border-0 py-3">
+        <div className="flex items-start gap-2">
+          <BackButton onClick={onBack} className="mt-0.5" />
+          <div className="min-w-0 flex-1 flex flex-col">
+            <input
+              type="text"
+              value={nomeRotina}
+              onChange={(e) => onRotinaChange(e.target.value)}
+              placeholder="nome da rotina"
+              aria-label="Nome da rotina"
+              className={cn(AUTH_UNDERLINE_INPUT, "h-10 font-semibold")}
+            />
+            {alunoLocked ? (
+              <span
+                className={cn(
+                  AUTH_UNDERLINE_INPUT,
+                  "flex items-center h-10 text-[13px] font-medium text-brand",
+                )}
+              >
+                {alunoLabel || "selecione um aluno"}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenAlunoPicker}
+                className={cn(
+                  "w-full h-10 flex items-center justify-between gap-2 bg-transparent border-0 border-b border-black/15 rounded-none px-0 text-left cursor-pointer",
+                  hasAluno ? "text-brand font-medium" : "text-text-disabled font-normal",
+                )}
+                aria-label="Selecionar aluno"
+              >
+                <span className="truncate text-[13px]">
+                  {hasAluno ? alunoLabel : "selecione um aluno"}
+                </span>
+                <CaretDown size={12} weight="bold" className="text-brand shrink-0" />
+              </button>
+            )}
+          </div>
         </div>
-
-        {alunoLocked ? (
-          <span className="shrink-0 max-w-[42%] text-[12px] font-medium text-brand truncate text-right">
-            {alunoLabel || "sem aluno"}
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={onOpenAlunoPicker}
-            className="shrink-0 max-w-[42%] text-[12px] font-medium text-brand truncate text-right border-0 bg-transparent p-0 cursor-pointer"
-            aria-label="Selecionar aluno"
-          >
-            {hasAluno ? alunoLabel : "sem aluno"}
-          </button>
-        )}
       </div>
     );
   }
 
-  const alunosOrdenados = [...alunos].sort((a, b) =>
-    a.coaching_reference.localeCompare(b.coaching_reference, "pt-BR"),
-  );
-
   return (
     <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 md:px-0 py-3 mb-4">
-      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-        <div className="flex items-center gap-3 shrink-0">
-          <BackButton onClick={onBack} />
-        </div>
+      <div className="flex items-start gap-3">
+        <BackButton onClick={onBack} className="mt-2 shrink-0" />
 
-        <div className="field-flat-input flex-1 min-w-0 rounded-2xl border-0 bg-surface-1 overflow-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-            <div className="px-4 py-2.5 sm:border-r sm:border-border-divider">
-              <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
-                Aluno
-              </label>
-              {alunoLocked ? (
-                <p className="text-sm text-brand truncate">{alunoLabel || "sem aluno"}</p>
-              ) : (
-                <select
-                  value={alunoSelecionado}
-                  onChange={(e) => onAlunoChange(e.target.value)}
-                  className={cn(
-                    "w-full bg-transparent border-0 outline-none shadow-none text-sm appearance-none cursor-pointer p-0",
-                    alunoSelecionado ? "text-text-primary" : "text-brand",
-                  )}
-                >
-                  <option value="">sem aluno</option>
-                  {alunosOrdenados.map((aluno) => (
-                    <option key={aluno.id} value={aluno.id}>
-                      {aluno.coaching_reference}
-                    </option>
-                  ))}
-                </select>
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <input
+            type="text"
+            value={nomeRotina}
+            onChange={(e) => onRotinaChange(e.target.value)}
+            placeholder="nome da rotina"
+            aria-label="Nome da rotina"
+            className={cn(AUTH_UNDERLINE_INPUT, "font-semibold")}
+          />
+          {alunoLocked ? (
+            <span
+              className={cn(
+                AUTH_UNDERLINE_INPUT,
+                "flex items-center text-sm font-medium text-brand",
               )}
-            </div>
-            <div className="px-4 py-2.5 border-t border-border-divider sm:border-t-0">
-              <label className="block text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
-                Nome da rotina
-              </label>
-              <input
-                type="text"
-                value={nomeRotina}
-                onChange={(e) => onRotinaChange(e.target.value)}
-                placeholder="Nova ficha"
-                className="w-full bg-transparent border-0 outline-none shadow-none text-[15.4px] font-bold text-text-primary placeholder:text-text-disabled p-0"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {onExportPdf && (
-            <button
-              type="button"
-              onClick={onExportPdf}
-              disabled={exporting || !canSave}
-              className="inline-flex items-center gap-1.5 px-3 h-9 bg-surface-1 border-0 text-text-secondary rounded-lg text-xs font-semibold hover:text-brand disabled:opacity-50"
             >
-              {exporting ? <CircleNotch size={14} className="animate-spin" /> : <FileArrowDown size={14} />}
-              PDF
-            </button>
+              {alunoLabel || "selecione um aluno"}
+            </span>
+          ) : (
+            <AlunoSelectInline
+              alunos={alunos}
+              value={alunoSelecionado}
+              onChange={onAlunoChange}
+            />
           )}
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving || !canSave || !isDirty}
-            className={cn(
-              "btn-primary inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg disabled:opacity-40",
-            )}
-          >
-            {saving ? <CircleNotch size={14} className="animate-spin" /> : <FloppyDisk size={14} />}
-            {saving ? "Salvando..." : saveLabel}
-          </button>
         </div>
       </div>
     </div>

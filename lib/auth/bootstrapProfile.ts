@@ -20,6 +20,7 @@ export type BootstrapProfile = {
   coach_id: string | null;
   sexo: string | null;
   trial_pendente_cartao: boolean | null;
+  onboarding_visto: boolean | null;
 };
 
 type CacheEntry = BootstrapProfile & { fetchedAt: number };
@@ -58,12 +59,15 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
       let { data: profile, error } = await supabaseClient
         .from('profiles')
         .select(
-          'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo, trial_pendente_cartao',
+          'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo, trial_pendente_cartao, onboarding_visto',
         )
         .eq('id', user.id)
         .maybeSingle();
 
-      if (error?.message?.includes('trial_pendente_cartao')) {
+      if (
+        error?.message?.includes('trial_pendente_cartao') ||
+        error?.message?.includes('onboarding_visto')
+      ) {
         const fallback = await supabaseClient
           .from('profiles')
           .select(
@@ -72,7 +76,11 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
           .eq('id', user.id)
           .maybeSingle();
         profile = fallback.data
-          ? ({ ...fallback.data, trial_pendente_cartao: false } as typeof profile)
+          ? ({
+              ...fallback.data,
+              trial_pendente_cartao: false,
+              onboarding_visto: true,
+            } as typeof profile)
           : null;
         error = fallback.error;
       }
@@ -99,6 +107,8 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
         sexo: profile.sexo ?? null,
         trial_pendente_cartao:
           (profile as { trial_pendente_cartao?: boolean | null }).trial_pendente_cartao ?? null,
+        onboarding_visto:
+          (profile as { onboarding_visto?: boolean | null }).onboarding_visto ?? true,
         fetchedAt: Date.now(),
       };
       cache = entry;

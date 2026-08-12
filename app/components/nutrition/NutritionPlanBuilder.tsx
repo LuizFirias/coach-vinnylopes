@@ -1,26 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { 
-  Plus, Trash, FloppyDisk, CheckCircle, 
+  Plus, Trash, FloppyDisk, CheckCircle, Check,
   MagnifyingGlass, Barbell, Info, Calendar, Copy, CaretRight
 } from '@phosphor-icons/react';
 import { BackButton } from '@/app/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
+import { MacrosCard } from '@/app/components/nutrition/MacrosCard';
+import { MealButton } from '@/app/components/nutrition/MealButton';
 import { NutritionFood, NutritionFoodCategory, NutritionMealType } from '@/lib/nutrition/types';
 import { formatFoodQuantityDisplay, isGramsOnlyLabel } from '@/lib/nutrition/portionDisplay';
 import { cn } from '@/lib/utils/cn';
 import { textIncludes } from '@/lib/utils/textNormalize';
 import { readReturnUrl } from '@/lib/utils/adminNav';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { concluirPasso } from '@/lib/onboarding/concluirPasso';
+import { TimeRollerPicker } from '@/app/components/ui/TimeRollerPicker';
 
 interface NutritionPlanBuilderProps {
   initialPlanData?: any;
@@ -49,12 +52,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Target macros
-  const [targetKcal, setTargetKcal] = useState('');
-  const [targetProtein, setTargetProtein] = useState('');
-  const [targetCarbs, setTargetCarbs] = useState('');
-  const [targetFat, setTargetFat] = useState('');
-
   // Meals data structure
   const [meals, setMeals] = useState<any[]>([]);
   // Accordion: quais refeições estão expandidas (por índice)
@@ -63,8 +60,49 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   // Search combobox states
   const [searchOpen, setSearchOpen] = useState<{ mealIndex: number; itemIndex?: number; subIndex?: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  /** Categorias selecionadas (multi). Vazio = sem filtro de categoria. */
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [activeGroup, setActiveGroup] = useState<'todos' | 'macros' | 'outros'>('todos');
+  /** IDs dos alimentos marcados no modal (seleção múltipla) */
+  const [pickedFoodIds, setPickedFoodIds] = useState<string[]>([]);
+
+  const MACRO_CATEGORIES = [
+    { val: 'carboidrato', label: 'Carboidrato' },
+    { val: 'proteina', label: 'Proteína' },
+    { val: 'gordura', label: 'Gordura' },
+  ] as const;
+
+  const OUTROS_CATEGORIES = [
+    { val: 'fruta', label: 'Fruta' },
+    { val: 'vegetal', label: 'Vegetal' },
+    { val: 'leguminosa', label: 'Leguminosa' },
+    { val: 'laticinio', label: 'Laticínio' },
+    { val: 'suplemento', label: 'Suplemento' },
+    { val: 'oleaginosa', label: 'Oleaginosa' },
+    { val: 'bebida', label: 'Bebida' },
+    { val: 'tempero', label: 'Tempero' },
+    { val: 'outro', label: 'Outro' },
+  ] as const;
+
+  const toggleCategory = (val: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(val) ? prev.filter((c) => c !== val) : [...prev, val],
+    );
+  };
+
+  const filterChipClass = (active: boolean) =>
+    cn(
+      'h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1',
+      active
+        ? 'border-[color:var(--brand-border)] text-[color:var(--brand-primary)]'
+        : 'border-transparent text-text-secondary hover:text-text-primary',
+    );
+
+  const filterChipStyle = (active: boolean): CSSProperties => ({
+    background: 'var(--card-macros-bg)',
+    boxShadow: active ? 'var(--elev-1)' : undefined,
+    borderColor: active ? 'var(--brand-border)' : undefined,
+  });
 
   // Load students and foods
   useEffect(() => {
@@ -76,8 +114,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         if (!coachId) return;
 
         // Check local storage cache for foods (24h cache)
-        const cacheKey = 'auron_food_library';
-        const cacheTimeKey = 'auron_food_library_time';
+        const cacheKey = 'auron_food_library_v2';
+        const cacheTimeKey = 'auron_food_library_time_v2';
         const cachedData = typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null;
         const cachedTime = typeof window !== 'undefined' ? localStorage.getItem(cacheTimeKey) : null;
         const isCacheValid = cachedData && cachedTime && (Date.now() - Number(cachedTime) < 86400000);
@@ -153,11 +191,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           );
           setStartDate(initialPlanData.start_date || '');
           setEndDate(initialPlanData.end_date || '');
-
-          setTargetKcal(initialPlanData.calories_target?.toString() || '');
-          setTargetProtein(initialPlanData.protein_target?.toString() || '');
-          setTargetCarbs(initialPlanData.carbs_target?.toString() || '');
-          setTargetFat(initialPlanData.fat_target?.toString() || '');
 
           // Populate meals from the first day
           const day1 = initialPlanData.days?.[0];
@@ -257,15 +290,17 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const handleAddFoodToMeal = (mealIndex: number) => {
     setSearchOpen({ mealIndex });
     setSearchQuery('');
-    setCategoryFilter('');
+    setSelectedCategories([]);
     setActiveGroup('todos');
+    setPickedFoodIds([]);
   };
 
   const handleAddSubstitution = (mealIndex: number, itemIndex: number) => {
     setSearchOpen({ mealIndex, itemIndex });
     setSearchQuery('');
-    setCategoryFilter('');
+    setSelectedCategories([]);
     setActiveGroup('todos');
+    setPickedFoodIds([]);
   };
 
   const handleRemoveFoodItem = (mealIndex: number, itemIndex: number) => {
@@ -280,40 +315,56 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
     setMeals(updated);
   };
 
-  const handleSelectFood = (food: NutritionFood) => {
-    if (!searchOpen) return;
+  const togglePickedFood = (foodId: string) => {
+    setPickedFoodIds((prev) =>
+      prev.includes(foodId) ? prev.filter((id) => id !== foodId) : [...prev, foodId],
+    );
+  };
+
+  const handleConfirmPickedFoods = () => {
+    if (!searchOpen || pickedFoodIds.length === 0) return;
     const { mealIndex, itemIndex } = searchOpen;
-
-    const defaultPortion = food.portions?.find(p => p.is_default) || food.portions?.[0];
-    const initialGrams = defaultPortion ? Number(defaultPortion.grams) : 100;
-    const initialLabel = defaultPortion ? defaultPortion.label : '100g';
-
     const updated = [...meals];
+    const foodsById = new Map(foodLibrary.map((f) => [f.id, f]));
 
-    if (itemIndex !== undefined) {
-      // Adding substitution to item
-      const item = updated[mealIndex].items[itemIndex];
-      const newSub = {
-        substitute_food_id: food.id,
-        quantity_grams: initialGrams,
-        portion_label: initialLabel,
-        notes: ''
-      };
-      item.substitutions = [...(item.substitutions || []), newSub];
-    } else {
-      // Adding main item to meal
-      const newItem = {
-        food_id: food.id,
-        quantity_grams: initialGrams,
-        portion_label: initialLabel,
-        notes: '',
-        sort_order: updated[mealIndex].items.length,
-        substitutions: []
-      };
-      updated[mealIndex].items.push(newItem);
+    for (const foodId of pickedFoodIds) {
+      const food = foodsById.get(foodId);
+      if (!food) continue;
+
+      const defaultPortion = food.portions?.find((p) => p.is_default) || food.portions?.[0];
+      const initialGrams = defaultPortion ? Number(defaultPortion.grams) : 100;
+      const initialLabel = defaultPortion ? defaultPortion.label : '100g';
+
+      if (itemIndex !== undefined) {
+        const item = updated[mealIndex].items[itemIndex];
+        item.substitutions = [
+          ...(item.substitutions || []),
+          {
+            substitute_food_id: food.id,
+            quantity_grams: initialGrams,
+            portion_label: initialLabel,
+            notes: '',
+          },
+        ];
+      } else {
+        updated[mealIndex].items.push({
+          food_id: food.id,
+          quantity_grams: initialGrams,
+          portion_label: initialLabel,
+          notes: '',
+          sort_order: updated[mealIndex].items.length,
+          substitutions: [],
+        });
+      }
     }
 
     setMeals(updated);
+    setPickedFoodIds([]);
+    setSearchOpen(null);
+  };
+
+  const handleCloseFoodSearch = () => {
+    setPickedFoodIds([]);
     setSearchOpen(null);
   };
 
@@ -329,12 +380,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
     return sumMacros(itemMacros);
   };
 
-  const getPlanMacros = (): CalculatedMacro => {
-    const mealMacros = meals.map(m => getMealMacros(m));
-    return sumMacros(mealMacros);
-  };
-
-  const planMacros = getPlanMacros();
+  const planMacros = sumMacros(meals.map((m) => getMealMacros(m)));
 
   // Save/Publish
   const handleSavePlan = async (status: 'draft' | 'active') => {
@@ -362,10 +408,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           goal,
           notes: orientacoesGerais || notes || null,
           orientacoes_gerais: orientacoesGerais || null,
-          calories_target: targetKcal ? Number(targetKcal) : null,
-          protein_target: targetProtein ? Number(targetProtein) : null,
-          carbs_target: targetCarbs ? Number(targetCarbs) : null,
-          fat_target: targetFat ? Number(targetFat) : null,
+          calories_target: Math.round(planMacros.calories) || null,
+          protein_target: planMacros.protein || null,
+          carbs_target: planMacros.carbs || null,
+          fat_target: planMacros.fat || null,
           status,
           start_date: startDate || null,
           end_date: endDate || null
@@ -405,6 +451,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
       if (!response.ok) throw new Error(data.error || 'Erro ao salvar plano');
 
       setSuccess(status === 'active' ? 'Plano alimentar publicado com sucesso!' : 'Rascunho salvo com sucesso!');
+      if (status === 'active') {
+        const { data: { session: s } } = await supabaseClient.auth.getSession();
+        if (s?.user?.id) await concluirPasso(s.user.id, 'criar-nutricao');
+      }
       setTimeout(() => {
         router.push(readReturnUrl(window.location.search, '/admin/nutricao'));
       }, 1500);
@@ -418,7 +468,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const filteredFoods = foodLibrary
     .filter(food => {
       const matchesQuery = textIncludes(food.name, searchQuery);
-      const matchesCategory = categoryFilter ? food.category === categoryFilter : true;
+      const matchesCategory =
+        selectedCategories.length === 0
+          ? true
+          : selectedCategories.includes(food.category);
       return matchesQuery && matchesCategory;
     })
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
@@ -427,7 +480,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const rowVirtualizer = useVirtualizer({
     count: filteredFoods.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,
+    estimateSize: () => 68,
     overscan: 5,
   });
 
@@ -441,65 +494,81 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="mx-auto max-w-7xl px-4 pt-2 md:pt-4">
         {/* Header */}
-        <div className="flex items-center gap-4 py-6 border-b border-divider/50 mb-6">
+        <div className="mb-3 flex items-center gap-3 py-2 md:mb-4 md:border-b md:border-divider/50 md:pb-3 md:pt-1">
           <BackButton onClick={goBack} />
         </div>
 
         {/* Feedback Messages */}
         {error && (
-          <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold animate-shake">
-            <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
+          <div className="mb-3 flex items-center gap-3 rounded-lg border border-danger-border bg-danger-subtle px-4 py-3 text-xs font-semibold text-danger animate-shake md:mb-4">
+            <div className="h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-danger" />
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
-            <div className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
+          <div className="mb-3 flex items-center gap-3 rounded-lg border border-success-border bg-success-subtle px-4 py-3 text-xs font-semibold text-success md:mb-4">
+            <div className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success" />
             {success}
           </div>
         )}
 
         {/* Layout Workspace Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-6">
           
           {/* Coluna Esquerda: Construtor (70%) */}
-          <div className="lg:col-span-8 flex flex-col gap-6">
+          <div className="flex flex-col gap-4 lg:col-span-8 lg:gap-6">
             
-            {/* CARD 1: Dados Básicos */}
-            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
-                  label="Aluno destinatário"
-                  value={selectedStudentId}
-                  onChange={setSelectedStudentId}
-                  placeholder="Selecione o aluno..."
-                  disabled={!!initialPlanData || saving}
-                  options={alunos.map(a => ({
-                    value: a.id,
-                    label: a.coaching_reference || a.full_name || a.id
-                  }))}
-                />
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Nome do Plano</label>
+            {/* CARD 1: Dados Básicos — Nível 2 (tokens) */}
+            <div
+              className="rounded-2xl"
+              style={{
+                background: "var(--card-macros-bg)",
+                border: "0.5px solid var(--brand-border)",
+                boxShadow: "var(--elev-2)",
+              }}
+            >
+              <div
+                aria-hidden
+                className="hidden h-0.5 w-full md:block"
+                style={{ background: "var(--card-macros-topline)", opacity: 0.5 }}
+              />
+              <div className="flex flex-col gap-4 p-4 md:p-5">
+              <Select
+                variant="underline"
+                label="Aluno destinatário"
+                value={selectedStudentId}
+                onChange={setSelectedStudentId}
+                placeholder="Selecione o aluno..."
+                disabled={!!initialPlanData || saving}
+                options={alunos.map(a => ({
+                  value: a.id,
+                  label: a.coaching_reference || a.full_name || a.id
+                }))}
+              />
+
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                    Nome do plano
+                  </label>
                   <input
                     type="text"
                     value={planName}
                     onChange={(e) => setPlanName(e.target.value)}
-                    placeholder="Ex: Bulking Limpo - Fase Carga"
+                    placeholder="Ex: Bulking Limpo — Fase Carga"
                     disabled={saving}
-                    className="h-10 px-3 bg-surface-2 border border-input rounded-md text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-colors"
+                    className="input-underline w-full"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Select
+                  variant="underline"
                   label="Objetivo principal"
                   value={goal}
                   onChange={setGoal}
+                  className="min-w-0"
                   options={[
                     { value: 'Hipertrofia', label: 'Hipertrofia' },
                     { value: 'Emagrecimento', label: 'Emagrecimento' },
@@ -510,32 +579,38 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     { value: 'Outro', label: 'Outro' }
                   ]}
                 />
+              </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Data Início</label>
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                    Data início
+                  </label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     disabled={saving}
-                    className="h-10 px-3 bg-surface-2 border border-input rounded-md text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-colors"
+                    className="input-underline w-full"
                   />
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Data Término</label>
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                    Data término
+                  </label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     disabled={saving}
-                    className="h-10 px-3 bg-surface-2 border border-input rounded-md text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-colors"
+                    className="input-underline w-full"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">
+              <div className="mt-3 flex flex-col">
+                <label className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                   Orientações gerais
                 </label>
                 <textarea
@@ -544,69 +619,30 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     setOrientacoesGerais(e.target.value);
                     setNotes(e.target.value);
                   }}
-                  placeholder={`Suplementação e orientações do plano — ex.:
-• Creatina 5g/dia (após o treino)
-• Ômega 3 2 cápsulas no almoço
-• Beber 3–4 L de água ao longo do dia`}
-                  rows={5}
+                  placeholder="Suplementação e orientações do plano..."
+                  rows={4}
                   disabled={saving}
-                  className="w-full px-3 py-2.5 bg-surface-2 border border-input rounded-md text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-all resize-y min-h-[100px]"
+                  className="field-token-input w-full"
                 />
-                <p className="text-[10px] text-text-tertiary ml-1">
+                <p className="mt-1.5 text-[10px] italic text-text-disabled">
                   Visível em destaque no app do aluno — use para suplementos, timing e avisos gerais.
                 </p>
               </div>
-            </Card>
-
-            {/* CARD 2: Metas Nutricionais */}
-            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Kcal Alvo</label>
-                  <input
-                    type="number"
-                    value={targetKcal}
-                    onChange={(e) => setTargetKcal(e.target.value)}
-                    placeholder="Ex: 2800"
-                    disabled={saving}
-                    className="h-10 px-3 bg-surface-2 border border-input rounded-md text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-colors font-mono"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Proteínas (g)</label>
-                  <input
-                    type="number"
-                    value={targetProtein}
-                    onChange={(e) => setTargetProtein(e.target.value)}
-                    placeholder="Ex: 160"
-                    disabled={saving}
-                    className="h-10 px-3 bg-surface-2 border border-input rounded-md text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-colors font-mono"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Carboidratos (g)</label>
-                  <input
-                    type="number"
-                    value={targetCarbs}
-                    onChange={(e) => setTargetCarbs(e.target.value)}
-                    placeholder="Ex: 300"
-                    disabled={saving}
-                    className="h-10 px-3 bg-surface-2 border border-input rounded-md text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-colors font-mono"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary ml-1">Gorduras (g)</label>
-                  <input
-                    type="number"
-                    value={targetFat}
-                    onChange={(e) => setTargetFat(e.target.value)}
-                    placeholder="Ex: 75"
-                    disabled={saving}
-                    className="h-10 px-3 bg-surface-2 border border-input rounded-md text-xs text-text-primary focus:outline-none focus:border-brand/40 transition-colors font-mono"
-                  />
-                </div>
               </div>
-            </Card>
+            </div>
+
+            <MacrosCard
+              proteina={planMacros.protein}
+              carbo={planMacros.carbs}
+              gordura={planMacros.fat}
+              readOnly={saving}
+              atual={{
+                proteina: planMacros.protein,
+                carbo: planMacros.carbs,
+                gordura: planMacros.fat,
+                kcal: planMacros.calories,
+              }}
+            />
 
             {/* CARD 3: Refeições */}
             <div className="flex flex-col gap-4">
@@ -614,90 +650,123 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 {meals.length === 0 && (
                   <Button
                     onClick={handleCreateDefaultMeals}
-                    variant="secondary"
-                    className="h-7 px-2.5 text-[10px] font-bold uppercase rounded-md cursor-pointer border-0"
+                    variant="primary"
+                    size="sm"
+                    className="cursor-pointer"
                   >
-                    Gerar Refeições Padrão
+                    Gerar refeições padrão
                   </Button>
                 )}
               </div>
 
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {meals.map((meal, mealIdx) => {
                 const macros = getMealMacros(meal);
                 const aberta = mealsAbertas[mealIdx] ?? (mealIdx === 0);
                 return (
-                  <Card key={mealIdx} className={cn("rounded-xl border-0 shadow-sm p-4 md:p-5 flex flex-col bg-surface-1", aberta ? "gap-4" : "gap-0")}>
+                  <Card
+                    key={mealIdx}
+                    className={cn("rounded-xl border-0 shadow-sm p-4 md:p-5 flex flex-col min-w-0", aberta ? "gap-4" : "gap-0")}
+                    style={{ background: "var(--card-macros-bg)" }}
+                  >
                     
                     {/* Meal Header */}
-                    <div className={cn("flex items-center justify-between gap-4", aberta && "border-b border-divider/40 pb-2")}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => setMealsAbertas(prev => ({ ...prev, [mealIdx]: !aberta }))}
-                          className="shrink-0 text-text-tertiary hover:text-text-primary transition-colors"
-                          title={aberta ? 'Recolher refeição' : 'Expandir refeição'}
-                        >
-                          <CaretRight size={14} className={cn("transition-transform", aberta && "rotate-90")} />
-                        </button>
-                        <input
-                          type="text"
-                          value={meal.title}
-                          onChange={(e) => {
-                            const updated = [...meals];
-                            updated[mealIdx].title = e.target.value;
-                            setMeals(updated);
-                          }}
-                          className="bg-transparent border-none text-xs font-extrabold text-text-primary focus:outline-none w-28 md:w-48 min-w-0"
-                        />
-                        <input
-                          type="time"
-                          value={meal.time_suggestion || ''}
-                          onChange={(e) => {
-                            const updated = [...meals];
-                            updated[mealIdx].time_suggestion = e.target.value;
-                            setMeals(updated);
-                          }}
-                          className="bg-surface-2 border-0 text-[10px] px-1.5 py-0.5 rounded font-mono text-text-secondary shrink-0"
-                        />
-                        {!aberta && (meal.items?.length ?? 0) > 0 && (
-                          <span className="text-[9px] text-text-tertiary shrink-0 whitespace-nowrap">
-                            · {meal.items.length} {meal.items.length === 1 ? 'item' : 'itens'}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {/* Meal Macros Summary */}
-                        <div className="hidden sm:flex items-center gap-3 text-[10px] font-mono text-text-tertiary">
-                          <span>{macros.calories} kcal</span>
-                          <span>P: {macros.protein}g</span>
-                          <span>C: {macros.carbs}g</span>
-                          <span>G: {macros.fat}g</span>
+                    <div className={cn("flex flex-col gap-2", aberta && "border-b border-black/[0.04] pb-2 dark:border-white/[0.05]")}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <button
+                            type="button"
+                            onClick={() => setMealsAbertas(prev => ({ ...prev, [mealIdx]: !aberta }))}
+                            className="shrink-0 text-text-tertiary hover:text-text-primary transition-colors"
+                            title={aberta ? 'Recolher refeição' : 'Expandir refeição'}
+                          >
+                            <CaretRight size={14} className={cn("transition-transform", aberta && "rotate-90")} />
+                          </button>
+                          <input
+                            type="text"
+                            value={meal.title}
+                            onChange={(e) => {
+                              const updated = [...meals];
+                              updated[mealIdx].title = e.target.value;
+                              setMeals(updated);
+                            }}
+                            placeholder="Nome da refeição"
+                            className="input-underline input-underline-compact min-w-0 flex-1"
+                          />
+                          {!aberta && (meal.items?.length ?? 0) > 0 && (
+                            <span className="text-[9px] text-text-tertiary shrink-0 whitespace-nowrap">
+                              · {meal.items.length} {meal.items.length === 1 ? 'item' : 'itens'}
+                            </span>
+                          )}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDuplicateMeal(mealIdx)}
-                          className="w-7 h-7 rounded-md bg-surface-2 hover:bg-surface-3 border-0 hover:border-brand/30 text-text-secondary hover:text-brand flex items-center justify-center transition-colors cursor-pointer"
-                          title="Duplicar Refeição"
-                        >
-                          <Copy size={13} />
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <TimeRollerPicker
+                            value={meal.time_suggestion || ''}
+                            onChange={(next) => {
+                              const updated = [...meals];
+                              updated[mealIdx].time_suggestion = next;
+                              setMeals(updated);
+                            }}
+                          />
 
-                        <button
-                          onClick={() => handleRemoveMeal(mealIdx)}
-                          className="w-7 h-7 rounded-md bg-surface-2 hover:bg-surface-3 border-0 hover:border-danger/30 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer"
-                          title="Remover Refeição"
-                        >
-                          <Trash size={13} />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateMeal(mealIdx)}
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent transition-opacity hover:opacity-80"
+                            style={{ color: 'var(--brand-primary)' }}
+                            title="Duplicar Refeição"
+                          >
+                            <Copy size={13} />
+                          </button>
+
+                          <button
+                            onClick={() => handleRemoveMeal(mealIdx)}
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent transition-opacity hover:opacity-80"
+                            style={{ color: 'var(--brand-primary)' }}
+                            title="Remover Refeição"
+                          >
+                            <Trash size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Macros — mesma tipografia do MacrosCard */}
+                      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 pl-6">
+                        <span className="inline-flex items-baseline gap-0.5">
+                          <span className="text-[13px] font-extrabold leading-none tabular-nums lining-nums text-text-primary">
+                            {macros.calories.toLocaleString('pt-BR')}
+                          </span>
+                          <span className="text-[10px] font-semibold" style={{ color: 'var(--brand-primary)' }}>kcal</span>
+                        </span>
+                        <span className="inline-flex items-baseline gap-0.5">
+                          <span className="text-[10px] text-text-tertiary">P</span>
+                          <span className="text-[12px] font-extrabold leading-none tabular-nums lining-nums text-text-primary">
+                            {macros.protein}
+                          </span>
+                          <span className="text-[10px] text-text-disabled">g</span>
+                        </span>
+                        <span className="inline-flex items-baseline gap-0.5">
+                          <span className="text-[10px] text-text-tertiary">C</span>
+                          <span className="text-[12px] font-extrabold leading-none tabular-nums lining-nums text-text-primary">
+                            {macros.carbs}
+                          </span>
+                          <span className="text-[10px] text-text-disabled">g</span>
+                        </span>
+                        <span className="inline-flex items-baseline gap-0.5">
+                          <span className="text-[10px] text-text-tertiary">G</span>
+                          <span className="text-[12px] font-extrabold leading-none tabular-nums lining-nums text-text-primary">
+                            {macros.fat}
+                          </span>
+                          <span className="text-[10px] text-text-disabled">g</span>
+                        </span>
                       </div>
                     </div>
 
                     {aberta && (
                     <>
                     {/* Meal items (list) — Fase 8: linha de lista, sem card aninhado */}
-                    <div className="flex flex-col divide-y divide-border-subtle/40">
+                    <div className="flex flex-col divide-y divide-black/[0.03] dark:divide-white/[0.04]">
                       {(meal.items || []).length === 0 ? (
                         <p className="text-[10px] text-text-disabled text-center py-4 border border-dashed border-divider rounded-lg">
                           Nenhum alimento prescrito para esta refeição.
@@ -709,34 +778,48 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                           const calculated = calculateItemMacros(food, Number(item.quantity_grams));
 
                           return (
-                            <div key={itemIdx} className="py-3 first:pt-0 flex flex-col gap-2">
-                              {/* Main Item Row */}
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-xs font-bold text-text-primary leading-tight truncate">{food.name}</p>
-                                  <span className="text-[9px] font-mono text-text-tertiary">
+                            <div key={itemIdx} className="flex flex-col gap-1 py-2 first:pt-0">
+                              {/* Nome + gramas na mesma linha */}
+                              <div className="flex items-center gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-bold leading-tight text-text-primary">{food.name}</p>
+                                  <span className="text-[9px] font-mono text-text-tertiary tabular-nums lining-nums">
                                     {calculated.calories} kcal · P: {calculated.protein}g · C: {calculated.carbs}g · G: {calculated.fat}g
                                   </span>
                                 </div>
 
-                                <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
-                                  {/* Modo: gramas sempre editável; medida caseira quando disponível */}
-                                  <div className="flex items-center gap-1 bg-surface-3 border border-input rounded-md px-2 h-7 w-20" title="Gramas (base do cálculo de macros)">
+                                <div className="flex shrink-0 items-center gap-1.5">
+                                  <div className="flex w-[3.75rem] items-baseline gap-0.5" title="Gramas (base do cálculo de macros)">
                                     <input
                                       type="number"
+                                      inputMode="decimal"
                                       value={item.quantity_grams}
                                       onChange={(e) => {
                                         const updated = [...meals];
                                         updated[mealIdx].items[itemIdx].quantity_grams = Number(e.target.value);
                                         setMeals(updated);
                                       }}
-                                      className="w-full bg-transparent border-none text-[10px] font-mono font-bold text-text-primary focus:outline-none text-right"
+                                      aria-label="Quantidade em gramas"
+                                      className="input-qty min-w-0 flex-1 text-right"
                                     />
-                                    <span className="text-[9px] font-mono text-text-tertiary">g</span>
+                                    <span className="shrink-0 text-[11px] text-text-disabled">g</span>
                                   </div>
 
+                                  <button
+                                    onClick={() => handleRemoveFoodItem(mealIdx, itemIdx)}
+                                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent transition-opacity hover:opacity-80"
+                                    style={{ color: 'var(--brand-primary)' }}
+                                    title="Remover Alimento"
+                                  >
+                                    <Trash size={12} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {(food.portions && food.portions.length > 0) || (item.portion_label && !isGramsOnlyLabel(item.portion_label)) ? (
+                                <div className="flex flex-wrap items-center gap-1.5">
                                   {food.portions && food.portions.length > 0 && (
-                                    <div className="flex items-center gap-1.5">
+                                    <>
                                       <select
                                         value={item.portion_label || ''}
                                         onChange={(e) => {
@@ -749,7 +832,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                           }
                                           setMeals(updated);
                                         }}
-                                        className="h-7 px-1.5 bg-surface-3 border border-input rounded-md text-[9px] text-text-secondary focus:outline-none max-w-[140px]"
+                                        className="field-compact-select max-w-[140px]"
                                         title="Medida caseira"
                                       >
                                         <option value="">Só gramas</option>
@@ -761,7 +844,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                       </select>
 
                                       {item.portion_label && !isGramsOnlyLabel(item.portion_label) && (
-                                        <div className="flex items-center gap-0.5 bg-brand/10 border border-brand/30 rounded-md px-1 h-7 w-14" title="Quantidade de medidas (ex.: 3 ovos)">
+                                        <div className="flex w-14 items-baseline gap-0.5" title="Quantidade de medidas (ex.: 3 ovos)">
                                           <input
                                             type="number"
                                             min={0.1}
@@ -780,16 +863,16 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                                 setMeals(updated);
                                               }
                                             }}
-                                            className="w-full bg-transparent border-none text-[10px] font-mono font-bold text-brand focus:outline-none text-right"
+                                            className="input-qty min-w-0 flex-1 text-right"
                                           />
-                                          <span className="text-[8px] text-brand font-bold">×</span>
+                                          <span className="shrink-0 text-[11px] font-semibold" style={{ color: 'var(--brand-primary)' }}>×</span>
                                         </div>
                                       )}
-                                    </div>
+                                    </>
                                   )}
 
                                   {item.portion_label && !isGramsOnlyLabel(item.portion_label) && (
-                                    <span className="text-[9px] text-brand font-medium hidden sm:inline">
+                                    <span className="hidden text-[9px] font-medium text-brand sm:inline">
                                       {formatFoodQuantityDisplay(
                                         item.quantity_grams,
                                         item.portion_label,
@@ -797,24 +880,16 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                       ).primary}
                                     </span>
                                   )}
-
-                                  <button
-                                    onClick={() => handleRemoveFoodItem(mealIdx, itemIdx)}
-                                    className="w-6 h-6 rounded-md bg-surface-3 hover:bg-surface-2 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer border-0"
-                                    title="Remover Alimento"
-                                  >
-                                    <Trash size={12} />
-                                  </button>
                                 </div>
-                              </div>
+                              ) : null}
 
                               {/* Substitutions section */}
-                              <div className="border-t border-divider/30 pt-2 pl-3">
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <span className="text-[9px] uppercase font-bold text-text-tertiary tracking-wider">Substituições equivalentes</span>
+                              <div className="border-t border-black/[0.04] pt-1.5 dark:border-white/[0.05]">
+                                <div className="mb-1 flex items-center justify-between">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary">Substituições equivalentes</span>
                                   <button
                                     onClick={() => handleAddSubstitution(mealIdx, itemIdx)}
-                                    className="text-[9px] text-brand hover:text-brand-hover flex items-center gap-1 font-bold cursor-pointer"
+                                    className="flex cursor-pointer items-center gap-1 text-[9px] font-bold text-brand hover:text-brand-hover"
                                   >
                                     <Plus size={10} /> Adicionar substituto
                                   </button>
@@ -836,22 +911,22 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                         </div>
 
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                          {/* Sub Grams Input */}
-                                          <div className="flex items-center gap-0.5 bg-surface-2 border border-input/30 rounded px-1.5 h-6 w-14">
+                                          <div className="flex w-14 items-baseline gap-0.5">
                                             <input
                                               type="number"
+                                              inputMode="decimal"
                                               value={sub.quantity_grams}
                                               onChange={(e) => {
                                                 const updated = [...meals];
                                                 updated[mealIdx].items[itemIdx].substitutions[subIdx].quantity_grams = Number(e.target.value);
                                                 setMeals(updated);
                                               }}
-                                              className="w-full bg-transparent border-none text-[9px] font-mono text-text-primary focus:outline-none text-right"
+                                              aria-label="Gramas do substituto"
+                                              className="input-qty min-w-0 flex-1 text-right"
                                             />
-                                            <span className="text-[8px] font-mono text-text-tertiary">g</span>
+                                            <span className="shrink-0 text-[11px] text-text-disabled">g</span>
                                           </div>
 
-                                          {/* Sub portions */}
                                           {subFood.portions && subFood.portions.length > 0 && (
                                             <div className="flex items-center gap-1">
                                               <select
@@ -866,7 +941,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                                   }
                                                   setMeals(updated);
                                                 }}
-                                                className="h-6 px-1 bg-surface-2 border border-input/30 rounded text-[8px] text-text-secondary focus:outline-none"
+                                                className="field-compact-select max-w-[120px]"
                                               >
                                                 <option value="">Porção...</option>
                                                 {subFood.portions.map((p, pIdx) => (
@@ -877,7 +952,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                               </select>
 
                                               {sub.portion_label && (
-                                                <div className="flex items-center gap-0.5 bg-surface-2 border border-input/30 rounded px-1 h-6 w-11" title="Quantidade de porções">
+                                                <div className="flex w-11 items-baseline gap-0.5" title="Quantidade de porções">
                                                   <input
                                                     type="number"
                                                     min={0.1}
@@ -896,9 +971,9 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                                         setMeals(updated);
                                                       }
                                                     }}
-                                                    className="w-full bg-transparent border-none text-[9px] font-mono text-text-primary focus:outline-none text-right"
+                                                    className="input-qty min-w-0 flex-1 text-right"
                                                   />
-                                                  <span className="text-[8px] text-text-tertiary">x</span>
+                                                  <span className="shrink-0 text-[10px] text-text-tertiary">×</span>
                                                 </div>
                                               )}
                                             </div>
@@ -906,7 +981,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
                                           <button
                                             onClick={() => handleRemoveSubItem(mealIdx, itemIdx, subIdx)}
-                                            className="w-5 h-5 rounded bg-surface-2 hover:bg-surface-1 text-text-secondary hover:text-danger flex items-center justify-center transition-colors cursor-pointer border-0"
+                                            className="flex h-5 w-5 cursor-pointer items-center justify-center rounded border-0 bg-transparent transition-opacity hover:opacity-80"
+                                            style={{ color: 'var(--brand-primary)' }}
                                             title="Remover substituto"
                                           >
                                             <Trash size={10} />
@@ -924,7 +1000,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     </div>
 
                     {/* Meal actions */}
-                    <div className="flex items-center justify-between border-t border-divider/40 pt-3 mt-1">
+                    <div className="mt-1 flex items-center justify-between border-t border-black/[0.04] pt-3 dark:border-white/[0.05]">
                       <div className="flex flex-col gap-1.5 w-full mr-4">
                         <input
                           type="text"
@@ -934,7 +1010,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                             updated[mealIdx].notes = e.target.value;
                             setMeals(updated);
                           }}
-                          placeholder="Recomendações da refeição (ex: comer 30min antes do treino)..."
+                          placeholder="Recomendações da refeição"
                           className="w-full bg-transparent border-none text-[10px] text-text-secondary placeholder:text-text-disabled focus:outline-none"
                         />
                       </div>
@@ -953,105 +1029,27 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                   </Card>
                 );
               })}
-
-              {/* Add Meal Select Bar — Fase 8: grid uniforme */}
-              <div className="flex flex-col gap-2 mt-4 bg-surface-1 p-3 rounded-lg border-0">
-                <span className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Adicionar Refeição:</span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              </div>
+              <div className="mt-4 flex flex-col gap-2 rounded-2xl p-3" style={{ background: "var(--card-macros-bg)" }}>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                  Adicionar refeição
+                </span>
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {Object.entries(mealTypeLabels).map(([type, label]) => (
-                    <button
+                    <MealButton
                       key={type}
+                      label={label}
                       onClick={() => handleAddMeal(type as NutritionMealType)}
-                      className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded border-0 bg-surface-2 hover:bg-surface-3 text-text-secondary hover:text-brand transition-all cursor-pointer text-center"
-                    >
-                      + {label}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Coluna Direita: Resumo Sticky e Ações (30%) */}
+          {/* Coluna Direita: Ações sticky */}
           <div className="lg:col-span-4 lg:sticky lg:top-6 flex flex-col gap-6">
-            
-            {/* CARD Resumo Lateral */}
-            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-4">
-              <div className="flex flex-col gap-3 font-mono">
-                {/* Calorias */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-text-secondary">Calorias:</span>
-                    <span className="text-text-primary font-bold">{planMacros.calories} / {targetKcal || '—'} kcal</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-brand rounded-full transition-all duration-500"
-                      style={{ width: `${targetKcal ? Math.min(100, (planMacros.calories / Number(targetKcal)) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Proteínas */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-text-secondary">Proteínas:</span>
-                    <span className="text-text-primary font-bold">{planMacros.protein} / {targetProtein || '—'} g</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-success rounded-full transition-all duration-500"
-                      style={{ width: `${targetProtein ? Math.min(100, (planMacros.protein / Number(targetProtein)) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Carboidratos */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-text-secondary">Carboidratos:</span>
-                    <span className="text-text-primary font-bold">{planMacros.carbs} / {targetCarbs || '—'} g</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-warning rounded-full transition-all duration-500"
-                      style={{ width: `${targetCarbs ? Math.min(100, (planMacros.carbs / Number(targetCarbs)) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Gorduras */}
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-text-secondary">Gorduras:</span>
-                    <span className="text-text-primary font-bold">{planMacros.fat} / {targetFat || '—'} g</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-danger rounded-full transition-all duration-500"
-                      style={{ width: `${targetFat ? Math.min(100, (planMacros.fat / Number(targetFat)) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Refeições resumo lista */}
-              <div className="border-t border-divider/40 pt-4 flex flex-col gap-2">
-                <span className="text-[9px] uppercase font-bold text-text-tertiary tracking-wider">Macros por refeição</span>
-                {meals.map((m, mIdx) => {
-                  const mMacros = getMealMacros(m);
-                  return (
-                    <div key={mIdx} className="flex justify-between items-center text-[10px] text-text-secondary">
-                      <span className="font-semibold truncate max-w-[150px]">{m.title}</span>
-                      <span className="font-mono">{mMacros.calories} kcal</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-
-            {/* CARD Ações do Construtor */}
-            <Card className="rounded-xl border-0 p-4 md:p-5 flex flex-col gap-3">
+            <Card className="card-nivel-3 rounded-[20px] border-0 p-4 md:p-5 flex flex-col gap-3">
               <Button
                 onClick={() => handleSavePlan('active')}
                 variant="primary"
@@ -1075,16 +1073,6 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
               >
                 Salvar Rascunho
               </Button>
-
-              <Button
-                onClick={goBack}
-                variant="ghost"
-                disabled={saving}
-                fullWidth
-                className="h-10 rounded-lg text-xs font-bold gap-1.5 cursor-pointer"
-              >
-                Cancelar
-              </Button>
             </Card>
           </div>
 
@@ -1100,127 +1088,129 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 {searchOpen.itemIndex !== undefined ? 'Adicionar Substituto' : 'Adicionar Alimento'}
               </h3>
               <button
-                onClick={() => setSearchOpen(null)}
+                onClick={handleCloseFoodSearch}
                 className="text-xs text-text-tertiary hover:text-text-primary font-bold cursor-pointer"
               >
                 Fechar
               </button>
             </div>
 
-            {/* Barra de pesquisa no modal */}
-            <div className="relative">
-              <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Buscar por arroz, frango, aveia..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 h-8 bg-surface-2 border border-input rounded-md text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
-                autoFocus
-              />
+            <div className="field-flat-input rounded-xl border border-border-subtle bg-surface-1">
+              <div className="relative flex items-center px-3 py-2.5 pl-9">
+                <MagnifyingGlass className="pointer-events-none absolute left-3 h-4 w-4 text-text-disabled" />
+                <input
+                  type="text"
+                  placeholder="Buscar por arroz, frango, aveia..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-disabled"
+                  style={{ touchAction: 'manipulation' }}
+                  autoFocus
+                />
+              </div>
             </div>
 
             {/* Filtros rápidos por categoria */}
             <div className="flex flex-col gap-2 py-1">
-              {/* Filtros Principais */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveGroup('todos');
-                    setCategoryFilter('');
+                    setSelectedCategories([]);
                   }}
-                  className={cn(
-                    "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer",
-                    activeGroup === 'todos' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-transparent text-text-secondary hover:text-text-primary"
-                  )}
+                  className={filterChipClass(activeGroup === 'todos')}
+                  style={filterChipStyle(activeGroup === 'todos')}
                 >
                   Todos
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveGroup('macros');
-                    if (!['carboidrato', 'proteina', 'gordura'].includes(categoryFilter)) {
-                      setCategoryFilter('carboidrato');
-                    }
+                    setActiveGroup((g) => (g === 'macros' ? 'todos' : 'macros'));
+                    setSelectedCategories([]);
                   }}
-                  className={cn(
-                    "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1",
-                    activeGroup === 'macros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-transparent text-text-secondary hover:text-text-primary"
-                  )}
+                  className={filterChipClass(activeGroup === 'macros')}
+                  style={filterChipStyle(activeGroup === 'macros')}
                 >
                   Macros <span className="text-[8px] opacity-75">▼</span>
+                  {selectedCategories.some((c) => MACRO_CATEGORIES.some((m) => m.val === c)) && (
+                    <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand/15 px-1 text-[9px] tabular-nums">
+                      {selectedCategories.filter((c) => MACRO_CATEGORIES.some((m) => m.val === c)).length}
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveGroup('outros');
-                    if (!['fruta', 'vegetal', 'leguminosa', 'laticinio', 'suplemento'].includes(categoryFilter)) {
-                      setCategoryFilter('fruta');
-                    }
+                    setActiveGroup((g) => (g === 'outros' ? 'todos' : 'outros'));
+                    setSelectedCategories([]);
                   }}
-                  className={cn(
-                    "h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1",
-                    activeGroup === 'outros' ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2 border-transparent text-text-secondary hover:text-text-primary"
-                  )}
+                  className={filterChipClass(activeGroup === 'outros')}
+                  style={filterChipStyle(activeGroup === 'outros')}
                 >
                   Outros <span className="text-[8px] opacity-75">▼</span>
+                  {selectedCategories.some((c) => OUTROS_CATEGORIES.some((m) => m.val === c)) && (
+                    <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand/15 px-1 text-[9px] tabular-nums">
+                      {selectedCategories.filter((c) => OUTROS_CATEGORIES.some((m) => m.val === c)).length}
+                    </span>
+                  )}
                 </button>
               </div>
 
-              {/* Sub-categorias (só aparece se macros ou outros estiver selecionado) */}
               {activeGroup === 'macros' && (
-                <div className="flex flex-wrap items-center gap-1.5 pl-2 border-l border-divider py-0.5 mt-0.5">
-                  {[
-                    { val: 'carboidrato', label: 'Carboidrato' },
-                    { val: 'proteina', label: 'Proteína' },
-                    { val: 'gordura', label: 'Gordura' }
-                  ].map(sub => (
-                    <button
-                      key={sub.val}
-                      type="button"
-                      onClick={() => setCategoryFilter(sub.val)}
-                      className={cn(
-                        "h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer",
-                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-transparent text-text-secondary hover:text-text-primary"
-                      )}
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-1.5 pl-1 py-0.5">
+                  {MACRO_CATEGORIES.map((sub) => {
+                    const active = selectedCategories.includes(sub.val);
+                    return (
+                      <button
+                        key={sub.val}
+                        type="button"
+                        onClick={() => toggleCategory(sub.val)}
+                        className={cn(
+                          'h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer',
+                          active
+                            ? 'border-[color:var(--brand-border)] text-[color:var(--brand-primary)]'
+                            : 'border-transparent text-text-secondary hover:text-text-primary',
+                        )}
+                        style={filterChipStyle(active)}
+                      >
+                        {sub.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
               {activeGroup === 'outros' && (
-                <div className="flex flex-wrap items-center gap-1.5 pl-2 border-l border-divider py-0.5 mt-0.5">
-                  {[
-                    { val: 'fruta', label: 'Fruta' },
-                    { val: 'vegetal', label: 'Vegetal' },
-                    { val: 'leguminosa', label: 'Leguminosa' },
-                    { val: 'laticinio', label: 'Laticínio' },
-                    { val: 'suplemento', label: 'Suplemento' }
-                  ].map(sub => (
-                    <button
-                      key={sub.val}
-                      type="button"
-                      onClick={() => setCategoryFilter(sub.val)}
-                      className={cn(
-                        "h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer",
-                        categoryFilter === sub.val ? "bg-brand/10 border-brand/40 text-brand" : "bg-surface-2/60 border-transparent text-text-secondary hover:text-text-primary"
-                      )}
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-1.5 pl-1 py-0.5">
+                  {OUTROS_CATEGORIES.map((sub) => {
+                    const active = selectedCategories.includes(sub.val);
+                    return (
+                      <button
+                        key={sub.val}
+                        type="button"
+                        onClick={() => toggleCategory(sub.val)}
+                        className={cn(
+                          'h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer',
+                          active
+                            ? 'border-[color:var(--brand-border)] text-[color:var(--brand-primary)]'
+                            : 'border-transparent text-text-secondary hover:text-text-primary',
+                        )}
+                        style={filterChipStyle(active)}
+                      >
+                        {sub.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Listagem de resultados no modal */}
+            {/* Listagem de resultados no modal — seleção múltipla */}
             <div
               ref={parentRef}
-              className="flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-surface-3 [&::-webkit-scrollbar-thumb]:rounded relative"
+              className="min-h-0 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-surface-3 [&::-webkit-scrollbar-thumb]:rounded relative"
             >
               {filteredFoods.length === 0 ? (
                 <p className="text-xs text-text-disabled text-center py-6">Nenhum alimento encontrado.</p>
@@ -1235,10 +1225,14 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                   {rowVirtualizer.getVirtualItems().map((virtualItem) => {
                     const food = filteredFoods[virtualItem.index];
                     if (!food) return null;
+                    const picked = pickedFoodIds.includes(food.id);
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={virtualItem.key}
-                        onClick={() => handleSelectFood(food)}
+                        onClick={() => togglePickedFood(food.id)}
+                        aria-pressed={picked}
+                        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-brand-subtle"
                         style={{
                           position: 'absolute',
                           top: 0,
@@ -1246,24 +1240,60 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                           width: '100%',
                           height: `${virtualItem.size - 8}px`,
                           transform: `translateY(${virtualItem.start}px)`,
+                          background: 'var(--card-macros-bg)',
+                          border: picked
+                            ? '0.5px solid var(--brand-primary)'
+                            : '0.5px solid var(--brand-border)',
+                          boxShadow: picked ? 'var(--elev-2)' : 'var(--elev-1)',
                         }}
-                        className="p-3 bg-surface-2 border-0 hover:border-brand/40 hover:bg-surface-3 rounded-lg flex items-center justify-between gap-4 cursor-pointer"
                       >
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-text-primary leading-tight truncate">{food.name}</p>
-                          <span className="text-[8px] uppercase font-bold tracking-wider text-text-tertiary">
-                            {food.category} · {food.calories_per_100g} kcal
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className={cn(
+                              'flex h-4 w-4 shrink-0 items-center justify-center rounded',
+                              picked ? 'bg-brand text-text-on-brand' : 'bg-surface-2',
+                            )}
+                            style={!picked ? { border: '0.5px solid var(--border-default)' } : undefined}
+                            aria-hidden
+                          >
+                            {picked && <Check size={10} weight="bold" />}
                           </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-bold leading-tight text-text-primary">{food.name}</p>
+                            <span className="text-[8px] font-bold uppercase tracking-wider text-text-tertiary">
+                              {food.category} · {food.calories_per_100g} kcal
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-[10px] font-mono text-text-secondary shrink-0 text-right">
+                        <div className="shrink-0 text-right text-[10px] font-mono text-text-secondary tabular-nums lining-nums">
                           <p>P: {food.protein_per_100g}g</p>
                           <p>C: {food.carbs_per_100g}g</p>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
               )}
+            </div>
+
+            <div className="flex shrink-0 flex-col gap-2 border-t border-black/[0.04] pt-3 dark:border-white/[0.05]">
+              {pickedFoodIds.length > 0 && (
+                <p className="text-[10px] text-text-tertiary tabular-nums lining-nums">
+                  {pickedFoodIds.length}{' '}
+                  {pickedFoodIds.length === 1 ? 'alimento selecionado' : 'alimentos selecionados'}
+                </p>
+              )}
+              <Button
+                variant="primary"
+                fullWidth
+                disabled={pickedFoodIds.length === 0}
+                onClick={handleConfirmPickedFoods}
+                className="h-10 cursor-pointer rounded-lg text-xs font-bold"
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                Adicionar
+                {pickedFoodIds.length > 0 ? ` (${pickedFoodIds.length})` : ''}
+              </Button>
             </div>
           </Card>
         </div>

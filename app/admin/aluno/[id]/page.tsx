@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
+import { concluirPasso } from "@/lib/onboarding/concluirPasso";
 import { extractStoragePath, getSignedStorageUrl, getPublicStorageUrl } from "@/lib/storageUrls";
 import UploadNutritionPlan from "@/app/components/UploadNutritionPlan";
 import {
@@ -619,6 +620,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         ativo: true,
       });
       if (error) throw error;
+      await concluirPasso(coachId, "montar-ficha");
       await load();
     } catch (err: any) {
       setError("Erro ao duplicar ficha: " + err.message);

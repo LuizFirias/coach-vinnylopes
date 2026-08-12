@@ -13,6 +13,7 @@ import { loadStudentNutritionPageData, attachMealSubstitutionsForMealIds } from 
 import { buildAutoExpandedMap } from '@/lib/nutrition/mealAutoExpand';
 import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHeader';
 import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
+import { MacrosCard } from '@/app/components/nutrition/MacrosCard';
 import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
 import { HydrationSection } from '@/app/components/nutrition/HydrationSection';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
@@ -656,6 +657,14 @@ export default function PlanoAlimentarPage() {
                   isDesktop={isDesktop}
                   className="hidden lg:block"
                 />
+                {(digitalPlan.protein_target || digitalPlan.carbs_target || digitalPlan.fat_target) ? (
+                  <MacrosCard
+                    proteina={Number(digitalPlan.protein_target) || 0}
+                    carbo={Number(digitalPlan.carbs_target) || 0}
+                    gordura={Number(digitalPlan.fat_target) || 0}
+                    readOnly
+                  />
+                ) : null}
                 <ActivePlanCard
                   planName={digitalPlan.name}
                   goal={digitalPlan.goal || 'Hipertrofia'}

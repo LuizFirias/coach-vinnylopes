@@ -116,6 +116,34 @@
   --btn-primary-shadow: 0 4px 20px rgba(117, 27, 180, 0.45);
   --btn-primary-shadow-hover: 0 6px 28px rgba(117, 27, 180, 0.60);
 
+  /* Card Nível 3 — macros da dieta (dark) */
+  --card-macros-bg:           #111827;
+  --card-macros-border:       rgba(147, 51, 234, 0.30);
+  --card-macros-ring:         rgba(147, 51, 234, 0.08);
+  --card-macros-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 0 0 1px rgba(147, 51, 234, 0.08);
+  --card-macros-glow:
+    radial-gradient(ellipse at 50% -10%, rgba(147, 51, 234, 0.14) 0%, transparent 70%);
+  --card-macros-topline:
+    linear-gradient(90deg, transparent, #9333ea 30%, #a855f7 60%, transparent);
+  --card-macros-divider:      rgba(255, 255, 255, 0.06);
+
+  --mc-protein-bg:     linear-gradient(145deg, rgba(59, 130, 246, 0.15) 0%, #111827 55%);
+  --mc-protein-border: rgba(59, 130, 246, 0.22);
+  --mc-protein-color:  #3b82f6;
+
+  --mc-carbo-bg:       linear-gradient(145deg, rgba(245, 158, 11, 0.15) 0%, #111827 55%);
+  --mc-carbo-border:   rgba(245, 158, 11, 0.22);
+  --mc-carbo-color:    #f59e0b;
+
+  --mc-fat-bg:         linear-gradient(145deg, rgba(16, 185, 129, 0.15) 0%, #111827 55%);
+  --mc-fat-border:     rgba(16, 185, 129, 0.22);
+  --mc-fat-color:      #10b981;
+
+  --mc-shadow:         0 2px 12px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+
   /* ═══════════════════════════════════════════════════════════
      TYPOGRAPHY
      ═══════════════════════════════════════════════════════════ */
@@ -373,6 +401,35 @@ html[data-theme="light"] {
   --theme-color-meta: #FFFFFF;
 
   --list-row-divider: transparent;
+
+  /* Card Nível 3 — macros da dieta (light) */
+  --card-macros-bg:           #FFFFFF;
+  --card-macros-border:       rgba(117, 27, 180, 0.22);
+  --card-macros-ring:         rgba(117, 27, 180, 0.08);
+  --card-macros-shadow:
+    0 8px 28px rgba(117, 27, 180, 0.10),
+    0 2px 10px rgba(0, 0, 0, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.90) inset,
+    0 0 0 1px rgba(117, 27, 180, 0.06);
+  --card-macros-glow:
+    radial-gradient(ellipse at 50% -10%, rgba(117, 27, 180, 0.10) 0%, transparent 70%);
+  --card-macros-topline:
+    linear-gradient(90deg, transparent, #9333ea 30%, #a855f7 60%, transparent);
+  --card-macros-divider:      rgba(0, 0, 0, 0.06);
+
+  --mc-protein-bg:     linear-gradient(145deg, rgba(59, 130, 246, 0.14) 0%, #F7F7F7 55%);
+  --mc-protein-border: rgba(59, 130, 246, 0.28);
+  --mc-protein-color:  #2563eb;
+
+  --mc-carbo-bg:       linear-gradient(145deg, rgba(245, 158, 11, 0.16) 0%, #F7F7F7 55%);
+  --mc-carbo-border:   rgba(217, 119, 6, 0.28);
+  --mc-carbo-color:    #d97706;
+
+  --mc-fat-bg:         linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, #F7F7F7 55%);
+  --mc-fat-border:     rgba(5, 150, 105, 0.28);
+  --mc-fat-color:      #059669;
+
+  --mc-shadow:         0 1px 4px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 
 html[data-theme="dark"],

@@ -429,7 +429,7 @@ export function ExerciseLibraryModal({
           )}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-4 space-y-2 rounded-b-none">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-3 pb-4 space-y-2 rounded-b-none">
           {filtered.map((ex) => {
             const isSelected = !pickMode && selectedIds.has(ex.id);
             const alreadyIn = !pickMode && existingIds?.has(ex.id);

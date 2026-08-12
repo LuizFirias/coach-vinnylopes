@@ -17,6 +17,7 @@ import {
 } from "@phosphor-icons/react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/app/components/AuthProvider";
+import { concluirPasso } from "@/lib/onboarding/concluirPasso";
 import { cn } from "@/lib/utils/cn";
 import {
   isBiSetFichaItem,
@@ -436,6 +437,7 @@ export function FichasKanban({
           ativo: true,
         });
         if (error) throw error;
+        await concluirPasso(user.id, "montar-ficha");
         setPendingFichas((prev) => prev.filter((f) => f.tempId !== pending.tempId));
         onFichaSaved?.();
       } catch (err: unknown) {

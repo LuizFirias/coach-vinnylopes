@@ -13,6 +13,8 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 const ALLOWED_WITHOUT_SUBSCRIPTION = [
   "/admin/assinatura",
   "/admin/trocar-senha",
+  "/admin/boas-vindas",
+  "/admin/preview-aluno",
 ];
 
 function isAllowedWithoutSubscription(pathname: string | null): boolean {

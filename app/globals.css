@@ -226,6 +226,106 @@ select {
     background: var(--bg-elevated);
 }
 
+/* Card Nível 3 — glow + topline (macros / dados do plano)
+   isolation + ::before -1: glow atrás do conteúdo SEM z-index nos filhos
+   (z-index nos filhos cobre o Select absoluto). z-index: 1 no card
+   deixa a lista vazar por cima do card de macros abaixo. */
+.card-nivel-3 {
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  background: var(--card-macros-bg) !important;
+  border: 0.5px solid var(--card-macros-border) !important;
+  box-shadow: var(--card-macros-shadow);
+  border-radius: 20px;
+}
+
+.card-nivel-3::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--card-macros-glow);
+}
+
+.card-nivel-3::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 20px 20px 0 0;
+  background: var(--card-macros-topline);
+  opacity: 0.9;
+}
+
+/* Botões +refeição (nutrição) — só tokens */
+.meal-type-btn {
+  height: 40px;
+  width: 100%;
+  background: var(--surface-2);
+  border: 0.5px solid var(--brand-border);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--brand-primary);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.meal-type-btn:hover {
+  background: var(--brand-subtle);
+  border-color: var(--border-accent);
+}
+
+/* Inputs/textarea da dieta — escapa baseline do coach, usa tokens */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input {
+  min-height: 44px !important;
+  background: var(--surface-2) !important;
+  border: 0.5px solid var(--border-subtle) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+  padding: 0 14px !important;
+}
+
+.coach-app-typography textarea.field-token-input {
+  min-height: 96px !important;
+  padding: 12px 14px !important;
+  line-height: 1.6 !important;
+  font-size: 14px !important;
+  font-weight: 400;
+  resize: vertical;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input::placeholder {
+  color: var(--text-disabled) !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input:focus-visible {
+  border-color: var(--brand-primary) !important;
+  box-shadow: var(--focus-ring) !important;
+  outline: none !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sans), sans-serif !important;
 }
@@ -1097,6 +1197,189 @@ html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-
   appearance: none;
 }
 
+/* Underline (login / nova ficha): sem fundo — só linha inferior sutil */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline {
+  min-height: 0 !important;
+  height: 2.75rem !important;
+  padding: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 15px !important;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary) !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline:focus-visible {
+  border: none !important;
+  border-bottom: 1px solid var(--brand-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline::placeholder {
+  color: var(--text-disabled) !important;
+  font-weight: 400 !important;
+  font-size: 15px !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline.input-underline-compact {
+  height: 1.75rem !important;
+  font-size: 12px !important;
+  font-weight: 600;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline.input-underline-compact::placeholder {
+  font-size: 12px !important;
+}
+
+/* Sem caixa e sem underline (ex.: horário da refeição) */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-bare {
+  min-height: 0 !important;
+  height: 1.75rem !important;
+  width: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 11px !important;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-secondary) !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-bare:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-bare:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Quantidade em g (refeição) — compacto, sem caixa 44px do baseline */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-qty {
+  min-height: 0 !important;
+  height: 1.75rem !important;
+  width: 100% !important;
+  padding: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary) !important;
+  -webkit-appearance: none;
+  appearance: textfield;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-qty:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-qty:focus-visible {
+  border: none !important;
+  border-bottom: 1px solid var(--brand-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.coach-app-typography .input-qty::-webkit-outer-spin-button,
+.coach-app-typography .input-qty::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.coach-app-typography select.field-compact-select {
+  min-height: 0 !important;
+  height: 1.75rem !important;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  font-weight: 500;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Valor hero de macro (g) — sem caixa, sem setas do number */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 24px !important;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary) !important;
+  -webkit-appearance: none;
+  appearance: textfield;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro::-webkit-outer-spin-button,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
 ).serie-metric-input:focus,
@@ -1177,7 +1460,9 @@ html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-
 }
 
 html[data-theme="light"] .coach-app-typography .field-flat-input input[type="date"],
-html:not([data-theme="dark"]):not(.dark) .coach-app-typography .field-flat-input input[type="date"] {
+html:not([data-theme="dark"]):not(.dark) .coach-app-typography .field-flat-input input[type="date"],
+html[data-theme="light"] .coach-app-typography input[type="date"].input-underline,
+html:not([data-theme="dark"]):not(.dark) .coach-app-typography input[type="date"].input-underline {
   color-scheme: light;
 }
 

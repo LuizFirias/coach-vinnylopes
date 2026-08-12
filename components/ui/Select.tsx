@@ -25,6 +25,8 @@ interface SelectProps {
   id?: string;
   /** Lista sem opções selecionáveis vazias — use value "" + placeholder */
   emptyLabel?: string;
+  /** `underline` = só linha inferior, sem caixa preenchida */
+  variant?: "default" | "underline";
 }
 
 /** Classes compartilhadas do painel de lista (Select, autocomplete, multi-select). */
@@ -43,15 +45,26 @@ export const selectTriggerClassName = (opts?: {
   open?: boolean;
   error?: boolean;
   disabled?: boolean;
+  variant?: "default" | "underline";
 }) =>
   cn(
-    "w-full h-11 px-3.5 rounded-[10px] flex items-center gap-2 text-left touch-manipulation",
-    "bg-surface-2 text-text-primary border-0",
-    "transition-colors",
-    "focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/30",
-    opts?.open && "ring-1 ring-brand/30",
-    opts?.error && "ring-1 ring-danger/40",
+    "w-full flex items-center gap-2 text-left touch-manipulation transition-colors",
+    "focus:outline-none",
     opts?.disabled && "opacity-50 cursor-not-allowed",
+    opts?.variant === "underline"
+      ? cn(
+          "h-11 px-0 rounded-none bg-transparent text-text-primary",
+          "border-0 border-b border-[color-mix(in_srgb,var(--text-primary)_12%,transparent)]",
+          opts?.open && "border-brand",
+          opts?.error && "border-danger",
+          !opts?.open && !opts?.error && "focus-visible:border-brand",
+        )
+      : cn(
+          "h-11 px-3.5 rounded-[10px] bg-surface-2 text-text-primary border-0",
+          "focus-visible:ring-1 focus-visible:ring-brand/30",
+          opts?.open && "ring-1 ring-brand/30",
+          opts?.error && "ring-1 ring-danger/40",
+        ),
   );
 
 export function Select({
@@ -66,6 +79,7 @@ export function Select({
   className,
   id,
   emptyLabel,
+  variant = "default",
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,7 +114,7 @@ export function Select({
   }, [open]);
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex flex-col gap-1.5", open && "relative z-50", className)}>
       {label && (
         <label
           htmlFor={triggerId}
@@ -110,7 +124,7 @@ export function Select({
         </label>
       )}
 
-      <div ref={containerRef} className="relative">
+      <div ref={containerRef} className={cn("relative", open && "z-50")}>
         <button
           id={triggerId}
           type="button"
@@ -120,7 +134,7 @@ export function Select({
           aria-controls={listId}
           aria-invalid={!!error}
           onClick={() => !disabled && setOpen((v) => !v)}
-          className={selectTriggerClassName({ open, error: !!error, disabled })}
+          className={selectTriggerClassName({ open, error: !!error, disabled, variant })}
         >
           <span
             className={cn(
