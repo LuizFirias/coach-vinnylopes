@@ -46,7 +46,7 @@ async function loadProfile(
 ): Promise<PostLoginProfile | null> {
   const { data, error } = await supabaseClient
     .from("profiles")
-    .select("role, must_change_password, first_access_completed")
+    .select("role, must_change_password, first_access_completed, onboarding_visto")
     .eq("id", userId)
     .maybeSingle();
 

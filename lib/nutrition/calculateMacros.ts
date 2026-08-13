@@ -42,3 +42,11 @@ export function sumMacros(items: CalculatedMacro[]): CalculatedMacro {
     { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
   );
 }
+
+/** Kcal da meta: proteína×4 + carbo×4 + gordura×9. Nunca editar kcal à mão. */
+export function kcalFromMacros(proteinG: number, carbsG: number, fatG: number): number {
+  const p = Math.max(0, Number(proteinG) || 0);
+  const c = Math.max(0, Number(carbsG) || 0);
+  const f = Math.max(0, Number(fatG) || 0);
+  return Math.round(p * 4 + c * 4 + f * 9);
+}

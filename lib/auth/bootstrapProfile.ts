@@ -19,6 +19,8 @@ export type BootstrapProfile = {
   arquivado: boolean | null;
   coach_id: string | null;
   sexo: string | null;
+  trial_pendente_cartao: boolean | null;
+  onboarding_visto: boolean | null;
 };
 
 type CacheEntry = BootstrapProfile & { fetchedAt: number };
@@ -54,13 +56,34 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
         return null;
       }
 
-      const { data: profile, error } = await supabaseClient
+      let { data: profile, error } = await supabaseClient
         .from('profiles')
         .select(
-          'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo',
+          'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo, trial_pendente_cartao, onboarding_visto',
         )
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (
+        error?.message?.includes('trial_pendente_cartao') ||
+        error?.message?.includes('onboarding_visto')
+      ) {
+        const fallback = await supabaseClient
+          .from('profiles')
+          .select(
+            'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo',
+          )
+          .eq('id', user.id)
+          .maybeSingle();
+        profile = fallback.data
+          ? ({
+              ...fallback.data,
+              trial_pendente_cartao: false,
+              onboarding_visto: true,
+            } as typeof profile)
+          : null;
+        error = fallback.error;
+      }
 
       if (error || !profile) {
         cache = null;
@@ -82,6 +105,10 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
         arquivado: profile.arquivado ?? null,
         coach_id: profile.coach_id ?? null,
         sexo: profile.sexo ?? null,
+        trial_pendente_cartao:
+          (profile as { trial_pendente_cartao?: boolean | null }).trial_pendente_cartao ?? null,
+        onboarding_visto:
+          (profile as { onboarding_visto?: boolean | null }).onboarding_visto ?? true,
         fetchedAt: Date.now(),
       };
       cache = entry;

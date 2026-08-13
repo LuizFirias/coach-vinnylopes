@@ -13,6 +13,8 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 const ALLOWED_WITHOUT_SUBSCRIPTION = [
   "/admin/assinatura",
   "/admin/trocar-senha",
+  "/admin/boas-vindas",
+  "/admin/preview-aluno",
 ];
 
 function isAllowedWithoutSubscription(pathname: string | null): boolean {
@@ -25,9 +27,11 @@ function isAllowedWithoutSubscription(pathname: string | null): boolean {
 /**
  * Bloqueia o painel do coach sem assinatura ativa.
  * Contas teste/parceiro e super_admin passam. Sem acesso, redireciona para /admin/assinatura.
+ * trial_pendente_cartao: força concluir cadastro do cartão em /admin/assinatura.
  */
 function isAllowed(profile: BootstrapProfile): boolean {
   if (profile.role === "super_admin") return true;
+  if (profile.trial_pendente_cartao) return false;
   return hasActiveAccess({
     subscription_active: profile.subscription_active,
     account_type: profile.account_type,
@@ -62,6 +66,7 @@ export default function CoachSubscriptionGuard({
         const cached = await getBootstrapProfile();
 
         if (!cached) {
+          if (!cancelled) setReady(true);
           router.replace("/login");
           return;
         }
@@ -71,6 +76,8 @@ export default function CoachSubscriptionGuard({
           return;
         }
 
+        // Libera o loader antes do redirect para não ficar preso em "Verificando..."
+        if (!cancelled) setReady(true);
         router.replace("/admin/assinatura");
       } catch {
         if (!cancelled) setReady(true);

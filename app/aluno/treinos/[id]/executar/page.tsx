@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback, useId } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Check, X, Clock, CaretLeft, CaretRight, Lightning, Minus, Plus, Info, CaretDown, CaretUp, Trash, ChatCircle } from '@phosphor-icons/react';
+import { ArrowLeft, Check, X, Clock, CaretLeft, CaretRight, Lightning, Minus, Plus, Info, CaretDown, CaretUp, Trash, ChatCircle, Play, Pause } from '@phosphor-icons/react';
 import { RestTimerBar } from '@/app/components/treino/execucao/RestTimerBar';
 import { useRestTimer } from '@/lib/hooks/useRestTimer';
 import { supabaseClient } from '@/lib/supabaseClient';
@@ -24,7 +24,10 @@ import {
 } from '@/app/components/treino/execucao/CargaPorLadoInfoModal';
 import { isPerSideLoadEquipment } from '@/lib/constants/equipment';
 import { exercicioMostraPeso } from '@/app/components/workout-builder/exerciseColumns';
+import { secondsToDescanso } from '@/lib/utils/restTime';
+import { digitsFromTempoInput, digitsToSeconds, digitsToMMSS } from '@/lib/utils/tempoInput';
 import { getSeriesGridCols, GRID_COLS_HISTORICO, GRID_COLS_HISTORICO_NO_PESO } from '@/lib/utils/seriesGrid';
+import { parsePesoInput, formatPesoDisplay } from '@/lib/utils/pesoInput';
 import type { WorkoutBlock } from '@/lib/utils/biset';
 import {
   buildWorkoutBlocksFromConfig,
@@ -99,12 +102,23 @@ interface ExercicioConfig {
 interface SerieState {
   ordem: number;
   peso_atual: number;
+  /** Texto exatamente como o aluno digitou (aceita vírgula) — evita reformatar enquanto ele digita. */
+  peso_input_str?: string;
+  /** true assim que o aluno edita o peso desta série — trava o preenchimento em cascata das séries seguintes. */
+  peso_manual?: boolean;
   reps: number | string;
   reps_executadas?: number | string;
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
   anterior?: string;
+
+  /** Série prescrita por tempo (exercício Duração/Duração e Peso, ou técnica Isometria) — `reps` guarda o tempo alvo formatado ("00:30"). */
+  is_tempo?: boolean;
+  /** Segundos que o aluno realmente sustentou, cronometrados na execução (só para séries is_tempo). */
+  tempo_executado_seg?: number;
+  /** Texto exatamente como o aluno digitou o tempo ("MM:SS") — evita reformatar enquanto ele digita. */
+  tempo_input_str?: string;
 
   // Cluster Set — não usados na execução (reps já vem formatado como "4×5"), só para não quebrar leitura
   cluster_qtd?: number;
@@ -256,13 +270,13 @@ interface SetRowProps {
   showPeso?: boolean;
   gridCols: string;
   isDesktop?: boolean;
-  onPesoChange: (peso: number) => void;
+  onPesoChange: (peso: number, rawStr?: string) => void;
   onRepsChange: (reps: number | string) => void;
+  onTempoChange: (seconds: number, rawStr?: string) => void;
   onCheck: () => void;
 }
 
-function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, gridCols, isDesktop = false, onPesoChange, onRepsChange, onCheck }: SetRowProps) {
-  const { abaixo } = resolveReps(serie);
+function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, gridCols, isDesktop = false, onPesoChange, onRepsChange, onTempoChange, onCheck }: SetRowProps) {
   return (
     <div
       className={cn(
@@ -312,20 +326,23 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
       {showPeso && (
         <div className="flex justify-center min-w-0">
           <input
-            type="number"
+            type="text"
             inputMode="decimal"
-            value={serie.peso_atual || ''}
-            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            value={serie.peso_input_str ?? formatPesoDisplay(serie.peso_atual)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onPesoChange(parsePesoInput(raw), raw);
+            }}
             disabled={!treinoIniciado}
             placeholder="0"
-            className="w-full max-w-[40px] bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+            className="w-full max-w-[44px] bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
             style={{
               height: 28,
-              fontSize: '15px',
+              fontSize: '12px',
               color: 'var(--text-secondary)',
               fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
               fontVariantNumeric: 'tabular-nums lining-nums',
-              fontWeight: 400,
+              fontWeight: 500,
               borderBottom: '1.5px solid transparent',
             }}
             onFocus={(e) => {
@@ -339,46 +356,81 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
       )}
 
       <div className="flex justify-center">
-        <input
-          type="number"
-          inputMode="numeric"
-          value={
-            serie.reps_executadas !== undefined && serie.reps_executadas !== ''
-              ? serie.reps_executadas
-              : ''
-          }
-          placeholder={String(serie.reps)}
-          onChange={(e) => {
-            const raw = e.target.value;
-            onRepsChange(raw === '' ? '' : parseFloat(raw) || 0);
-          }}
-          disabled={!treinoIniciado}
-          aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
-          className={cn(
-            'w-full max-w-[48px] bg-transparent border-0 text-center font-sans',
-            'tabular-nums lining-nums focus:outline-none disabled:opacity-50',
-            'placeholder:text-text-secondary',
-          )}
-          style={{
-            height: 28,
-            fontSize: '14px',
-            fontWeight: 600,
-            fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
-            fontVariantNumeric: 'tabular-nums lining-nums',
-            color: serie.completado
-              ? '#39c75a'
-              : abaixo
-                ? 'var(--warning)'
-                : 'var(--text-primary)',
-            borderBottom: '1.5px solid transparent',
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderBottomColor = 'transparent';
-          }}
-        />
+        {serie.is_tempo ? (
+          <input
+            type="text"
+            inputMode="numeric"
+            value={
+              serie.tempo_input_str != null
+                ? digitsToMMSS(serie.tempo_input_str)
+                : (serie.tempo_executado_seg ? secondsToDescanso(serie.tempo_executado_seg) : '')
+            }
+            placeholder={String(serie.reps)}
+            onChange={(e) => {
+              const digits = digitsFromTempoInput(e.target.value);
+              onTempoChange(digitsToSeconds(digits), digits);
+            }}
+            disabled={!treinoIniciado}
+            aria-label={`Tempo da série ${serie.ordem}. Prescrito: ${serie.reps}`}
+            className={cn(
+              'w-full bg-transparent border-0 text-center font-sans',
+              'tabular-nums lining-nums focus:outline-none disabled:opacity-50',
+              'placeholder:text-text-disabled placeholder:font-medium',
+            )}
+            style={{
+              height: 28,
+              fontSize: '11px',
+              fontWeight: 500,
+              fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+              fontVariantNumeric: 'tabular-nums lining-nums',
+              color: serie.completado ? '#39c75a' : 'var(--text-primary)',
+              borderBottom: '1.5px solid transparent',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderBottomColor = 'transparent';
+            }}
+          />
+        ) : (
+          <input
+            type="number"
+            inputMode="numeric"
+            value={
+              serie.reps_executadas !== undefined && serie.reps_executadas !== ''
+                ? serie.reps_executadas
+                : ''
+            }
+            placeholder={String(serie.reps)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onRepsChange(raw === '' ? '' : parseFloat(raw) || 0);
+            }}
+            disabled={!treinoIniciado}
+            aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
+            className={cn(
+              'w-full bg-transparent border-0 text-center font-sans',
+              'tabular-nums lining-nums focus:outline-none disabled:opacity-50',
+              'placeholder:text-text-disabled placeholder:font-medium',
+            )}
+            style={{
+              height: 28,
+              fontSize: '11px',
+              fontWeight: 500,
+              fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+              fontVariantNumeric: 'tabular-nums lining-nums',
+              color: serie.completado ? '#39c75a' : 'var(--text-primary)',
+              borderBottom: '1.5px solid transparent',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderBottomColor = 'transparent';
+            }}
+          />
+        )}
       </div>
 
       {/* Spacer: empurra TÉC/check para a direita sem mover PESO/REPS */}
@@ -417,8 +469,9 @@ interface ExercicioCardProps {
   treinoIniciado: boolean;
   showAnteriorCol: boolean;
   isDesktop?: boolean;
-  onPesoChange: (ordem: number, peso: number) => void;
+  onPesoChange: (ordem: number, peso: number, rawStr?: string) => void;
   onRepsChange: (ordem: number, reps: number | string) => void;
+  onTempoChange: (ordem: number, seconds: number, rawStr?: string) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen: (url: string) => void;
   onCargaInfo?: () => void;
@@ -426,7 +479,7 @@ interface ExercicioCardProps {
   onOpenCard?: () => void;
 }
 
-function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onRepsChange, onCheck, onVideoOpen, onCargaInfo, onOpenCard }: ExercicioCardProps) {
+function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onRepsChange, onTempoChange, onCheck, onVideoOpen, onCargaInfo, onOpenCard }: ExercicioCardProps) {
   const completadas = exercicio.series.filter(s => s.completado).length;
   const total = exercicio.series.length;
   const all = completadas === total;
@@ -553,8 +606,9 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
               showPeso={showPeso}
               gridCols={gridCols}
               isDesktop={isDesktop}
-              onPesoChange={(peso) => onPesoChange(serie.ordem, peso)}
+              onPesoChange={(peso, raw) => onPesoChange(serie.ordem, peso, raw)}
               onRepsChange={(reps) => onRepsChange(serie.ordem, reps)}
+              onTempoChange={(seconds, raw) => onTempoChange(serie.ordem, seconds, raw)}
               onCheck={() => onCheck(serie.ordem)}
             />
           ))}
@@ -606,6 +660,30 @@ export default function ExecucaoTreinoPage() {
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
   const [showSeriesHistory, setShowSeriesHistory] = useState(true);
+
+  // Cronômetro (exercícios por tempo / técnica Isometria — substitui o ajuste de carga)
+  const [stopwatchRunning, setStopwatchRunning] = useState(false);
+  const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
+
+  // Tique a cada segundo enquanto o cronômetro está rodando.
+  useEffect(() => {
+    if (!stopwatchRunning) return;
+    const id = setInterval(() => setStopwatchSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [stopwatchRunning]);
+
+  // Reseta o cronômetro ao trocar de série/exercício no modal (retoma o tempo já gravado, se houver).
+  // Precisa ficar antes de qualquer `return` condicional do componente (regra dos hooks) —
+  // por isso recalcula a série atual localmente em vez de reaproveitar `modalSerie`.
+  useEffect(() => {
+    const block = modalBlockIdx !== null ? blocks[modalBlockIdx] : null;
+    const half = bisetFase === 'b' || bisetFase === 'transicao' ? 'exercicioB' : 'exercicioA';
+    const ex = block ? (block.kind === 'simples' ? block.exercise : block[half]) : null;
+    const serie = ex?.series[modalRodadaIdx];
+    setStopwatchRunning(false);
+    setStopwatchSeconds(serie?.tempo_executado_seg ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalBlockIdx, modalRodadaIdx, bisetFase]);
 
   const [techniqueCardExpanded, setTechniqueCardExpanded] = useState(false);
   const tecnicaKpiRef = useRef<HTMLButtonElement>(null);
@@ -1059,26 +1137,58 @@ export default function ExecucaoTreinoPage() {
     navegarBlocoPorSwipe(dx < 0 ? 1 : -1);
   }
 
-  /** Retomar: 1ª incompleta, ou último exercício da ficha se a lista já concluiu tudo. */
-  function retomarExecucao() {
-    const { blockIdx, rodadaIdx, fase } = resolveResumePosition(blocks);
-    const block = blocks[blockIdx];
+  /** Abre o modal numa posição já resolvida (blockIdx/rodadaIdx/fase), a partir de uma lista de blocks específica. */
+  function abrirPosicao(blocksList: WorkoutBlock[], pos: { blockIdx: number; rodadaIdx: number; fase: 'a' | 'b' | null }) {
+    const block = blocksList[pos.blockIdx];
     if (!block) return;
     const ex =
       block.kind === 'simples'
         ? block.exercise
-        : fase === 'b'
+        : pos.fase === 'b'
           ? block.exercicioB
           : block.exercicioA;
-    const carga = ex.series[rodadaIdx]?.peso_atual || 0;
-    setModalBlockIdx(blockIdx);
-    setModalRodadaIdx(rodadaIdx);
-    setBisetFase(fase);
+    const carga = ex.series[pos.rodadaIdx]?.peso_atual || 0;
+    setModalBlockIdx(pos.blockIdx);
+    setModalRodadaIdx(pos.rodadaIdx);
+    setBisetFase(pos.fase);
     setModalCarga(carga);
     setModalCargaStr(carga > 0 ? String(carga) : '');
   }
 
-  const handlePesoChange = useCallback((exercicioId: string, serieOrdem: number, peso: number) => {
+  /** Retomar: 1ª incompleta, ou último exercício da ficha se a lista já concluiu tudo. */
+  function retomarExecucao() {
+    abrirPosicao(blocks, resolveResumePosition(blocks));
+  }
+
+  /** Vai direto pra 1ª série pendente (usado no aviso de "séries não concluídas"). */
+  function irParaSeriePendente(blocksList: WorkoutBlock[] = blocks) {
+    setShowFeedbackModal(false);
+    abrirPosicao(blocksList, resolveResumePosition(blocksList));
+  }
+
+  /**
+   * Peso digitado numa série "vaza" pra frente — as próximas séries do mesmo
+   * exercício (ainda não concluídas e que o aluno não editou o peso à mão)
+   * já aparecem pré-preenchidas com esse valor. Editar uma série trava ela
+   * como manual — deixa de receber o vazamento (mesmo padrão da ficha).
+   */
+  function cascadePeso<
+    T extends { ordem: number; peso_atual: number; peso_input_str?: string; peso_manual?: boolean; completado: boolean }
+  >(series: T[], serieOrdem: number, peso: number, rawStr: string | undefined): T[] {
+    let cascata = false;
+    return series.map((s) => {
+      if (s.ordem === serieOrdem) {
+        cascata = true;
+        return { ...s, peso_atual: peso, peso_input_str: rawStr, peso_manual: true };
+      }
+      if (cascata && !s.completado && !s.peso_manual) {
+        return { ...s, peso_atual: peso, peso_input_str: formatPesoDisplay(peso) };
+      }
+      return s;
+    });
+  }
+
+  const handlePesoChange = useCallback((exercicioId: string, serieOrdem: number, peso: number, rawStr?: string) => {
     setBlocks((prev) =>
       prev.map((block) => {
         if (block.kind === 'simples') {
@@ -1087,9 +1197,7 @@ export default function ExecucaoTreinoPage() {
             ...block,
             exercise: {
               ...block.exercise,
-              series: block.exercise.series.map((s) =>
-                s.ordem !== serieOrdem ? s : { ...s, peso_atual: peso }
-              ),
+              series: cascadePeso(block.exercise.series, serieOrdem, peso, rawStr),
             },
           };
         }
@@ -1099,9 +1207,7 @@ export default function ExecucaoTreinoPage() {
             ...block,
             [half]: {
               ...block[half],
-              series: block[half].series.map((s) =>
-                s.ordem !== serieOrdem ? s : { ...s, peso_atual: peso }
-              ),
+              series: cascadePeso(block[half].series, serieOrdem, peso, rawStr),
             },
           };
         };
@@ -1136,6 +1242,44 @@ export default function ExecucaoTreinoPage() {
                 ...block[half],
                 series: block[half].series.map((s) =>
                   s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps }
+                ),
+              },
+            };
+          };
+          const updatedA = updateHalf('exercicioA');
+          if (updatedA !== block) return updatedA;
+          return updateHalf('exercicioB');
+        })
+      );
+    },
+    []
+  );
+
+  /** Edição manual do tempo executado (séries is_tempo) — aceita "MM:SS" digitado direto, mesmo campo que o cronômetro preenche ao parar. */
+  const handleTempoChange = useCallback(
+    (exercicioId: string, serieOrdem: number, seconds: number, rawStr?: string) => {
+      setBlocks((prev) =>
+        prev.map((block) => {
+          if (block.kind === 'simples') {
+            if (block.exercise.id !== exercicioId) return block;
+            return {
+              ...block,
+              exercise: {
+                ...block.exercise,
+                series: block.exercise.series.map((s) =>
+                  s.ordem !== serieOrdem ? s : { ...s, tempo_executado_seg: seconds, tempo_input_str: rawStr }
+                ),
+              },
+            };
+          }
+          const updateHalf = (half: 'exercicioA' | 'exercicioB') => {
+            if (block[half].id !== exercicioId) return block;
+            return {
+              ...block,
+              [half]: {
+                ...block[half],
+                series: block[half].series.map((s) =>
+                  s.ordem !== serieOrdem ? s : { ...s, tempo_executado_seg: seconds, tempo_input_str: rawStr }
                 ),
               },
             };
@@ -1212,11 +1356,14 @@ export default function ExecucaoTreinoPage() {
     }
   }
 
-  function concluirSerieModal() {
+  function concluirSerieModal(extra?: { tempo_executado_seg?: number }) {
     if (modalBlockIdx === null) return;
     const block = blocks[modalBlockIdx];
     if (!block) return;
     setTechniqueCardExpanded(false);
+    const extraPatch = extra?.tempo_executado_seg != null
+      ? { tempo_executado_seg: extra.tempo_executado_seg, tempo_input_str: undefined }
+      : {};
 
     if (block.kind === 'simples') {
       const ex = block.exercise;
@@ -1228,7 +1375,7 @@ export default function ExecucaoTreinoPage() {
           exercise: {
             ...b.exercise,
             series: b.exercise.series.map((s, j) =>
-              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true }
+              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true, ...extraPatch }
             ),
           },
         };
@@ -1242,6 +1389,13 @@ export default function ExecucaoTreinoPage() {
 
       if (isUltimaSerie) {
         if (isUltimoBloco) {
+          // Ficou alguma série pendente lá atrás (pulada/esquecida)? Manda pra ela
+          // em vez de abrir a pesquisa direto — "Finalizar treino" continua liberado
+          // pra fechar mesmo assim quando o aluno quiser.
+          if (newBlocks.some((b) => !isBlockComplete(b))) {
+            abrirPosicao(newBlocks, resolveResumePosition(newBlocks));
+            return;
+          }
           setModalBlockIdx(null);
           handleFinalizar();
           return;
@@ -1275,7 +1429,7 @@ export default function ExecucaoTreinoPage() {
           exercicioA: {
             ...b.exercicioA,
             series: b.exercicioA.series.map((s, j) =>
-              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true }
+              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true, ...extraPatch }
             ),
           },
         };
@@ -1305,7 +1459,7 @@ export default function ExecucaoTreinoPage() {
           exercicioB: {
             ...b.exercicioB,
             series: b.exercicioB.series.map((s, j) =>
-              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true }
+              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true, ...extraPatch }
             ),
           },
         };
@@ -1325,6 +1479,10 @@ export default function ExecucaoTreinoPage() {
           descanso,
           () => {
             if (isUltimoBloco) {
+              if (newBlocks.some((b) => !isBlockComplete(b))) {
+                abrirPosicao(newBlocks, resolveResumePosition(newBlocks));
+                return;
+              }
               setModalBlockIdx(null);
               handleFinalizar();
             } else {
@@ -1394,6 +1552,8 @@ export default function ExecucaoTreinoPage() {
             peso_atual: s.peso_atual,
             completado: s.completado,
             anterior: s.anterior || '—',
+            is_tempo: s.is_tempo ?? false,
+            tempo_executado_seg: s.tempo_executado_seg ?? null,
           })),
           data_sessao: agora,
           duracao_segundos: elapsed,
@@ -1563,6 +1723,17 @@ export default function ExecucaoTreinoPage() {
     : 0;
   const modalPartnerEx = modalBlock?.kind === 'biset' ? modalBlock.exercicioB : null;
   const modalShowPeso = exercicioMostraPeso(modalEx?.tipo_exercicio);
+  const modalSerieEhTempo = modalSerie?.is_tempo ?? false;
+
+  function pararCronometro() {
+    if (modalBlockIdx === null) return;
+    const seconds = stopwatchSeconds;
+    setStopwatchRunning(false);
+    // Passa o tempo direto pro concluirSerieModal — ele que atualiza `blocks` numa
+    // única leitura/escrita (concluirSerieModal não usa updater funcional, então um
+    // setBlocks separado aqui seria sobrescrito pelo dele, baseado no estado antigo).
+    concluirSerieModal({ tempo_executado_seg: seconds });
+  }
 
   const hasHistorico = exercicios.some((ex) =>
     ex.series.some((s) => s.anterior && s.anterior !== '—')
@@ -1769,8 +1940,9 @@ export default function ExecucaoTreinoPage() {
                       treinoIniciado={treinoIniciado}
                       showAnteriorCol={hasHistorico}
                       isDesktop={isDesktop}
-                      onPesoChange={(ordem, peso) => handlePesoChange(block.exercise.id, ordem, peso)}
+                      onPesoChange={(ordem, peso, raw) => handlePesoChange(block.exercise.id, ordem, peso, raw)}
                       onRepsChange={(ordem, reps) => handleRepsChange(block.exercise.id, ordem, reps)}
+                      onTempoChange={(ordem, seconds, raw) => handleTempoChange(block.exercise.id, ordem, seconds, raw)}
                       onCheck={(ordem) => handleCheck(block.exercise.id, ordem)}
                       onVideoOpen={setVideoUrl}
                       onCargaInfo={() => setCargaInfoOpen(true)}
@@ -1783,10 +1955,12 @@ export default function ExecucaoTreinoPage() {
                       treinoIniciado={treinoIniciado}
                       showAnteriorCol={hasHistorico}
                       isDesktop={isDesktop}
-                      onPesoChangeA={(ordem, peso) => handlePesoChange(block.exercicioA.id, ordem, peso)}
-                      onPesoChangeB={(ordem, peso) => handlePesoChange(block.exercicioB.id, ordem, peso)}
+                      onPesoChangeA={(ordem, peso, raw) => handlePesoChange(block.exercicioA.id, ordem, peso, raw)}
+                      onPesoChangeB={(ordem, peso, raw) => handlePesoChange(block.exercicioB.id, ordem, peso, raw)}
                       onRepsChangeA={(ordem, reps) => handleRepsChange(block.exercicioA.id, ordem, reps)}
                       onRepsChangeB={(ordem, reps) => handleRepsChange(block.exercicioB.id, ordem, reps)}
+                      onTempoChangeA={(ordem, seconds, raw) => handleTempoChange(block.exercicioA.id, ordem, seconds, raw)}
+                      onTempoChangeB={(ordem, seconds, raw) => handleTempoChange(block.exercicioB.id, ordem, seconds, raw)}
                       onCheckA={(ordem) => handleCheck(block.exercicioA.id, ordem)}
                       onCheckB={(ordem) => handleCheck(block.exercicioB.id, ordem)}
                       onVideoOpen={setVideoUrl}
@@ -1816,15 +1990,33 @@ export default function ExecucaoTreinoPage() {
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/70 backdrop-blur-sm">
           <div className="w-full bg-surface-1 border-t border-divider rounded-t-2xl p-5 pb-safe-bottom" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
-            {/* Aviso se treino incompleto */}
-            {setsCompletos < totalSets && (
-              <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-warning-subtle border border-warning-border rounded-lg">
-                <Clock className="w-4 h-4 text-warning shrink-0" />
-                <p className="text-xs text-warning font-medium">
-                  {totalSets - setsCompletos} série{totalSets - setsCompletos > 1 ? 's' : ''} não concluída{totalSets - setsCompletos > 1 ? 's' : ''}
-                </p>
-              </div>
-            )}
+            {/* Aviso se treino incompleto — cada exercício pendente leva pra 1ª série faltando */}
+            {setsCompletos < totalSets && (() => {
+              const pendentes = flattenExercicios(blocks).filter((ex) => ex.series.some((s) => !s.completado));
+              return (
+                <div className="mb-4 rounded-lg border border-warning-border bg-warning-subtle overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    <Clock className="w-4 h-4 text-warning shrink-0" />
+                    <p className="text-xs text-warning font-medium">
+                      {totalSets - setsCompletos} série{totalSets - setsCompletos > 1 ? 's' : ''} não concluída{totalSets - setsCompletos > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="px-1.5 pb-1.5 flex flex-col gap-0.5">
+                    {pendentes.map((ex) => (
+                      <button
+                        key={ex.id}
+                        type="button"
+                        onClick={() => irParaSeriePendente()}
+                        className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-left text-xs text-text-primary hover:bg-warning/10 active:bg-warning/15 transition-colors min-h-11 touch-manipulation"
+                      >
+                        <span className="truncate">{ex.nome}</span>
+                        <CaretRight size={12} className="text-warning shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             <h3 className="text-sm font-bold text-text-primary mb-4">Feedback do treino</h3>
 
@@ -2105,6 +2297,44 @@ export default function ExecucaoTreinoPage() {
               />
             </div>
 
+            {!modalShowPeso && modalSerieEhTempo && (
+              <div className="flex flex-col items-center gap-1 py-3 px-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
+                  Cronômetro
+                </p>
+                <div className="flex items-center gap-5">
+                  <div className="w-12 h-12 shrink-0" aria-hidden />
+
+                  <div className="min-w-[100px] text-center">
+                    <span className="block text-5xl font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans">
+                      {secondsToDescanso(stopwatchSeconds)}
+                    </span>
+                    <span className="block text-base font-bold text-brand mt-0.5">min</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (stopwatchRunning) {
+                        haptic('success');
+                        pararCronometro();
+                      } else {
+                        haptic('light');
+                        setStopwatchRunning(true);
+                      }
+                    }}
+                    className={cn(
+                      'w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-transform touch-manipulation shrink-0',
+                      stopwatchRunning ? 'bg-danger text-white' : 'bg-brand text-white',
+                    )}
+                    aria-label={stopwatchRunning ? 'Parar cronômetro e concluir série' : 'Iniciar cronômetro'}
+                  >
+                    {stopwatchRunning ? <Pause size={20} weight="bold" /> : <Play size={20} weight="bold" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {modalShowPeso && (
               <>
                 {/* Display de carga (placar) */}
@@ -2304,17 +2534,53 @@ export default function ExecucaoTreinoPage() {
                                     </span>
                                   ) : (
                                     <input
-                                      type="number"
+                                      type="text"
                                       inputMode="decimal"
-                                      value={s.peso_atual || ''}
-                                      onChange={(e) => handlePesoChange(exId, s.ordem, parseFloat(e.target.value) || 0)}
+                                      value={s.peso_input_str ?? formatPesoDisplay(s.peso_atual)}
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        handlePesoChange(exId, s.ordem, parsePesoInput(raw), raw);
+                                      }}
                                       placeholder="—"
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
-                                      className="w-14 h-7 bg-transparent px-1 text-right font-bold font-sans tabular-nums lining-nums text-brand focus:outline-none border-b border-brand/30"
+                                      className="w-14 h-7 bg-transparent px-1 text-right text-xs font-medium font-sans tabular-nums lining-nums text-brand focus:outline-none border-b border-brand/30"
                                     />
                                   ))}
                                   {(() => {
-                                    const { abaixo } = resolveReps(s);
+                                    if (s.is_tempo) {
+                                      return (
+                                        <input
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={
+                                            s.tempo_input_str != null
+                                              ? digitsToMMSS(s.tempo_input_str)
+                                              : (s.tempo_executado_seg ? secondsToDescanso(s.tempo_executado_seg) : '')
+                                          }
+                                          placeholder={String(s.reps)}
+                                          onChange={(e) => {
+                                            const digits = digitsFromTempoInput(e.target.value);
+                                            handleTempoChange(exId, s.ordem, digitsToSeconds(digits), digits);
+                                          }}
+                                          aria-label={`Tempo — ${nome}, rodada ${rodadaIdx + 1}. Prescrito: ${s.reps}`}
+                                          className={cn(
+                                            'min-w-9 w-auto shrink-0 bg-transparent text-center text-xs font-medium',
+                                            'tabular-nums lining-nums font-sans focus:outline-none',
+                                            'placeholder:text-text-disabled',
+                                          )}
+                                          style={{
+                                            color: s.completado ? '#39c75a' : 'var(--text-primary)',
+                                            borderBottom: '1.5px solid transparent',
+                                          }}
+                                          onFocus={(e) => {
+                                            e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                          }}
+                                          onBlur={(e) => {
+                                            e.currentTarget.style.borderBottomColor = 'transparent';
+                                          }}
+                                        />
+                                      );
+                                    }
                                     return (
                                       <input
                                         type="number"
@@ -2335,16 +2601,12 @@ export default function ExecucaoTreinoPage() {
                                         }}
                                         aria-label={`Reps — ${nome}, rodada ${rodadaIdx + 1}. Prescrito: ${s.reps}`}
                                         className={cn(
-                                          'w-9 shrink-0 bg-transparent text-center text-xs font-semibold',
+                                          'min-w-9 w-auto shrink-0 bg-transparent text-center text-xs font-medium',
                                           'tabular-nums lining-nums font-sans focus:outline-none',
-                                          'placeholder:text-text-secondary',
+                                          'placeholder:text-text-disabled',
                                         )}
                                         style={{
-                                          color: s.completado
-                                            ? '#39c75a'
-                                            : abaixo
-                                              ? 'var(--warning)'
-                                              : 'var(--text-primary)',
+                                          color: s.completado ? '#39c75a' : 'var(--text-primary)',
                                           borderBottom: '1.5px solid transparent',
                                         }}
                                         onFocus={(e) => {
@@ -2440,23 +2702,24 @@ export default function ExecucaoTreinoPage() {
                             {modalShowPeso && (
                               <div className="flex items-baseline justify-center gap-0.5 min-w-0">
                                 <input
-                                  type="number"
+                                  type="text"
                                   inputMode="decimal"
-                                  value={isAtual ? (modalCarga || '') : (s.peso_atual || '')}
+                                  value={isAtual ? modalCargaStr : (s.peso_input_str ?? formatPesoDisplay(s.peso_atual))}
                                   onChange={(e) => {
-                                    const val = parseFloat(e.target.value) || 0;
+                                    const raw = e.target.value;
+                                    const val = parsePesoInput(raw);
                                     if (isAtual) {
                                       setModalCarga(val);
-                                      setModalCargaStr(e.target.value === '' ? '' : String(val));
+                                      setModalCargaStr(raw);
                                     }
-                                    handlePesoChange(modalEx.id, s.ordem, val);
+                                    handlePesoChange(modalEx.id, s.ordem, val, raw);
                                   }}
                                   placeholder="—"
                                   aria-label={`Editar peso da série ${idx + 1}`}
-                                  className="w-full max-w-[44px] bg-transparent text-center tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                  className="w-full max-w-10 bg-transparent text-center tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                   style={{
-                                    fontSize: 14,
-                                    fontWeight: 700,
+                                    fontSize: 12,
+                                    fontWeight: 500,
                                     lineHeight: '22px',
                                     height: 22,
                                     fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
@@ -2481,7 +2744,37 @@ export default function ExecucaoTreinoPage() {
                             )}
 
                             {(() => {
-                              const { abaixo } = resolveReps(s);
+                              if (s.is_tempo) {
+                                return (
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={
+                                      s.tempo_input_str != null
+                                        ? digitsToMMSS(s.tempo_input_str)
+                                        : (s.tempo_executado_seg ? secondsToDescanso(s.tempo_executado_seg) : '')
+                                    }
+                                    placeholder={String(s.reps)}
+                                    onChange={(e) => {
+                                      const digits = digitsFromTempoInput(e.target.value);
+                                      handleTempoChange(modalEx.id, s.ordem, digitsToSeconds(digits), digits);
+                                    }}
+                                    aria-label={`Tempo da série ${idx + 1}. Prescrito: ${s.reps}`}
+                                    className={cn(
+                                      'w-full mx-auto bg-transparent text-center',
+                                      'tabular-nums lining-nums font-sans focus:outline-none',
+                                      'placeholder:text-text-disabled',
+                                    )}
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 500,
+                                      fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                                      color: s.completado ? '#39c75a' : 'var(--text-primary)',
+                                      height: 22,
+                                    }}
+                                  />
+                                );
+                              }
                               return (
                                 <input
                                   type="number"
@@ -2502,19 +2795,15 @@ export default function ExecucaoTreinoPage() {
                                   }}
                                   aria-label={`Reps da série ${idx + 1}. Prescrito: ${s.reps}`}
                                   className={cn(
-                                    'w-full max-w-[48px] mx-auto bg-transparent text-center',
+                                    'w-full mx-auto bg-transparent text-center',
                                     'tabular-nums lining-nums font-sans focus:outline-none',
-                                    'placeholder:text-text-primary placeholder:opacity-90',
+                                    'placeholder:text-text-disabled',
                                   )}
                                   style={{
-                                    fontSize: 14,
-                                    fontWeight: 700,
+                                    fontSize: 11,
+                                    fontWeight: 500,
                                     fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
-                                    color: s.completado
-                                      ? '#39c75a'
-                                      : abaixo
-                                        ? 'var(--warning)'
-                                        : 'var(--text-primary)',
+                                    color: s.completado ? '#39c75a' : 'var(--text-primary)',
                                     height: 22,
                                   }}
                                 />

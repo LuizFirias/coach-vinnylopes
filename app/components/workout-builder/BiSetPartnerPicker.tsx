@@ -29,7 +29,7 @@ export function BiSetPartnerPicker({ catalog, excludeIds = [], onSelect }: BiSet
     .slice(0, 6);
 
   return (
-    <div className="mt-2 rounded-[10px] border border-dashed border-brand bg-surface-1 p-3.5">
+    <div className="mt-2 rounded-[10px] bg-surface-1 p-3.5">
       <p className="text-xs font-semibold text-text-primary mb-2.5">+ Selecionar exercício B</p>
       <div className="relative mb-2">
         <MagnifyingGlass

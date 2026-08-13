@@ -98,7 +98,7 @@ export function resolveAccessUntilOnCancel(opts: {
 
 /**
  * Normaliza next_payment_date do MP: se ausente ou pouco no futuro,
- * calcula pelo ciclo do plano (mensal/semestral/anual ou diário QA).
+ * calcula pelo ciclo do plano (mensal/anual; semestral só legado; ou diário QA).
  */
 export function resolvePeriodEndFromMp(opts: {
   nextPaymentDate?: string | null;

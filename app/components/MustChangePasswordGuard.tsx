@@ -29,6 +29,7 @@ export default function MustChangePasswordGuard({ children, area }: MustChangePa
         const cached = await getBootstrapProfile();
 
         if (!cached) {
+          if (!cancelled) setReady(true);
           router.replace('/login');
           return;
         }
@@ -39,11 +40,13 @@ export default function MustChangePasswordGuard({ children, area }: MustChangePa
         const mustChange = Boolean(cached.must_change_password && expectedPath);
 
         if (mustChange && !isChangePasswordPage) {
+          if (!cancelled) setReady(true);
           router.replace(expectedPath!);
           return;
         }
 
         if (!mustChange && isChangePasswordPage && cached.role) {
+          if (!cancelled) setReady(true);
           router.replace(
             getPostLoginPath({
               role: cached.role,

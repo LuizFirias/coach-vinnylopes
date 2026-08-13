@@ -9,6 +9,8 @@ import {
   X,
   Barbell,
   WarningCircle,
+  FloppyDisk,
+  CircleNotch,
 } from "@phosphor-icons/react";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { useAuth } from "@/app/components/AuthProvider";
@@ -38,6 +40,7 @@ import {
   isBiSetFichaItem,
 } from "@/lib/utils/biset";
 import { CANONICAL_EQUIPMENTS } from "@/lib/constants/equipment";
+import { concluirPasso } from "@/lib/onboarding/concluirPasso";
 import { isClusterSet } from "@/lib/constants/workout-techniques";
 
 export interface WorkoutBuilderScreenProps {
@@ -609,6 +612,7 @@ export function WorkoutBuilderScreen({
           ativo: true,
         });
         if (error) throw error;
+        await concluirPasso(coachId, "montar-ficha");
       }
 
       setIsDirty(false);
@@ -778,10 +782,7 @@ export function WorkoutBuilderScreen({
 
                 <div className="flex-1 overflow-y-auto">
                   {exerciciosFicha.length === 0 ? (
-                    <div
-                      className="border border-dashed border-divider rounded-xl p-10 flex flex-col items-center text-center"
-                      style={{ background: "rgba(255,255,255,0.02)" }}
-                    >
+                    <div className="rounded-xl p-10 flex flex-col items-center text-center">
                       <Barbell size={40} className="text-text-disabled mb-3" />
                       <h3 className="text-sm font-semibold text-text-primary mb-1">
                         Nenhum exercício na ficha
@@ -801,13 +802,33 @@ export function WorkoutBuilderScreen({
               className="shrink-0 flex flex-col gap-4 overflow-hidden relative"
               style={{ width: 480 }}
             >
-              <WorkoutPrescriptionSummary
-                items={exerciciosFicha}
-                isMobile={false}
-                hideWhenEmpty={false}
-                variant="stats"
-                className="shrink-0 shadow-sm"
-              />
+              <div className="flex flex-col gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleSalvarFicha}
+                  disabled={saving || !canSave || !isDirty}
+                  aria-label={isEdit ? "Salvar alterações" : "Salvar ficha"}
+                  title={isEdit ? "Salvar alterações" : "Salvar ficha"}
+                  className="w-full h-14 rounded-2xl flex items-center justify-center text-text-on-brand transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                    boxShadow: "0 4px 16px rgba(117,27,180,0.35)",
+                  }}
+                >
+                  {saving ? (
+                    <CircleNotch size={22} className="animate-spin" weight="bold" />
+                  ) : (
+                    <FloppyDisk size={22} weight="fill" />
+                  )}
+                </button>
+                <WorkoutPrescriptionSummary
+                  items={exerciciosFicha}
+                  isMobile={false}
+                  hideWhenEmpty={false}
+                  variant="stats"
+                />
+              </div>
 
               <div
                 ref={libraryAnchorRef}
@@ -856,7 +877,7 @@ export function WorkoutBuilderScreen({
           </div>
 
           {exerciciosFicha.length === 0 ? (
-            <div className="bg-surface-1 border border-dashed border-divider rounded-xl p-10 flex flex-col items-center text-center">
+            <div className="rounded-xl p-10 flex flex-col items-center text-center">
               <Barbell size={40} className="text-text-disabled mb-3" />
               <h3 className="text-sm font-semibold text-text-primary mb-1">
                 Nenhum exercício na ficha
@@ -878,7 +899,7 @@ export function WorkoutBuilderScreen({
               <button
                 type="button"
                 onClick={() => setModalExercicio(true)}
-                className="mt-3 mb-1 w-full h-11 inline-flex items-center justify-center gap-1.5 border border-dashed border-brand/40 rounded-xl text-brand text-xs font-semibold"
+                className="mt-3 mb-1 w-full h-11 inline-flex items-center justify-center gap-1.5 rounded-xl text-brand text-xs font-semibold hover:bg-brand/5 transition-colors"
               >
                 <Plus size={14} weight="bold" />
                 Adicionar exercício

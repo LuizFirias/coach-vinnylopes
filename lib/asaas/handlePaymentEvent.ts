@@ -119,6 +119,13 @@ export async function handlePaymentEvent(paymentId: string): Promise<void> {
     const wasAuthorized = subscription.status === "authorized";
     await setUserAccess(subscription.user_id, "authorized", periodEnd, planInfo, null);
 
+    // 1ª cobrança real encerra o trial
+    await supabase
+      .from("profiles")
+      .update({ trial_ativo: false })
+      .eq("id", subscription.user_id)
+      .eq("trial_ativo", true);
+
     if (!wasAuthorized) {
       const { data: profile } = await supabase
         .from("profiles")

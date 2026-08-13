@@ -8,6 +8,8 @@ import type {
 import { isBiSetPrescricao as isBiSetPrescricaoType } from "@/lib/types/workout";
 import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
 import { descansoToSeconds, secondsToDescanso } from "@/lib/utils/restTime";
+import { exercicioEhPorTempo } from "@/app/components/workout-builder/exerciseColumns";
+import { isIsometria } from "@/lib/constants/workout-techniques";
 
 export type BiSetHalfFicha = {
   exercicio_id: string;
@@ -300,12 +302,22 @@ export interface ExercicioExecucao {
   series: Array<{
     ordem: number;
     peso_atual: number;
+    /** Texto exatamente como o aluno digitou (aceita vírgula) — evita reformatar enquanto ele digita. */
+    peso_input_str?: string;
+    /** true assim que o aluno edita o peso desta série — trava o preenchimento em cascata das séries seguintes. */
+    peso_manual?: boolean;
     reps: number | string;
     reps_executadas?: number | string;
     tecnica?: string;
     tecnica_extra?: string;
     completado: boolean;
     anterior?: string;
+    /** Série prescrita por tempo (exercício Duração/Duração e Peso, ou técnica Isometria) — `reps` guarda o tempo alvo formatado ("00:30"). */
+    is_tempo?: boolean;
+    /** Segundos que o aluno realmente sustentou, cronometrados na execução (só para séries is_tempo). */
+    tempo_executado_seg?: number;
+    /** Texto exatamente como o aluno digitou o tempo ("MM:SS") — evita reformatar enquanto ele digita. */
+    tempo_input_str?: string;
   }>;
 }
 
@@ -377,20 +389,24 @@ function findPrevSerie(
 function buildSerieExecucao(
   s: SeriePrescricao,
   idx: number,
-  prevSeries: PrevSerieSessao[]
+  prevSeries: PrevSerieSessao[],
+  tipoExercicio?: string
 ) {
   const ordem = s.ordem ?? idx + 1;
   const prev = findPrevSerie(prevSeries, ordem, idx);
   const prevReps = prev?.reps_executadas ?? prev?.reps ?? 0;
   const anterior = prev ? `${prev.peso_atual}kg × ${prevReps}` : "—";
+  const isTempo = exercicioEhPorTempo(tipoExercicio) || isIsometria(s);
   return {
     ordem,
-    peso_atual: prev?.peso_atual ?? 0,
-    reps: s.reps_sugerido ?? s.reps ?? "12",
+    // Zerado ao iniciar a ficha — a coluna "Ant." já mostra a referência da sessão anterior.
+    peso_atual: 0,
+    reps: isTempo ? (s.tempo_sugerido ?? s.tempo ?? "00:30") : (s.reps_sugerido ?? s.reps ?? "12"),
     tecnica: s.tecnica ?? undefined,
     tecnica_extra: s.tecnica_extra ?? undefined,
     completado: false,
     anterior,
+    is_tempo: isTempo,
   };
 }
 
@@ -411,7 +427,7 @@ function buildHalfExecucao(
     grupo_muscular: meta.gruposMusculares[eid] || "",
     equipamento: meta.equipamentos[eid] || "",
     tipo_exercicio: half.tipo_exercicio,
-    series: (half.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries)),
+    series: (half.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries, half.tipo_exercicio)),
   };
 }
 
@@ -430,7 +446,7 @@ function buildSimpleExecucao(ex: ExercicioSimplesPrescricao, meta: BibMeta): Exe
     grupo_muscular: meta.gruposMusculares[eid] || "",
     equipamento: meta.equipamentos[eid] || "",
     tipo_exercicio: ex.tipo_exercicio,
-    series: (ex.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries)),
+    series: (ex.series || []).map((s, idx) => buildSerieExecucao(s, idx, prevSeries, ex.tipo_exercicio)),
   };
 }
 

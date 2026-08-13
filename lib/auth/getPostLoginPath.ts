@@ -2,6 +2,8 @@ export interface PostLoginProfile {
   role: string;
   must_change_password?: boolean | null;
   first_access_completed?: boolean | null;
+  /** Coach: false até concluir /admin/boas-vindas */
+  onboarding_visto?: boolean | null;
 }
 
 export function getPasswordChangePath(role: string): string | null {
@@ -18,6 +20,13 @@ export function getPostLoginPath(profile: PostLoginProfile): string {
 
   if (profile.role === 'aluno' && !profile.first_access_completed) {
     return '/aluno/onboarding';
+  }
+
+  if (
+    (profile.role === 'coach' || profile.role === 'super_admin') &&
+    profile.onboarding_visto === false
+  ) {
+    return '/admin/boas-vindas';
   }
 
   if (profile.role === 'coach' || profile.role === 'super_admin') {

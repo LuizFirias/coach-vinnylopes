@@ -13,9 +13,13 @@ export default function ThemeToggleBar() {
     pathname === '/' ||
     pathname?.startsWith('/auth/') ||
     pathname?.startsWith('/signup') ||
+    pathname === '/termos' ||
+    pathname === '/privacidade' ||
     pathname === '/aluno/trocar-senha' ||
     pathname === '/admin/trocar-senha' ||
     pathname === '/aluno/onboarding' ||
+    pathname === '/admin/boas-vindas' ||
+    pathname?.startsWith('/admin/preview-aluno') ||
     loading ||
     !user
   ) {

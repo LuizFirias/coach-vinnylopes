@@ -11,9 +11,14 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
     pathname.startsWith('/admin') ||
     pathname.startsWith('/super-admin');
 
-  const className = isInternal
-    ? 'lg:ml-[var(--sidebar-width,155px)] transition-[margin-left] duration-300'
-    : 'pt-0';
+  const hideCoachChrome =
+    pathname.startsWith('/admin/boas-vindas') ||
+    pathname.startsWith('/admin/preview-aluno');
+
+  const className =
+    isInternal && !hideCoachChrome
+      ? 'lg:ml-[var(--sidebar-width,155px)] transition-[margin-left] duration-300'
+      : 'pt-0';
 
   return <main className={className}>{children}</main>;
 }

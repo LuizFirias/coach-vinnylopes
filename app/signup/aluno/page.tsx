@@ -17,6 +17,7 @@ import {
   X
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
+import { AUTH_PILL_CTA, AUTH_UNDERLINE_INPUT } from "@/lib/auth/authFormStyles";
 
 export default function AlunoSignup() {
   const router = useRouter();
@@ -284,7 +285,7 @@ export default function AlunoSignup() {
                 disabled={loading}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nome Completo"
-                className="w-full h-11 bg-surface-1 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                className={AUTH_UNDERLINE_INPUT}
               />
             </div>
 
@@ -298,7 +299,7 @@ export default function AlunoSignup() {
                 disabled={loading}
                 onChange={(e) => { setEmail(e.target.value); setError(null); }}
                 placeholder="E-mail"
-                className="w-full h-11 bg-surface-1 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                className={AUTH_UNDERLINE_INPUT}
               />
               {email && (
                 <div className={cn(
@@ -330,7 +331,7 @@ export default function AlunoSignup() {
                 disabled={loading}
                 onChange={(e) => { setConfirmEmail(e.target.value); setError(null); }}
                 placeholder="Confirmar E-mail"
-                className="w-full h-11 bg-surface-1 border border-border-subtle text-text-primary px-3.5 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                className={AUTH_UNDERLINE_INPUT}
               />
               {confirmEmail && email.toLowerCase() !== confirmEmail.toLowerCase() && (
                 <div className="flex items-center gap-1 mt-1 text-[10px] font-bold uppercase tracking-wider text-danger">
@@ -353,12 +354,12 @@ export default function AlunoSignup() {
                   onKeyUp={handlePasswordKeyDown}
                   onKeyDown={handlePasswordKeyDown}
                   placeholder="Senha Nova"
-                  className="w-full h-11 bg-surface-1 border border-border-subtle text-text-primary px-3.5 pr-10 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50"
+                  className={cn(AUTH_UNDERLINE_INPUT, "pr-9")}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
                 >
                   {showPassword ? <EyeSlash className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
@@ -402,7 +403,8 @@ export default function AlunoSignup() {
                 disabled={loading}
                 onChange={(e) => setGoal(e.target.value)}
                 className={cn(
-                  "w-full h-11 bg-surface-1 border border-border-subtle px-3.5 rounded-lg text-xs focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/20 transition-all duration-200 disabled:opacity-50",
+                  AUTH_UNDERLINE_INPUT,
+                  "appearance-none",
                   goal === "" ? "text-text-disabled" : "text-text-primary"
                 )}
               >
@@ -426,9 +428,14 @@ export default function AlunoSignup() {
               />
               <label htmlFor="terms" className="text-xs text-text-secondary leading-normal cursor-pointer hover:text-text-primary transition-colors">
                 Aceito os{" "}
-                <a href="#" className="text-brand hover:underline font-semibold">Termos de Uso</a>
-                {" "}e as{" "}
-                <a href="#" className="text-brand hover:underline font-semibold">Políticas de Privacidade</a>.
+                <Link href="/termos" className="text-brand hover:underline font-semibold">
+                  Termos de Uso
+                </Link>
+                {" "}e a{" "}
+                <Link href="/privacidade" className="text-brand hover:underline font-semibold">
+                  Política de Privacidade
+                </Link>
+                .
               </label>
             </div>
 
@@ -436,7 +443,13 @@ export default function AlunoSignup() {
             <button
               type="submit"
               disabled={loading || !termsAccepted}
-              className="w-full h-11 bg-brand text-text-on-brand rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={AUTH_PILL_CTA}
+              style={{
+                background:
+                  "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                boxShadow: "0 4px 20px rgba(117, 27, 180,0.40)",
+                fontSize: "13px",
+              }}
             >
               {loading ? (
                 <>

@@ -21,8 +21,10 @@ import {
   type BillingPeriod,
   type PlanTier,
   BILLING_PERIOD_LABELS,
+  YEARLY_PROMO_COPY,
   formatCurrencyBRL,
   formatPlanStudentCap,
+  getMonthlyEquivalent,
 } from "@/lib/subscriptions/plans";
 
 type ActionColor = "danger" | "disabled" | "brand";
@@ -103,6 +105,10 @@ type Props = {
   plans: MeuPlanoCatalogItem[];
   currentTier: PlanTier | null;
   currentPeriod: BillingPeriod | null;
+  trialAtivo?: boolean;
+  trialFimLabel?: string | null;
+  /** Ex.: "R$ 47,90/mês" — usado na linha do trial. */
+  priceDisplayHint?: string | null;
 };
 
 function splitPrice(price: number): { int: string; dec: string } {
@@ -127,6 +133,9 @@ export function MeuPlanoView({
   plans,
   currentTier,
   currentPeriod,
+  trialAtivo = false,
+  trialFimLabel = null,
+  priceDisplayHint = null,
 }: Props) {
   const [coupon, setCoupon] = useState("");
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
@@ -184,13 +193,18 @@ export function MeuPlanoView({
             <PersonSimpleRun size={14} weight="bold" />
             {statusBadge}
           </span>
-          {renewalDateLabel && (
+          {trialAtivo && trialFimLabel ? (
+            <span className="text-[11px] italic text-white/80 text-right leading-snug">
+              Teste grátis até {trialFimLabel}
+              {priceDisplayHint ? ` · depois ${priceDisplayHint}` : ""}
+            </span>
+          ) : renewalDateLabel ? (
             <span className="text-[11px] italic text-white/80 text-right leading-snug">
               {isActive
                 ? `Renovação automática em ${renewalDateLabel}`
                 : `Acesso até ${renewalDateLabel}`}
             </span>
-          )}
+          ) : null}
         </div>
 
         <div className="relative flex items-end justify-between gap-3">
@@ -324,9 +338,11 @@ export function MeuPlanoView({
         </button>
         {faqOpen && (
           <p className="px-4 pb-4 text-sm text-text-secondary leading-relaxed">
-            Sua assinatura é cobrada via Mercado Pago na forma de pagamento
-            cadastrada. Você pode alterar, pausar ou cancelar a qualquer momento,
-            sem multa. O acesso permanece ativo até o fim do período já pago.
+            Sua assinatura é cobrada na forma de pagamento cadastrada. Você pode
+            alterar ou cancelar a qualquer momento, sem multa. No teste grátis de
+            30 dias, o cancelamento não gera cobrança. Fora do trial, o acesso ao
+            plano pago permanece até o fim do período já pago; depois você volta
+            ao plano gratuito de 3 alunos.
           </p>
         )}
       </div>
@@ -336,8 +352,8 @@ export function MeuPlanoView({
         title="Cancelar assinatura?"
         description={
           cancelAccessUntilLabel
-            ? `Você continuará com acesso até ${cancelAccessUntilLabel}. Após essa data, sua conta perde acesso aos recursos do AURON. Não haverá novas cobranças.`
-            : "Você continuará com acesso até o fim do período já pago. Após essa data, o painel será bloqueado. Não haverá novas cobranças."
+            ? `Você continuará com o plano atual até ${cancelAccessUntilLabel}. Depois volta ao gratuito (até 3 alunos). Não haverá novas cobranças.`
+            : "Você continuará com o plano atual até o fim do período já pago. Depois volta ao gratuito (até 3 alunos). Não haverá novas cobranças."
         }
         confirmLabel="Confirmar cancelamento"
         cancelLabel="Manter assinatura"
@@ -367,7 +383,7 @@ export function MeuPlanoView({
             </h3>
             <p className="text-sm text-text-secondary mb-4">
               Escolha por quanto tempo deseja pausar. Em breve esta opção estará
-              disponível com o Mercado Pago.
+              disponível.
             </p>
             <div className="flex gap-2 mb-5">
               {([7, 15, 30] as const).map((d) => (
@@ -463,25 +479,34 @@ export function MeuPlanoView({
             </div>
 
             {changePlan && (
-              <div className="flex gap-1 p-1 rounded-lg bg-surface-2 mb-4">
-                {changePlan.billingOptions.map((o) => (
-                  <button
-                    key={o.period}
-                    type="button"
-                    onClick={() => setChangePeriod(o.period)}
-                    className={cn(
-                      "flex-1 py-2 rounded-md text-[10px] font-semibold uppercase tracking-wide border-0 cursor-pointer",
-                      changePeriod === o.period
-                        ? "bg-surface-0 text-brand shadow-sm"
-                        : "bg-transparent text-text-tertiary",
-                    )}
-                  >
-                    {BILLING_PERIOD_LABELS[o.period]}
-                    <span className="block text-[10px] font-bold normal-case mt-0.5 tabular-nums">
-                      {formatCurrencyBRL(o.price)}
-                    </span>
-                  </button>
-                ))}
+              <div className="mb-4">
+                <div className="flex gap-1 p-1 rounded-lg bg-surface-2">
+                  {changePlan.billingOptions.map((o) => (
+                    <button
+                      key={o.period}
+                      type="button"
+                      onClick={() => setChangePeriod(o.period)}
+                      className={cn(
+                        "flex-1 py-2 rounded-md text-[10px] font-semibold uppercase tracking-wide border-0 cursor-pointer",
+                        changePeriod === o.period
+                          ? "bg-surface-0 text-brand shadow-sm"
+                          : "bg-transparent text-text-tertiary",
+                      )}
+                    >
+                      {BILLING_PERIOD_LABELS[o.period]}
+                      <span className="block text-[10px] font-bold normal-case mt-0.5 tabular-nums">
+                        {o.period === "yearly"
+                          ? `${formatCurrencyBRL(getMonthlyEquivalent(o.price, "yearly"))}/mês`
+                          : formatCurrencyBRL(o.price)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {changePeriod === "yearly" && (
+                  <p className="mt-2 text-center text-[11px] font-semibold text-brand">
+                    {YEARLY_PROMO_COPY}
+                  </p>
+                )}
               </div>
             )}
 

@@ -11,7 +11,8 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import { descansoToSeconds } from "@/lib/utils/restTime";
-import { exercicioMostraPeso } from "@/app/components/workout-builder/exerciseColumns";
+import { exercicioMostraPeso, exercicioEhPorTempo } from "@/app/components/workout-builder/exerciseColumns";
+import { isIsometria } from "@/lib/constants/workout-techniques";
 import { sendTreinoIniciadoNotification } from "@/lib/notifications/sendTreinoIniciadoNotification";
 import { useRestTimer } from "@/lib/hooks/useRestTimer";
 import { RestTimerBar } from "@/app/components/treino/execucao/RestTimerBar";
@@ -19,6 +20,7 @@ import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { YouTubePlayer } from "@/app/components/YouTubePlayer";
 import TecnicaInfoModal from "@/app/components/TecnicaInfoModal";
 import { TecnicasTooltipModal, TecnicasTooltipTrigger } from "@/app/components/treino/TecnicasTooltipModal";
+import { parsePesoInput, formatPesoDisplay } from "@/lib/utils/pesoInput";
 
 interface Serie {
   ordem: number;
@@ -32,20 +34,10 @@ interface Serie {
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
+  /** Série prescrita por tempo (exercício Duração/Duração e Peso, ou técnica Isometria) — `reps` guarda o tempo alvo formatado ("00:30"). */
+  is_tempo?: boolean;
 }
 
-/** Aceita "," ou "." como separador decimal — trata os dois do mesmo jeito (ex.: "7,5" ou "7.5"). */
-function parsePesoInput(raw: string): number {
-  const normalized = raw.replace(',', '.').replace(/[^0-9.]/g, '');
-  const num = parseFloat(normalized);
-  return isNaN(num) ? 0 : num;
-}
-
-/** Formata um peso numérico para exibição com vírgula (padrão brasileiro). */
-function formatPesoDisplay(value: number): string {
-  if (!value) return '';
-  return String(value).replace('.', ',');
-}
 
 interface Exercicio {
   id: string;
@@ -265,19 +257,24 @@ function FichaContent() {
             const anterior = seriePrev
               ? `${seriePrev.peso_atual}kg x ${seriePrev.reps || 0}`
               : "—";
+            const tecnicaExtra = serie.tecnica_extra
+              || (serie.cluster ? "Cluster Set" : null)
+              || (serie.drop_set ? "Drop Set" : null)
+              || (serie.bi_set ? "Bi-Set" : null)
+              || (serie.isometria ? "Isometria" : null)
+              || "";
+            const isTempo = exercicioEhPorTempo(ex.tipo_exercicio) || isIsometria({ tecnica: serie.tecnica, tecnica_extra: tecnicaExtra });
             return {
               ordem,
               anterior,
               peso_atual: seriePrev?.peso_atual ?? 0,
-              reps: serie.reps ?? serie.reps_sugerido ?? 0,
+              reps: isTempo
+                ? (serie.tempo_sugerido ?? serie.tempo ?? "00:30")
+                : (serie.reps ?? serie.reps_sugerido ?? 0),
               tecnica: serie.tecnica || "",
-              tecnica_extra: serie.tecnica_extra
-                || (serie.cluster ? "Cluster Set" : null)
-                || (serie.drop_set ? "Drop Set" : null)
-                || (serie.bi_set ? "Bi-Set" : null)
-                || (serie.isometria ? "Isometria" : null)
-                || "",
+              tecnica_extra: tecnicaExtra,
               completado: false,
+              is_tempo: isTempo,
             };
           }),
         };
@@ -880,11 +877,11 @@ function FichaContent() {
                   const colParts = ['2.5rem', 'minmax(4rem, 7rem)'];
                   if (showPeso) colParts.push('5rem');
                   if (hasExtra) colParts.push('5rem');
-                  colParts.push('4rem', '2.75rem');
+                  colParts.push('minmax(4rem, 6rem)', '2.75rem');
                   const gridTemplate = colParts.join(' ');
                   const mobileGridTemplate = showPeso
-                    ? '24px minmax(36px, 72px) 44px 48px minmax(0, 1fr) 24px 28px'
-                    : '24px minmax(36px, 72px) 48px minmax(0, 1fr) 24px 28px';
+                    ? '24px minmax(36px, 72px) 44px minmax(48px, 76px) minmax(0, 1fr) 24px 28px'
+                    : '24px minmax(36px, 72px) minmax(48px, 84px) minmax(0, 1fr) 24px 28px';
                   return (
                     <>
                       {/* Cabeçalhos desktop */}

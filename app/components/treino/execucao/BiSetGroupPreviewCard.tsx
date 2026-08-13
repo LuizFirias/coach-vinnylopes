@@ -9,33 +9,31 @@ import { isPerSideLoadEquipment } from "@/lib/constants/equipment";
 import { CargaPorLadoInfoButton } from "@/app/components/treino/execucao/CargaPorLadoInfoModal";
 import { exercicioMostraPeso } from "@/app/components/workout-builder/exerciseColumns";
 import { getSeriesGridCols } from "@/lib/utils/seriesGrid";
+import { parsePesoInput, formatPesoDisplay } from "@/lib/utils/pesoInput";
+import { secondsToDescanso } from "@/lib/utils/restTime";
+import { digitsFromTempoInput, digitsToSeconds, digitsToMMSS } from "@/lib/utils/tempoInput";
 
 interface SeriePreview {
   ordem: number;
   peso_atual: number;
+  /** Texto exatamente como o aluno digitou (aceita vírgula) — evita reformatar enquanto ele digita. */
+  peso_input_str?: string;
   reps: number | string;
   reps_executadas?: number | string;
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
   anterior?: string;
+  /** Série prescrita por tempo — `reps` guarda o tempo alvo formatado ("00:30"). */
+  is_tempo?: boolean;
+  /** Segundos que o aluno realmente sustentou, cronometrados na execução. */
+  tempo_executado_seg?: number;
+  /** Texto exatamente como o aluno digitou o tempo ("MM:SS") — evita reformatar enquanto ele digita. */
+  tempo_input_str?: string;
 }
 
 function toTitleCase(str: string) {
   return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function resolveRepsPreview(serie: SeriePreview): { abaixo: boolean } {
-  const exec = serie.reps_executadas;
-  const presc = serie.reps;
-  if (exec === undefined || exec === null || exec === "") {
-    return { abaixo: false };
-  }
-  const execNum = typeof exec === "string" ? parseFloat(exec) : exec;
-  const prescNum = typeof presc === "string" ? parseFloat(String(presc)) : presc;
-  return {
-    abaixo: !isNaN(execNum) && !isNaN(prescNum) && execNum < prescNum,
-  };
 }
 
 function GradientPlayIcon({ size = 22 }: { size?: number }) {
@@ -67,8 +65,9 @@ interface HalfPreviewProps {
   showSemDescanso?: boolean;
   videoUrl?: string;
   treinoIniciado: boolean;
-  onPesoChange: (ordem: number, peso: number) => void;
+  onPesoChange: (ordem: number, peso: number, rawStr?: string) => void;
   onRepsChange: (ordem: number, reps: number | string) => void;
+  onTempoChange: (ordem: number, seconds: number, rawStr?: string) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen?: (url: string) => void;
   onCargaInfo?: () => void;
@@ -88,6 +87,7 @@ function HalfPreview({
   treinoIniciado,
   onPesoChange,
   onRepsChange,
+  onTempoChange,
   onCheck,
   onVideoOpen,
   onCargaInfo,
@@ -183,18 +183,21 @@ function HalfPreview({
             )}
             {showPeso && (
               <input
-                type="number"
+                type="text"
                 inputMode="decimal"
-                value={serie.peso_atual || ""}
-                onChange={(e) => onPesoChange(serie.ordem, parseFloat(e.target.value) || 0)}
-                className="w-full max-w-[40px] mx-auto bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
+                value={serie.peso_input_str ?? formatPesoDisplay(serie.peso_atual)}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  onPesoChange(serie.ordem, parsePesoInput(raw), raw);
+                }}
+                className="w-full max-w-11 mx-auto bg-transparent border-0 text-center font-sans tabular-nums lining-nums focus:outline-none disabled:opacity-50"
                 style={{
                   height: 28,
-                  fontSize: "15px",
+                  fontSize: "12px",
                   color: "var(--text-secondary)",
                   fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
                   fontVariantNumeric: "tabular-nums lining-nums",
-                  fontWeight: 400,
+                  fontWeight: 500,
                   borderBottom: "1.5px solid transparent",
                 }}
                 onFocus={(e) => {
@@ -207,7 +210,46 @@ function HalfPreview({
               />
             )}
             {(() => {
-              const { abaixo } = resolveRepsPreview(serie);
+              if (serie.is_tempo) {
+                return (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={
+                      serie.tempo_input_str != null
+                        ? digitsToMMSS(serie.tempo_input_str)
+                        : (serie.tempo_executado_seg ? secondsToDescanso(serie.tempo_executado_seg) : "")
+                    }
+                    placeholder={String(serie.reps)}
+                    onChange={(e) => {
+                      const digits = digitsFromTempoInput(e.target.value);
+                      onTempoChange(serie.ordem, digitsToSeconds(digits), digits);
+                    }}
+                    disabled={!treinoIniciado}
+                    aria-label={`Tempo da série ${serie.ordem}. Prescrito: ${serie.reps}`}
+                    className={cn(
+                      "w-full mx-auto bg-transparent border-0 text-center font-sans",
+                      "tabular-nums lining-nums focus:outline-none disabled:opacity-50",
+                      "placeholder:text-text-disabled",
+                    )}
+                    style={{
+                      height: 28,
+                      fontSize: "11px",
+                      fontWeight: 500,
+                      fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                      fontVariantNumeric: "tabular-nums lining-nums",
+                      color: serie.completado ? "#39c75a" : "var(--text-primary)",
+                      borderBottom: "1.5px solid transparent",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderBottomColor = "rgba(117,27,180,0.45)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderBottomColor = "transparent";
+                    }}
+                  />
+                );
+              }
               return (
                 <input
                   type="number"
@@ -225,21 +267,17 @@ function HalfPreview({
                   disabled={!treinoIniciado}
                   aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
                   className={cn(
-                    "w-full max-w-[48px] mx-auto bg-transparent border-0 text-center font-sans",
+                    "w-full mx-auto bg-transparent border-0 text-center font-sans",
                     "tabular-nums lining-nums focus:outline-none disabled:opacity-50",
-                    "placeholder:text-text-secondary",
+                    "placeholder:text-text-disabled",
                   )}
                   style={{
                     height: 28,
-                    fontSize: "14px",
-                    fontWeight: 600,
+                    fontSize: "11px",
+                    fontWeight: 500,
                     fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
                     fontVariantNumeric: "tabular-nums lining-nums",
-                    color: serie.completado
-                      ? "#39c75a"
-                      : abaixo
-                        ? "var(--warning)"
-                        : "var(--text-primary)",
+                    color: serie.completado ? "#39c75a" : "var(--text-primary)",
                     borderBottom: "1.5px solid transparent",
                   }}
                   onFocus={(e) => {
@@ -278,10 +316,12 @@ interface BiSetGroupPreviewCardProps {
   treinoIniciado: boolean;
   showAnteriorCol: boolean;
   isDesktop?: boolean;
-  onPesoChangeA: (ordem: number, peso: number) => void;
-  onPesoChangeB: (ordem: number, peso: number) => void;
+  onPesoChangeA: (ordem: number, peso: number, rawStr?: string) => void;
+  onPesoChangeB: (ordem: number, peso: number, rawStr?: string) => void;
   onRepsChangeA: (ordem: number, reps: number | string) => void;
   onRepsChangeB: (ordem: number, reps: number | string) => void;
+  onTempoChangeA: (ordem: number, seconds: number, rawStr?: string) => void;
+  onTempoChangeB: (ordem: number, seconds: number, rawStr?: string) => void;
   onCheckA: (ordem: number) => void;
   onCheckB: (ordem: number) => void;
   onVideoOpen?: (url: string) => void;
@@ -299,6 +339,8 @@ export function BiSetGroupPreviewCard({
   onPesoChangeB,
   onRepsChangeA,
   onRepsChangeB,
+  onTempoChangeA,
+  onTempoChangeB,
   onCheckA,
   onCheckB,
   onVideoOpen,
@@ -330,6 +372,7 @@ export function BiSetGroupPreviewCard({
         treinoIniciado={treinoIniciado}
         onPesoChange={onPesoChangeA}
         onRepsChange={onRepsChangeA}
+        onTempoChange={onTempoChangeA}
         onCheck={onCheckA}
         onVideoOpen={onVideoOpen}
         onCargaInfo={onCargaInfo}
@@ -352,6 +395,7 @@ export function BiSetGroupPreviewCard({
         treinoIniciado={treinoIniciado}
         onPesoChange={onPesoChangeB}
         onRepsChange={onRepsChangeB}
+        onTempoChange={onTempoChangeB}
         onCheck={onCheckB}
         onVideoOpen={onVideoOpen}
         onCargaInfo={onCargaInfo}

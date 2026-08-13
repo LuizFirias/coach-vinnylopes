@@ -10,31 +10,31 @@
  */
 
 // Com ANT: SET ANT PESO REPS ·spacer· TÉC CHECK
-const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(48px, 84px) 40px 48px minmax(0, 1fr) 30px 30px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(64px, 110px) 48px 52px minmax(0, 1fr) 44px 36px';
+const GRID_COLS_SERIES_WITH_ANT_MOBILE = '28px minmax(48px, 84px) 40px minmax(48px, 72px) minmax(0, 1fr) 30px 30px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP = '36px minmax(64px, 110px) 48px minmax(52px, 80px) minmax(0, 1fr) 44px 36px';
 // Sem ANT: SET PESO REPS ·spacer· TÉC CHECK
-const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px 48px minmax(0, 1fr) 32px 32px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px 52px minmax(0, 1fr) 44px 36px';
+const GRID_COLS_SERIES_NO_ANT_MOBILE = '28px 40px minmax(48px, 76px) minmax(0, 1fr) 32px 32px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP = '36px 48px minmax(52px, 84px) minmax(0, 1fr) 44px 36px';
 // Sem PESO + com ANT
-const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_PESO = '28px minmax(48px, 84px) 48px minmax(0, 1fr) 30px 30px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_PESO = '36px minmax(64px, 110px) 52px minmax(0, 1fr) 44px 36px';
+const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_PESO = '28px minmax(48px, 84px) minmax(48px, 76px) minmax(0, 1fr) 30px 30px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_PESO = '36px minmax(64px, 110px) minmax(52px, 84px) minmax(0, 1fr) 44px 36px';
 // Sem PESO + sem ANT
-const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_PESO = '28px 48px minmax(0, 1fr) 32px 32px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_PESO = '36px 52px minmax(0, 1fr) 44px 36px';
+const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_PESO = '28px minmax(48px, 84px) minmax(0, 1fr) 32px 32px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_PESO = '36px minmax(52px, 92px) minmax(0, 1fr) 44px 36px';
 
 // Variantes sem a coluna TÉC (bi-set: a técnica extra some, pois bi-set já é a técnica) — SET [ANT] [PESO] REPS ·spacer· CHECK
-const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_EXTRA = '28px minmax(48px, 84px) 40px 48px minmax(0, 1fr) 30px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_EXTRA = '36px minmax(64px, 110px) 48px 52px minmax(0, 1fr) 36px';
-const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_EXTRA = '28px 40px 48px minmax(0, 1fr) 32px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_EXTRA = '36px 48px 52px minmax(0, 1fr) 36px';
-const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_PESO_NO_EXTRA = '28px minmax(48px, 84px) 48px minmax(0, 1fr) 30px';
-const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_PESO_NO_EXTRA = '36px minmax(64px, 110px) 52px minmax(0, 1fr) 36px';
-const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_PESO_NO_EXTRA = '28px 48px minmax(0, 1fr) 32px';
-const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_PESO_NO_EXTRA = '36px 52px minmax(0, 1fr) 36px';
+const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_EXTRA = '28px minmax(48px, 84px) 40px minmax(48px, 84px) minmax(0, 1fr) 30px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_EXTRA = '36px minmax(64px, 110px) 48px minmax(52px, 92px) minmax(0, 1fr) 36px';
+const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_EXTRA = '28px 40px minmax(48px, 88px) minmax(0, 1fr) 32px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_EXTRA = '36px 48px minmax(52px, 96px) minmax(0, 1fr) 36px';
+const GRID_COLS_SERIES_WITH_ANT_MOBILE_NO_PESO_NO_EXTRA = '28px minmax(48px, 84px) minmax(48px, 88px) minmax(0, 1fr) 30px';
+const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_PESO_NO_EXTRA = '36px minmax(64px, 110px) minmax(52px, 96px) minmax(0, 1fr) 36px';
+const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_PESO_NO_EXTRA = '28px minmax(48px, 96px) minmax(0, 1fr) 32px';
+const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_PESO_NO_EXTRA = '36px minmax(52px, 104px) minmax(0, 1fr) 36px';
 
 // Histórico: SET ANT PESO REPS ·spacer· TÉC
-export const GRID_COLS_HISTORICO = '28px minmax(48px, 88px) 48px 44px minmax(0, 1fr) 64px';
-export const GRID_COLS_HISTORICO_NO_PESO = '28px minmax(48px, 88px) 44px minmax(0, 1fr) 64px';
+export const GRID_COLS_HISTORICO = '28px minmax(48px, 88px) minmax(44px, 60px) minmax(44px, 72px) minmax(0, 1fr) 64px';
+export const GRID_COLS_HISTORICO_NO_PESO = '28px minmax(48px, 88px) minmax(44px, 72px) minmax(0, 1fr) 64px';
 
 export function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean, showPeso = true, showExtra = true): string {
   if (showAnterior) {

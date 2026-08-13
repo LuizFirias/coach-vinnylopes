@@ -1,5 +1,29 @@
+/** Limite do plano gratuito (coach novo, sem assinatura paga). */
+export const FREE_TIER_STUDENT_LIMIT = 3;
+
 export type PlanTier = "iniciante" | "start" | "pro" | "elite" | "test";
+/** `semester` permanece só para assinaturas legadas em leitura; novas vendas: monthly | yearly. */
 export type BillingPeriod = "monthly" | "semester" | "yearly";
+
+/**
+ * Conta no freemium: acesso ativo, sem plan_tier pago (START/PRO/ELITE).
+ * Usado na UI de assinatura para mostrar upgrade em vez de "Meu plano".
+ */
+export function isFreeTierProfile(profile: {
+  plan_tier?: string | null;
+  student_limit?: number | null;
+  subscription_active?: boolean | null;
+  account_type?: string | null;
+}): boolean {
+  const accountType = profile.account_type ?? "padrao";
+  if (accountType === "teste" || accountType === "parceiro") return false;
+  if (profile.plan_tier) return false;
+  return (
+    profile.subscription_active === true &&
+    (profile.student_limit ?? 0) > 0 &&
+    (profile.student_limit ?? 0) <= FREE_TIER_STUDENT_LIMIT
+  );
+}
 
 export interface PlanBillingOption {
   price: number;
@@ -20,10 +44,18 @@ export interface PlanDefinition {
   billing: Partial<Record<BillingPeriod, PlanBillingOption>>;
   /** Destaque visual (ex.: plano QA em vermelho). */
   accent?: "danger";
+  /** Badge "Mais popular" nos cards de pricing. */
+  featured?: boolean;
 }
 
-/** Tiers comerciais (sem o plano de teste R$5). */
-export const PLAN_TIERS: PlanTier[] = ["iniciante", "start", "pro", "elite"];
+/** Tiers comerciais ofertado no checkout (spec: START / PRO / ELITE). */
+export const PLAN_TIERS: PlanTier[] = ["start", "pro", "elite"];
+
+/** Ciclos oferecidos no checkout (semestral removido). */
+export const COMMERCIAL_BILLING_PERIODS: BillingPeriod[] = ["monthly", "yearly"];
+
+/** Copy do desconto anual — modelo "pague 10, use 12". */
+export const YEARLY_PROMO_COPY = "2 meses grátis — pague 10, use 12";
 
 /**
  * Stand-by do plano QA R$5 na tela de assinaturas.
@@ -84,7 +116,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     accent: "danger",
     features: [
       "Até 30 alunos ativos",
-      "Treinos e nutrição",
+      "Auxílio de criação de treinos e nutrição com IA",
       "Relatórios básicos",
       "Biblioteca de exercícios",
     ],
@@ -101,10 +133,10 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     tier: "iniciante",
     label: "INICIANTE",
     studentLimit: 15,
-    description: "Entrada acessível para começar a consultoria",
+    description: "Plano legado — não ofertado em novas vendas",
     features: [
       "Até 15 alunos ativos",
-      "Treinos e nutrição",
+      "Auxílio de criação de treinos e nutrição com IA",
       "Relatórios básicos",
       "Biblioteca de exercícios",
     ],
@@ -122,8 +154,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
         mpFrequencyMonths: 6,
       },
       yearly: {
-        price: 156.9,
-        priceDisplay: "R$ 156,90/ano",
+        price: 249.0,
+        priceDisplay: "R$ 249,00/ano",
         periodLabel: "Anual",
         mpFrequencyMonths: 12,
       },
@@ -136,17 +168,18 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     description: "Ideal para consolidar sua consultoria",
     features: [
       "Até 30 alunos ativos",
-      "Treinos e nutrição",
+      "Auxílio de criação de treinos e nutrição com IA",
       "Relatórios básicos",
       "Biblioteca de exercícios",
     ],
     billing: {
       monthly: {
-        price: 39.9,
-        priceDisplay: "R$ 39,90/mês",
+        price: 47.9,
+        priceDisplay: "R$ 47,90/mês",
         periodLabel: "Mensal",
         mpFrequencyMonths: 1,
       },
+      // Legado — não ofertado no checkout
       semester: {
         price: 149.9,
         priceDisplay: "R$ 149,90/semestre",
@@ -154,8 +187,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
         mpFrequencyMonths: 6,
       },
       yearly: {
-        price: 249.9,
-        priceDisplay: "R$ 249,90/ano",
+        price: 479.0,
+        priceDisplay: "R$ 479,00/ano",
         periodLabel: "Anual",
         mpFrequencyMonths: 12,
       },
@@ -165,23 +198,25 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     tier: "pro",
     label: "PRO",
     studentLimit: 150,
-    description: "Para coaches em crescimento",
+    featured: true,
+    description: "Para personal trainers em crescimento",
     features: [
       "Até 150 alunos ativos",
       "Tudo do START",
       "Relatórios avançados",
       "Suporte prioritário",
+      "Feedback personalizado",
     ],
     billing: {
       monthly: {
-        price: 64.9,
-        priceDisplay: "R$ 64,90/mês",
+        price: 74.9,
+        priceDisplay: "R$ 74,90/mês",
         periodLabel: "Mensal",
         mpFrequencyMonths: 1,
       },
       yearly: {
-        price: 549.9,
-        priceDisplay: "R$ 549,90/ano",
+        price: 749.0,
+        priceDisplay: "R$ 749,00/ano",
         periodLabel: "Anual",
         mpFrequencyMonths: 12,
       },
@@ -201,11 +236,12 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     ],
     billing: {
       monthly: {
-        price: 99.9,
-        priceDisplay: "R$ 99,90/mês",
+        price: 129.9,
+        priceDisplay: "R$ 129,90/mês",
         periodLabel: "Mensal",
         mpFrequencyMonths: 1,
       },
+      // Legado — não ofertado no checkout
       semester: {
         price: 452.9,
         priceDisplay: "R$ 452,90/semestre",
@@ -213,8 +249,8 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
         mpFrequencyMonths: 6,
       },
       yearly: {
-        price: 764.9,
-        priceDisplay: "R$ 764,90/ano",
+        price: 1299.0,
+        priceDisplay: "R$ 1.299,00/ano",
         periodLabel: "Anual",
         mpFrequencyMonths: 12,
       },
@@ -225,9 +261,13 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
 export function isValidPlanCombo(tier: string, period: string): tier is PlanTier {
   const allVariants: PlanTier[] = ["test", "iniciante", "start", "pro", "elite"];
   if (!allVariants.includes(tier as PlanTier)) return false;
+  // INICIANTE: legado — não ofertado em novas vendas
+  if (tier === "iniciante") return false;
   if (tier === "test" && !isTestPlanEnabled()) {
     return false;
   }
+  // Novas vendas: não oferece semestral (legado só em assinaturas já ativas)
+  if (period === "semester") return false;
   return Boolean(PLANS[tier as PlanTier].billing[period as BillingPeriod]);
 }
 
@@ -259,7 +299,9 @@ export function getPlanLabel(tier: PlanTier | string | null | undefined): string
 }
 
 export function getBillingPeriodsForTier(tier: PlanTier): BillingPeriod[] {
-  return Object.keys(PLANS[tier].billing) as BillingPeriod[];
+  return (Object.keys(PLANS[tier].billing) as BillingPeriod[]).filter(
+    (p) => p !== "semester",
+  );
 }
 
 /** Texto de limite para UI/marketing (ELITE → Ilimitado). */
@@ -292,6 +334,7 @@ export function getPlansCatalog() {
       description: plan.description,
       features: plan.features,
       accent: plan.accent ?? null,
+      featured: Boolean(plan.featured),
       billingOptions: getBillingPeriodsForTier(tier).map((period) => ({
         period,
         ...plan.billing[period]!,
@@ -307,7 +350,7 @@ export function formatStudentUsage(count: number, limit: number | null): string 
   return `${count}/${limit} alunos`;
 }
 
-/** Meses do ciclo (1 / 6 / 12). */
+/** Meses do ciclo (1 / 6 legado / 12). */
 export function getBillingMonths(period: BillingPeriod): number {
   if (period === "yearly") return 12;
   if (period === "semester") return 6;

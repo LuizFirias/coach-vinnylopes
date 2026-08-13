@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 const PROFILE_FIELDS =
-  "id, role, must_change_password, first_access_completed, email, full_name";
+  "id, role, must_change_password, first_access_completed, onboarding_visto, email, full_name";
 
 export async function POST(req: Request) {
   try {

@@ -3,18 +3,15 @@ import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 
 export async function getAuthenticatedUser(req: Request) {
-  let token = "";
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  let cookieToken = "";
   try {
     const cookieStore = await cookies();
-    token = cookieStore.get("sb-access-token")?.value || "";
+    cookieToken = cookieStore.get("sb-access-token")?.value || "";
   } catch {
     // ignore
   }
-
-  if (!token) {
-    const bearer = req.headers.get("authorization") || "";
-    token = bearer.replace("Bearer ", "").trim();
-  }
+  const token = bearer || cookieToken;
 
   if (!token) {
     return { error: "Não autorizado", status: 401 as const };

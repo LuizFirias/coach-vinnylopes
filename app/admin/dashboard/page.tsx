@@ -29,6 +29,11 @@ import {
 import { useNaoLidasRealtime } from "@/lib/chat/realtime";
 import { useNotificacoesNaoLidas } from "@/lib/notifications/realtime";
 import { CoachNotificationsPanel } from "@/app/components/notifications/CoachNotificationsPanel";
+import {
+  carregarProgressoOnboarding,
+  type PassoProgresso,
+} from "@/lib/onboarding/concluirPasso";
+import { GuiaConfiguracaoCard } from "@/app/components/onboarding/GuiaConfiguracaoCard";
 import { withReturnUrl } from "@/lib/utils/adminNav";
 
 const FROM_DASHBOARD = "/admin/dashboard";
@@ -98,6 +103,8 @@ export default function AdminDashboard() {
   const [coachStudentLimit, setCoachStudentLimit] = useState<number | null>(null);
   const [linkedStudentCount, setLinkedStudentCount] = useState(0);
   const [coachName, setCoachName] = useState("");
+  const [onboardingPassos, setOnboardingPassos] = useState<PassoProgresso[]>([]);
+  const [guiaPronto, setGuiaPronto] = useState(false);
 
   const activeStudentsSubtitle = useMemo(() => {
     if (coachStudentLimit !== null) {
@@ -114,13 +121,18 @@ export default function AdminDashboard() {
     setError(null);
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
-      const coachId = session?.user?.id;
-      if (!coachId) { setError("Sessão inválida"); setLoading(false); return; }
+      const coachId = session?.user?.id ?? user?.id;
+      if (!coachId) {
+        // Race de hidratação — não tratar como erro definitivo
+        if (!opts?.silent) setLoading(false);
+        return;
+      }
 
-      // Status + alunos + nome de exibição + planos personalizados em paralelo
-      const [statusResult, coachAlunosResult, coachProfileResult, customPlans] = await Promise.all([
-        session.access_token
-          ? fetchSubscriptionStatusCached(session.access_token)
+      const accessToken = session?.access_token;
+      const [statusResult, coachAlunosResult, coachProfileResult, customPlans, passos] =
+        await Promise.all([
+        accessToken
+          ? fetchSubscriptionStatusCached(accessToken)
           : Promise.resolve(null),
         supabaseClient
           .from('coach_alunos')
@@ -128,11 +140,20 @@ export default function AdminDashboard() {
           .eq('coach_id', coachId),
         supabaseClient
           .from('profiles')
-          .select('full_name')
+          .select('full_name, onboarding_visto')
           .eq('id', coachId)
-          .single(),
+          .maybeSingle(),
         fetchCoachCustomPlans(coachId).catch(() => [] as CoachPlan[]),
+        carregarProgressoOnboarding(coachId),
       ]);
+
+      setOnboardingPassos(passos);
+      setGuiaPronto(true);
+
+      if (coachProfileResult.data?.onboarding_visto === false) {
+        router.replace("/admin/boas-vindas");
+        return;
+      }
 
       const duracaoMap = buildPlanDurationMap(customPlans);
 
@@ -632,7 +653,7 @@ export default function AdminDashboard() {
       hasDataRef.current = true;
       setLoading(false);
     }
-  }, [router]);
+  }, [router, user?.id]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -685,6 +706,10 @@ export default function AdminDashboard() {
           onClose={() => setNotifOpen(false)}
           chatNaoLidas={chatNaoLidas}
         />
+
+        {guiaPronto && (
+          <GuiaConfiguracaoCard passos={onboardingPassos} />
+        )}
 
         {totalAlunos === 0 ? (
           <div className="bg-surface-1 border-0 rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">

@@ -18,6 +18,7 @@ import {
 import type { NutritionFood, NutritionMealType } from '@/lib/nutrition/types';
 import { textIncludes } from '@/lib/utils/textNormalize';
 import { cn } from '@/lib/utils/cn';
+import { TimeRollerPicker } from '@/app/components/ui/TimeRollerPicker';
 
 export type MealDraftItem = {
   food_id: string;
@@ -120,23 +121,6 @@ function SoftQtyInput({
   );
 }
 
-function formatTimeInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
-}
-
-function normalizeTimeValue(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 4);
-  if (digits.length < 4) return raw.slice(0, 5);
-  let h = Number(digits.slice(0, 2));
-  let m = Number(digits.slice(2, 4));
-  if (Number.isNaN(h) || Number.isNaN(m)) return '';
-  h = Math.min(23, Math.max(0, h));
-  m = Math.min(59, Math.max(0, m));
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 export function PlanEditMealModal({
   open,
   draft,
@@ -191,7 +175,6 @@ export function PlanEditMealModal({
 
   if (!open) return null;
 
-  const timeValue = (draft.time_suggestion || '').slice(0, 5);
   const typeLabel = MEAL_TYPE_LABELS[draft.meal_type] || 'Tipo';
 
   const togglePick = (id: string) => {
@@ -437,36 +420,16 @@ export function PlanEditMealModal({
                     />
                   </div>
                 </div>
-                <div className="shrink-0 flex flex-col gap-1 w-[4.5rem]">
-                  <label
-                    htmlFor="meal-time"
-                    className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand"
-                  >
+                <div className="shrink-0 flex flex-col gap-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand">
                     Hora
-                  </label>
-                  <div className="field-flat-input border-b border-border-subtle focus-within:border-brand">
-                    <input
-                      id="meal-time"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="00:00"
-                      value={timeValue}
-                      maxLength={5}
-                      onChange={(e) =>
-                        onChange({
-                          ...draft,
-                          time_suggestion: formatTimeInput(e.target.value),
-                        })
+                  </span>
+                  <div className="h-9 flex items-center">
+                    <TimeRollerPicker
+                      value={draft.time_suggestion || ''}
+                      onChange={(next) =>
+                        onChange({ ...draft, time_suggestion: next })
                       }
-                      onBlur={() => {
-                        if (!timeValue) return;
-                        onChange({
-                          ...draft,
-                          time_suggestion: normalizeTimeValue(timeValue),
-                        });
-                      }}
-                      className="h-9 w-full px-0 text-[13px] font-semibold tabular-nums lining-nums text-text-primary text-center"
-                      style={{ fontSize: 16 }}
                     />
                   </div>
                 </div>

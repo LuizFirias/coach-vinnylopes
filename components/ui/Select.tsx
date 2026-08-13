@@ -25,6 +25,10 @@ interface SelectProps {
   id?: string;
   /** Lista sem opções selecionáveis vazias — use value "" + placeholder */
   emptyLabel?: string;
+  /** `underline` = só linha inferior, sem caixa preenchida */
+  variant?: "default" | "underline";
+  /** `sm` = altura compacta (listas / linhas densas) */
+  size?: "default" | "sm";
 }
 
 /** Classes compartilhadas do painel de lista (Select, autocomplete, multi-select). */
@@ -43,15 +47,29 @@ export const selectTriggerClassName = (opts?: {
   open?: boolean;
   error?: boolean;
   disabled?: boolean;
+  variant?: "default" | "underline";
+  size?: "default" | "sm";
 }) =>
   cn(
-    "w-full h-11 px-3.5 rounded-[10px] flex items-center gap-2 text-left touch-manipulation",
-    "bg-surface-2 text-text-primary border-0",
-    "transition-colors",
-    "focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/30",
-    opts?.open && "ring-1 ring-brand/30",
-    opts?.error && "ring-1 ring-danger/40",
+    "w-full flex items-center text-left touch-manipulation transition-colors",
+    "focus:outline-none",
     opts?.disabled && "opacity-50 cursor-not-allowed",
+    opts?.size === "sm" ? "h-7 gap-1" : "h-11 gap-2",
+    opts?.variant === "underline"
+      ? cn(
+          "px-0 rounded-none bg-transparent text-text-primary",
+          "border-0 border-b border-[color-mix(in_srgb,var(--text-primary)_12%,transparent)]",
+          opts?.open && "border-brand",
+          opts?.error && "border-danger",
+          !opts?.open && !opts?.error && "focus-visible:border-brand",
+        )
+      : cn(
+          opts?.size === "sm" ? "px-2.5 rounded-lg" : "px-3.5 rounded-[10px]",
+          "bg-surface-2 text-text-primary border-0",
+          "focus-visible:ring-1 focus-visible:ring-brand/30",
+          opts?.open && "ring-1 ring-brand/30",
+          opts?.error && "ring-1 ring-danger/40",
+        ),
   );
 
 export function Select({
@@ -66,12 +84,15 @@ export function Select({
   className,
   id,
   emptyLabel,
+  variant = "default",
+  size = "default",
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const autoId = useId();
   const triggerId = id || autoId;
   const listId = `${triggerId}-listbox`;
+  const compact = size === "sm";
 
   const selected = options.find((o) => o.value === value);
   const display =
@@ -100,7 +121,7 @@ export function Select({
   }, [open]);
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex flex-col", compact ? "gap-0" : "gap-1.5", open && "relative z-50", className)}>
       {label && (
         <label
           htmlFor={triggerId}
@@ -110,7 +131,7 @@ export function Select({
         </label>
       )}
 
-      <div ref={containerRef} className="relative">
+      <div ref={containerRef} className={cn("relative", open && "z-50")}>
         <button
           id={triggerId}
           type="button"
@@ -120,18 +141,20 @@ export function Select({
           aria-controls={listId}
           aria-invalid={!!error}
           onClick={() => !disabled && setOpen((v) => !v)}
-          className={selectTriggerClassName({ open, error: !!error, disabled })}
+          className={selectTriggerClassName({ open, error: !!error, disabled, variant, size })}
         >
           <span
             className={cn(
-              "flex-1 min-w-0 truncate text-[13px] font-medium",
-              !display && "text-text-disabled font-normal text-[12px]",
+              "flex-1 min-w-0 truncate font-medium",
+              compact ? "text-[12px]" : "text-[13px]",
+              !display && "text-text-disabled font-normal",
+              !display && !compact && "text-[12px]",
             )}
           >
             {display ?? placeholder}
           </span>
           <CaretDown
-            size={14}
+            size={compact ? 12 : 14}
             className={cn(
               "shrink-0 text-text-tertiary transition-transform",
               open && "rotate-180",
@@ -144,7 +167,7 @@ export function Select({
             id={listId}
             role="listbox"
             aria-labelledby={triggerId}
-            className={selectListboxClassName}
+            className={cn(selectListboxClassName, compact && "min-w-44")}
           >
             {options.length === 0 ? (
               <div className="px-3 py-2.5 text-[12px] text-text-disabled">
