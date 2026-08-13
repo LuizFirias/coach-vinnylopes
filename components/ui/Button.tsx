@@ -25,7 +25,9 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost:
     'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-2',
   danger:
-    'bg-danger-subtle text-danger border border-danger-border hover:bg-danger hover:text-text-primary',
+    // Evitar classe `text-danger`: em design-tokens.css ela é unlayered e
+    // sobrescreve hover:text-white (texto some no fundo vermelho).
+    'bg-danger-subtle border border-danger-border text-[color:var(--danger)] hover:bg-danger hover:text-white hover:border-danger active:bg-danger active:text-white',
   success:
     'bg-[#39c75a] text-text-on-brand shadow-none active:opacity-80',
 };

@@ -1,27 +1,30 @@
 'use client';
 
-import { useState, useEffect, useRef, type CSSProperties } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { 
-  Plus, Trash, FloppyDisk, CheckCircle, Check,
-  MagnifyingGlass, Barbell, Info, Calendar, Copy, CaretRight
+  Plus, Trash, FloppyDisk, CheckCircle,
+  Copy, CaretRight, DotsThree
 } from '@phosphor-icons/react';
 import { BackButton } from '@/app/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Select } from '@/components/ui/Select';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { MacrosCard } from '@/app/components/nutrition/MacrosCard';
-import { MealButton } from '@/app/components/nutrition/MealButton';
-import { NutritionFood, NutritionFoodCategory, NutritionMealType } from '@/lib/nutrition/types';
-import { formatFoodQuantityDisplay, isGramsOnlyLabel } from '@/lib/nutrition/portionDisplay';
+import { MetaProgressCard } from '@/app/components/nutrition/MetaProgressCard';
+import { RefeicoesMiniResumo } from '@/app/components/nutrition/RefeicoesMiniResumo';
+import { AdicionarRefeicaoButton } from '@/app/components/nutrition/AdicionarRefeicaoButton';
+import { FoodSearchPanel, type FoodSearchGroup } from '@/app/components/nutrition/FoodSearchPanel';
+import { NutritionFood, NutritionMealType } from '@/lib/nutrition/types';
+import { isGramsOnlyLabel } from '@/lib/nutrition/portionDisplay';
 import { cn } from '@/lib/utils/cn';
 import { textIncludes } from '@/lib/utils/textNormalize';
 import { readReturnUrl } from '@/lib/utils/adminNav';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 import { concluirPasso } from '@/lib/onboarding/concluirPasso';
 import { TimeRollerPicker } from '@/app/components/ui/TimeRollerPicker';
 
@@ -31,6 +34,7 @@ interface NutritionPlanBuilderProps {
 
 export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanBuilderProps) {
   const router = useRouter();
+  const isMobile = useBreakpoint('mobile');
   const goBack = () => {
     router.push(readReturnUrl(window.location.search, '/admin/nutricao'));
   };
@@ -51,58 +55,30 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const [orientacoesGerais, setOrientacoesGerais] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  /** Meta salva do plano (para Prescrito vs meta). Sem meta → card some. */
+  const [macrosAlvo, setMacrosAlvo] = useState({ proteina: 0, carbo: 0, gordura: 0 });
 
   // Meals data structure
   const [meals, setMeals] = useState<any[]>([]);
   // Accordion: quais refeições estão expandidas (por índice)
   const [mealsAbertas, setMealsAbertas] = useState<Record<number, boolean>>({});
+  const [mealToRemove, setMealToRemove] = useState<number | null>(null);
+  const [mealMenuOpen, setMealMenuOpen] = useState<number | null>(null);
 
   // Search combobox states
   const [searchOpen, setSearchOpen] = useState<{ mealIndex: number; itemIndex?: number; subIndex?: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   /** Categorias selecionadas (multi). Vazio = sem filtro de categoria. */
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [activeGroup, setActiveGroup] = useState<'todos' | 'macros' | 'outros'>('todos');
+  const [activeGroup, setActiveGroup] = useState<FoodSearchGroup>('todos');
   /** IDs dos alimentos marcados no modal (seleção múltipla) */
   const [pickedFoodIds, setPickedFoodIds] = useState<string[]>([]);
-
-  const MACRO_CATEGORIES = [
-    { val: 'carboidrato', label: 'Carboidrato' },
-    { val: 'proteina', label: 'Proteína' },
-    { val: 'gordura', label: 'Gordura' },
-  ] as const;
-
-  const OUTROS_CATEGORIES = [
-    { val: 'fruta', label: 'Fruta' },
-    { val: 'vegetal', label: 'Vegetal' },
-    { val: 'leguminosa', label: 'Leguminosa' },
-    { val: 'laticinio', label: 'Laticínio' },
-    { val: 'suplemento', label: 'Suplemento' },
-    { val: 'oleaginosa', label: 'Oleaginosa' },
-    { val: 'bebida', label: 'Bebida' },
-    { val: 'tempero', label: 'Tempero' },
-    { val: 'outro', label: 'Outro' },
-  ] as const;
 
   const toggleCategory = (val: string) => {
     setSelectedCategories((prev) =>
       prev.includes(val) ? prev.filter((c) => c !== val) : [...prev, val],
     );
   };
-
-  const filterChipClass = (active: boolean) =>
-    cn(
-      'h-7 px-3 flex items-center justify-center rounded-lg text-[10px] uppercase tracking-wider font-bold border shrink-0 transition-all cursor-pointer gap-1',
-      active
-        ? 'border-[color:var(--brand-border)] text-[color:var(--brand-primary)]'
-        : 'border-transparent text-text-secondary hover:text-text-primary',
-    );
-
-  const filterChipStyle = (active: boolean): CSSProperties => ({
-    background: 'var(--card-macros-bg)',
-    boxShadow: active ? 'var(--elev-1)' : undefined,
-    borderColor: active ? 'var(--brand-border)' : undefined,
-  });
 
   // Load students and foods
   useEffect(() => {
@@ -191,6 +167,11 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
           );
           setStartDate(initialPlanData.start_date || '');
           setEndDate(initialPlanData.end_date || '');
+          setMacrosAlvo({
+            proteina: Number(initialPlanData.protein_target) || 0,
+            carbo: Number(initialPlanData.carbs_target) || 0,
+            gordura: Number(initialPlanData.fat_target) || 0,
+          });
 
           // Populate meals from the first day
           const day1 = initialPlanData.days?.[0];
@@ -283,12 +264,18 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   };
 
   const handleRemoveMeal = (index: number) => {
-    if (!window.confirm("Remover esta refeição? Os alimentos e substituições desta refeição serão removidos do plano.")) return;
-    setMeals(meals.filter((_, i) => i !== index));
+    setMealToRemove(index);
+  };
+
+  const confirmRemoveMeal = () => {
+    if (mealToRemove === null) return;
+    setMeals((prev) => prev.filter((_, i) => i !== mealToRemove));
+    setMealToRemove(null);
   };
 
   const handleAddFoodToMeal = (mealIndex: number) => {
     setSearchOpen({ mealIndex });
+    setMealsAbertas((prev) => ({ ...prev, [mealIndex]: true }));
     setSearchQuery('');
     setSelectedCategories([]);
     setActiveGroup('todos');
@@ -297,6 +284,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
   const handleAddSubstitution = (mealIndex: number, itemIndex: number) => {
     setSearchOpen({ mealIndex, itemIndex });
+    setMealsAbertas((prev) => ({ ...prev, [mealIndex]: true }));
     setSearchQuery('');
     setSelectedCategories([]);
     setActiveGroup('todos');
@@ -381,6 +369,16 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   };
 
   const planMacros = sumMacros(meals.map((m) => getMealMacros(m)));
+
+  const refeicoesMini = meals.map((meal, idx) => {
+    const macros = getMealMacros(meal);
+    return {
+      id: String(meal.id ?? `meal-${idx}`),
+      nome: meal.title || mealTypeLabels[meal.meal_type as NutritionMealType] || `Refeição ${idx + 1}`,
+      kcalTotal: macros.calories,
+      temAlimentos: (meal.items?.length ?? 0) > 0,
+    };
+  });
 
   // Save/Publish
   const handleSavePlan = async (status: 'draft' | 'active') => {
@@ -476,13 +474,20 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
     })
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
-  const parentRef = useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
-    count: filteredFoods.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 68,
-    overscan: 5,
-  });
+  const foodSearchPanelProps = {
+    searchQuery,
+    onSearchQueryChange: setSearchQuery,
+    activeGroup,
+    onActiveGroupChange: setActiveGroup,
+    selectedCategories,
+    onToggleCategory: toggleCategory,
+    onResetCategories: () => setSelectedCategories([]),
+    filteredFoods,
+    pickedFoodIds,
+    onTogglePicked: togglePickedFood,
+    onConfirm: handleConfirmPickedFoods,
+    onClose: handleCloseFoodSearch,
+  };
 
   if (loading) {
     return (
@@ -494,9 +499,9 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <div className="mx-auto max-w-7xl px-4 pt-2 md:pt-4">
+      <div className="w-full px-4 pt-2 md:px-6 md:pt-4">
         {/* Header */}
-        <div className="mb-3 flex items-center gap-3 py-2 md:mb-4 md:border-b md:border-divider/50 md:pb-3 md:pt-1">
+        <div className="mb-3 flex items-center gap-3 py-2 md:mb-4 md:pb-1 md:pt-1">
           <BackButton onClick={goBack} />
         </div>
 
@@ -515,10 +520,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         )}
 
         {/* Layout Workspace Grid */}
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-6">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,500px)]">
           
-          {/* Coluna Esquerda: Construtor (70%) */}
-          <div className="flex flex-col gap-4 lg:col-span-8 lg:gap-6">
+          {/* Coluna Esquerda: Construtor */}
+          <div className="flex min-w-0 flex-col gap-3 lg:gap-4">
             
             {/* CARD 1: Dados Básicos — Nível 2 (tokens) */}
             <div
@@ -534,21 +539,23 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 className="hidden h-0.5 w-full md:block"
                 style={{ background: "var(--card-macros-topline)", opacity: 0.5 }}
               />
-              <div className="flex flex-col gap-4 p-4 md:p-5">
-              <Select
-                variant="underline"
-                label="Aluno destinatário"
-                value={selectedStudentId}
-                onChange={setSelectedStudentId}
-                placeholder="Selecione o aluno..."
-                disabled={!!initialPlanData || saving}
-                options={alunos.map(a => ({
-                  value: a.id,
-                  label: a.coaching_reference || a.full_name || a.id
-                }))}
-              />
+              <div className="flex flex-col gap-3 p-4 md:gap-3.5 md:p-5">
+              {/* Linha 1 (desktop): Aluno | Nome */}
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
+                <Select
+                  variant="underline"
+                  label="Aluno destinatário"
+                  value={selectedStudentId}
+                  onChange={setSelectedStudentId}
+                  placeholder="Selecione o aluno..."
+                  disabled={!!initialPlanData || saving}
+                  className="min-w-0"
+                  options={alunos.map(a => ({
+                    value: a.id,
+                    label: a.coaching_reference || a.full_name || a.id
+                  }))}
+                />
 
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                     Nome do plano
@@ -562,13 +569,16 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     className="input-underline w-full"
                   />
                 </div>
+              </div>
 
+              {/* Linha 2 (desktop): Objetivo | Data início | Data término */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
                 <Select
                   variant="underline"
                   label="Objetivo principal"
                   value={goal}
                   onChange={setGoal}
-                  className="min-w-0"
+                  className="min-w-0 sm:col-span-2 lg:col-span-1"
                   options={[
                     { value: 'Hipertrofia', label: 'Hipertrofia' },
                     { value: 'Emagrecimento', label: 'Emagrecimento' },
@@ -579,9 +589,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     { value: 'Outro', label: 'Outro' }
                   ]}
                 />
-              </div>
 
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                     Data início
@@ -591,7 +599,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     disabled={saving}
-                    className="input-underline w-full"
+                    className={cn(
+                      'input-underline w-full',
+                      startDate ? 'date-filled' : 'date-empty',
+                    )}
                   />
                 </div>
 
@@ -604,13 +615,17 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     disabled={saving}
-                    className="input-underline w-full"
+                    className={cn(
+                      'input-underline w-full',
+                      endDate ? 'date-filled' : 'date-empty',
+                    )}
                   />
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-col">
-                <label className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+              {/* Linha 3: Orientações */}
+              <div className="flex flex-col">
+                <label className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                   Orientações gerais
                 </label>
                 <textarea
@@ -620,34 +635,21 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     setNotes(e.target.value);
                   }}
                   placeholder="Suplementação e orientações do plano..."
-                  rows={4}
+                  rows={3}
                   disabled={saving}
                   className="field-token-input w-full"
                 />
-                <p className="mt-1.5 text-[10px] italic text-text-disabled">
+                <p className="mt-1 text-[10px] italic text-text-disabled">
                   Visível em destaque no app do aluno — use para suplementos, timing e avisos gerais.
                 </p>
               </div>
               </div>
             </div>
 
-            <MacrosCard
-              proteina={planMacros.protein}
-              carbo={planMacros.carbs}
-              gordura={planMacros.fat}
-              readOnly={saving}
-              atual={{
-                proteina: planMacros.protein,
-                carbo: planMacros.carbs,
-                gordura: planMacros.fat,
-                kcal: planMacros.calories,
-              }}
-            />
-
             {/* CARD 3: Refeições */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-end border-b border-divider/50 pb-2">
-                {meals.length === 0 && (
+            <div className="flex flex-col gap-3">
+              {meals.length === 0 && (
+                <div className="flex items-center justify-center">
                   <Button
                     onClick={handleCreateDefaultMeals}
                     variant="primary"
@@ -656,10 +658,10 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                   >
                     Gerar refeições padrão
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {meals.map((meal, mealIdx) => {
                 const macros = getMealMacros(meal);
                 const aberta = mealsAbertas[mealIdx] ?? (mealIdx === 0);
@@ -670,7 +672,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                     style={{ background: "var(--card-macros-bg)" }}
                   >
                     
-                    {/* Meal Header */}
+                    {/* Meal Header — horário à esquerda */}
                     <div className={cn("flex flex-col gap-2", aberta && "border-b border-black/[0.04] pb-2 dark:border-white/[0.05]")}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -682,6 +684,14 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                           >
                             <CaretRight size={14} className={cn("transition-transform", aberta && "rotate-90")} />
                           </button>
+                          <TimeRollerPicker
+                            value={meal.time_suggestion || ''}
+                            onChange={(next) => {
+                              const updated = [...meals];
+                              updated[mealIdx].time_suggestion = next;
+                              setMeals(updated);
+                            }}
+                          />
                           <input
                             type="text"
                             value={meal.title}
@@ -700,34 +710,52 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <TimeRollerPicker
-                            value={meal.time_suggestion || ''}
-                            onChange={(next) => {
-                              const updated = [...meals];
-                              updated[mealIdx].time_suggestion = next;
-                              setMeals(updated);
-                            }}
-                          />
-
+                        <div className="relative shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleDuplicateMeal(mealIdx)}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent transition-opacity hover:opacity-80"
-                            style={{ color: 'var(--brand-primary)' }}
-                            title="Duplicar Refeição"
+                            onClick={() =>
+                              setMealMenuOpen((prev) => (prev === mealIdx ? null : mealIdx))
+                            }
+                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-text-tertiary transition-colors hover:text-text-primary"
+                            title="Opções da refeição"
+                            aria-label="Opções da refeição"
+                            aria-expanded={mealMenuOpen === mealIdx}
                           >
-                            <Copy size={13} />
+                            <DotsThree size={16} weight="bold" />
                           </button>
-
-                          <button
-                            onClick={() => handleRemoveMeal(mealIdx)}
-                            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent transition-opacity hover:opacity-80"
-                            style={{ color: 'var(--brand-primary)' }}
-                            title="Remover Refeição"
-                          >
-                            <Trash size={13} />
-                          </button>
+                          {mealMenuOpen === mealIdx && (
+                            <>
+                              <button
+                                type="button"
+                                className="fixed inset-0 z-20 cursor-default bg-transparent"
+                                aria-label="Fechar menu"
+                                onClick={() => setMealMenuOpen(null)}
+                              />
+                              <div className="absolute right-0 top-full z-30 mt-1 min-w-[160px] rounded-lg border-0 bg-surface-1 py-1 shadow-elev-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleDuplicateMeal(mealIdx);
+                                    setMealMenuOpen(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-text-primary hover:bg-surface-2"
+                                >
+                                  <Copy size={14} /> Clonar
+                                </button>
+                                <div className="my-1 h-px bg-[color:var(--border-divider)]" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleRemoveMeal(mealIdx);
+                                    setMealMenuOpen(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-danger hover:bg-danger/10"
+                                >
+                                  <Trash size={14} /> Excluir
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -765,14 +793,27 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
 
                     {aberta && (
                     <>
-                    {/* Meal items (list) — Fase 8: linha de lista, sem card aninhado */}
-                    <div className="flex flex-col divide-y divide-black/[0.03] dark:divide-white/[0.04]">
-                      {(meal.items || []).length === 0 ? (
-                        <p className="text-[10px] text-text-disabled text-center py-4 border border-dashed border-divider rounded-lg">
-                          Nenhum alimento prescrito para esta refeição.
-                        </p>
-                      ) : (
-                        meal.items.map((item: any, itemIdx: number) => {
+                    {/* Meal items */}
+                    <div className="flex flex-col">
+                      {(meal.items || []).length === 0 &&
+                      !(!isMobile && searchOpen?.mealIndex === mealIdx) ? (
+                        <button
+                          type="button"
+                          onClick={() => handleAddFoodToMeal(mealIdx)}
+                          className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-divider px-3 py-5 text-center transition-colors hover:border-brand/40 hover:bg-brand/5"
+                        >
+                          <p className="text-[10px] text-text-disabled">
+                            Nenhum alimento prescrito para esta refeição.
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[color:var(--brand-primary)]">
+                            <Plus className="h-3 w-3" weight="bold" />
+                            Alimento
+                          </span>
+                        </button>
+                      ) : (meal.items || []).length > 0 ? (
+                        <>
+                        <div className="flex flex-col divide-y divide-black/[0.03] dark:divide-white/[0.04]">
+                        {meal.items.map((item: any, itemIdx: number) => {
                           const food = getFoodById(item.food_id);
                           if (!food) return null;
                           const calculated = calculateItemMacros(food, Number(item.quantity_grams));
@@ -816,70 +857,59 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                 </div>
                               </div>
 
-                              {(food.portions && food.portions.length > 0) || (item.portion_label && !isGramsOnlyLabel(item.portion_label)) ? (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  {food.portions && food.portions.length > 0 && (
-                                    <>
-                                      <select
-                                        value={item.portion_label || ''}
+                              {food.portions && food.portions.length > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <Select
+                                    variant="underline"
+                                    size="sm"
+                                    value={item.portion_label || ''}
+                                    onChange={(label) => {
+                                      const portion = food.portions?.find(p => p.label === label);
+                                      const updated = [...meals];
+                                      updated[mealIdx].items[itemIdx].portion_label = label;
+                                      if (portion) {
+                                        updated[mealIdx].items[itemIdx].quantity_grams = Number(portion.grams);
+                                      }
+                                      setMeals(updated);
+                                    }}
+                                    placeholder="Só gramas"
+                                    className="w-[9.5rem] shrink-0"
+                                    options={[
+                                      { value: '', label: 'Só gramas' },
+                                      ...food.portions.map((p) => ({
+                                        value: p.label,
+                                        label: p.label,
+                                        hint: `${p.grams}g`,
+                                      })),
+                                    ]}
+                                  />
+
+                                  {item.portion_label && !isGramsOnlyLabel(item.portion_label) ? (
+                                    <div className="flex w-12 shrink-0 items-baseline gap-0.5" title="Quantidade de medidas (ex.: 2 copas)">
+                                      <input
+                                        type="number"
+                                        min={0.1}
+                                        step={0.25}
+                                        value={(() => {
+                                          const portion = food.portions.find(p => p.label === item.portion_label);
+                                          if (!portion || Number(portion.grams) === 0) return 1;
+                                          return Math.round((Number(item.quantity_grams) / Number(portion.grams)) * 100) / 100;
+                                        })()}
                                         onChange={(e) => {
-                                          const label = e.target.value;
-                                          const portion = food.portions?.find(p => p.label === label);
-                                          const updated = [...meals];
-                                          updated[mealIdx].items[itemIdx].portion_label = label;
+                                          const mult = Number(e.target.value) || 1;
+                                          const portion = food.portions?.find(p => p.label === item.portion_label);
                                           if (portion) {
-                                            updated[mealIdx].items[itemIdx].quantity_grams = Number(portion.grams);
+                                            const updated = [...meals];
+                                            updated[mealIdx].items[itemIdx].quantity_grams = Math.round(Number(portion.grams) * mult * 10) / 10;
+                                            setMeals(updated);
                                           }
-                                          setMeals(updated);
                                         }}
-                                        className="field-compact-select max-w-[140px]"
-                                        title="Medida caseira"
-                                      >
-                                        <option value="">Só gramas</option>
-                                        {food.portions.map((p, pIdx) => (
-                                          <option key={pIdx} value={p.label}>
-                                            {p.label} ({p.grams}g)
-                                          </option>
-                                        ))}
-                                      </select>
-
-                                      {item.portion_label && !isGramsOnlyLabel(item.portion_label) && (
-                                        <div className="flex w-14 items-baseline gap-0.5" title="Quantidade de medidas (ex.: 3 ovos)">
-                                          <input
-                                            type="number"
-                                            min={0.1}
-                                            step={0.25}
-                                            value={(() => {
-                                              const portion = food.portions.find(p => p.label === item.portion_label);
-                                              if (!portion || Number(portion.grams) === 0) return 1;
-                                              return Math.round((Number(item.quantity_grams) / Number(portion.grams)) * 100) / 100;
-                                            })()}
-                                            onChange={(e) => {
-                                              const mult = Number(e.target.value) || 1;
-                                              const portion = food.portions?.find(p => p.label === item.portion_label);
-                                              if (portion) {
-                                                const updated = [...meals];
-                                                updated[mealIdx].items[itemIdx].quantity_grams = Math.round(Number(portion.grams) * mult * 10) / 10;
-                                                setMeals(updated);
-                                              }
-                                            }}
-                                            className="input-qty min-w-0 flex-1 text-right"
-                                          />
-                                          <span className="shrink-0 text-[11px] font-semibold" style={{ color: 'var(--brand-primary)' }}>×</span>
-                                        </div>
-                                      )}
-                                    </>
-                                  )}
-
-                                  {item.portion_label && !isGramsOnlyLabel(item.portion_label) && (
-                                    <span className="hidden text-[9px] font-medium text-brand sm:inline">
-                                      {formatFoodQuantityDisplay(
-                                        item.quantity_grams,
-                                        item.portion_label,
-                                        food.portions?.find((p) => p.label === item.portion_label)?.grams,
-                                      ).primary}
-                                    </span>
-                                  )}
+                                        aria-label="Quantidade de medidas"
+                                        className="input-qty min-w-0 flex-1 text-right"
+                                      />
+                                      <span className="shrink-0 text-[11px] text-text-disabled">×</span>
+                                    </div>
+                                  ) : null}
                                 </div>
                               ) : null}
 
@@ -928,11 +958,12 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                           </div>
 
                                           {subFood.portions && subFood.portions.length > 0 && (
-                                            <div className="flex items-center gap-1">
-                                              <select
+                                            <div className="flex min-w-0 items-center gap-1">
+                                              <Select
+                                                variant="underline"
+                                                size="sm"
                                                 value={sub.portion_label || ''}
-                                                onChange={(e) => {
-                                                  const label = e.target.value;
+                                                onChange={(label) => {
                                                   const portion = subFood.portions?.find(p => p.label === label);
                                                   const updated = [...meals];
                                                   updated[mealIdx].items[itemIdx].substitutions[subIdx].portion_label = label;
@@ -941,17 +972,19 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                                   }
                                                   setMeals(updated);
                                                 }}
-                                                className="field-compact-select max-w-[120px]"
-                                              >
-                                                <option value="">Porção...</option>
-                                                {subFood.portions.map((p, pIdx) => (
-                                                  <option key={pIdx} value={p.label}>
-                                                    {p.label}
-                                                  </option>
-                                                ))}
-                                              </select>
+                                                placeholder="Porção…"
+                                                className="w-[7.5rem] shrink-0"
+                                                options={[
+                                                  { value: '', label: 'Porção…' },
+                                                  ...subFood.portions.map((p) => ({
+                                                    value: p.label,
+                                                    label: p.label,
+                                                    hint: `${p.grams}g`,
+                                                  })),
+                                                ]}
+                                              />
 
-                                              {sub.portion_label && (
+                                              {sub.portion_label ? (
                                                 <div className="flex w-11 items-baseline gap-0.5" title="Quantidade de porções">
                                                   <input
                                                     type="number"
@@ -975,7 +1008,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                                                   />
                                                   <span className="shrink-0 text-[10px] text-text-tertiary">×</span>
                                                 </div>
-                                              )}
+                                              ) : null}
                                             </div>
                                           )}
 
@@ -995,34 +1028,52 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                               </div>
                             </div>
                           );
-                        })
+                        })}
+                        </div>
+
+                        {!(!isMobile && searchOpen?.mealIndex === mealIdx) && (
+                          <div className="mt-1 flex justify-start pt-1">
+                            <Button
+                              onClick={() => handleAddFoodToMeal(mealIdx)}
+                              variant="ghost"
+                              className="h-7 cursor-pointer rounded-md px-2 text-[10px] font-bold uppercase text-[color:var(--brand-primary)] hover:bg-transparent hover:opacity-80 active:bg-transparent"
+                              leftIcon={<Plus className="h-3 w-3" />}
+                            >
+                              Alimento
+                            </Button>
+                          </div>
+                        )}
+                        </>
+                      ) : null}
+
+                      {!isMobile && searchOpen?.mealIndex === mealIdx && (
+                        <div className={cn((meal.items || []).length > 0 && 'mt-2')}>
+                          <FoodSearchPanel
+                            variant="inline"
+                            title={
+                              searchOpen.itemIndex !== undefined
+                                ? 'Adicionar substituto'
+                                : 'Adicionar alimento'
+                            }
+                            {...foodSearchPanelProps}
+                          />
+                        </div>
                       )}
                     </div>
 
-                    {/* Meal actions */}
-                    <div className="mt-1 flex items-center justify-between border-t border-black/[0.04] pt-3 dark:border-white/[0.05]">
-                      <div className="flex flex-col gap-1.5 w-full mr-4">
-                        <input
-                          type="text"
-                          value={meal.notes}
-                          onChange={(e) => {
-                            const updated = [...meals];
-                            updated[mealIdx].notes = e.target.value;
-                            setMeals(updated);
-                          }}
-                          placeholder="Recomendações da refeição"
-                          className="w-full bg-transparent border-none text-[10px] text-text-secondary placeholder:text-text-disabled focus:outline-none"
-                        />
-                      </div>
-
-                      <Button
-                        onClick={() => handleAddFoodToMeal(mealIdx)}
-                        variant="secondary"
-                        className="h-7 px-3 text-[10px] font-bold uppercase rounded-md cursor-pointer border-0 shrink-0"
-                        leftIcon={<Plus className="w-3 h-3" />}
-                      >
-                        Alimento
-                      </Button>
+                    {/* Recomendações — largura total */}
+                    <div className="border-t border-black/[0.04] pt-3 dark:border-white/[0.05]">
+                      <input
+                        type="text"
+                        value={meal.notes}
+                        onChange={(e) => {
+                          const updated = [...meals];
+                          updated[mealIdx].notes = e.target.value;
+                          setMeals(updated);
+                        }}
+                        placeholder="Recomendações da refeição"
+                        className="field-token-input field-token-compact w-full"
+                      />
                     </div>
                     </>
                     )}
@@ -1030,34 +1081,22 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 );
               })}
               </div>
-              <div className="mt-4 flex flex-col gap-2 rounded-2xl p-3" style={{ background: "var(--card-macros-bg)" }}>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                  Adicionar refeição
-                </span>
-                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                  {Object.entries(mealTypeLabels).map(([type, label]) => (
-                    <MealButton
-                      key={type}
-                      label={label}
-                      onClick={() => handleAddMeal(type as NutritionMealType)}
-                    />
-                  ))}
-                </div>
-              </div>
+
+              <AdicionarRefeicaoButton onAdicionar={handleAddMeal} />
             </div>
           </div>
 
-          {/* Coluna Direita: Ações sticky */}
-          <div className="lg:col-span-4 lg:sticky lg:top-6 flex flex-col gap-6">
-            <Card className="card-nivel-3 rounded-[20px] border-0 p-4 md:p-5 flex flex-col gap-3">
+          {/* Coluna Direita: ações + análise */}
+          <div className="flex flex-col gap-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-48px)] lg:overflow-y-auto lg:px-2 lg:py-2 lg:[-ms-overflow-style:none] lg:[scrollbar-width:thin]">
+            <Card className="card-nivel-3 flex w-full flex-col gap-3 rounded-[20px] border-0 p-4 md:p-5">
               <Button
                 onClick={() => handleSavePlan('active')}
                 variant="primary"
                 loading={saving}
                 disabled={saving}
                 fullWidth
-                className="h-10 rounded-lg text-xs font-bold gap-1.5 cursor-pointer"
-                leftIcon={<CheckCircle className="w-4 h-4" />}
+                className="h-10 cursor-pointer gap-1.5 rounded-lg text-xs font-bold"
+                leftIcon={<CheckCircle className="h-4 w-4" />}
               >
                 Publicar Plano Alimentar
               </Button>
@@ -1068,236 +1107,65 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
                 loading={saving}
                 disabled={saving}
                 fullWidth
-                className="h-10 rounded-lg text-xs font-bold gap-1.5 cursor-pointer border-0"
-                leftIcon={<FloppyDisk className="w-4 h-4" />}
+                className="h-10 cursor-pointer gap-1.5 rounded-lg border-0 text-xs font-bold"
+                leftIcon={<FloppyDisk className="h-4 w-4" />}
               >
                 Salvar Rascunho
               </Button>
             </Card>
+
+            <MacrosCard
+              proteina={planMacros.protein}
+              carbo={planMacros.carbs}
+              gordura={planMacros.fat}
+              readOnly={saving}
+              atual={{
+                proteina: planMacros.protein,
+                carbo: planMacros.carbs,
+                gordura: planMacros.fat,
+                kcal: planMacros.calories,
+              }}
+            />
+
+            <MetaProgressCard
+              proteinaPrescrita={planMacros.protein}
+              carboPrescrito={planMacros.carbs}
+              gorduraPrescrita={planMacros.fat}
+              proteinaMeta={macrosAlvo.proteina}
+              carboMeta={macrosAlvo.carbo}
+              gorduraMeta={macrosAlvo.gordura}
+            />
+
+            <RefeicoesMiniResumo refeicoes={refeicoesMini} />
           </div>
 
         </div>
       </div>
 
-      {/* MODAL / DROPDOWN: Busca de Alimentos */}
-      {searchOpen !== null && (
-        <div className="fixed inset-0 bg-black/60 z-100 flex items-center justify-center p-4 backdrop-blur-xs">
-          <Card className="w-full max-w-md bg-surface-1 border-0 p-4 md:p-5 flex flex-col gap-4 max-h-[85vh]">
-            <div className="flex items-center justify-between border-b border-divider pb-2">
-              <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">
-                {searchOpen.itemIndex !== undefined ? 'Adicionar Substituto' : 'Adicionar Alimento'}
-              </h3>
-              <button
-                onClick={handleCloseFoodSearch}
-                className="text-xs text-text-tertiary hover:text-text-primary font-bold cursor-pointer"
-              >
-                Fechar
-              </button>
-            </div>
-
-            <div className="field-flat-input rounded-xl border border-border-subtle bg-surface-1">
-              <div className="relative flex items-center px-3 py-2.5 pl-9">
-                <MagnifyingGlass className="pointer-events-none absolute left-3 h-4 w-4 text-text-disabled" />
-                <input
-                  type="text"
-                  placeholder="Buscar por arroz, frango, aveia..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-disabled"
-                  style={{ touchAction: 'manipulation' }}
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {/* Filtros rápidos por categoria */}
-            <div className="flex flex-col gap-2 py-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveGroup('todos');
-                    setSelectedCategories([]);
-                  }}
-                  className={filterChipClass(activeGroup === 'todos')}
-                  style={filterChipStyle(activeGroup === 'todos')}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveGroup((g) => (g === 'macros' ? 'todos' : 'macros'));
-                    setSelectedCategories([]);
-                  }}
-                  className={filterChipClass(activeGroup === 'macros')}
-                  style={filterChipStyle(activeGroup === 'macros')}
-                >
-                  Macros <span className="text-[8px] opacity-75">▼</span>
-                  {selectedCategories.some((c) => MACRO_CATEGORIES.some((m) => m.val === c)) && (
-                    <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand/15 px-1 text-[9px] tabular-nums">
-                      {selectedCategories.filter((c) => MACRO_CATEGORIES.some((m) => m.val === c)).length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveGroup((g) => (g === 'outros' ? 'todos' : 'outros'));
-                    setSelectedCategories([]);
-                  }}
-                  className={filterChipClass(activeGroup === 'outros')}
-                  style={filterChipStyle(activeGroup === 'outros')}
-                >
-                  Outros <span className="text-[8px] opacity-75">▼</span>
-                  {selectedCategories.some((c) => OUTROS_CATEGORIES.some((m) => m.val === c)) && (
-                    <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand/15 px-1 text-[9px] tabular-nums">
-                      {selectedCategories.filter((c) => OUTROS_CATEGORIES.some((m) => m.val === c)).length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {activeGroup === 'macros' && (
-                <div className="flex flex-wrap items-center gap-1.5 pl-1 py-0.5">
-                  {MACRO_CATEGORIES.map((sub) => {
-                    const active = selectedCategories.includes(sub.val);
-                    return (
-                      <button
-                        key={sub.val}
-                        type="button"
-                        onClick={() => toggleCategory(sub.val)}
-                        className={cn(
-                          'h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer',
-                          active
-                            ? 'border-[color:var(--brand-border)] text-[color:var(--brand-primary)]'
-                            : 'border-transparent text-text-secondary hover:text-text-primary',
-                        )}
-                        style={filterChipStyle(active)}
-                      >
-                        {sub.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {activeGroup === 'outros' && (
-                <div className="flex flex-wrap items-center gap-1.5 pl-1 py-0.5">
-                  {OUTROS_CATEGORIES.map((sub) => {
-                    const active = selectedCategories.includes(sub.val);
-                    return (
-                      <button
-                        key={sub.val}
-                        type="button"
-                        onClick={() => toggleCategory(sub.val)}
-                        className={cn(
-                          'h-6 px-2.5 flex items-center justify-center rounded-md text-[9px] uppercase font-bold border shrink-0 transition-all cursor-pointer',
-                          active
-                            ? 'border-[color:var(--brand-border)] text-[color:var(--brand-primary)]'
-                            : 'border-transparent text-text-secondary hover:text-text-primary',
-                        )}
-                        style={filterChipStyle(active)}
-                      >
-                        {sub.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Listagem de resultados no modal — seleção múltipla */}
-            <div
-              ref={parentRef}
-              className="min-h-0 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-surface-3 [&::-webkit-scrollbar-thumb]:rounded relative"
-            >
-              {filteredFoods.length === 0 ? (
-                <p className="text-xs text-text-disabled text-center py-6">Nenhum alimento encontrado.</p>
-              ) : (
-                <div
-                  style={{
-                    height: `${rowVirtualizer.getTotalSize()}px`,
-                    width: '100%',
-                    position: 'relative',
-                  }}
-                >
-                  {rowVirtualizer.getVirtualItems().map((virtualItem) => {
-                    const food = filteredFoods[virtualItem.index];
-                    if (!food) return null;
-                    const picked = pickedFoodIds.includes(food.id);
-                    return (
-                      <button
-                        type="button"
-                        key={virtualItem.key}
-                        onClick={() => togglePickedFood(food.id)}
-                        aria-pressed={picked}
-                        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-brand-subtle"
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: `${virtualItem.size - 8}px`,
-                          transform: `translateY(${virtualItem.start}px)`,
-                          background: 'var(--card-macros-bg)',
-                          border: picked
-                            ? '0.5px solid var(--brand-primary)'
-                            : '0.5px solid var(--brand-border)',
-                          boxShadow: picked ? 'var(--elev-2)' : 'var(--elev-1)',
-                        }}
-                      >
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            className={cn(
-                              'flex h-4 w-4 shrink-0 items-center justify-center rounded',
-                              picked ? 'bg-brand text-text-on-brand' : 'bg-surface-2',
-                            )}
-                            style={!picked ? { border: '0.5px solid var(--border-default)' } : undefined}
-                            aria-hidden
-                          >
-                            {picked && <Check size={10} weight="bold" />}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-bold leading-tight text-text-primary">{food.name}</p>
-                            <span className="text-[8px] font-bold uppercase tracking-wider text-text-tertiary">
-                              {food.category} · {food.calories_per_100g} kcal
-                            </span>
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right text-[10px] font-mono text-text-secondary tabular-nums lining-nums">
-                          <p>P: {food.protein_per_100g}g</p>
-                          <p>C: {food.carbs_per_100g}g</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="flex shrink-0 flex-col gap-2 border-t border-black/[0.04] pt-3 dark:border-white/[0.05]">
-              {pickedFoodIds.length > 0 && (
-                <p className="text-[10px] text-text-tertiary tabular-nums lining-nums">
-                  {pickedFoodIds.length}{' '}
-                  {pickedFoodIds.length === 1 ? 'alimento selecionado' : 'alimentos selecionados'}
-                </p>
-              )}
-              <Button
-                variant="primary"
-                fullWidth
-                disabled={pickedFoodIds.length === 0}
-                onClick={handleConfirmPickedFoods}
-                className="h-10 cursor-pointer rounded-lg text-xs font-bold"
-                leftIcon={<Plus className="h-4 w-4" />}
-              >
-                Adicionar
-                {pickedFoodIds.length > 0 ? ` (${pickedFoodIds.length})` : ''}
-              </Button>
-            </div>
-          </Card>
+      {/* Busca de alimentos — modal só no mobile */}
+      {isMobile && searchOpen !== null && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <FoodSearchPanel
+            variant="modal"
+            title={
+              searchOpen.itemIndex !== undefined
+                ? 'Adicionar Substituto'
+                : 'Adicionar Alimento'
+            }
+            {...foodSearchPanelProps}
+          />
         </div>
       )}
+
+      <ConfirmModal
+        open={mealToRemove !== null}
+        title="Remover refeição"
+        description="Os alimentos e substituições desta refeição serão removidos do plano."
+        confirmLabel="Remover"
+        confirmVariant="danger"
+        onConfirm={confirmRemoveMeal}
+        onClose={() => setMealToRemove(null)}
+      />
     </div>
   );
 }

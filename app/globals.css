@@ -283,49 +283,6 @@ select {
   border-color: var(--border-accent);
 }
 
-/* Inputs/textarea da dieta — escapa baseline do coach, usa tokens */
-.coach-app-typography :is(
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
-  textarea
-).field-token-input {
-  min-height: 44px !important;
-  background: var(--surface-2) !important;
-  border: 0.5px solid var(--border-subtle) !important;
-  border-radius: 10px !important;
-  box-shadow: none !important;
-  color: var(--text-primary) !important;
-  padding: 0 14px !important;
-}
-
-.coach-app-typography textarea.field-token-input {
-  min-height: 96px !important;
-  padding: 12px 14px !important;
-  line-height: 1.6 !important;
-  font-size: 14px !important;
-  font-weight: 400;
-  resize: vertical;
-}
-
-.coach-app-typography :is(
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
-  textarea
-).field-token-input::placeholder {
-  color: var(--text-disabled) !important;
-}
-
-.coach-app-typography :is(
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
-  textarea
-).field-token-input:focus,
-.coach-app-typography :is(
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
-  textarea
-).field-token-input:focus-visible {
-  border-color: var(--brand-primary) !important;
-  box-shadow: var(--focus-ring) !important;
-  outline: none !important;
-}
-
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sans), sans-serif !important;
 }
@@ -1171,6 +1128,71 @@ html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-
   resize: vertical;
 }
 
+/* Textarea/input da dieta — DEPOIS do baseline do coach (senão o padding não aplica) */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input {
+  min-height: 44px !important;
+  background: var(--surface-0) !important;
+  border: 0.5px solid var(--border-default) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input {
+  padding: 0 14px !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input.field-token-compact {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  background: #ffffff !important;
+}
+
+html[data-theme="dark"] .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input.field-token-compact,
+html.dark .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input.field-token-compact {
+  background: var(--surface-1) !important;
+}
+
+.coach-app-typography textarea.field-token-input {
+  min-height: 96px !important;
+  /* ← altere o 1º número para descer/subir o placeholder */
+  padding: 16px 14px 12px !important;
+  line-height: 1.6 !important;
+  font-size: 14px !important;
+  font-weight: 400;
+  resize: vertical;
+  /* Branco explícito — o baseline do coach força surface-2 (cinza) */
+  background: #ffffff !important;
+}
+
+html[data-theme="dark"] .coach-app-typography textarea.field-token-input,
+html.dark .coach-app-typography textarea.field-token-input {
+  background: var(--surface-1) !important;
+}
+
+.coach-app-typography textarea.field-token-input::placeholder {
+  color: var(--text-disabled) !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input:focus-visible {
+  border-color: var(--brand-primary) !important;
+  box-shadow: var(--focus-ring) !important;
+  outline: none !important;
+}
+
 .coach-app-typography select {
   padding-right: 32px !important;
   appearance: none;
@@ -1325,20 +1347,6 @@ html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-
   margin: 0;
 }
 
-.coach-app-typography select.field-compact-select {
-  min-height: 0 !important;
-  height: 1.75rem !important;
-  padding: 0 6px !important;
-  font-size: 11px !important;
-  font-weight: 500;
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  color: var(--text-secondary) !important;
-}
-
 /* Valor hero de macro (g) — sem caixa, sem setas do number */
 .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
@@ -1469,6 +1477,35 @@ html:not([data-theme="dark"]):not(.dark) .coach-app-typography input[type="date"
 html[data-theme="dark"] .coach-app-typography .field-flat-input input[type="date"],
 html.dark .coach-app-typography .field-flat-input input[type="date"] {
   color-scheme: dark;
+}
+
+/* Date underline: vazio = cinza fraco; preenchido = texto forte */
+.coach-app-typography input[type="date"].input-underline.date-empty {
+  color: var(--text-disabled) !important;
+  font-weight: 400 !important;
+}
+
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-fields-wrapper,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-text,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-month-field,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-day-field,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-year-field {
+  color: var(--text-disabled) !important;
+}
+
+.coach-app-typography input[type="date"].input-underline.date-filled {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-fields-wrapper,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-text,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-month-field,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-day-field,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-year-field {
+  color: var(--text-primary) !important;
 }
 
 /* Listas coach (alunos/treinos): light = branco; dark = corpo roxo + cabeçalho branco */
@@ -1706,7 +1743,34 @@ html.dark .coach-list-kpi-card {
   padding-left: 38px !important;
 }
 
-/* Busca compacta (ex.: lista de alunos) — foge do min-height 44px do baseline */
+/* Linhas compactas da busca de alimentos — só texto + checkbox, sem “caixa” */
+.coach-app-typography button.food-search-row {
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 5px 4px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: 1.25 !important;
+}
+
+.coach-app-typography button.food-search-row p,
+.coach-app-typography button.food-search-row span {
+  margin: 0 !important;
+  line-height: 1.25 !important;
+}
+
+.coach-app-typography button.food-search-row[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--brand-primary) 5%, transparent) !important;
+}
+
+.coach-app-typography button.food-search-row:hover {
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent) !important;
+}
 .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact {
   min-height: 28px !important;
   height: 28px !important;

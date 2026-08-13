@@ -107,13 +107,14 @@ export function MacrosCard({
 
   return (
     <div
-      className="relative overflow-hidden rounded-[20px]"
+      className="relative rounded-[20px]"
       style={{
         background: "var(--card-macros-bg)",
         border: "0.5px solid var(--card-macros-border)",
         boxShadow: "var(--card-macros-shadow)",
       }}
     >
+      <div className="relative overflow-hidden rounded-[20px]">
       <div
         className="pointer-events-none absolute inset-0"
         style={{ background: "var(--card-macros-glow)" }}
@@ -244,6 +245,7 @@ export function MacrosCard({
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );
