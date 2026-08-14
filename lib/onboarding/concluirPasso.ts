@@ -110,45 +110,52 @@ export async function sincronizarProgressoOnboarding(
 
   const checks: Array<Promise<{ id: string; ok: boolean }>> = [];
 
+  const checkExiste = async (
+    id: string,
+    query: PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  ): Promise<{ id: string; ok: boolean }> => {
+    const { data, error } = await query;
+    if (error) console.warn(`[onboarding] sync ${id}:`, error.message);
+    const n = Array.isArray(data) ? data.length : 0;
+    return { id, ok: !error && n > 0 };
+  };
+
   if (pendentes.has("cadastrar-aluno")) {
     checks.push(
-      supabaseClient
-        .from("coach_alunos")
-        .select("aluno_id")
-        .eq("coach_id", coachId)
-        .limit(1)
-        .then(({ data, error }) => {
-          if (error) console.warn("[onboarding] sync aluno:", error.message);
-          return { id: "cadastrar-aluno", ok: !error && (data?.length ?? 0) > 0 };
-        }),
+      checkExiste(
+        "cadastrar-aluno",
+        supabaseClient
+          .from("coach_alunos")
+          .select("aluno_id")
+          .eq("coach_id", coachId)
+          .limit(1),
+      ),
     );
   }
 
   if (pendentes.has("montar-ficha")) {
     checks.push(
-      supabaseClient
-        .from("fichas_treino")
-        .select("id")
-        .eq("coach_id", coachId)
-        .limit(1)
-        .then(({ data, error }) => {
-          if (error) console.warn("[onboarding] sync ficha:", error.message);
-          return { id: "montar-ficha", ok: !error && (data?.length ?? 0) > 0 };
-        }),
+      checkExiste(
+        "montar-ficha",
+        supabaseClient
+          .from("fichas_treino")
+          .select("id")
+          .eq("coach_id", coachId)
+          .limit(1),
+      ),
     );
   }
 
   if (pendentes.has("criar-nutricao")) {
     checks.push(
-      supabaseClient
-        .from("nutrition_plans")
-        .select("id")
-        .eq("coach_id", coachId)
-        .limit(1)
-        .then(({ data, error }) => {
-          if (error) console.warn("[onboarding] sync nutricao:", error.message);
-          return { id: "criar-nutricao", ok: !error && (data?.length ?? 0) > 0 };
-        }),
+      checkExiste(
+        "criar-nutricao",
+        supabaseClient
+          .from("nutrition_plans")
+          .select("id")
+          .eq("coach_id", coachId)
+          .limit(1),
+      ),
     );
   }
 
