@@ -6,18 +6,15 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Button } from "@/components/ui/Button";
 import { Check, Lock } from "@phosphor-icons/react";
-import { BackButton } from "@/app/components/ui/BackButton";
-import { MeuPlanoView } from "@/app/components/subscriptions/MeuPlanoView";
-import { PlanPricingCards } from "@/app/components/subscriptions/PlanPricingCards";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { AssinaturaGestaoScreen } from "@/app/components/subscriptions/AssinaturaGestaoScreen";
 import {
   FormularioCartao,
   type DadosCartaoForm,
 } from "@/app/components/subscriptions/FormularioCartao";
 import { cn } from "@/lib/utils/cn";
-import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import {
   BILLING_PERIOD_LABELS,
-  formatCurrencyBRL,
   getMonthlyEquivalent,
   type BillingPeriod,
   type PlanTier,
@@ -101,6 +98,13 @@ function formatDateBR(iso: string | null | undefined): string | null {
   const d = new Date(iso.includes("T") ? iso : `${iso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString("pt-BR");
+}
+
+function daysUntil(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const d = new Date(iso.includes("T") ? iso : `${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86_400_000));
 }
 
 /** Preview da data de cobrança do trial (hoje + 30 dias, calendário local). */
@@ -189,18 +193,6 @@ function PriceHero({
   );
 }
 
-function getPlanPrice(
-  data: SubscriptionData | null,
-  selectedPlan: { billing: { price: number } } | null,
-): number {
-  if (data?.currentPlan) {
-    const plan = data.plans.find((p) => p.tier === data.currentPlan?.tier);
-    const billing = plan?.billingOptions.find((b) => b.period === data.currentPlan?.period);
-    if (billing) return billing.price;
-  }
-  return selectedPlan?.billing.price ?? 0;
-}
-
 function AlertLine({
   borderColor,
   children,
@@ -274,8 +266,6 @@ const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
 
 export default function AssinaturaPage() {
   const router = useRouter();
-  const isBelowDesktop = useBreakpoint("tablet");
-  const isDesktop = !isBelowDesktop;
 
   const paymentAreaRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -303,6 +293,14 @@ export default function AssinaturaPage() {
   const [selectedTier, setSelectedTier] = useState<PlanTier>("start");
   const [selectedPeriod, setSelectedPeriod] = useState<BillingPeriod>("monthly");
   const [checkoutSelection, setCheckoutSelection] = useState<CheckoutSelection | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [billingName, setBillingName] = useState("");
+  const [billingAddress, setBillingAddress] = useState("");
+  const [billingCity, setBillingCity] = useState("");
+  const [billingCep, setBillingCep] = useState("");
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [coupon, setCoupon] = useState("");
+  const [couponMsg, setCouponMsg] = useState<string | null>(null);
 
   const loadStatus = useCallback(async (): Promise<SubscriptionData | null> => {
     let {
@@ -430,6 +428,23 @@ export default function AssinaturaPage() {
     void loadStatus();
   }, [loadStatus]);
 
+  useEffect(() => {
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+      const uid = session?.user?.id;
+      if (!uid) return;
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("full_name")
+        .eq("id", uid)
+        .maybeSingle();
+      const name = profile?.full_name?.trim();
+      if (name) setBillingName(name);
+    })();
+  }, []);
+
   // Polling só no pós-checkout (pending), nunca em canceling/cancelled/expired.
   useEffect(() => {
     if (loading || !data || data.isSuperAdmin) {
@@ -534,8 +549,6 @@ export default function AssinaturaPage() {
     (subscriptionStatus === "expired" ||
       subscriptionStatus === "cancelled" ||
       !data.isActive);
-
-  const showCheckout = needsCheckout || forceCheckout || Boolean(data?.isFreeTier);
 
   const canCancel =
     !!data &&
@@ -739,7 +752,6 @@ export default function AssinaturaPage() {
   const subscription = data.subscription;
 
   const statusPlanLabel = data.currentPlan?.label ?? selectedPlan?.label ?? "—";
-  const statusPrice = getPlanPrice(data, selectedPlan);
   const statusPeriod = data.currentPlan?.period ?? data.billingPeriod ?? selectedPeriod;
 
   const periodEnd = subscription?.current_period_end;
@@ -939,51 +951,165 @@ export default function AssinaturaPage() {
     displayStatus === "past_due" ||
     displayStatus === "super_admin";
 
-  // Freemium (3 alunos, sem plan_tier): usa o app, mas na assinatura vê upgrade — não "Meu plano"
-  const showManageView =
+  const showManageActions =
     !forceCheckout && canReturnToManage && !data.isFreeTier;
 
-  const statusBadgeLabel =
-    displayStatus === "canceling"
-      ? "Cancelando"
-      : displayStatus === "past_due"
-        ? "Pendente"
-        : STATUS_LINE[displayStatus]?.label ?? "Ativo";
+  const trialDays = daysUntil(data.trialFim);
+  const trialFimLabel = formatDateBR(data.trialFim);
+  const catalogPeriod = selectedPeriod === "semester" ? "monthly" : selectedPeriod;
+
+  const statusCard = (() => {
+    if (data.trialAtivo && !data.isSuperAdmin) {
+      return {
+        title: "Período experimental",
+        subtitle: trialFimLabel ? `Até ${trialFimLabel}` : "Teste grátis ativo",
+        pill: trialDays != null ? `${trialDays} dias` : "Ativo",
+        tone: "trial" as const,
+      };
+    }
+    if (data.isFreeTier) {
+      return {
+        title: "Plano gratuito",
+        subtitle: `Até ${data.studentLimit ?? 3} alunos`,
+        pill: "Grátis",
+        tone: "neutral" as const,
+      };
+    }
+    if (displayStatus === "canceling") {
+      return {
+        title: statusPlanLabel,
+        subtitle: accessEndDate ? `Acesso até ${accessEndDate}` : "Cancelamento agendado",
+        pill: "Cancelando",
+        tone: "neutral" as const,
+      };
+    }
+    if (displayStatus === "past_due") {
+      return {
+        title: statusPlanLabel,
+        subtitle: accessEndDate ? `Acesso até ${accessEndDate}` : "Cobrança pendente",
+        pill: "Pendente",
+        tone: "warn" as const,
+      };
+    }
+    if (displayStatus === "expired" || displayStatus === "cancelled") {
+      return {
+        title: statusPlanLabel,
+        subtitle: "Acesso pausado",
+        pill: "Expirada",
+        tone: "danger" as const,
+      };
+    }
+    return {
+      title: data.isSuperAdmin ? "ADMIN" : statusPlanLabel,
+      subtitle: accessEndDate
+        ? `Renovação em ${accessEndDate}`
+        : BILLING_PERIOD_LABELS[statusPeriod] ?? "Assinatura ativa",
+      pill: STATUS_LINE[displayStatus]?.label ?? "Ativo",
+      tone: "ok" as const,
+    };
+  })();
+
+  const checkoutBlock = checkoutSelection && checkoutPlan ? (
+    <div className="mt-8 max-w-xl">
+      <button
+        type="button"
+        onClick={() => setCheckoutSelection(null)}
+        className="mb-4 text-xs font-medium text-brand hover:underline"
+      >
+        ← Trocar plano
+      </button>
+      {selectedPlan && (
+        <div className="mb-4">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary mb-2">
+            {selectedPlan.label}
+          </p>
+          <PriceHero
+            price={
+              selectedPeriod === "yearly"
+                ? getMonthlyEquivalent(selectedPlan.billing.price, "yearly")
+                : selectedPlan.billing.price
+            }
+            period="monthly"
+            size="md"
+          />
+          {featuresList}
+        </div>
+      )}
+      {paymentSection}
+    </div>
+  ) : null;
+
+  const pendingBlock =
+    subscription?.status === "pending" && !data.isActive && !checkoutSelection ? (
+      <section className="py-6">
+        <p className="mb-4 text-xs text-text-secondary">
+          Assinatura pendente de confirmação. Aguarde alguns instantes.
+        </p>
+        <Button
+          variant="secondary"
+          className="h-10 text-xs rounded-md"
+          onClick={() => loadStatus()}
+        >
+          Atualizar status
+        </Button>
+      </section>
+    ) : null;
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <header className="sticky top-0 z-40 bg-surface-0 border-b border-border-divider">
-        <div className="relative flex items-center justify-center px-4 py-3 max-w-[min(1600px,96vw)] mx-auto">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
-            {forceCheckout && canReturnToManage ? (
-              <BackButton
-                onClick={() => {
-                  setForceCheckout(false);
-                  setCheckoutSelection(null);
-                }}
-                aria-label="Voltar ao meu plano"
-              />
-            ) : (
-              <BackButton href="/admin/perfil" aria-label="Voltar ao perfil" />
-            )}
-          </div>
-          <h1 className="text-base font-semibold text-text-primary">
-            {forceCheckout
-              ? "Alterar plano"
-              : showCheckout
-                ? "Escolha seu plano"
-                : "Meu plano"}
-          </h1>
-        </div>
-      </header>
-
-      <div
-        className={cn(
-          "px-4 pt-4 w-full mx-auto flex flex-col gap-4",
-          showCheckout && !checkoutSelection
-            ? "max-w-[min(1100px,96vw)]"
-            : "max-w-[min(720px,96vw)]",
-        )}
+    <>
+      <AssinaturaGestaoScreen
+        useBackClick={Boolean(forceCheckout && canReturnToManage)}
+        onBack={() => {
+          setForceCheckout(false);
+          setCheckoutSelection(null);
+        }}
+        statusCard={statusCard}
+        showManageActions={showManageActions}
+        canCancel={canCancel}
+        onCancelClick={() => setShowCancelModal(true)}
+        onAlterarPagamento={() => {
+          const tier = data.currentPlan?.tier ?? data.planTier ?? selectedTier;
+          const period = data.currentPlan?.period ?? data.billingPeriod ?? selectedPeriod;
+          openCheckout(tier, period);
+        }}
+        cardLastFour={cardLastFour}
+        billingName={billingName}
+        onBillingName={setBillingName}
+        cpfCnpj={cpfCnpj}
+        onCpfCnpj={setCpfCnpj}
+        billingAddress={billingAddress}
+        onBillingAddress={setBillingAddress}
+        billingCity={billingCity}
+        onBillingCity={setBillingCity}
+        billingCep={billingCep}
+        onBillingCep={setBillingCep}
+        catalogPeriod={catalogPeriod}
+        onPeriodChange={setSelectedPeriod}
+        couponOpen={couponOpen}
+        onToggleCoupon={() => setCouponOpen((v) => !v)}
+        coupon={coupon}
+        onCoupon={(v) => {
+          setCoupon(v);
+          setCouponMsg(null);
+        }}
+        couponMsg={couponMsg}
+        onApplyCoupon={() =>
+          setCouponMsg(
+            coupon.trim()
+              ? "Cupons ainda não estão disponíveis. Em breve."
+              : "Digite um cupom para aplicar.",
+          )
+        }
+        plans={data.plans}
+        onSelectPlan={(tier, period) => {
+          setSelectedTier(tier);
+          setSelectedPeriod(period);
+          setCheckoutSelection({ tier, period });
+          setForceCheckout(true);
+        }}
+        trialEligible={Boolean(data?.trialEligible)}
+        checkout={checkoutBlock}
+        pendingBlock={pendingBlock}
       >
         {data?.testDailyCycle && selectedTier === "test" && (
           <AlertLine borderColor="#e05555">
@@ -1016,7 +1142,7 @@ export default function AssinaturaPage() {
           </p>
         )}
 
-        {displayStatus === "canceling" && accessEndDate && showManageView && (
+        {displayStatus === "canceling" && accessEndDate && (
           <AlertLine borderColor="#7a8aab">
             Renovação cancelada. Seu acesso continua até{" "}
             <span className="text-text-primary font-medium">{accessEndDate}</span>
@@ -1024,7 +1150,7 @@ export default function AssinaturaPage() {
           </AlertLine>
         )}
 
-        {displayStatus === "past_due" && accessEndDate && showManageView && (
+        {displayStatus === "past_due" && accessEndDate && (
           <AlertLine borderColor="#f59e0b">
             Cobrança recusada. Atualize seu cartão ou aguarde a retentativa.
             <br />
@@ -1052,157 +1178,25 @@ export default function AssinaturaPage() {
           </AlertLine>
         )}
 
-        {data.isFreeTier && showCheckout && (
-          <AlertLine borderColor="#9333ea">
-            Plano gratuito · até {data.studentLimit ?? 3} alunos.
-            <br />
-            Assine START, PRO ou ELITE para aumentar o limite e liberar o teste de 30 dias no cartão.
-          </AlertLine>
-        )}
-
-        {showManageView && data && (
-          <MeuPlanoView
-            planLabel={data.isSuperAdmin ? "ADMIN" : statusPlanLabel}
-            price={data.isSuperAdmin ? 0 : statusPrice}
-            billingPeriod={statusPeriod}
-            renewalDateLabel={accessEndDate}
-            statusBadge={
-              data.trialAtivo && !data.isSuperAdmin ? "Teste grátis" : statusBadgeLabel
-            }
-            isActive={displayStatus === "active" || displayStatus === "super_admin"}
-            cardLastFour={cardLastFour}
-            canCancel={canCancel}
-            canceling={canceling}
-            cancelAccessUntilLabel={cancelAccessUntilLabel}
-            onCancel={handleCancel}
-            onAlterarPlano={(tier, period) => openCheckout(tier, period)}
-            onAlterarPagamento={() => {
-              const tier = data.currentPlan?.tier ?? data.planTier ?? selectedTier;
-              const period =
-                data.currentPlan?.period ?? data.billingPeriod ?? selectedPeriod;
-              openCheckout(tier, period);
-            }}
-            plans={data.plans}
-            currentTier={data.currentPlan?.tier ?? data.planTier}
-            currentPeriod={data.currentPlan?.period ?? data.billingPeriod}
-            trialAtivo={Boolean(data.trialAtivo)}
-            trialFimLabel={formatDateBR(data.trialFim)}
-            priceDisplayHint={
-              data.trialAtivo && data.currentPlan
-                ? data.currentPlan.priceDisplay
-                : null
-            }
-          />
-        )}
-
-        {showCheckout && data!.plans.length > 0 && (
-          <section className="pt-2 pb-12">
-            {forceCheckout && (
-              <p className="text-sm text-text-secondary mb-4">
-                Confirme o novo plano e a forma de pagamento abaixo.
-              </p>
-            )}
-
-            {!checkoutSelection ? (
-              <PlanPricingCards
-                plans={data!.plans}
-                period={selectedPeriod === "semester" ? "monthly" : selectedPeriod}
-                onPeriodChange={setSelectedPeriod}
-                onSelectPlan={(tier, period) => {
-                  setSelectedTier(tier);
-                  setSelectedPeriod(period);
-                  setCheckoutSelection({ tier, period });
-                }}
-                trialEligible={Boolean(data?.trialEligible)}
-              />
-            ) : checkoutSelection && isDesktop ? (
-              <div className="grid gap-12 mt-2" style={{ gridTemplateColumns: "320px 1fr" }}>
-                <aside className="sticky top-6 self-start">
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutSelection(null)}
-                    className="text-xs font-medium text-brand mb-4 hover:underline"
-                  >
-                    ← Trocar plano
-                  </button>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary mb-2">
-                    {selectedPlan?.label}
-                  </p>
-                  {selectedPlan && (
-                    <PriceHero
-                      price={
-                        selectedPeriod === "yearly"
-                          ? getMonthlyEquivalent(selectedPlan.billing.price, "yearly")
-                          : selectedPlan.billing.price
-                      }
-                      period="monthly"
-                      size="md"
-                    />
-                  )}
-                  <p className="text-[11px] text-text-secondary mt-2">
-                    {BILLING_PERIOD_LABELS[checkoutSelection.period]}
-                    {checkoutSelection.period === "yearly" && selectedPlan
-                      ? ` · ${formatCurrencyBRL(selectedPlan.billing.price)} /ano`
-                      : ""}
-                  </p>
-                  {featuresList}
-                </aside>
-                <div>{paymentSection}</div>
-              </div>
-            ) : (
-              <div className="max-w-3xl mt-2">
-                <button
-                  type="button"
-                  onClick={() => setCheckoutSelection(null)}
-                  className="text-xs font-medium text-brand mb-4 hover:underline"
-                >
-                  ← Trocar plano
-                </button>
-                {selectedPlan && (
-                  <div className="mb-6">
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary mb-2">
-                      {selectedPlan.label}
-                    </p>
-                    <PriceHero
-                      price={
-                        selectedPeriod === "yearly"
-                          ? getMonthlyEquivalent(selectedPlan.billing.price, "yearly")
-                          : selectedPlan.billing.price
-                      }
-                      period="monthly"
-                      size="md"
-                    />
-                    <p className="text-[11px] text-text-secondary mt-2">
-                      {BILLING_PERIOD_LABELS[checkoutSelection.period]}
-                    </p>
-                    {featuresList}
-                  </div>
-                )}
-                {paymentSection}
-              </div>
-            )}
-          </section>
-        )}
-
-        {!showCheckout &&
-          !showManageView &&
-          !data?.isActive &&
-          !data?.isSuperAdmin &&
-          subscription?.status === "pending" && (
-            <section className="py-8">
-              <p className="text-xs text-text-secondary mb-4">
-                Assinatura pendente de confirmação. Aguarde alguns instantes.
-              </p>
-              <Button
-                variant="secondary"
-                className="h-10 text-xs rounded-md"
-                onClick={() => loadStatus()}
-              >
-                Atualizar status
-              </Button>
-            </section>
-          )}
-      </div>
-    </div>
+      </AssinaturaGestaoScreen>
+      <ConfirmModal
+        open={showCancelModal}
+        title="Cancelar assinatura?"
+        description={
+          cancelAccessUntilLabel
+            ? `Você continuará com o plano atual até ${cancelAccessUntilLabel}. Depois volta ao gratuito (até 3 alunos). Não haverá novas cobranças.`
+            : "Você continuará com o plano atual até o fim do período já pago. Depois volta ao gratuito (até 3 alunos). Não haverá novas cobranças."
+        }
+        confirmLabel="Confirmar cancelamento"
+        cancelLabel="Manter assinatura"
+        confirmVariant="danger"
+        loading={canceling}
+        onConfirm={async () => {
+          await handleCancel();
+          setShowCancelModal(false);
+        }}
+        onClose={() => !canceling && setShowCancelModal(false)}
+      />
+    </>
   );
 }

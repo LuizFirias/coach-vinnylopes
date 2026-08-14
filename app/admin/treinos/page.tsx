@@ -38,6 +38,7 @@ interface Aluno {
   full_name: string | null;
   email: string | null;
   avatar_url?: string | null;
+  sexo?: string | null;
 }
 
 export default function TreinosPage() {
@@ -90,7 +91,7 @@ export default function TreinosPage() {
       const [linksResult, digitalPrimary, pdfResult] = await Promise.all([
         supabaseClient
           .from('coach_alunos')
-          .select('aluno:profiles!aluno_id(id, coaching_reference, full_name, email, avatar_url, arquivado)')
+          .select('aluno:profiles!aluno_id(id, coaching_reference, full_name, email, avatar_url, sexo, arquivado)')
           .eq('coach_id', coachId),
         supabaseClient
           .from('fichas_treino')
@@ -207,6 +208,7 @@ export default function TreinosPage() {
           aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
           aluno_email: student?.email ?? null,
           aluno_avatar_url: student?.avatar_url ?? null,
+          aluno_sexo: student?.sexo ?? null,
           nome_rotina: f.nome_rotina,
           ativo: f.ativo,
           criado_em: f.criado_em,
@@ -233,6 +235,7 @@ export default function TreinosPage() {
           aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
           aluno_email: student?.email ?? null,
           aluno_avatar_url: student?.avatar_url ?? null,
+          aluno_sexo: student?.sexo ?? null,
           nome_rotina: p.nome_arquivo || 'Plano de Treino PDF',
           ativo: true,
           criado_em: p.data_upload,

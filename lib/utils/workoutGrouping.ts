@@ -23,6 +23,7 @@ export function groupWorkoutsByStudent(plans: WorkoutPlan[]): WorkoutGroup[] {
         studentEmail: plan.aluno_email ?? null,
         avatarUrl: plan.aluno_avatar_url ?? null,
         avatarColor: avatarGrad(plan.aluno_id),
+        sexo: plan.aluno_sexo ?? null,
         plans: [],
       });
     }

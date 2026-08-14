@@ -19,6 +19,8 @@ export const ALUNOS_ATUAIS_OPTIONS = [
 export type AlunosAtuaisFaixa = (typeof ALUNOS_ATUAIS_OPTIONS)[number]["value"];
 
 export const PASSOS_ONBOARDING: PassoOnboarding[] = [
+  // Ao adicionar um passo novo (funcionalidade nova), use um `id` inédito.
+  // Coaches que já concluíram o guia voltam a ver só o(s) passo(s) novo(s).
   {
     id: "cadastrar-aluno",
     titulo: "Cadastre seu primeiro aluno",

@@ -1,8 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import type { ChatListItem } from '@/lib/chat/queries';
-import { getPublicStorageUrl } from '@/lib/storageUrls';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 
 type ChatListProps = {
   conversas: ChatListItem[];
@@ -31,8 +30,6 @@ export function ChatList({
   return (
     <div className="flex flex-col">
       {conversas.map((c, idx) => {
-        const avatar = getPublicStorageUrl('avatars', c.outro.avatar_url);
-        const initial = (c.outro.full_name?.[0] ?? '?').toUpperCase();
         const active = conversaAtiva === c.id;
         const unread = c.nao_lidas > 0;
 
@@ -58,34 +55,12 @@ export function ChatList({
               width: '100%',
             }}
           >
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                flexShrink: 0,
-                overflow: 'hidden',
-                background: 'linear-gradient(135deg, #c084fc, #751BB4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontSize: 16,
-                fontWeight: 700,
-              }}
-            >
-              {avatar ? (
-                <Image
-                  src={avatar}
-                  alt=""
-                  width={44}
-                  height={44}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                initial
-              )}
-            </div>
+            <StudentAvatar
+              name={c.outro.full_name ?? 'Aluno'}
+              avatarUrl={c.outro.avatar_url}
+              sexo={c.outro.sexo}
+              sizeClassName="w-11 h-11"
+            />
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div

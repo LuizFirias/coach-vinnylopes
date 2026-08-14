@@ -7,6 +7,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import { COACH_MODALITIES, type CoachPublicProfileForm } from "@/lib/coach/publicProfile";
 import { cn } from "@/lib/utils/cn";
 
@@ -14,6 +15,7 @@ type Props = {
   form: CoachPublicProfileForm;
   fullName: string;
   avatarUrl: string | null;
+  sexo?: string | null;
   activeStudents: number | null;
   coachSinceYear: number | null;
   compact?: boolean;
@@ -23,6 +25,7 @@ export function PublicProfilePreviewCard({
   form,
   fullName,
   avatarUrl,
+  sexo,
   activeStudents,
   coachSinceYear,
   compact,
@@ -45,16 +48,12 @@ export function PublicProfilePreviewCard({
   if (compact) {
     return (
       <div className="perfil-preview-card rounded-xl border-0 bg-surface-1 p-3 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-lg overflow-hidden bg-surface-3 shrink-0 flex items-center justify-center">
-          {avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatar} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-sm font-bold text-text-tertiary">
-              {fullName?.charAt(0)?.toUpperCase() || "C"}
-            </span>
-          )}
-        </div>
+        <StudentAvatar
+          name={fullName || "Coach"}
+          avatarUrl={avatar}
+          sexo={sexo}
+          sizeClassName="w-12 h-12"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold text-text-primary truncate">
@@ -84,16 +83,13 @@ export function PublicProfilePreviewCard({
           <div className="w-full h-full bg-gradient-to-br from-surface-3 to-surface-2" />
         )}
         <div className="absolute -bottom-8 left-4">
-          <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-surface-1 bg-surface-3 flex items-center justify-center">
-            {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-lg font-bold text-text-tertiary">
-                {fullName?.charAt(0)?.toUpperCase() || "C"}
-              </span>
-            )}
-          </div>
+          <StudentAvatar
+            name={fullName || "Coach"}
+            avatarUrl={avatar}
+            sexo={sexo}
+            sizeClassName="w-16 h-16"
+            className="border-2 border-surface-1"
+          />
         </div>
       </div>
 

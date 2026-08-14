@@ -19,6 +19,7 @@ import {
   Check,
 } from "@phosphor-icons/react";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import { cn } from "@/lib/utils/cn";
 import { textIncludes } from "@/lib/utils/textNormalize";
 import { selectListboxClassName, selectOptionClassName } from "@/components/ui/Select";
@@ -64,21 +65,12 @@ interface Feedback {
   aluno_nome?: string;
   aluno_reference?: string;
   aluno_email?: string;
+  aluno_avatar_url?: string | null;
+  aluno_sexo?: string | null;
   ficha_nome?: string;
   texto_aluno: string;
   resposta_coach: string;
   respondido: boolean;
-}
-
-const AVATAR_COLORS = [
-  "from-amber-500/50 to-amber-700/30",
-  "from-orange-500/50 to-orange-700/30",
-  "from-yellow-500/50 to-yellow-700/30",
-  "from-brand/50 to-brand/20",
-];
-
-function avatarGrad(name: string) {
-  return AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 }
 
 const DELIMITER = "\n\n---\nCOACH_REPLY:\n";
@@ -191,7 +183,7 @@ export default function FeedbacksCoachPage() {
       const alunoIds = [...new Set(feedbacksData?.map((f) => f.aluno_id) || [])];
       const { data: alunosData } = await supabaseClient
         .from("profiles")
-        .select("id, full_name, coaching_reference, email")
+        .select("id, full_name, coaching_reference, email, avatar_url, sexo")
         .in("id", alunoIds);
 
       const fichaIds = [
@@ -212,6 +204,8 @@ export default function FeedbacksCoachPage() {
             aluno_nome: aluno?.full_name || "Atleta",
             aluno_reference: aluno?.coaching_reference || undefined,
             aluno_email: aluno?.email || undefined,
+            aluno_avatar_url: aluno?.avatar_url ?? null,
+            aluno_sexo: aluno?.sexo ?? null,
             ficha_nome: fichasData?.find((f) => f.id === fb.ficha_id)?.nome_rotina || undefined,
             texto_aluno: parsed.texto_aluno,
             resposta_coach: parsed.resposta_coach,
@@ -614,7 +608,6 @@ export default function FeedbacksCoachPage() {
           <div className="flex flex-col gap-3 mt-6">
             {filteredFeedbacks.map((feedback) => {
               const name = feedback.aluno_nome || "Aluno";
-              const initial = name[0].toUpperCase();
               const hasPain = isPainFeedback(feedback);
               const isUnread = !feedback.lido_em;
 
@@ -633,13 +626,13 @@ export default function FeedbacksCoachPage() {
                   <div>
                     <div className="flex items-start justify-between gap-3 mb-2.5">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className={cn(
-                            "relative w-8 h-8 rounded bg-gradient-to-br shrink-0 flex items-center justify-center font-bold text-xs text-white",
-                            avatarGrad(name),
-                          )}
-                        >
-                          {initial}
+                        <div className="relative shrink-0">
+                          <StudentAvatar
+                            name={name}
+                            avatarUrl={feedback.aluno_avatar_url}
+                            sexo={feedback.aluno_sexo}
+                            sizeClassName="w-8 h-8"
+                          />
                           {isUnread && (
                             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand ring-2 ring-surface-1" />
                           )}

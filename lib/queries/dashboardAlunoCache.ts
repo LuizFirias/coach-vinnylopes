@@ -8,8 +8,9 @@ export type DashboardAlunoSnapshot = {
   userId: string;
   userName: string;
   userAvatar: string | null;
+  userSexo?: string | null;
   coachId: string | null;
-  coachInfo: { nome: string; avatar: string | null } | null;
+  coachInfo: { nome: string; avatar: string | null; sexo?: string | null } | null;
   coachContactAvailable: boolean;
   coachPendings: { mensagens: number; feedbacks: number };
   incompleteData: boolean;

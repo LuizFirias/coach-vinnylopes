@@ -62,8 +62,14 @@ export async function POST(req: Request) {
         tipo: 'treino_iniciado',
         titulo: `${alunoNome} iniciou um treino`,
         corpo: nomeRotina ? `Treino: ${nomeRotina}` : 'Acompanhe o treino em andamento.',
-        link: `/admin/aluno/${alunoId}`,
-        metadata: { alunoId, nomeRotina: nomeRotina || null },
+        // Sem deep-link por enquanto (só informativo). Futuro: live view.
+        link: null,
+        metadata: {
+          alunoId,
+          nomeRotina: nomeRotina || null,
+          /** Quando true + fichaId/sessao → abrir acompanhamento em tempo real */
+          acompanharTreino: false,
+        },
       })
       .select('id')
       .single();
@@ -78,7 +84,7 @@ export async function POST(req: Request) {
     await sendPushToUser(adminClient, coachId, {
       title: `${alunoNome} iniciou um treino`,
       body: nomeRotina ? `Treino: ${nomeRotina}` : 'Acompanhe o treino em andamento.',
-      url: `/admin/aluno/${alunoId}`,
+      url: '/admin/dashboard',
       tag: 'treino_iniciado',
     });
 

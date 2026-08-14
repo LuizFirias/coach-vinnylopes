@@ -15,6 +15,7 @@ export default function ChatCoachConversaPage() {
   const [meuId, setMeuId] = useState<string | null>(null);
   const [nomeOutro, setNomeOutro] = useState('Aluno');
   const [avatarOutro, setAvatarOutro] = useState<string | null>(null);
+  const [sexoOutro, setSexoOutro] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -42,6 +43,7 @@ export default function ChatCoachConversaPage() {
           setMeuId(session.user.id);
           setNomeOutro(aluno?.full_name ?? 'Aluno');
           setAvatarOutro(aluno?.avatar_url ?? null);
+          setSexoOutro(aluno?.sexo ?? null);
         }
       } catch (err) {
         console.error('[ChatCoachConversa]', err);
@@ -85,6 +87,7 @@ export default function ChatCoachConversaPage() {
       meuId={meuId}
       nomeOutro={nomeOutro}
       avatarOutro={avatarOutro}
+      sexoOutro={sexoOutro}
       backHref="/admin/chat"
     />
   );

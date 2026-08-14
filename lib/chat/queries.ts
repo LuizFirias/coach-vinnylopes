@@ -4,6 +4,7 @@ export type ChatPerfilMini = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
+  sexo?: string | null;
 };
 
 export type ChatConversa = {
@@ -106,7 +107,7 @@ export async function getChatListCoach(coachId: string): Promise<ChatListItem[]>
 
   const [{ data: profiles }, conversas] = await Promise.all([
     alunoIds.length
-      ? supabaseClient.from('profiles').select('id, full_name, avatar_url').in('id', alunoIds)
+      ? supabaseClient.from('profiles').select('id, full_name, avatar_url, sexo').in('id', alunoIds)
       : Promise.resolve({ data: [] as ChatPerfilMini[] }),
     getConversasCoach(coachId),
   ]);
@@ -122,6 +123,7 @@ export async function getChatListCoach(coachId: string): Promise<ChatListItem[]>
       id: c.aluno_id,
       full_name: 'Aluno',
       avatar_url: null,
+      sexo: null,
     };
     byAluno.set(c.aluno_id, {
       id: c.id,
@@ -144,6 +146,7 @@ export async function getChatListCoach(coachId: string): Promise<ChatListItem[]>
         id: alunoId,
         full_name: 'Aluno',
         avatar_url: null,
+        sexo: null,
       },
       pendingCreate: true,
       alunoId,
@@ -223,7 +226,7 @@ export async function getConversaMeta(conversaId: string): Promise<(ChatConversa
   const ids = [data.coach_id, data.aluno_id].filter(Boolean) as string[];
   const { data: profiles } = await supabaseClient
     .from('profiles')
-    .select('id, full_name, avatar_url')
+    .select('id, full_name, avatar_url, sexo')
     .in('id', ids);
 
   const map = new Map((profiles ?? []).map((p) => [p.id as string, p as ChatPerfilMini]));

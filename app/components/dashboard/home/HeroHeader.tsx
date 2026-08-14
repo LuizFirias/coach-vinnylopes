@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import {
   Barbell,
   Drop,
@@ -9,6 +8,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import DashboardTopActions from '@/app/components/DashboardTopActions';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { dashboardColors } from '@/lib/tokens/dashboardColors';
 import { cn } from '@/lib/utils/cn';
 
@@ -20,6 +20,7 @@ interface HabitData {
 interface HeroHeaderProps {
   userName: string;
   avatarUrl?: string | null;
+  sexo?: string | null;
   showNotificationBadge?: boolean;
   chatNaoLidas?: number;
   notificationsHref?: string;
@@ -60,6 +61,7 @@ function HabitBar({
   HeroHeaderProps,
   | 'userName'
   | 'avatarUrl'
+  | 'sexo'
   | 'showNotificationBadge'
   | 'chatNaoLidas'
   | 'notificationsHref'
@@ -128,6 +130,7 @@ function HabitBar({
 export function HeroHeader({
   userName,
   avatarUrl,
+  sexo,
   showNotificationBadge,
   chatNaoLidas,
   notificationsHref = '/aluno/chat',
@@ -154,27 +157,13 @@ export function HeroHeader({
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div
-              className="h-11 w-11 shrink-0 overflow-hidden rounded-full border-2"
-              style={{ borderColor: dashboardColors.accent }}
-            >
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={primeiroNome}
-                  width={44}
-                  height={44}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div
-                  className="flex h-full w-full items-center justify-center text-lg font-bold dashboard-text"
-                  style={{ backgroundColor: 'var(--dash-today-bg)' }}
-                >
-                  {primeiroNome.charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
+            <StudentAvatar
+              name={primeiroNome}
+              avatarUrl={avatarUrl}
+              sexo={sexo}
+              sizeClassName="h-11 w-11"
+              className="border-2 border-brand"
+            />
             <div className="min-w-0">
               <p className="text-[11px] font-medium capitalize tracking-wide dashboard-text-subtle">
                 {hoje}

@@ -25,7 +25,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       {label && (
         <label
           htmlFor={inputId}
-          className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary"
+          className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary dark:text-[#4a5568]"
         >
           {label}
         </label>
@@ -35,7 +35,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       <div className="relative flex items-center">
         {/* Ícone esquerdo */}
         {leftIcon && (
-          <span className="pointer-events-none absolute left-3 flex items-center text-text-disabled">
+          <span className="pointer-events-none absolute left-3.5 z-[1] flex h-11 w-5 items-center justify-center text-text-disabled [&_svg]:h-4 [&_svg]:w-4">
             {leftIcon}
           </span>
         )}
@@ -47,16 +47,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           className={cn(
             'h-11 w-full',
             'px-3.5',
-            leftIcon && 'pl-9',
-            rightElement && 'pr-10',
-            'text-[16px] font-medium text-text-primary',
-            'placeholder:text-text-disabled placeholder:font-normal placeholder:text-[12px]',
+            leftIcon && 'pl-11 has-left-icon',
+            rightElement && 'pr-10 has-right-element',
+            'text-[16px] font-normal text-text-primary dark:text-[#D8DCE6]',
+            'placeholder:text-text-disabled placeholder:font-normal placeholder:text-[12px] dark:placeholder:text-[#4a5568]',
             'rounded-[10px]',
-            'bg-surface-2',
-            'border-0',
+            'bg-white dark:bg-[#0d1117]',
+            'border border-[#e4e4e7] dark:border-[#2d3748]',
             'transition-all duration-150',
             'focus:outline-none',
-            'focus:ring-1 focus:ring-brand/30',
+            'focus:border-brand dark:focus:border-[#9333ea]',
+            'focus:shadow-[0_0_0_3px_rgba(147,51,234,0.15)]',
             error && 'ring-1 ring-danger/40 focus:ring-danger/40',
             className
           )}

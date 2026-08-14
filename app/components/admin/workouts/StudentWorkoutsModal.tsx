@@ -132,8 +132,8 @@ export function StudentWorkoutsModal({
               <StudentAvatar
                 name={group.studentName}
                 avatarUrl={group.avatarUrl}
-                colorClassName={group.avatarColor}
-                sizeClassName="w-8 h-8 text-[11px]"
+                sexo={group.sexo}
+                sizeClassName="w-8 h-8"
               />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-text-primary truncate">

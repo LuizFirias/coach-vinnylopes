@@ -138,11 +138,6 @@ export function PlanDistributionCard({
 
   const donut = (
     <div className="relative shrink-0 overflow-visible">
-      {/* Glow circular — evita sombra com bordas retas do drop-shadow/clip */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-[6%] rounded-full bg-black/25 blur-2xl dark:bg-black/45"
-      />
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         role="img"
@@ -150,7 +145,7 @@ export function PlanDistributionCard({
           .map((p) => `${p.name} ${p.count}`)
           .join(", ")}`}
         className={cn(
-          "relative z-[1] shrink-0 h-auto",
+          "relative shrink-0 h-auto",
           collapsed ? "w-28" : "w-32 sm:w-36 lg:w-40",
         )}
       >

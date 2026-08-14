@@ -213,7 +213,7 @@ export function DashboardKpiRow({
 }: DashboardKpiRowProps) {
   return (
     <div>
-      <h2 className="text-[10px] font-bold tracking-wider text-text-tertiary uppercase border-t border-divider/50 pt-3 mb-2.5">
+      <h2 className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
         Visão geral
       </h2>
       <div

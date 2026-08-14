@@ -57,6 +57,7 @@ import {
 import { CloneToStudentsModal } from "@/app/components/admin/alunos/CloneToStudentsModal";
 import { AlunoObservacoesCard } from "@/app/components/admin/alunos/AlunoObservacoesCard";
 import { StudentPlanCard } from "@/app/components/admin/alunos/StudentPlanCard";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import {
   ExerciseLibraryModal,
   type LibraryExercise,
@@ -1406,15 +1407,13 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           )}
 
           <div className="relative flex items-start gap-3 pr-9">
-            {avatarUrl ? (
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/25 shrink-0">
-                <img src={avatarUrl || ""} alt={profileName} className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-white/15 border border-white/20 flex items-center justify-center font-bold text-lg text-white shrink-0">
-                {profileName[0].toUpperCase()}
-              </div>
-            )}
+            <StudentAvatar
+              name={profileName}
+              avatarUrl={avatarUrl}
+              sexo={profile.sexo}
+              sizeClassName="w-12 h-12"
+              className="border-2 border-white/25"
+            />
 
             <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex flex-wrap items-center gap-1.5">

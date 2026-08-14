@@ -10,6 +10,7 @@ import { AuthProvider } from './components/AuthProvider';
 import { ThemeProvider } from './components/ThemeProvider';
 import ThemeToggleBar from './components/ThemeToggleBar';
 import BootSplash from './components/BootSplash';
+import PwaUpdateBanner from './components/PwaUpdateBanner';
 import { Metadata, Viewport } from 'next';
 
 const themeInitScript = `
@@ -115,6 +116,7 @@ export default function RootLayout({
       </head>
       <body className="bg-surface-0 text-text-primary min-h-dvh overflow-x-clip" suppressHydrationWarning>
         <BootSplash />
+        <PwaUpdateBanner />
         <SuppressHydrationWarnings />
         <ChromeExtensionFix />
         <ThemeProvider>

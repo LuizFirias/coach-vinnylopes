@@ -7,6 +7,7 @@ import { getSafeSession } from '@/lib/authErrorHandler';
 import { Trophy, Lightning, ArrowLeft } from '@phosphor-icons/react';
 import Link from 'next/link';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { cn } from '@/lib/utils/cn';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -16,6 +17,7 @@ interface LeaderboardEntry {
   full_name: string | null;
   coaching_reference: string | null;
   avatar_url: string | null;
+  sexo?: string | null;
   pontos: number;
   streak: number;
   posicao: number;
@@ -31,13 +33,6 @@ const COMO_GANHAR = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getInitials(name: string | null): string {
-  if (!name) return 'A';
-  const parts = name.trim().split(' ').filter(Boolean);
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -77,7 +72,7 @@ export default function RankingPage() {
 
       if (error) console.error('[Ranking RPC]', error.message, error.code);
 
-      const entries: LeaderboardEntry[] = (rawEntries || []).map((r: any, idx: number) => ({
+      const mapped: LeaderboardEntry[] = (rawEntries || []).map((r: any, idx: number) => ({
         aluno_id: r.aluno_id,
         full_name: r.full_name,
         coaching_reference: r.coaching_reference,
@@ -86,6 +81,13 @@ export default function RankingPage() {
         streak: r.streak,
         posicao: idx + 1,
       }));
+
+      const ids = mapped.map((e) => e.aluno_id);
+      const { data: sexos } = ids.length
+        ? await supabaseClient.from('profiles').select('id, sexo').in('id', ids)
+        : { data: [] as { id: string; sexo: string | null }[] };
+      const sexoMap = new Map((sexos ?? []).map((p) => [p.id, p.sexo]));
+      const entries = mapped.map((e) => ({ ...e, sexo: sexoMap.get(e.aluno_id) ?? null }));
 
       setLeaderboard(entries);
       setMinha(entries.find(e => e.aluno_id === user.id) ?? null);
@@ -234,11 +236,12 @@ export default function RankingPage() {
                       </span>
 
                       {/* Avatar */}
-                      <div className="w-8 h-8 rounded-full bg-surface-3 border border-card flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {entry.avatar_url
-                          ? <img src={entry.avatar_url} alt={entry.coaching_reference ?? entry.full_name ?? ''} className="w-full h-full object-cover" />
-                          : <span className="text-xs font-semibold text-text-secondary">{getInitials(entry.coaching_reference ?? entry.full_name)}</span>}
-                      </div>
+                      <StudentAvatar
+                        name={entry.coaching_reference ?? entry.full_name ?? 'Atleta'}
+                        avatarUrl={entry.avatar_url}
+                        sexo={entry.sexo}
+                        sizeClassName="w-8 h-8"
+                      />
 
                       {/* Nome */}
                       <div className="flex-1 min-w-0">

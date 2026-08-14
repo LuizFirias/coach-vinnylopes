@@ -15,6 +15,7 @@ export default function ChatAlunoConversaPage() {
   const [meuId, setMeuId] = useState<string | null>(null);
   const [nomeOutro, setNomeOutro] = useState('Coach');
   const [avatarOutro, setAvatarOutro] = useState<string | null>(null);
+  const [sexoOutro, setSexoOutro] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -42,6 +43,7 @@ export default function ChatAlunoConversaPage() {
           setMeuId(session.user.id);
           setNomeOutro(coach?.full_name ?? 'Coach');
           setAvatarOutro(coach?.avatar_url ?? null);
+          setSexoOutro(coach?.sexo ?? null);
         }
       } catch (err) {
         console.error('[ChatAlunoConversa]', err);
@@ -85,6 +87,7 @@ export default function ChatAlunoConversaPage() {
       meuId={meuId}
       nomeOutro={nomeOutro}
       avatarOutro={avatarOutro}
+      sexoOutro={sexoOutro}
       backHref="/aluno/dashboard"
     />
   );

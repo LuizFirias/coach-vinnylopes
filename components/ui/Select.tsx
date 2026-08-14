@@ -65,10 +65,13 @@ export const selectTriggerClassName = (opts?: {
         )
       : cn(
           opts?.size === "sm" ? "px-2.5 rounded-lg" : "px-3.5 rounded-[10px]",
-          "bg-surface-2 text-text-primary border-0",
-          "focus-visible:ring-1 focus-visible:ring-brand/30",
-          opts?.open && "ring-1 ring-brand/30",
-          opts?.error && "ring-1 ring-danger/40",
+          "bg-white text-text-primary border border-[#e4e4e7]",
+          "dark:bg-[#0d1117] dark:text-[#D8DCE6] dark:border-[#2d3748]",
+          "focus-visible:border-brand dark:focus-visible:border-[#9333ea]",
+          "focus-visible:shadow-[0_0_0_3px_rgba(147,51,234,0.15)]",
+          opts?.open &&
+            "border-brand dark:border-[#9333ea] shadow-[0_0_0_3px_rgba(147,51,234,0.15)]",
+          opts?.error && "border-danger ring-1 ring-danger/40",
         ),
   );
 
@@ -125,7 +128,7 @@ export function Select({
       {label && (
         <label
           htmlFor={triggerId}
-          className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary"
+          className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary dark:text-[#4a5568]"
         >
           {label}
         </label>
@@ -145,8 +148,8 @@ export function Select({
         >
           <span
             className={cn(
-              "flex-1 min-w-0 truncate font-medium",
-              compact ? "text-[12px]" : "text-[13px]",
+              "flex-1 min-w-0 truncate",
+              compact ? "text-[12px] font-medium" : "text-[16px] font-normal text-text-primary",
               !display && "text-text-disabled font-normal",
               !display && !compact && "text-[12px]",
             )}

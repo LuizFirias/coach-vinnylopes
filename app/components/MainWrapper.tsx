@@ -13,12 +13,13 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
 
   const hideCoachChrome =
     pathname.startsWith('/admin/boas-vindas') ||
-    pathname.startsWith('/admin/preview-aluno');
+    pathname.startsWith('/admin/preview-aluno') ||
+    pathname.startsWith('/admin/trocar-senha');
 
   const className =
     isInternal && !hideCoachChrome
-      ? 'lg:ml-[var(--sidebar-width,155px)] transition-[margin-left] duration-300'
-      : 'pt-0';
+      ? 'min-w-0 max-w-full overflow-x-clip lg:ml-[var(--sidebar-width,155px)] lg:w-[calc(100%-var(--sidebar-width,155px))] transition-[margin-left,width] duration-300'
+      : 'min-w-0 w-full max-w-full overflow-x-clip pt-0';
 
   return <main className={className}>{children}</main>;
 }

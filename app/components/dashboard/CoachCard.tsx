@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Chat, ChartLineUp } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 
 interface CoachCardProps {
   coachNome: string;
   coachAvatar: string | null;
+  coachSexo?: string | null;
   mensagensPendentes?: number;
   feedbacksPendentes?: number;
 }
@@ -15,6 +16,7 @@ interface CoachCardProps {
 export function CoachCard({
   coachNome,
   coachAvatar,
+  coachSexo,
   mensagensPendentes = 0,
   feedbacksPendentes = 0,
 }: CoachCardProps) {
@@ -25,19 +27,12 @@ export function CoachCard({
       </p>
 
       <div className="flex items-center gap-3 mb-4">
-        {coachAvatar ? (
-          <Image
-            src={coachAvatar}
-            alt={coachNome}
-            width={48}
-            height={48}
-            className="w-12 h-12 rounded-full object-cover border border-card"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-brand-subtle border border-brand-border flex items-center justify-center text-brand font-bold">
-            {coachNome.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <StudentAvatar
+          name={coachNome}
+          avatarUrl={coachAvatar}
+          sexo={coachSexo}
+          sizeClassName="w-12 h-12"
+        />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-text-primary truncate">{coachNome}</p>
           <p className="text-xs text-text-tertiary">Acompanhamento individualizado</p>

@@ -2,22 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { getPublicStorageUrl } from "@/lib/storageUrls";
 import {
-  User,
   Camera,
   ShieldCheck,
   Lock,
   SignOut,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import Image from "next/image";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 
 export default function SuperAdminPerfilPage() {
   const [loading, setLoading] = useState(true);
@@ -25,6 +23,7 @@ export default function SuperAdminPerfilPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [sexo, setSexo] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
@@ -41,7 +40,7 @@ export default function SuperAdminPerfilPage() {
 
       const { data: profile } = await supabaseClient
         .from("profiles")
-        .select("full_name, email, avatar_url")
+        .select("full_name, email, avatar_url, sexo")
         .eq("id", user.id)
         .single();
 
@@ -49,6 +48,7 @@ export default function SuperAdminPerfilPage() {
         setFullName(profile.full_name || "");
         setEmail(profile.email || "");
         setAvatarUrl(profile.avatar_url);
+        setSexo(profile.sexo ?? null);
       }
     } catch (err) {
       console.error("Erro ao carregar perfil:", err);
@@ -188,25 +188,13 @@ export default function SuperAdminPerfilPage() {
         <Card className="rounded-2xl shadow-elev-1">
           <div className="flex flex-col items-center gap-4 py-2">
             <div className="relative">
-              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-surface-3 border border-card relative">
-                {avatarUrl ? (
-                  <Image
-                    src={getPublicStorageUrl("avatars", avatarUrl) || ""}
-                    alt="Avatar"
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-text-disabled">
-                    <User className="w-10 h-10" />
-                  </div>
-                )}
-                {uploading && (
-                  <div className="absolute inset-0 bg-surface-0/80 flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
+              <StudentAvatar
+                name={fullName || "Super Admin"}
+                avatarUrl={avatarUrl}
+                sexo={sexo}
+                sizeClassName="w-24 h-24"
+                uploading={uploading}
+              />
               <label className={cn(
                 "absolute -bottom-1.5 -right-1.5 w-9 h-9 rounded-xl cursor-pointer",
                 "bg-brand hover:bg-brand-hover active:bg-brand-pressed transition-colors",

@@ -13,7 +13,7 @@ import {
   ALUNOS_ATUAIS_OPTIONS,
   type AlunosAtuaisFaixa,
 } from "@/lib/onboarding/passos";
-import { garantirPassosOnboarding } from "@/lib/onboarding/concluirPasso";
+import { sincronizarProgressoOnboarding } from "@/lib/onboarding/concluirPasso";
 import { invalidateBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 
 function onlyDigits(v: string, max = 11) {
@@ -114,7 +114,7 @@ export default function BoasVindasCoachPage() {
 
       if (error) throw error;
 
-      await garantirPassosOnboarding(user.id);
+      await sincronizarProgressoOnboarding(user.id);
       invalidateBootstrapProfile();
       router.replace("/admin/dashboard");
     } catch (err: unknown) {

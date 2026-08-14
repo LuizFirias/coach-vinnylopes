@@ -4,6 +4,7 @@ export interface WorkoutPlan {
   aluno_nome: string;
   aluno_email?: string | null;
   aluno_avatar_url?: string | null;
+  aluno_sexo?: string | null;
   nome_rotina: string;
   ativo: boolean;
   criado_em: string;
@@ -22,6 +23,7 @@ export interface WorkoutGroup {
   studentEmail: string | null;
   avatarUrl: string | null;
   avatarColor: string;
+  sexo?: string | null;
   plans: WorkoutPlan[];
 }
 

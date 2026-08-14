@@ -2,51 +2,65 @@
 
 import { cn } from "@/lib/utils/cn";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
+import { mascoteSrc } from "@/lib/utils/mascote";
+
+function resolvePhotoSrc(avatarUrl?: string | null): string | null {
+  if (!avatarUrl) return null;
+  if (
+    avatarUrl.startsWith("data:") ||
+    avatarUrl.startsWith("blob:") ||
+    avatarUrl.startsWith("http://") ||
+    avatarUrl.startsWith("https://") ||
+    avatarUrl.startsWith("/")
+  ) {
+    return avatarUrl;
+  }
+  return getPublicStorageUrl("avatars", avatarUrl);
+}
 
 interface StudentAvatarProps {
   name: string;
   avatarUrl?: string | null;
-  /** Classes de gradiente quando não há foto */
+  sexo?: string | null;
+  /** Mantido por compatibilidade — o fallback agora é o mascote. */
   colorClassName?: string;
   sizeClassName?: string;
   className?: string;
   alt?: string;
+  uploading?: boolean;
 }
 
-/**
- * Avatar circular. Fotos antigas foram exportadas com máscara circular + fundo preto
- * no JPEG — scale + clipPath cortam a auréola nas bordas.
- */
+/** Foto quadrada (cantos levemente arredondados). Sem foto, mostra o mascote. */
 export function StudentAvatar({
   name,
   avatarUrl,
-  colorClassName,
-  sizeClassName = "w-7 h-7 text-[10px]",
+  sexo,
+  sizeClassName = "w-7 h-7",
   className,
   alt,
+  uploading,
 }: StudentAvatarProps) {
-  const src = avatarUrl ? getPublicStorageUrl("avatars", avatarUrl) : null;
-  const initial = (name || "?").charAt(0).toUpperCase();
+  const photo = resolvePhotoSrc(avatarUrl);
+  const src = photo || mascoteSrc(sexo);
 
   return (
     <div
       className={cn(
-        "rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-white bg-surface-1",
+        "relative shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-white",
         sizeClassName,
-        !src && "bg-gradient-to-br",
-        !src && (colorClassName || "from-brand/60 to-brand/30"),
         className,
       )}
     >
-      {src ? (
-        <img
-          src={src}
-          alt={alt ?? name}
-          className="block w-full h-full object-cover border-0"
-          style={{ transform: "scale(1.28)", transformOrigin: "center" }}
-        />
-      ) : (
-        initial
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt ?? name}
+        className="block h-full w-full object-cover object-center"
+      />
+      {uploading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
+        </div>
       )}
     </div>
   );

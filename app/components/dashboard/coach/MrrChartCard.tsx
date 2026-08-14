@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -12,10 +10,10 @@ import {
   Cell,
   Rectangle,
 } from "recharts";
-import { GlassPanel, DASHBOARD_KPI_GLASS } from "@/components/ui/GlassPanel";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { formatCurrency } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
 
 export interface MrrChartDatum {
   mes: string;
@@ -41,12 +39,14 @@ function ActiveBar(props: any) {
   );
 }
 
-const AXIS_TICK = { fill: "rgba(255,255,255,0.88)", fontSize: 10, fontWeight: 600 as const };
 const Y_AXIS_WIDTH = 52;
 const BAR_STEP = 40;
 const BAR_SIZE = 12;
 const CHART_H_MOBILE = 168;
 const CHART_H_DESKTOP = 196;
+
+/** Sombra = 50% da intensidade do card de ações requeridas (0.28 → 0.14). */
+const MRR_CARD_SHADOW = "0 8px 24px rgba(0,0,0,0.14)";
 
 /** Passos “bonitos” (múltiplos de 50) que crescem com a receita. */
 const STEP_CANDIDATES = [50, 100, 150, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 50000];
@@ -128,15 +128,9 @@ function MrrFaturamentoTooltip({
         top,
         backgroundColor: isLight ? "#FFFFFF" : "rgba(17, 24, 39, 0.95)",
         border: isLight ? "1px solid #E4E4E7" : "1px solid rgba(255,255,255,0.12)",
-        backdropFilter: isLight ? undefined : "blur(8px)",
       }}
     >
-      <p
-        className="text-[10px] font-bold leading-none mb-1"
-        style={{ color: isLight ? "#09090B" : "#FFFFFF" }}
-      >
-        {label}
-      </p>
+      <p className="text-[10px] font-medium text-text-tertiary">{label}</p>
       <p className="text-[10px] font-semibold leading-none" style={{ color: "#39c75a" }}>
         Faturamento: {formatCurrency(value)}
       </p>
@@ -153,6 +147,16 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const chartRootRef = useRef<HTMLDivElement | null>(null);
   const [scrollWidth, setScrollWidth] = useState(0);
+
+  const axisTick = useMemo(
+    () => ({
+      fill: isLight ? "#52525B" : "rgba(216, 220, 230, 0.72)",
+      fontSize: 10,
+      fontWeight: 600 as const,
+    }),
+    [isLight],
+  );
+  const gridStroke = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)";
 
   const { domainMax: yDomainMax, ticks: yTicks } = useMemo(() => {
     const max = Math.max(0, ...chartData.map((d) => d.receita));
@@ -191,26 +195,28 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
   const canRenderChart = chartHeight > 0 && chartWidth > 0 && scrollWidth > 0;
 
   return (
-    <GlassPanel
-      variant={DASHBOARD_KPI_GLASS}
-      shine="subtle"
-      className={`coach-mrr-card overflow-visible p-4 ${className ?? ""}`}
+    <div
+      className={cn(
+        "coach-mrr-card overflow-visible rounded-xl border-0 bg-surface-1 p-4",
+        className,
+      )}
+      style={{ boxShadow: MRR_CARD_SHADOW }}
     >
-      <div className="flex items-start justify-end gap-4 mb-3">
+      <div className="mb-3 flex items-start justify-end gap-4">
         <div className="text-right">
           <p
-            className="coach-mrr-value text-2xl md:text-[24px] font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none"
+            className="coach-mrr-value text-2xl font-bold font-kpi tabular-nums lining-nums tracking-headline leading-none text-text-primary md:text-[24px]"
             style={{ letterSpacing: "var(--tracking-display, -0.02em)" }}
           >
             {formatCurrency(currentMrr)}
           </p>
-          <p className="coach-mrr-badge text-[10px] mt-1">MRR atual</p>
+          <p className="coach-mrr-badge mt-1 text-[10px] text-text-tertiary">MRR atual</p>
         </div>
       </div>
 
       <div style={{ height: chartHeight, minHeight: chartHeight, minWidth: 0 }}>
         {chartData.length === 0 ? (
-          <div className="coach-mrr-empty h-full flex items-center justify-center text-xs">
+          <div className="coach-mrr-empty flex h-full items-center justify-center text-xs text-text-tertiary">
             Sem dados suficientes para gerar gráfico.
           </div>
         ) : (
@@ -218,7 +224,6 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
             className="relative w-full overflow-hidden"
             style={{ height: chartHeight, minWidth: 0 }}
           >
-            {/* Eixo Y fixo — zona exclusiva (barras nunca entram aqui) */}
             <div
               className="pointer-events-none absolute inset-y-0 left-0 z-10"
               style={{ width: Y_AXIS_WIDTH, height: chartHeight }}
@@ -231,7 +236,7 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                   margin={{ top: 8, right: 0, left: 0, bottom: 28 }}
                 >
                   <YAxis
-                    tick={AXIS_TICK}
+                    tick={axisTick}
                     tickFormatter={formatYTick}
                     tickLine={false}
                     axisLine={false}
@@ -247,10 +252,9 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
               )}
             </div>
 
-            {/* Barras + meses + grid — começa após o eixo Y (não há overlap) */}
             <div
               ref={scrollRef}
-              className="absolute inset-y-0 right-0 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              className="absolute inset-y-0 right-0 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               style={{ left: Y_AXIS_WIDTH, height: chartHeight, minWidth: 0 }}
             >
               <div
@@ -266,12 +270,12 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                   >
                     <CartesianGrid
                       vertical={false}
-                      stroke="rgba(255,255,255,0.2)"
+                      stroke={gridStroke}
                       strokeDasharray="3 4"
                     />
                     <XAxis
                       dataKey="mes"
-                      tick={AXIS_TICK}
+                      tick={axisTick}
                       tickLine={false}
                       axisLine={false}
                       interval={0}
@@ -287,7 +291,7 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                         <MrrFaturamentoTooltip
                           active={props.active}
                           payload={props.payload}
-                          label={typeof props.label === "string" ? props.label : undefined}
+                          label={props.label}
                           coordinate={props.coordinate}
                           isLight={isLight}
                           chartRootEl={chartRootRef.current}
@@ -297,14 +301,17 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
                     <Bar
                       dataKey="receita"
                       barSize={BAR_SIZE}
-                      maxBarSize={BAR_SIZE}
-                      radius={[3, 3, 0, 0]}
-                      activeBar={<ActiveBar />}
+                      shape={<ActiveBar />}
+                      isAnimationActive={false}
                     >
                       {chartData.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.futuro ? "rgba(57, 199, 90, 0.28)" : "rgba(57, 199, 90, 0.85)"}
+                          fill={
+                            entry.futuro
+                              ? "rgba(57, 199, 90, 0.35)"
+                              : "rgba(57, 199, 90, 0.9)"
+                          }
                           stroke={entry.futuro ? "rgba(57, 199, 90, 0.55)" : "none"}
                           strokeDasharray={entry.futuro ? "4 3" : undefined}
                           strokeWidth={entry.futuro ? 1 : 0}
@@ -318,6 +325,6 @@ export function MrrChartCard({ currentMrr, chartData, className }: MrrChartCardP
           </div>
         )}
       </div>
-    </GlassPanel>
+    </div>
   );
 }

@@ -139,6 +139,7 @@ export default function AlunoDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [userSexo, setUserSexo] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [coachId, setCoachId] = useState<string | null>(null);
   const [incompleteData, setIncompleteData] = useState(false);
@@ -153,7 +154,7 @@ export default function AlunoDashboardPage() {
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
 
   // Coach
-  const [coachInfo, setCoachInfo] = useState<{ nome: string; avatar: string | null } | null>(null);
+  const [coachInfo, setCoachInfo] = useState<{ nome: string; avatar: string | null; sexo?: string | null } | null>(null);
   const [coachPendings, setCoachPendings] = useState({ mensagens: 0, feedbacks: 0 });
   const [coachContactAvailable, setCoachContactAvailable] = useState(true);
 
@@ -208,6 +209,7 @@ export default function AlunoDashboardPage() {
     setUserId(cached.userId);
     setUserName(cached.userName);
     setUserAvatar(cached.userAvatar);
+    setUserSexo(cached.userSexo ?? null);
     setCoachId(cached.coachId);
     setCoachInfo(cached.coachInfo);
     setCoachContactAvailable(cached.coachContactAvailable);
@@ -592,6 +594,7 @@ export default function AlunoDashboardPage() {
       const resolvedAvatar = getPublicStorageUrl('avatars', profile.avatar_url ?? null);
       setUserName(resolvedName);
       setUserAvatar(resolvedAvatar);
+      setUserSexo(profile.sexo ?? null);
 
       // First paint IMEDIATO — não espera KPIs / agenda / nutrição
       setLoading(false);
@@ -608,7 +611,7 @@ export default function AlunoDashboardPage() {
         coachIdValue
           ? supabaseClient
               .from('profiles')
-              .select('full_name, avatar_url, subscription_active, account_type, role')
+              .select('full_name, avatar_url, sexo, subscription_active, account_type, role')
               .eq('id', coachIdValue)
               .maybeSingle()
           : Promise.resolve({ data: null }),
@@ -655,12 +658,13 @@ export default function AlunoDashboardPage() {
         }
       }
 
-      let nextCoachInfo: { nome: string; avatar: string | null } | null = null;
+      let nextCoachInfo: { nome: string; avatar: string | null; sexo?: string | null } | null = null;
       let coachExtrasEnabled = true;
       if (coachResult.data) {
         const coachData = coachResult.data as {
           full_name?: string | null;
           avatar_url?: string | null;
+          sexo?: string | null;
           subscription_active?: boolean | null;
           account_type?: string | null;
           role?: string | null;
@@ -668,6 +672,7 @@ export default function AlunoDashboardPage() {
         nextCoachInfo = {
           nome: coachData.full_name?.split(' ').slice(0, 2).join(' ') || 'Seu Coach',
           avatar: getPublicStorageUrl('avatars', coachData.avatar_url ?? null),
+          sexo: coachData.sexo ?? null,
         };
         setCoachInfo(nextCoachInfo);
         coachExtrasEnabled =
@@ -720,6 +725,7 @@ export default function AlunoDashboardPage() {
         userId: uid,
         userName: resolvedName,
         userAvatar: resolvedAvatar,
+        userSexo: profile.sexo ?? null,
         coachId: coachIdValue,
         coachInfo: nextCoachInfo,
         coachContactAvailable: coachExtrasEnabled,
@@ -933,6 +939,7 @@ export default function AlunoDashboardPage() {
           <HeroHeader
             userName={userName}
             avatarUrl={userAvatar}
+            sexo={userSexo}
             showNotificationBadge={
               notifNaoLidas > 0 ||
               coachPendings.feedbacks > 0 ||
@@ -994,6 +1001,7 @@ export default function AlunoDashboardPage() {
             <CoachCard
               coachNome={coachInfo.nome}
               coachAvatar={coachInfo.avatar}
+              coachSexo={coachInfo.sexo}
               mensagensPendentes={chatNaoLidas}
               feedbacksPendentes={coachPendings.feedbacks}
             />

@@ -1,4 +1,5 @@
-// Service worker do Auronfit — só cuida de Web Push (sem cache/offline por enquanto).
+// Service worker do Auronfit — Web Push + atualização do PWA.
+// Bump este comentário em deploys críticos de SW: 2026-08-13
 
 self.addEventListener('install', () => {
   self.skipWaiting();

@@ -7,6 +7,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
 import { useUnreadFeedbacksCount } from '@/lib/feedbacks/useUnreadFeedbacksCount';
+import { AuronLinkIcon } from '@/app/components/ui/Auronlinkicon';
 import {
   Barbell,
   ForkKnife,
@@ -31,7 +32,11 @@ import {
   CaretRight,
 } from '@phosphor-icons/react';
 
-type IconComponent = ComponentType<{ size?: number | string; weight?: 'fill' | 'regular'; className?: string }>;
+type IconComponent = ComponentType<{
+  size?: number | string;
+  weight?: 'fill' | 'regular';
+  className?: string;
+}>;
 
 type MenuItem = {
   id: string;
@@ -44,6 +49,50 @@ type MenuGroup = {
   label: string;
   items: string[];
 };
+
+const SIDEBAR_EXPANDED_PX = 180;
+const SIDEBAR_COLLAPSED_PX = 54;
+
+/**
+ * Ajuste MANUAL da lateralidade do elo (só com sidebar aberto).
+ * Unidade: pixels. 0 = elo centralizado no sidebar (igual ao nome).
+ * Negativo = esquerda · Positivo = direita.
+ */
+const ELO_OFFSET_X_PX = 0;
+
+/**
+ * Distância do topo até o elo — alinhar à saudação "Olá," do dashboard
+ * (conteúdo usa lg:p-10 ≈ 40px). Aumente/diminua para calibrar.
+ */
+const LOGO_TOP_OFFSET_PX = 50;
+
+/** Balão com “!” — feedbacks do aluno. */
+function FeedbackIcon({
+  size = 18,
+  weight = 'regular',
+  className,
+}: {
+  size?: number | string;
+  weight?: 'fill' | 'regular';
+  className?: string;
+}) {
+  const px = typeof size === 'number' ? size : 18;
+  return (
+    <span
+      className={cn('relative inline-flex items-center justify-center', className)}
+      style={{ width: px, height: px }}
+      aria-hidden
+    >
+      <ChatCircle size={px} weight={weight} className="absolute inset-0" />
+      <span
+        className="relative z-[1] font-bold leading-none"
+        style={{ fontSize: Math.max(9, Math.round(px * 0.42)), marginTop: -1 }}
+      >
+        !
+      </span>
+    </span>
+  );
+}
 
 const alunoMenuItems: MenuItem[] = [
   { id: 'dashboard', name: 'Dashboard', href: '/aluno/dashboard', icon: SquaresFour },
@@ -68,22 +117,22 @@ const coachItemConfig: Record<string, MenuItem> = {
   ranking: { id: 'ranking', name: 'Ranking', href: '/admin/ranking', icon: Trophy },
   convites: { id: 'convites', name: 'Convites', href: '/super-admin/convites', icon: Handshake },
   chat: { id: 'chat', name: 'Mensagens', href: '/admin/chat', icon: ChatCircle },
-  feedbacks: { id: 'feedbacks', name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
+  feedbacks: { id: 'feedbacks', name: 'Feedbacks', href: '/admin/feedbacks', icon: FeedbackIcon },
   'master-control': { id: 'master-control', name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
   'perfil-master': { id: 'perfil-master', name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
-  perfil: { id: 'perfil', name: 'Perfil', href: '/admin/perfil', icon: User },
 };
 
+/** Dashboard fica solto após a logo (sem título de seção). */
 const coachMenuGroups: MenuGroup[] = [
-  { label: 'Visão geral', items: ['dashboard'] },
-  { label: 'Alunos', items: ['alunos', 'treinos', 'nutricao', 'biblioteca', 'chat'] },
-  { label: 'Negócio', items: ['financeiro', 'parceiros', 'ranking', 'convites'] },
-  { label: 'Sistema', items: ['feedbacks', 'master-control', 'perfil-master', 'perfil'] },
+  { label: 'Gestão', items: ['alunos', 'treinos', 'nutricao', 'biblioteca'] },
+  { label: 'Acompanhamento', items: ['ranking', 'chat', 'feedbacks'] },
+  { label: 'Negócio', items: ['financeiro', 'parceiros', 'convites'] },
+  { label: 'Sistema', items: ['master-control', 'perfil-master'] },
 ];
 
 function resolveCoachGroups(isSuperAdmin: boolean): { label: string; items: MenuItem[] }[] {
   const hidden = isSuperAdmin
-    ? new Set(['perfil'])
+    ? new Set<string>()
     : new Set(['convites', 'master-control', 'perfil-master']);
 
   return coachMenuGroups
@@ -109,28 +158,39 @@ export default function Sidebar() {
     const saved = localStorage.getItem('sidebar-expanded');
     const expanded = saved !== 'false';
     setIsExpanded(expanded);
-    document.documentElement.style.setProperty('--sidebar-width', expanded ? '155px' : '54px');
+    document.documentElement.style.setProperty(
+      '--sidebar-width',
+      expanded ? `${SIDEBAR_EXPANDED_PX}px` : `${SIDEBAR_COLLAPSED_PX}px`,
+    );
   }, []);
 
   const toggleSidebar = () => {
     const next = !isExpanded;
     setIsExpanded(next);
     localStorage.setItem('sidebar-expanded', String(next));
-    document.documentElement.style.setProperty('--sidebar-width', next ? '155px' : '54px');
+    document.documentElement.style.setProperty(
+      '--sidebar-width',
+      next ? `${SIDEBAR_EXPANDED_PX}px` : `${SIDEBAR_COLLAPSED_PX}px`,
+    );
   };
 
-  const collapseButton = (
+  const collapseTab = (
     <button
       type="button"
       onClick={toggleSidebar}
-      className="sidebar-collapse-btn w-5 h-5 border-0 bg-transparent flex items-center justify-center shrink-0 p-0 opacity-70 hover:opacity-100 transition-opacity"
+      className="sidebar-collapse-tab"
+      style={{ top: LOGO_TOP_OFFSET_PX + 22 }}
       title={isExpanded ? 'Recolher menu' : 'Expandir menu'}
+      aria-label={isExpanded ? 'Recolher menu' : 'Expandir menu'}
     >
-      {isExpanded ? <CaretLeft size={12} weight="bold" /> : <CaretRight size={12} weight="bold" />}
+      {isExpanded ? (
+        <CaretLeft size={12} weight="bold" />
+      ) : (
+        <CaretRight size={12} weight="bold" />
+      )}
     </button>
   );
 
-  // Ocultar em rotas públicas ou enquanto carrega
   if (
     pathname === '/login' ||
     pathname === '/' ||
@@ -148,7 +208,6 @@ export default function Sidebar() {
     return null;
   }
 
-  // Se não há usuário autenticado, não renderizar
   if (!user) {
     return null;
   }
@@ -156,9 +215,12 @@ export default function Sidebar() {
   const isAluno = userRole === 'aluno';
   const isSuperAdmin = userRole === 'super_admin';
   const coachGroups = isAluno ? [] : resolveCoachGroups(isSuperAdmin);
+  const coachDashboard = coachItemConfig.dashboard;
   const flatMobileItems = isAluno
     ? alunoMenuItems
-    : coachGroups.flatMap((g) => g.items);
+    : [coachDashboard, ...coachGroups.flatMap((g) => g.items)];
+
+  const homeHref = isAluno ? '/aluno/dashboard' : '/admin/dashboard';
 
   const renderNavLink = (m: MenuItem, opts?: { onNavigate?: () => void; mobile?: boolean }) => {
     const Icon = m.icon;
@@ -170,17 +232,24 @@ export default function Sidebar() {
         <Link
           key={m.href}
           href={m.href}
-          className={`flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] uppercase tracking-widest transition-all group ${
-            isActive ? 'bg-brand text-black shadow-lg shadow-brand/20' : 'text-text-secondary hover:text-brand hover:bg-brand/5'
+          className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-[10px] uppercase tracking-widest transition-all ${
+            isActive
+              ? 'bg-brand text-black shadow-lg shadow-brand/20'
+              : 'text-text-secondary hover:bg-brand/5 hover:text-brand'
           }`}
           onClick={opts.onNavigate}
         >
-          <div className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border ${
-            isActive ? 'bg-brand/20 border-brand/30' : 'bg-surface-2 border-card'
-          }`}>
+          <div
+            className={`relative flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm transition-all ${
+              isActive ? 'border-brand/30 bg-brand/20' : 'border-card bg-surface-2'
+            }`}
+          >
             <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
             {showBadge && (
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand ring-2 ring-surface-1" aria-hidden />
+              <span
+                className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand ring-2 ring-surface-1"
+                aria-hidden
+              />
             )}
           </div>
           {m.name}
@@ -194,30 +263,39 @@ export default function Sidebar() {
         href={m.href}
         title={!isExpanded ? m.name : undefined}
         className={cn(
-          "sidebar-nav-link flex items-center gap-2 px-1.5 h-8 transition-all group relative",
+          'sidebar-nav-link group relative flex h-9 items-center gap-2.5 px-1.5 transition-all',
           isActive
-            ? "sidebar-nav-link--active bg-white/15 text-white font-semibold border-l-2 border-white rounded-r-lg rounded-l-none"
-            : "sidebar-nav-link--idle text-white/85 hover:text-white hover:bg-white/10 rounded-lg",
-          isExpanded ? "justify-start" : "justify-center"
+            ? 'sidebar-nav-link--active rounded-l-none rounded-r-lg border-l-2 border-white bg-white/15 font-semibold text-white'
+            : 'sidebar-nav-link--idle rounded-lg text-white/85 hover:bg-white/10 hover:text-white',
+          isExpanded ? 'justify-start' : 'justify-center',
         )}
       >
-        {isActive && !isExpanded && <div className="absolute left-0 w-1 h-4 bg-brand rounded-r-full" />}
+        {isActive && !isExpanded && (
+          <div className="absolute left-0 h-4 w-1 rounded-r-full bg-brand" />
+        )}
         <span className="relative shrink-0">
-          <Icon size={14} weight={isActive ? 'fill' : 'regular'} className={cn(!isActive && 'group-hover:scale-105 transition-transform')} />
+          <Icon
+            size={18}
+            weight={isActive ? 'fill' : 'regular'}
+            className={cn(!isActive && 'transition-transform group-hover:scale-105')}
+          />
           {showBadge && (
-            <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-brand ring-1 ring-black/40" aria-hidden />
+            <span
+              className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-brand ring-1 ring-black/40"
+              aria-hidden
+            />
           )}
         </span>
 
         {isExpanded && (
-          <span className="text-[10px] font-semibold tracking-wide truncate flex-1">
+          <span className="flex-1 truncate text-[12px] font-medium tracking-wide">
             {m.name}
           </span>
         )}
 
         {!isExpanded && (
           <div
-            className="absolute left-full ml-4 px-2 py-1 backdrop-blur-xl text-white text-[10px] font-medium tracking-wider rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-100"
+            className="pointer-events-none absolute left-full z-100 ml-4 whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-medium tracking-wider text-white opacity-0 backdrop-blur-xl transition-all group-hover:opacity-100"
             style={{
               background: '#141414',
               boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
@@ -232,149 +310,161 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Sidebar for Desktop */}
       <aside
         style={{
-          width: isExpanded ? '155px' : '54px',
+          width: isExpanded ? SIDEBAR_EXPANDED_PX : SIDEBAR_COLLAPSED_PX,
         }}
-        className="auron-sidebar hidden lg:flex fixed left-0 top-0 h-full min-h-0 border-r flex-col py-2 px-1.5 items-stretch z-60 transition-[width] duration-300 overflow-hidden"
+        className="auron-sidebar fixed left-0 top-0 z-60 hidden h-full min-h-0 flex-col items-stretch overflow-visible border-r px-1.5 pb-2 transition-[width] duration-300 lg:flex"
       >
-        {isExpanded ? (
-          <div className="flex items-center justify-center mb-3 shrink-0 px-1">
-            <Link
-              href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'}
-              className="flex items-center justify-center group cursor-pointer"
-            >
+        {/* Aba “ponta de papel” — fora do fluxo, não empurra logo/nome */}
+        {collapseTab}
+
+        {/* Logo + nome centralizados no sidebar */}
+        <div
+          className="mb-5 flex shrink-0 flex-col items-center px-1"
+          style={{ paddingTop: LOGO_TOP_OFFSET_PX }}
+        >
+          <div
+            className="mb-1.5 flex justify-center transition-transform duration-300"
+            style={{ transform: `translateX(${ELO_OFFSET_X_PX}px)` }}
+          >
+            <Link href={homeHref} className="group cursor-pointer">
+              <AuronLinkIcon
+                size={isExpanded ? 28 : 22}
+                className="shrink-0 text-white transition-opacity group-hover:opacity-90"
+              />
+            </Link>
+          </div>
+
+          <div
+            className={cn(
+              'overflow-hidden transition-all duration-300 ease-out',
+              isExpanded
+                ? 'max-h-10 translate-y-0 opacity-100'
+                : 'max-h-0 -translate-y-1 opacity-0',
+            )}
+            aria-hidden={!isExpanded}
+          >
+            <Link href={homeHref} className="flex justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/logo-auron-nome.svg"
                 alt="Auron"
-                width={100}
-                height={11}
-                className="h-[25px] w-auto max-w-[112px] object-contain group-hover:opacity-90 transition-opacity"
+                width={148}
+                height={24}
+                className="h-6 w-auto max-w-[148px] object-contain [image-rendering:auto] transition-opacity hover:opacity-90"
+                draggable={false}
               />
             </Link>
           </div>
-        ) : null}
+        </div>
 
-        <nav className="flex flex-col flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {isAluno ? (
-            <div className="flex flex-col gap-0.5">
-              <div className={cn(
-                'flex items-center mb-1.5 px-1',
-                isExpanded ? 'justify-end' : 'justify-center'
-              )}>
-                {collapseButton}
-              </div>
+            <div className="flex flex-col gap-1 pt-1">
               {alunoMenuItems.map((m) => renderNavLink(m))}
             </div>
           ) : (
-            coachGroups.map((group, groupIdx) => (
-              <div
-                key={group.label}
-                className="flex flex-col gap-0.5"
-                style={{ marginTop: groupIdx === 0 ? 0 : 16 }}
-              >
-                {(isExpanded || groupIdx === 0) && (
-                  <div
-                    className={cn(
-                      'flex items-center mb-1.5 px-1 min-h-5',
-                      isExpanded ? 'justify-between gap-1' : 'justify-center'
-                    )}
-                  >
-                    {isExpanded && (
-                      <div className="sidebar-group-label text-[9px] font-semibold uppercase tracking-[1.2px] truncate">
-                        {group.label}
-                      </div>
-                    )}
-                    {groupIdx === 0 && collapseButton}
-                  </div>
-                )}
-                {group.items.map((m) => renderNavLink(m))}
+            <>
+              {/* Dashboard solto — como “Página inicial” do Nutrium */}
+              <div className="mb-3 flex flex-col gap-1 pt-1">
+                {renderNavLink(coachDashboard)}
               </div>
-            ))
+
+              {coachGroups.map((group) => (
+                <div key={group.label} className="mb-4 flex flex-col gap-1">
+                  {isExpanded && (
+                    <div className="sidebar-group-label mb-1.5 truncate px-1.5 text-[9px] font-medium uppercase tracking-[1.4px]">
+                      {group.label}
+                    </div>
+                  )}
+                  {group.items.map((m) => renderNavLink(m))}
+                </div>
+              ))}
+            </>
           )}
         </nav>
 
         <div className="mt-auto shrink-0">
-          <div className="pt-2 pb-0.5 flex flex-col gap-1 border-t border-white/15">
+          <div className="flex flex-col gap-1 border-t border-white/15 pb-0.5 pt-2">
             <button
               onClick={async () => {
-                try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
+                try {
+                  await supabaseClient.auth.signOut({ scope: 'local' });
+                } catch {}
                 localStorage.clear();
                 window.location.href = '/login';
               }}
-              className={`sidebar-logout w-full h-8 rounded-lg flex items-center gap-2 transition-all group ${isExpanded ? 'px-1.5 justify-start' : 'justify-center'}`}
+              className={`sidebar-logout group flex h-9 w-full items-center gap-2.5 rounded-lg transition-all ${isExpanded ? 'justify-start px-1.5' : 'justify-center'}`}
               title="Sair"
             >
-              <SignOut size={14} className="shrink-0" />
+              <SignOut size={18} className="shrink-0" />
               {isExpanded && (
-                <span className="text-[10px] font-semibold tracking-wide">Sair</span>
+                <span className="text-[12px] font-medium tracking-wide">Sair</span>
               )}
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Hamburger button - Mobile Only - DISABLED (using bottom nav instead) */}
-      <button
-        aria-label="Menu"
-        onClick={() => setOpen(true)}
-        className="hidden"
-      >
+      <button aria-label="Menu" onClick={() => setOpen(true)} className="hidden">
         <List size={22} className="text-brand" />
       </button>
 
-      {/* Drawer Overlay - Mobile Only */}
       <div
-        className={`fixed inset-0 z-40 transition-all duration-500 ${open ? 'opacity-100 pointer-events-auto backdrop-blur-md' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40 transition-all duration-500 ${open ? 'pointer-events-auto opacity-100 backdrop-blur-md' : 'pointer-events-none opacity-0'}`}
         aria-hidden={!open}
         onClick={() => setOpen(false)}
       >
         <div className="absolute inset-0 bg-black/80" />
       </div>
 
-      {/* Drawer Menu - Mobile Only */}
-      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
-        <div className="p-6 pb-4 flex items-center justify-between gap-3">
+      <aside
+        className={`fixed left-0 top-0 z-50 h-full w-[75%] max-w-[280px] transform border-r border-border-subtle bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] transition-transform duration-500 ease-out lg:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <div className="flex items-center justify-between gap-3 p-6 pb-4">
           <Link
-            href={isAluno ? '/aluno/dashboard' : '/admin/dashboard'}
-            className="flex items-center min-w-0"
+            href={homeHref}
+            className="flex min-w-0 items-center gap-2"
             onClick={() => setOpen(false)}
           >
+            <AuronLinkIcon size={22} className="shrink-0 text-brand" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/logo-auron-nome.svg"
+              src="/images/logo-auron-nome-roxo.svg"
               alt="Auron"
-              width={110}
-              height={12}
-              className="h-[16px] w-auto max-w-[120px] object-contain object-left"
+              width={148}
+              height={24}
+              className="h-6 w-auto max-w-[148px] object-contain object-left"
+              draggable={false}
             />
           </Link>
           <button
             onClick={() => setOpen(false)}
-            className="w-10 h-10 shrink-0 flex items-center justify-center bg-surface-1 text-text-secondary hover:text-brand rounded-lg transition-all"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-1 text-text-secondary transition-all hover:text-brand"
             aria-label="Fechar"
           >
             <X size={20} />
           </button>
         </div>
 
-        <nav className="px-4 mt-3 mb-6 flex flex-col gap-1.5 overflow-y-auto max-h-[60vh]">
-          {flatMobileItems.map((m) => renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }))}
+        <nav className="mb-6 mt-3 flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto px-4">
+          {flatMobileItems.map((m) =>
+            renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }),
+          )}
         </nav>
 
         <div className="absolute bottom-8 left-0 right-0 px-5">
-            <button
-              onClick={async () => {
-                await supabaseClient.auth.signOut();
-                window.location.href = '/login';
-              }}
-              className="w-full h-12 bg-danger text-white rounded-lg flex items-center justify-center gap-2 text-[9px] uppercase tracking-widest hover:bg-danger/80 transition-all active:scale-95 shadow-lg shadow-danger/20"
-            >
-              <SignOut size={16} />
-              Sair
-            </button>
+          <button
+            onClick={async () => {
+              await supabaseClient.auth.signOut();
+              window.location.href = '/login';
+            }}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-danger text-[9px] uppercase tracking-widest text-white shadow-lg shadow-danger/20 transition-all hover:bg-danger/80 active:scale-95"
+          >
+            <SignOut size={16} />
+            Sair
+          </button>
         </div>
       </aside>
     </>

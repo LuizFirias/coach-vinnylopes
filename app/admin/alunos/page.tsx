@@ -45,6 +45,7 @@ interface ProfileRow {
   data_expiracao?: string | null;
   data_inicio?: string | null;
   arquivado?: boolean | null;
+  sexo?: string | null;
 }
 
 function diasRestantes(dataExpiracao: string | null | undefined): number | null {
@@ -83,17 +84,6 @@ function formatVencimentoCurto(dataExpiracao: string | Date): string {
   const dia = d.getDate();
   const mes = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").trim();
   return `${dia}/${mes}`;
-}
-
-const AVATAR_COLORS = [
-  "from-amber-400/70 to-amber-600/40",
-  "from-orange-400/70 to-orange-600/40",
-  "from-sky-400/70 to-sky-600/40",
-  "from-brand/60 to-brand/30",
-];
-
-function avatarGrad(name: string): string {
-  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
 
 export default function AdminAlunosPage() {
@@ -137,7 +127,7 @@ export default function AdminAlunosPage() {
       // Vínculo + perfil numa única query (embed) — antes eram 2 round-trips em série
       const { data, error: err } = await supabaseClient
         .from("coach_alunos")
-        .select("aluno:profiles!aluno_id(id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, arquivado)")
+        .select("aluno:profiles!aluno_id(id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, arquivado, sexo)")
         .eq("coach_id", coachId)
         .limit(200);
 
@@ -435,6 +425,14 @@ export default function AdminAlunosPage() {
                     <MobileListRow
                       key={row.id}
                       name={name}
+                      leading={
+                        <StudentAvatar
+                          name={name}
+                          avatarUrl={row.avatar_url}
+                          sexo={row.sexo}
+                          className={isArquivado ? "grayscale" : undefined}
+                        />
+                      }
                       badge={
                         <span className={cn(
                           "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border",
@@ -539,7 +537,7 @@ export default function AdminAlunosPage() {
                                 <StudentAvatar
                                   name={name}
                                   avatarUrl={row.avatar_url}
-                                  colorClassName={avatarGrad(name)}
+                                  sexo={row.sexo}
                                   className={isArquivado ? "grayscale" : undefined}
                                 />
                                 <div className="flex flex-col min-w-0">

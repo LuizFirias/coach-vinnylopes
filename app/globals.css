@@ -26,7 +26,7 @@ html.dark select option {
 }
 
 html[data-theme="light"] select option {
-  background-color: #e8e8e8;
+  background-color: #ffffff;
   color: #09090b;
 }
 
@@ -897,7 +897,7 @@ html[data-theme="light"] .glass-panel-flat-light .glass-panel-shine-line {
 }
 
 html[data-theme="light"] .glass-panel-flat-light.coach-kpi-tooltip {
-  background: var(--surface-2) !important;
+  background: #ffffff !important;
   box-shadow: var(--elev-2) !important;
   border-color: var(--border-subtle) !important;
 }
@@ -984,7 +984,7 @@ html[data-theme="light"] .coach-kpi-tooltip-body {
 }
 
 .coach-mrr-title {
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 html[data-theme="light"] .coach-mrr-title {
@@ -992,7 +992,7 @@ html[data-theme="light"] .coach-mrr-title {
 }
 
 .coach-mrr-subtitle {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
 }
 
 html[data-theme="light"] .coach-mrr-subtitle {
@@ -1000,7 +1000,7 @@ html[data-theme="light"] .coach-mrr-subtitle {
 }
 
 .coach-mrr-value {
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 html[data-theme="light"] .coach-mrr-value {
@@ -1043,16 +1043,16 @@ html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn.is-open {
 
 html[data-theme="light"] .coach-mrr-card .coach-mrr-title,
 html[data-theme="light"] .coach-mrr-card .coach-mrr-value {
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 html[data-theme="light"] .coach-mrr-card .coach-mrr-subtitle,
 html[data-theme="light"] .coach-mrr-card .coach-mrr-badge {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text-tertiary);
 }
 
 html[data-theme="light"] .coach-mrr-card .coach-mrr-empty {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
 }
 
 /* Tooltip glass (dashboard / relatórios) — texto claro sobre roxo */
@@ -1099,11 +1099,100 @@ html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-
   transition: all 150ms ease;
 }
 
+/* Light: inputs/selects sempre brancos + borda (nunca cinza) */
+html[data-theme="light"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  background: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+html[data-theme="light"] .coach-app-typography button[aria-haspopup="listbox"] {
+  background: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+/* Dark: sem preenchimento cinza — fundo mais escuro que o card + borda visível */
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+),
+html.dark .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  background: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .coach-app-typography :is(input, textarea)::placeholder,
+html.dark .coach-app-typography :is(input, textarea)::placeholder {
+  color: #4a5568 !important;
+  opacity: 1;
+}
+
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+html.dark .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible,
+html.dark .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible {
+  border-color: #9333ea !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15) !important;
+  outline: none !important;
+}
+
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"],
+html.dark .coach-app-typography button[aria-haspopup="listbox"] {
+  background: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"]:focus,
+html.dark .coach-app-typography button[aria-haspopup="listbox"]:focus,
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"]:focus-visible,
+html.dark .coach-app-typography button[aria-haspopup="listbox"]:focus-visible,
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"][aria-expanded="true"],
+html.dark .coach-app-typography button[aria-haspopup="listbox"][aria-expanded="true"] {
+  border-color: #9333ea !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15) !important;
+  outline: none !important;
+}
+
 .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
   select
 ) {
   padding: 0 14px !important;
+}
+
+/* Precisa da mesma cadeia de :not() do baseline — senão padding 14px ganha e o texto fica sob o ícone */
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-left-icon {
+  padding-left: 44px !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-right-element {
+  padding-right: 40px !important;
 }
 
 .coach-app-typography :is(
@@ -1613,7 +1702,8 @@ html.dark .coach-list-kpi-card {
 }
 
 .auron-sidebar .sidebar-group-label {
-  color: rgba(255, 255, 255, 0.55) !important;
+  color: rgba(255, 255, 255, 0.48) !important;
+  font-weight: 500 !important;
 }
 
 .auron-sidebar .sidebar-nav-link--idle {
@@ -1632,14 +1722,36 @@ html.dark .coach-list-kpi-card {
   border-left-color: #ffffff !important;
 }
 
-.auron-sidebar .sidebar-collapse-btn {
-  background: transparent !important;
+/* Aba lateral — continuidade roxa (“ponta de papel”) fora do sidebar */
+.auron-sidebar .sidebar-collapse-tab {
+  position: absolute;
+  /* 1px para dentro = cola na borda e some a linha entre menu e aba */
+  right: -15px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 48px;
+  padding: 0 0 0 1px;
+  border: 0;
+  border-radius: 0 8px 8px 0;
+  background: var(--brand-primary) !important;
   color: #ffffff !important;
+  box-shadow: 4px 2px 12px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: filter 150ms ease, width 150ms ease, right 150ms ease;
 }
 
-.auron-sidebar .sidebar-collapse-btn:hover {
-  background: transparent !important;
-  color: #ffffff !important;
+.auron-sidebar .sidebar-collapse-tab:hover {
+  filter: brightness(1.06);
+  width: 18px;
+  right: -17px;
+}
+
+.auron-sidebar .sidebar-collapse-tab:active {
+  filter: brightness(0.96);
 }
 
 .auron-sidebar .sidebar-logout {
@@ -1651,20 +1763,217 @@ html.dark .coach-list-kpi-card {
   background: rgba(255, 255, 255, 0.12) !important;
 }
 
-/* ── Perfil — títulos + preview accent (surfaces vêm dos tokens globais) ─ */
+/* ── Perfil — tema claro: cards/inputs brancos · dark: surface navy ─ */
+
+.coach-chrome-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  overflow-x: clip;
+}
 
 .perfil-section-title {
-  color: var(--text-primary);
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary, #A1A1AA);
+}
+
+html[data-theme="dark"] .perfil-page .perfil-section-title,
+html.dark .perfil-page .perfil-section-title,
+html[data-theme="dark"] .perfil-page label,
+html.dark .perfil-page label {
+  color: #4a5568;
+}
+
+/* Light (Nutrium): página / cards / inputs brancos — sem cinza de preenchimento */
+.perfil-page {
+  background-color: #ffffff;
 }
 
 .perfil-page-heading {
+  font-size: 20px;
+  font-weight: 700;
   color: var(--text-primary);
+}
+
+/* Light: sombra Nutrium +20% (0.066 → 0.079) */
+.perfil-section-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 28px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.095);
+}
+
+.auron-widget-card {
+  border-radius: 16px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.095);
+}
+
+.auron-widget-shadow {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.095);
 }
 
 .perfil-form-card,
 .plan-usage-card {
-  background: var(--surface-1);
+  background-color: #ffffff;
+}
+
+.perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+  font-family: var(--font-sans), Inter, sans-serif;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: var(--text-primary) !important;
+}
+
+.perfil-page input.has-left-icon,
+.coach-app-typography .perfil-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-left-icon {
+  padding-left: 44px !important;
+}
+
+.perfil-page button[aria-haspopup="listbox"],
+.perfil-page button[aria-haspopup="listbox"] span {
+  font-family: var(--font-sans), Inter, sans-serif;
+  font-size: 16px;
+  font-weight: 400 !important;
+}
+
+.perfil-page button[aria-haspopup="listbox"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+  color: var(--text-primary);
+}
+
+html[data-theme="light"] .perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html[data-theme="light"] .perfil-page button[aria-haspopup="listbox"],
+html[data-theme="light"] .perfil-page button[aria-haspopup="listbox"] span {
+  font-weight: 400 !important;
+  color: #4a4a4a !important;
+}
+
+.perfil-page button[aria-haspopup="listbox"] span.text-text-disabled {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--text-disabled) !important;
+}
+
+.coach-app-typography .perfil-page :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  font-weight: 400 !important;
+}
+
+/* Dark */
+html[data-theme="dark"] .perfil-page,
+html.dark .perfil-page {
+  background-color: #080c14;
+}
+
+html[data-theme="dark"] .perfil-section-card,
+html.dark .perfil-section-card,
+html[data-theme="dark"] .perfil-form-card,
+html.dark .perfil-form-card,
+html[data-theme="dark"] .plan-usage-card,
+html.dark .plan-usage-card,
+html[data-theme="dark"] .auron-widget-card,
+html.dark .auron-widget-card {
+  background-color: #0c1018;
+  border: none;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="dark"] .auron-widget-shadow,
+html.dark .auron-widget-shadow {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* Dark: inputs/selects — fundo mais escuro que o card + borda visível (sem cinza #1e1e1e) */
+html[data-theme="dark"] .perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html.dark .perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html[data-theme="dark"] .auron-settings-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html.dark .auron-settings-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  background-color: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 10px !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .perfil-page :is(input, textarea)::placeholder,
+html.dark .perfil-page :is(input, textarea)::placeholder,
+html[data-theme="dark"] .auron-settings-page :is(input, textarea)::placeholder,
+html.dark .auron-settings-page :is(input, textarea)::placeholder {
+  color: #4a5568 !important;
+}
+
+html[data-theme="dark"] .perfil-page button[aria-haspopup="listbox"],
+html.dark .perfil-page button[aria-haspopup="listbox"],
+html[data-theme="dark"] .auron-settings-page button[aria-haspopup="listbox"],
+html.dark .auron-settings-page button[aria-haspopup="listbox"] {
+  background-color: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 10px !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .perfil-page :is(input, textarea, select):focus,
+html.dark .perfil-page :is(input, textarea, select):focus,
+html[data-theme="dark"] .auron-settings-page :is(input, textarea, select):focus,
+html.dark .auron-settings-page :is(input, textarea, select):focus,
+html[data-theme="dark"] .perfil-page button[aria-haspopup="listbox"]:focus,
+html.dark .perfil-page button[aria-haspopup="listbox"]:focus,
+html[data-theme="dark"] .auron-settings-page button[aria-haspopup="listbox"]:focus,
+html.dark .auron-settings-page button[aria-haspopup="listbox"]:focus,
+html[data-theme="dark"] .perfil-page button[aria-haspopup="listbox"][aria-expanded="true"],
+html.dark .perfil-page button[aria-haspopup="listbox"][aria-expanded="true"],
+html[data-theme="dark"] .auron-settings-page button[aria-haspopup="listbox"][aria-expanded="true"],
+html.dark .auron-settings-page button[aria-haspopup="listbox"][aria-expanded="true"] {
+  border-color: #9333ea !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15) !important;
+  outline: none;
+}
+
+html[data-theme="dark"] .perfil-page .perfil-senha-btn,
+html.dark .perfil-page .perfil-senha-btn {
+  border: 1px solid #2d3748;
+  background: transparent;
+  color: #d8dce6;
+}
+
+html[data-theme="dark"] .perfil-page .perfil-senha-btn:hover,
+html.dark .perfil-page .perfil-senha-btn:hover {
+  border-color: #9333ea;
+  background: rgba(147, 51, 234, 0.06);
+}
+
+html[data-theme="dark"] .perfil-page .perfil-camera-btn,
+html.dark .perfil-page .perfil-camera-btn {
+  background: transparent !important;
+  border: 1.5px solid #9333ea;
+  color: #9333ea;
+  box-shadow: 0 0 0 2px rgba(8, 12, 20, 0.55);
+}
+
+html[data-theme="dark"] .perfil-page .perfil-camera-btn:hover,
+html.dark .perfil-page .perfil-camera-btn:hover {
+  background: rgba(147, 51, 234, 0.12) !important;
+  color: #9333ea;
+}
+
+html[data-theme="dark"] .perfil-page .perfil-camera-btn svg,
+html.dark .perfil-page .perfil-camera-btn svg {
+  color: #9333ea;
 }
 
 .perfil-preview-card {
@@ -1769,7 +2078,7 @@ html.dark .coach-list-kpi-card {
 }
 
 .coach-app-typography button.food-search-row:hover {
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent) !important;
+  background: color-mix(in srgb, var(--brand-primary) 4%, #ffffff) !important;
 }
 .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact {
   min-height: 28px !important;
@@ -1802,21 +2111,21 @@ html.dark .coach-list-kpi-card {
 }
 
 .coach-mrr-badge {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text-tertiary);
 }
 
 html[data-theme="light"] .coach-mrr-card .coach-mrr-empty {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
 }
 
-/* Eixos e grid do gráfico MRR — força ticks/linhas legíveis no glass */
+/* Eixos do gráfico MRR — card neutro (não glass roxo) */
 .coach-mrr-card .recharts-cartesian-axis-tick text {
-  fill: rgba(255, 255, 255, 0.88) !important;
+  fill: var(--text-secondary) !important;
   font-size: 10px !important;
   font-weight: 600 !important;
 }
 
 .coach-mrr-card .recharts-cartesian-grid-horizontal line {
-  stroke: rgba(255, 255, 255, 0.2) !important;
+  stroke: color-mix(in srgb, var(--text-primary) 8%, transparent) !important;
 }
 

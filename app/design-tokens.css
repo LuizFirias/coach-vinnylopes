@@ -1,8 +1,8 @@
-/**
+﻿/**
  * design-tokens.css
- * ────────────────────────────────────────────────────────────────
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  * Tokens de design para Next.js (App Router).
- * Fonte de verdade: DESIGN-SPEC.md §2
+ * Fonte de verdade: DESIGN-SPEC.md Â§2
  *
  * Setup em Next.js:
  *   1. Copiar este arquivo para `app/design-tokens.css`
@@ -18,69 +18,69 @@
  *
  *      import './globals.css';
  *
- * As fontes (Inter + JetBrains Mono) são carregadas via next/font no
- * layout.tsx (não usar @import de Google Fonts — pior performance).
- * ────────────────────────────────────────────────────────────────
+ * As fontes (Inter + JetBrains Mono) sÃ£o carregadas via next/font no
+ * layout.tsx (nÃ£o usar @import de Google Fonts â€” pior performance).
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  */
 
 :root {
-  /* ═══════════════════════════════════════════════════════════
-     SURFACES — 60-30-10 neutros (dark base)
-     Page 60% · Card 30% · Input/elevação · Accent ≤10%
-     ═══════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     SURFACES â€” 60-30-10 neutros (dark base)
+     Page 60% Â· Card 30% Â· Input/elevaÃ§Ã£o Â· Accent â‰¤10%
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --surface-0:        #000000;   /* page bg (60%) */
   --surface-1:        #141414;   /* card (30%) */
-  --surface-2:        #222222;   /* input / elevação — NÃO card */
+  --surface-2:        #222222;   /* input / elevaÃ§Ã£o â€” NÃƒO card */
   --surface-3:        #2A2A2A;   /* overlay / divisor */
   --surface-4:        #333333;   /* borda input */
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      TEXT
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --text-primary:     #FFFFFF;
   --text-secondary:   #A1A1AA;
   --text-tertiary:    #8A8A8A;
   --text-disabled:    #737373;
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      BORDERS
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --border-subtle:    #2A2A2A;
   --border-default:   #3F3F46;
   --border-strong:    #52525B;
 
-  /* Bordas semânticas — cards sem outline; separação só por surface */
+  /* Bordas semÃ¢nticas â€” cards sem outline; separaÃ§Ã£o sÃ³ por surface */
   --border-card:        transparent;
   --border-card-hover:  rgba(255, 255, 255, 0.06);
   --border-input:       transparent;               /* contraste via surface-2 */
   --border-divider:     #2A2A2A;
   --border-accent:      rgba(117, 27, 180, 0.40);
 
-  /* ═══════════════════════════════════════════════════════════
-     BRAND / ACCENT (≤10% — sidebar, CTAs, foco)
-     ═══════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     BRAND / ACCENT (â‰¤10% â€” sidebar, CTAs, foco)
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --brand-primary:    #751BB4;
   --brand-hover:      #8B2FD4;
   --brand-pressed:    #5E158F;
   --brand-subtle:     rgba(117, 27, 180, 0.10);
   --brand-border:     rgba(117, 27, 180, 0.20);
-  --surface-card-light: #F7F7F7;
+  --surface-card-light: #FFFFFF;
 
   /* Texto sobre a marca */
   --text-on-brand:    #FFFFFF;
 
-  /* ═══════════════════════════════════════════════════════════
-     CALENDÁRIO / STATUS DE TREINO
-     ═══════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     CALENDÃRIO / STATUS DE TREINO
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --cal-done:         #39c75a;
   --cal-missed:       #e05555;
   --cal-today:        #751BB4;
   --cal-upcoming:     #7a8aab;
   --cal-rest:         #444444;
 
-  /* ═══════════════════════════════════════════════════════════
-     SEMANTIC COLORS (estado, nunca decoração)
-     ═══════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     SEMANTIC COLORS (estado, nunca decoraÃ§Ã£o)
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --success:          #39c75a;
   --success-subtle:   rgba(57, 199, 90, 0.10);
   --success-border:   rgba(57, 199, 90, 0.20);
@@ -97,9 +97,9 @@
   --info-subtle:      rgba(56, 189, 248, 0.10);
   --info-border:      rgba(56, 189, 248, 0.20);
 
-  /* ═══════════════════════════════════════════════════════════
-     SHADOWS & GLOWS (elevação dark mode)
-     ═══════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     SHADOWS & GLOWS (elevaÃ§Ã£o dark mode)
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --elev-0:           none;
   --elev-1:           0 1px 2px rgba(0, 0, 0, 0.30);
   --elev-2:           0 4px 12px rgba(0, 0, 0, 0.45);
@@ -111,12 +111,12 @@
 
   --focus-ring:       0 0 0 2px rgba(117, 27, 180, 0.50);
 
-  /* Botão primário — gradiente + glow */
+  /* BotÃ£o primÃ¡rio â€” gradiente + glow */
   --btn-primary-bg: linear-gradient(135deg, #9B4DD4 0%, #751BB4 55%, #5E158F 100%);
   --btn-primary-shadow: 0 4px 20px rgba(117, 27, 180, 0.45);
   --btn-primary-shadow-hover: 0 6px 28px rgba(117, 27, 180, 0.60);
 
-  /* Card Nível 3 — macros da dieta (dark) */
+  /* Card NÃ­vel 3 â€” macros da dieta (dark) */
   --card-macros-bg:           #111827;
   --card-macros-border:       rgba(147, 51, 234, 0.30);
   --card-macros-ring:         rgba(147, 51, 234, 0.08);
@@ -144,9 +144,9 @@
 
   --mc-shadow:         0 2px 12px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      TYPOGRAPHY
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
                Roboto, Oxygen, Ubuntu, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
@@ -180,16 +180,16 @@
   --tracking-normal:   0;
   --tracking-wide:     0.02em;
   --tracking-caps:     0.08em;
-  --tracking-display:  -0.03em;  /* KPIs ≥ 36px */
-  --tracking-headline: -0.02em;  /* títulos 20–28px */
+  --tracking-display:  -0.03em;  /* KPIs â‰¥ 36px */
+  --tracking-headline: -0.02em;  /* tÃ­tulos 20â€“28px */
   --tracking-body:     0;        /* corpo < 18px */
 
   /* Numerais (dados): tabular + lining */
   --numeric-features: "tnum" 1, "lnum" 1;
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      SPACING (8pt grid)
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --space-1:  4px;
   --space-2:  8px;
   --space-3:  12px;
@@ -204,18 +204,18 @@
   /* Padding lateral global do app */
   --gutter:   var(--space-4);
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      BORDER RADIUS
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --radius-sm:    4px;
   --radius-md:    6px;
   --radius-lg:    8px;
   --radius-xl:   10px;
   --radius-full: 9999px;
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      REFACTORING DOC ALIASES (--color-* names)
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --color-gold:           var(--brand-primary);
   --color-gold-dark:      var(--brand-hover);
   --color-gold-light:     #38BDF8;
@@ -244,14 +244,14 @@
   --nav-height:       64px;
   --nav-safe-area:    env(safe-area-inset-bottom, 0px);
   --tap-min:          44px;
-  /* BottomNav — fundo sólido por tema */
+  /* BottomNav â€” fundo sÃ³lido por tema */
   --nav-bg:           #141414;
   --nav-border:       rgba(255, 255, 255, 0.08);
   --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.45);
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      LEGACY COMPAT (old --bg-* and --gold-* names still used)
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --bg-base:         var(--surface-0);
   --bg-surface:      var(--surface-1);
   --bg-card:         var(--surface-2);
@@ -261,9 +261,9 @@
   --gold-highlight:  #38BDF8;
   --gold-bg:         var(--brand-subtle);
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      ANIMATIONS
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -273,18 +273,18 @@
   --duration-normal:  240ms;
   --duration-slow:    400ms;
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      LAYOUT
-     ═══════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --bottom-nav-height: 64px;
   --header-height:     56px;
   --touch-target-min:  48px;
   --max-width-mobile:  428px;  /* iPhone Pro Max baseline */
 
-  /* ═══════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      FILTROS / BUSCA (inputs, tabs e dropdowns de telas de listagem)
-     Dark: mantém visual atual. Light: cinza neutro sem borda + lavanda.
-     ═══════════════════════════════════════════════════════════ */
+     Dark: mantÃ©m visual atual. Light: cinza neutro sem borda + lavanda.
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --filter-bg:            var(--surface-2);
   --filter-bg-focus:      var(--surface-3);
   --filter-border:        transparent;
@@ -316,17 +316,17 @@
   --list-row-divider: rgba(117, 27, 180, 0.35);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LIGHT THEME — 60-30-10 neutros
-   Page #FFF · Card #F7F7F7 · Input #E8E8E8 · Accent #751BB4
+/* ═══════════════════════════════════════════════════════════
+   LIGHT THEME — page / card / input brancos (sem cinza de preenchimento)
+   Separação: borda + sombra. Accent #751BB4
    ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] {
   color-scheme: light;
   --surface-0:        #FFFFFF;
-  --surface-1:        #F7F7F7;
-  --surface-2:        #E8E8E8;
-  --surface-3:        #DEDEDE;
-  --surface-4:        #D4D4D4;
+  --surface-1:        #FFFFFF;   /* cards — sempre branco */
+  --surface-2:        #FFFFFF;   /* inputs/selects — sempre branco */
+  --surface-3:        #F4F4F5;   /* só elevação interna rara (quase branco) */
+  --surface-4:        #E4E4E7;
 
   --text-primary:     #09090B;
   --text-secondary:   #52525B;
@@ -337,19 +337,19 @@ html[data-theme="light"] {
   --nav-border:       rgba(0, 0, 0, 0.08);
   --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.08);
 
-  --border-subtle:    #E8E8E8;
-  --border-default:   #D4D4D4;
+  --border-subtle:    #E4E4E7;
+  --border-default:   #D4D4D8;
   --border-strong:    #A1A1AA;
 
-  --border-card:        transparent;
-  --border-card-hover:  rgba(0, 0, 0, 0.06);
-  --border-input:       transparent;
-  --border-divider:     #E8E8E8;
+  --border-card:        rgba(0, 0, 0, 0.06);
+  --border-card-hover:  rgba(0, 0, 0, 0.1);
+  --border-input:       #E4E4E7;
+  --border-divider:     #E4E4E7;
   --border-accent:      rgba(117, 27, 180, 0.40);
 
   --brand-subtle:     rgba(117, 27, 180, 0.08);
   --brand-border:     rgba(117, 27, 180, 0.20);
-  --surface-card-light: #F7F7F7;
+  --surface-card-light: #FFFFFF;
 
   --success-subtle:   rgba(57, 199, 90, 0.10);
   --success-border:   rgba(57, 199, 90, 0.22);
@@ -373,11 +373,11 @@ html[data-theme="light"] {
   --color-gold-muted: var(--brand-subtle);
   --color-border-gold: var(--brand-border);
 
-  /* Filtros / busca — cinza de input */
-  --filter-bg:            #E8E8E8;
-  --filter-bg-focus:      #DEDEDE;
-  --filter-border:        transparent;
-  --filter-border-focus:  transparent;
+  /* Filtros / busca — branco (nunca cinza de preenchimento) */
+  --filter-bg:            #FFFFFF;
+  --filter-bg-focus:      #FFFFFF;
+  --filter-border:        #E4E4E7;
+  --filter-border-focus:  rgba(117, 27, 180, 0.35);
   --filter-ring:          transparent;
   --filter-text:          #444444;
   --filter-placeholder:   #A1A1AA;
@@ -389,15 +389,15 @@ html[data-theme="light"] {
 
   --mobile-page-bg-solid: #FFFFFF;
   --mobile-page-bg: #FFFFFF;
-  --mobile-card-bg: #F7F7F7;
-  --mobile-card-border: transparent;
-  --mobile-card-shadow: none;
-  --mobile-empty-bg: #F7F7F7;
-  --mobile-empty-border: transparent;
-  --mobile-card-border-soft: transparent;
-  --mobile-card-border-faint: transparent;
-  --mobile-card-border-subtle: transparent;
-  --mobile-secondary-bg: #F7F7F7;
+  --mobile-card-bg: #FFFFFF;
+  --mobile-card-border: rgba(0, 0, 0, 0.06);
+  --mobile-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --mobile-empty-bg: #FFFFFF;
+  --mobile-empty-border: rgba(0, 0, 0, 0.06);
+  --mobile-card-border-soft: rgba(0, 0, 0, 0.04);
+  --mobile-card-border-faint: rgba(0, 0, 0, 0.04);
+  --mobile-card-border-subtle: rgba(0, 0, 0, 0.06);
+  --mobile-secondary-bg: #FFFFFF;
   --theme-color-meta: #FFFFFF;
 
   --list-row-divider: transparent;
@@ -416,15 +416,15 @@ html[data-theme="light"] {
     linear-gradient(90deg, transparent, #9333ea 30%, #a855f7 60%, transparent);
   --card-macros-divider:      rgba(0, 0, 0, 0.06);
 
-  --mc-protein-bg:     linear-gradient(145deg, rgba(59, 130, 246, 0.14) 0%, #F7F7F7 55%);
+  --mc-protein-bg:     linear-gradient(145deg, rgba(59, 130, 246, 0.14) 0%, #FFFFFF 55%);
   --mc-protein-border: rgba(59, 130, 246, 0.28);
   --mc-protein-color:  #2563eb;
 
-  --mc-carbo-bg:       linear-gradient(145deg, rgba(245, 158, 11, 0.16) 0%, #F7F7F7 55%);
+  --mc-carbo-bg:       linear-gradient(145deg, rgba(245, 158, 11, 0.16) 0%, #FFFFFF 55%);
   --mc-carbo-border:   rgba(217, 119, 6, 0.28);
   --mc-carbo-color:    #d97706;
 
-  --mc-fat-bg:         linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, #F7F7F7 55%);
+  --mc-fat-bg:         linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, #FFFFFF 55%);
   --mc-fat-border:     rgba(5, 150, 105, 0.28);
   --mc-fat-color:      #059669;
 
@@ -446,9 +446,9 @@ html.dark {
   --theme-color-meta: #000000;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   GLOBAL RESETS — mobile-first
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   GLOBAL RESETS â€” mobile-first
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -472,7 +472,7 @@ body {
   letter-spacing: var(--tracking-normal);
 }
 
-/* Inputs não dão zoom no iOS quando font-size >= 16px */
+/* Inputs nÃ£o dÃ£o zoom no iOS quando font-size >= 16px */
 input,
 textarea,
 select {
@@ -490,8 +490,8 @@ select {
     scroll-behavior: auto !important;
   }
 
-  /* Spinners são feedback de status essencial — continuam girando,
-     apenas mais devagar (variante reduzida, não removida). */
+  /* Spinners sÃ£o feedback de status essencial â€” continuam girando,
+     apenas mais devagar (variante reduzida, nÃ£o removida). */
   .auron-loader-spin,
   .animate-spin {
     animation-duration: 1.6s !important;
@@ -499,9 +499,9 @@ select {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   UTILITY CLASSES (opcional — se não estiver usando Tailwind)
-   ═══════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   UTILITY CLASSES (opcional â€” se nÃ£o estiver usando Tailwind)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /* Texto */
 .text-primary   { color: var(--text-primary); }
@@ -511,7 +511,7 @@ select {
 .text-danger    { color: var(--danger); }
 .text-brand     { color: var(--brand-primary); }
 
-/* Microlabel CAPS (uso restrito, ≤2 palavras) */
+/* Microlabel CAPS (uso restrito, â‰¤2 palavras) */
 .label-caps {
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
@@ -520,7 +520,7 @@ select {
   color: var(--text-tertiary);
 }
 
-/* Número em mono (KPI, timer, peso) */
+/* NÃºmero em mono (KPI, timer, peso) */
 .numeric {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -528,7 +528,7 @@ select {
   letter-spacing: var(--tracking-tight);
 }
 
-/* Card padrão */
+/* Card padrÃ£o */
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border-default);
@@ -555,7 +555,7 @@ select {
   transform: scale(0.99);
 }
 
-/* Card com elevação real — usar para destacar item primário */
+/* Card com elevaÃ§Ã£o real â€” usar para destacar item primÃ¡rio */
 .card-elevated {
   background: var(--surface-2);
   border: 1px solid var(--border-default);
@@ -584,7 +584,7 @@ select {
   transform: scale(0.99);
 }
 
-/* Botão primário */
+/* BotÃ£o primÃ¡rio */
 .btn-primary {
   background: var(--btn-primary-bg);
   box-shadow: var(--btn-primary-shadow);
@@ -618,7 +618,7 @@ select {
   background: var(--surface-3);
   color: var(--text-primary);
   border: 1px solid var(--border-default);
-  /* resto igual ao primário */
+  /* resto igual ao primÃ¡rio */
   font-weight: var(--weight-semibold);
   font-size: var(--text-base);
   padding: 14px 20px;
@@ -641,7 +641,7 @@ select {
   color: var(--text-primary);
 }
 
-/* Input padrão */
+/* Input padrÃ£o */
 .input {
   background: var(--surface-2);
   color: var(--text-primary);

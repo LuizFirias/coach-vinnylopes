@@ -65,7 +65,7 @@ export function SpecialtyTagSelector({ value, onChange }: Props) {
       >
         <span
           className={cn(
-            "flex-1 min-w-0 truncate text-[13px] font-medium",
+            "flex-1 min-w-0 truncate text-[16px] font-normal text-text-primary",
             value.length === 0 && "text-text-disabled font-normal text-[12px]",
           )}
         >

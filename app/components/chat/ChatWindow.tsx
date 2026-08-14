@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
-import Image from 'next/image';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { marcarMensagensLidas } from '@/lib/chat/actions';
 import { useChat } from '@/lib/chat/realtime';
-import { getPublicStorageUrl } from '@/lib/storageUrls';
 import { BackButton } from '@/app/components/ui/BackButton';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { ChatBubble } from './ChatBubble';
 import { ChatInput } from './ChatInput';
 
@@ -15,6 +14,7 @@ type ChatWindowProps = {
   meuId: string;
   nomeOutro: string;
   avatarOutro?: string | null;
+  sexoOutro?: string | null;
   backHref: string;
 };
 
@@ -23,11 +23,10 @@ export function ChatWindow({
   meuId,
   nomeOutro,
   avatarOutro,
+  sexoOutro,
   backHref,
 }: ChatWindowProps) {
   const { mensagens, loading, bottomRef, appendLocal } = useChat(conversaId);
-  const avatarUrl = getPublicStorageUrl('avatars', avatarOutro ?? null);
-  const initial = (nomeOutro[0] ?? '?').toUpperCase();
 
   useEffect(() => {
     if (!conversaId) return;
@@ -48,22 +47,12 @@ export function ChatWindow({
         style={{ borderBottom: '1px solid var(--mobile-card-border, rgba(0,0,0,0.07))' }}
       >
         <BackButton href={backHref} />
-        <div
-          className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #c084fc, #751BB4)' }}
-        >
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={nomeOutro}
-              width={36}
-              height={36}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            initial
-          )}
-        </div>
+        <StudentAvatar
+          name={nomeOutro}
+          avatarUrl={avatarOutro}
+          sexo={sexoOutro}
+          sizeClassName="h-9 w-9"
+        />
         <p
           className="min-w-0 flex-1 truncate"
           style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary, #1a1a1a)' }}

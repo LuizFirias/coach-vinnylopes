@@ -21,7 +21,7 @@ import { ProfileHeader } from '@/app/components/profile/ProfileHeader';
 import { AvatarCropModal } from '@/app/components/profile/AvatarCropModal';
 import { ProfileNavButtons } from '@/app/components/profile/ProfileNavButtons';
 import { ProfileWorkoutHistory } from '@/app/components/profile/ProfileWorkoutHistory';
-import { getAvatarGradient } from '@/lib/utils/avatarColor';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 
 interface Profile {
   full_name: string;
@@ -446,21 +446,13 @@ export default function AlunoPerfil() {
             style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
           >
             <div className="relative flex-shrink-0">
-              <div
-                className={cn(
-                  'w-16 h-16 rounded-full overflow-hidden flex items-center justify-center text-xl font-bold text-white bg-gradient-to-br',
-                  !avatarSrc && userId && getAvatarGradient(userId),
-                  !avatarSrc && !userId && 'bg-surface-2'
-                )}
-              >
-                {uploadingAvatar ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : avatarSrc ? (
-                  <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  getInitials(profile.full_name)
-                )}
-              </div>
+              <StudentAvatar
+                name={profile.full_name || 'Atleta'}
+                avatarUrl={avatarSrc}
+                sexo={profile.sexo}
+                sizeClassName="w-16 h-16"
+                uploading={uploadingAvatar}
+              />
               <label
                 htmlFor="avatar-upload"
                 className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-surface-1 border border-surface-0 rounded-full flex items-center justify-center text-text-secondary cursor-pointer hover:text-text-primary transition-colors"
@@ -826,6 +818,7 @@ export default function AlunoPerfil() {
           fullName={profile.full_name}
           memberSince={profile.created_at ? fmtMembro(profile.created_at) : ''}
           avatarSrc={avatarSrc}
+          sexo={profile.sexo}
           initials={getInitials(profile.full_name)}
           uploadingAvatar={uploadingAvatar}
           isDesktop={isDesktop}

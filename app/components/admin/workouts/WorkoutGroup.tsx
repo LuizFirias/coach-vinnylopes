@@ -33,7 +33,7 @@ export function WorkoutGroupBlock({ group, onView, onEdit, onDelete }: WorkoutGr
             <StudentAvatar
               name={group.studentName}
               avatarUrl={group.avatarUrl}
-              colorClassName={group.avatarColor}
+              sexo={group.sexo}
             />
             <span className="text-xs font-semibold text-text-primary truncate">
               {group.studentName}

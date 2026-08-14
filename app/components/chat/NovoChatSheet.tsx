@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
 import { MagnifyingGlass, X } from '@phosphor-icons/react';
 import type { ChatListItem } from '@/lib/chat/queries';
-import { getPublicStorageUrl } from '@/lib/storageUrls';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 
 type NovoChatSheetProps = {
   alunos: ChatListItem[];
@@ -97,8 +96,6 @@ export function NovoChatSheet({ alunos, onClose, onSelect }: NovoChatSheetProps)
             </p>
           ) : (
             filtered.map((a) => {
-              const avatar = getPublicStorageUrl('avatars', a.outro.avatar_url);
-              const initial = (a.outro.full_name?.[0] ?? '?').toUpperCase();
               return (
                 <button
                   key={a.alunoId}
@@ -107,22 +104,12 @@ export function NovoChatSheet({ alunos, onClose, onSelect }: NovoChatSheetProps)
                   className="w-full flex items-center gap-3 px-4 py-3 text-left"
                   style={{ touchAction: 'manipulation' }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden text-white text-sm font-bold"
-                    style={{ background: 'linear-gradient(135deg, #c084fc, #751BB4)' }}
-                  >
-                    {avatar ? (
-                      <Image
-                        src={avatar}
-                        alt=""
-                        width={40}
-                        height={40}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      initial
-                    )}
-                  </div>
+                  <StudentAvatar
+                    name={a.outro.full_name ?? 'Aluno'}
+                    avatarUrl={a.outro.avatar_url}
+                    sexo={a.outro.sexo}
+                    sizeClassName="w-10 h-10"
+                  />
                   <div className="min-w-0 flex-1">
                     <p
                       className="text-sm font-semibold truncate"

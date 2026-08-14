@@ -192,7 +192,7 @@ export function AvatarCropModal({
           <div
             ref={viewportRef}
             className={cn(
-              "relative select-none touch-none overflow-hidden rounded-full bg-[#0d0d0d]",
+              "relative select-none touch-none overflow-hidden rounded-lg bg-[#0d0d0d]",
               "ring-2 ring-brand/40",
               dragging ? "cursor-grabbing" : "cursor-grab"
             )}
@@ -226,7 +226,7 @@ export function AvatarCropModal({
             )}
             {/* máscara sutil nas bordas */}
             <div
-              className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-white/10"
+              className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10"
               aria-hidden
             />
           </div>

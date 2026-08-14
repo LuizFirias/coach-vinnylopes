@@ -19,6 +19,7 @@ import { MrrChartCard } from "@/app/components/dashboard/coach/MrrChartCard";
 import { PlanDistributionCard } from "@/app/components/dashboard/coach/PlanDistributionCard";
 import { PriorityActionsCard, type PriorityAction } from "@/app/components/dashboard/coach/PriorityActionsCard";
 import { RecentActivityFeed } from "@/app/components/dashboard/coach/RecentActivityFeed";
+import { AtalhosRapidos } from "@/app/components/dashboard/coach/AtalhosRapidos";
 import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
 import {
   fetchCoachCustomPlans,
@@ -26,14 +27,14 @@ import {
   buildPlanDurationMap,
   type CoachPlan,
 } from "@/lib/coachPlans";
-import { useNaoLidasRealtime } from "@/lib/chat/realtime";
-import { useNotificacoesNaoLidas } from "@/lib/notifications/realtime";
-import { CoachNotificationsPanel } from "@/app/components/notifications/CoachNotificationsPanel";
 import {
-  carregarProgressoOnboarding,
+  concluirPasso,
+  concluirPassos,
+  sincronizarProgressoOnboarding,
   type PassoProgresso,
 } from "@/lib/onboarding/concluirPasso";
 import { GuiaConfiguracaoCard } from "@/app/components/onboarding/GuiaConfiguracaoCard";
+import { PASSOS_ONBOARDING } from "@/lib/onboarding/passos";
 import { withReturnUrl } from "@/lib/utils/adminNav";
 
 const FROM_DASHBOARD = "/admin/dashboard";
@@ -76,9 +77,6 @@ function inicioDoCiclo(
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const chatNaoLidas = useNaoLidasRealtime(user?.id ?? null, 'coach');
-  const notifNaoLidas = useNotificacoesNaoLidas(user?.id ?? null);
-  const [notifOpen, setNotifOpen] = useState(false);
   const isMobile = useBreakpoint("mobile");
   const hasDataRef = useRef(false);
 
@@ -144,7 +142,7 @@ export default function AdminDashboard() {
           .eq('id', coachId)
           .maybeSingle(),
         fetchCoachCustomPlans(coachId).catch(() => [] as CoachPlan[]),
-        carregarProgressoOnboarding(coachId),
+        sincronizarProgressoOnboarding(coachId),
       ]);
 
       setOnboardingPassos(passos);
@@ -688,7 +686,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans">
+    <div className="min-h-screen bg-surface-0 px-4 pb-24 pt-3 text-text-primary font-sans md:px-8 md:pt-4 lg:px-10 lg:pl-28 lg:pt-4">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
         <DashboardHeader
           isMobile={isMobile}
@@ -696,19 +694,39 @@ export default function AdminDashboard() {
           coachStudentLimit={coachStudentLimit}
           linkedStudentCount={linkedStudentCount}
           coachAccountType={coachAccountType}
-          showNotificationBadge={checkinsPendentes > 0}
-          chatNaoLidas={chatNaoLidas + notifNaoLidas}
-          onNotificationsClick={() => setNotifOpen(true)}
-        />
-
-        <CoachNotificationsPanel
-          open={notifOpen}
-          onClose={() => setNotifOpen(false)}
-          chatNaoLidas={chatNaoLidas}
         />
 
         {guiaPronto && (
-          <GuiaConfiguracaoCard passos={onboardingPassos} />
+          <GuiaConfiguracaoCard
+            passos={onboardingPassos}
+            onConcluirPasso={async (passoId) => {
+              const { data: { session } } = await supabaseClient.auth.getSession();
+              const coachId = session?.user?.id ?? user?.id;
+              if (!coachId) return;
+              await concluirPasso(coachId, passoId);
+              setOnboardingPassos((prev) =>
+                prev.map((p) =>
+                  p.id === passoId ? { ...p, concluido: true } : p,
+                ),
+              );
+            }}
+            onConcluirRestantes={async () => {
+              const { data: { session } } = await supabaseClient.auth.getSession();
+              const coachId = session?.user?.id ?? user?.id;
+              if (!coachId) return;
+              const pendentes = onboardingPassos
+                .filter((p) => !p.concluido)
+                .map((p) => p.id);
+              const ids =
+                pendentes.length > 0
+                  ? pendentes
+                  : PASSOS_ONBOARDING.map((p) => p.id);
+              await concluirPassos(coachId, ids);
+              setOnboardingPassos(
+                PASSOS_ONBOARDING.map((p) => ({ id: p.id, concluido: true })),
+              );
+            }}
+          />
         )}
 
         {totalAlunos === 0 ? (
@@ -755,12 +773,21 @@ export default function AdminDashboard() {
               pendingCheckIns={checkinsPendentes}
               activeStudentsSubtitle={activeStudentsSubtitle}
             />
-            <MrrChartCard currentMrr={mrr} chartData={chartData} className="w-full" />
-            <PlanDistributionCard
-              plans={alunosPorPlano}
-              totalStudents={totalAlunos}
-              className="w-full"
-            />
+            <div className="grid grid-cols-4 items-stretch gap-4">
+              <MrrChartCard
+                currentMrr={mrr}
+                chartData={chartData}
+                className="col-span-2 min-w-0"
+              />
+              <div className="col-span-2 flex min-w-0 items-stretch">
+                <PlanDistributionCard
+                  plans={alunosPorPlano}
+                  totalStudents={totalAlunos}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <AtalhosRapidos />
             <RecentActivityFeed activities={groupedAtividades} />
           </div>
         )}

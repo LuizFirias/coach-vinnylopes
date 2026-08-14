@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
-import { getPublicStorageUrl } from '@/lib/storageUrls';
-import { Trophy, Star, Clock, User, WarningCircle, Lightning } from '@phosphor-icons/react';
+import { Trophy, Star, Clock, WarningCircle, Lightning } from '@phosphor-icons/react';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { cn } from '@/lib/utils/cn';
 
 interface RankingEntry {
@@ -13,6 +13,7 @@ interface RankingEntry {
   coaching_reference?: string | null;
   email?: string | null;
   avatar_url?: string | null;
+  sexo?: string | null;
   total_pontos: number;
   oculto_no_ranking?: boolean | null;
 }
@@ -48,7 +49,7 @@ export default function AdminRankingPage() {
       // Buscar perfis dos alunos
       const { data: profiles, error: profilesError } = await supabaseClient
         .from('profiles')
-        .select('id, coaching_reference, email, avatar_url, oculto_no_ranking')
+        .select('id, coaching_reference, email, avatar_url, sexo, oculto_no_ranking')
         .in('id', alunoIds)
         .eq('arquivado', false);
 
@@ -112,6 +113,7 @@ export default function AdminRankingPage() {
           coaching_reference: p.coaching_reference,
           email: p.email,
           avatar_url: p.avatar_url,
+          sexo: p.sexo,
           oculto_no_ranking: p.oculto_no_ranking,
           total_pontos: pontsMap.get(p.id) ?? 0,
         }))
@@ -208,7 +210,6 @@ export default function AdminRankingPage() {
               {entries.map((entry, index) => {
                 const displayName = entry.coaching_reference || entry.email?.split('@')[0] || 'Aluno';
                 const isTop3 = index < 3;
-                const avatarSrc = entry.avatar_url ? getPublicStorageUrl('avatars', entry.avatar_url) : null;
 
                 return (
                   <div key={entry.id} className={cn(
@@ -222,16 +223,13 @@ export default function AdminRankingPage() {
                     </div>
 
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <div className={cn(
-                        'w-7 h-7 rounded-md flex items-center justify-center overflow-hidden border flex-shrink-0',
-                        isTop3 ? 'border-brand/30 bg-surface-2' : 'border-transparent bg-surface-2',
-                      )}>
-                        {avatarSrc ? (
-                          <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="w-3.5 h-3.5 text-text-tertiary" />
-                        )}
-                      </div>
+                      <StudentAvatar
+                        name={displayName}
+                        avatarUrl={entry.avatar_url}
+                        sexo={entry.sexo}
+                        sizeClassName="w-7 h-7"
+                        className={isTop3 ? "border-brand/30" : undefined}
+                      />
                       <span className={cn(
                         'font-bold truncate text-xs',
                         isTop3 ? 'text-text-primary' : 'text-text-secondary'

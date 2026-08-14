@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -8,7 +9,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getPublicStorageUrl, extractStoragePath } from "@/lib/storageUrls";
@@ -16,24 +17,27 @@ import {
   SignOut,
   Lock,
   Camera,
-  FloppyDisk,
-  CircleNotch,
   Plus,
   X,
   CaretRight,
   Envelope,
   Tag,
   Bell,
-  PencilSimple,
-  Check,
   CaretDown,
+  User,
+  Briefcase,
+  IdentificationCard,
+  Phone,
+  CreditCard,
+  GearSix,
 } from "@phosphor-icons/react";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { PlanUsageCard } from "@/app/components/profile/PlanUsageCard";
+import { CoachPlanosManager } from "@/app/components/coach-profile/CoachPlanosManager";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { isAccessGranted } from "@/lib/subscriptions/display";
 import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
@@ -67,6 +71,7 @@ import { PhotoGalleryUploader } from "@/app/components/coach-profile/PhotoGaller
 import { PublicProfilePreviewCard } from "@/app/components/coach-profile/PublicProfilePreviewCard";
 import { CityAutocomplete } from "@/app/components/coach-profile/CityAutocomplete";
 import { AvatarCropModal } from "@/app/components/profile/AvatarCropModal";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 
 function SettingsRow({
   icon: Icon,
@@ -84,8 +89,8 @@ function SettingsRow({
   danger?: boolean;
 }) {
   const className = cn(
-    "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors touch-manipulation",
-    danger ? "text-danger hover:text-danger/80" : "hover:bg-surface-2/40",
+    "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors touch-manipulation border-b border-border-divider last:border-b-0",
+    danger ? "text-danger hover:text-danger/80" : "hover:bg-white/[0.04]",
   );
 
   const content = (
@@ -132,33 +137,120 @@ function SettingsRow({
   );
 }
 
-function SettingsSection({
-  title,
+function SettingsAccordionRow({
+  icon: Icon,
+  label,
+  value,
+  open,
+  onToggle,
   children,
 }: {
-  title: string;
+  icon?: React.FC<{ className?: string; size?: number }>;
+  label: string;
+  value?: string;
+  open: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl bg-surface-1 overflow-hidden">
-      <div className="px-4 py-2.5">
-        <span className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
-          {title}
-        </span>
-      </div>
-      <div>{children}</div>
+    <div className="border-b border-border-divider last:border-b-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.04] touch-manipulation border-0 bg-transparent"
+      >
+        {Icon && <Icon className="h-4 w-4 shrink-0 text-text-tertiary" />}
+        <span className="flex-1 text-sm text-text-primary">{label}</span>
+        {value && !open ? (
+          <span className="mr-1 max-w-[45%] truncate text-xs text-text-tertiary">
+            {value}
+          </span>
+        ) : null}
+        <CaretDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open ? (
+        <div className="border-t border-border-divider px-4 pb-4 pt-3">{children}</div>
+      ) : null}
     </div>
   );
 }
 
+function SettingsSection({
+  title,
+  children,
+  icon: Icon,
+}: {
+  title: string;
+  children: React.ReactNode;
+  icon?: React.FC<{ className?: string; size?: number }>;
+}) {
+  return (
+    <section className="perfil-section-card">
+      <div className="mb-6 flex items-center gap-2 border-b border-border-subtle pb-4">
+        {Icon && <Icon size={16} className="shrink-0 text-text-tertiary" />}
+        <h2 className="perfil-section-title m-0">{title}</h2>
+      </div>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+  footer,
+}: {
+  title: string;
+  icon?: React.FC<{ className?: string; size?: number }>;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <section className="perfil-section-card">
+      <div className="mb-6 flex items-center gap-2 border-b border-border-subtle pb-4">
+        {Icon && <Icon size={16} className="shrink-0 text-text-tertiary" />}
+        <h2 className="perfil-section-title m-0">{title}</h2>
+      </div>
+      {children}
+      {footer ? <div className="mt-6 flex justify-end">{footer}</div> : null}
+    </section>
+  );
+}
+
 export default function CoachPerfilPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-surface-0">
+          <DumbbellLoader />
+        </div>
+      }
+    >
+      <CoachPerfilPageInner />
+    </Suspense>
+  );
+}
+
+function CoachPerfilPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeSec =
+    searchParams.get("sec") === "config" ? "config" : "perfil";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [telefone, setTelefone] = useState("");
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [sexo, setSexo] = useState<string | null>(null);
   const [storedAvatarPath, setStoredAvatarPath] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -176,19 +268,25 @@ export default function CoachPerfilPage() {
   const [coachSinceYear, setCoachSinceYear] = useState<number | null>(null);
   const [publicForm, setPublicForm] = useState<CoachPublicProfileForm>(EMPTY_PUBLIC_PROFILE);
   const [certDraft, setCertDraft] = useState("");
-  const [editingIdentity, setEditingIdentity] = useState(false);
   const [painelOpen, setPainelOpen] = useState(false);
+  const [planosOpen, setPlanosOpen] = useState(false);
   const baselineRef = useRef("");
 
   const snapshot = useCallback(
-    (name: string, avatar: string | null, form: CoachPublicProfileForm) =>
-      JSON.stringify({ name, avatar, form }),
+    (
+      name: string,
+      avatar: string | null,
+      phone: string,
+      form: CoachPublicProfileForm,
+    ) => JSON.stringify({ name, avatar, phone, form }),
     [],
   );
 
   const isDirty = useMemo(
-    () => snapshot(fullName, storedAvatarPath, publicForm) !== baselineRef.current,
-    [fullName, storedAvatarPath, publicForm, snapshot],
+    () =>
+      snapshot(fullName, storedAvatarPath, telefone, publicForm) !==
+      baselineRef.current,
+    [fullName, storedAvatarPath, telefone, publicForm, snapshot],
   );
 
   useEffect(() => {
@@ -225,7 +323,7 @@ export default function CoachPerfilPage() {
         supabaseClient
           .from("profiles")
           .select(
-            "id, full_name, email, avatar_url, role, subscription_active, plan_tier, student_limit, account_type, created_at",
+            "id, full_name, email, avatar_url, telefone, sexo, role, subscription_active, plan_tier, student_limit, account_type, created_at",
           )
           .eq("id", userId)
           .single(),
@@ -243,15 +341,18 @@ export default function CoachPerfilPage() {
       const profileData = profileResult.data;
 
       const name = profileData?.full_name || "";
+      const phone = String(profileData?.telefone ?? "");
       const avatarPath = profileData?.avatar_url || null;
       const form = rowToForm(publicResult.data as Record<string, unknown> | null);
 
       setFullName(name);
+      setTelefone(phone);
       setEmail(session.user.email || profileData?.email || "");
       setAvatarUrl(avatarPath);
+      setSexo(profileData?.sexo ?? null);
       setStoredAvatarPath(avatarPath);
       setPublicForm(form);
-      baselineRef.current = snapshot(name, avatarPath, form);
+      baselineRef.current = snapshot(name, avatarPath, phone, form);
 
       if (profileData?.created_at) {
         setCoachSinceYear(new Date(profileData.created_at).getFullYear());
@@ -376,7 +477,12 @@ export default function CoachPerfilPage() {
       setStoredAvatarPath(fileName);
       setAvatarUrl(fileName);
       setCropSrc(null);
-      baselineRef.current = snapshot(fullName.trim(), fileName, publicForm);
+      baselineRef.current = snapshot(
+        fullName.trim(),
+        fileName,
+        telefone,
+        publicForm,
+      );
       setSuccess("Foto atualizada");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro no upload da foto";
@@ -490,6 +596,7 @@ export default function CoachPerfilPage() {
         .update({
           full_name: fullName.trim(),
           avatar_url: storedAvatarPath,
+          telefone: telefone.trim() || null,
         })
         .eq("id", profileId);
       if (updateError) throw updateError;
@@ -507,7 +614,12 @@ export default function CoachPerfilPage() {
         throw publicError;
       }
 
-      baselineRef.current = snapshot(fullName.trim(), storedAvatarPath, publicForm);
+      baselineRef.current = snapshot(
+        fullName.trim(),
+        storedAvatarPath,
+        telefone,
+        publicForm,
+      );
       setSuccess("Perfil atualizado com sucesso!");
     } catch (err: any) {
       setError(err.message || "Erro ao salvar perfil");
@@ -542,91 +654,86 @@ export default function CoachPerfilPage() {
     );
   }
 
-  const primeiroNome =
-    (fullName ?? "").trim().split(/\s+/).filter(Boolean)[0] || "Coach";
   const saveDisabled = saving || uploadingAvatar || !isDirty;
   const emailDisplay =
-    email.length > 22 ? `${email.slice(0, 20)}…` : email;
+    email.length > 28 ? `${email.slice(0, 26)}…` : email;
+
+  const tabClass = (active: boolean) =>
+    cn(
+      "inline-flex items-center gap-2 border-0 border-b-2 bg-transparent px-1 pb-2.5 pt-1 text-sm touch-manipulation cursor-pointer transition-colors no-underline -mb-px",
+      active
+        ? "border-brand text-brand font-semibold"
+        : "border-transparent text-text-secondary font-normal hover:text-text-primary",
+    );
 
   return (
-    <div className="perfil-page min-h-screen bg-surface-0 pb-28 lg:pb-12 lg:pl-28">
-      <div className="sticky top-0 z-10 bg-surface-0/95 backdrop-blur-md">
-        <div className="px-4 max-w-2xl mx-auto pt-3 pb-4">
-          <h1 className="perfil-page-heading min-w-0 text-xl md:text-2xl font-extrabold tracking-tight font-display">
-            Olá, <span className="text-brand">{primeiroNome}</span>
+    <div className="perfil-page relative z-0 min-h-screen min-w-0 max-w-full overflow-x-clip px-4 py-8 pb-28 md:px-8 lg:px-10 lg:pb-12">
+      <div className="mx-auto flex w-full min-w-0 max-w-[min(1200px,100%)] flex-col gap-6">
+        <div>
+          <h1 className="perfil-page-heading m-0 tracking-tight font-display">
+            Perfil do profissional
           </h1>
+          <div className="mb-2 mt-6 flex items-center gap-6 border-b border-border-subtle">
+            <Link
+              href="/admin/perfil"
+              className={tabClass(activeSec === "perfil")}
+              scroll={false}
+            >
+              <User size={16} weight={activeSec === "perfil" ? "fill" : "regular"} />
+              O seu perfil
+            </Link>
+            <Link
+              href="/admin/perfil?sec=config"
+              className={tabClass(activeSec === "config")}
+              scroll={false}
+            >
+              <GearSix size={16} weight={activeSec === "config" ? "fill" : "regular"} />
+              Configurações
+            </Link>
+          </div>
         </div>
-      </div>
 
-      <div className="px-4 max-w-2xl mx-auto flex flex-col gap-4 pt-4">
         {error && (
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-danger-subtle text-danger text-xs font-semibold">
-            <div className="w-1.5 h-1.5 rounded-full bg-danger shrink-0 animate-pulse" />
+          <div className="flex items-center gap-3 rounded-lg bg-danger-subtle px-4 py-2.5 text-xs font-semibold text-danger">
+            <div className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-danger" />
             {error}
           </div>
         )}
         {success && (
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-success-subtle text-success text-xs font-semibold">
-            <div className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+          <div className="flex items-center gap-3 rounded-lg bg-success-subtle px-4 py-2.5 text-xs font-semibold text-success">
+            <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
             {success}
           </div>
         )}
         {mercadoNotice && (
-          <div className="px-4 py-2.5 rounded-lg bg-brand/5 text-xs text-text-secondary">
+          <div className="rounded-lg bg-brand/5 px-4 py-2.5 text-xs text-text-secondary">
             {mercadoNotice}
           </div>
         )}
 
+        {activeSec === "perfil" && (
         <form
           onSubmit={(e) => void handleSave(e)}
-          className="flex flex-col gap-4 min-w-0"
+          className="flex min-w-0 flex-col gap-6"
         >
-          <Card className="perfil-form-card relative rounded-xl border-0 p-3.5 sm:p-4">
-            <button
-              type="button"
-              onClick={() => setEditingIdentity((v) => !v)}
-              className="absolute top-2.5 right-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-lg text-text-tertiary hover:text-brand hover:bg-brand/5 transition-colors border-0 bg-transparent cursor-pointer touch-manipulation"
-              aria-label={editingIdentity ? "Concluir edição da identidade" : "Editar identidade"}
-              title={editingIdentity ? "Concluir" : "Editar"}
-            >
-              {editingIdentity ? (
-                <Check size={16} weight="bold" />
-              ) : (
-                <PencilSimple size={16} />
-              )}
-            </button>
-
-            <div className="flex items-start gap-3.5 pr-10">
-              <div className="relative shrink-0">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-surface-3 border-0 flex items-center justify-center">
-                  {uploadingAvatar ? (
-                    <CircleNotch size={20} className="animate-spin text-brand" />
-                  ) : avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={
-                        avatarUrl.startsWith("data:")
-                          ? avatarUrl
-                          : getPublicStorageUrl("avatars", avatarUrl) || ""
-                      }
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-lg font-bold text-text-tertiary">
-                      {fullName?.charAt(0)?.toUpperCase() || "C"}
-                    </span>
-                  )}
-                </div>
+          <SectionCard title="Informações profissionais" icon={IdentificationCard}>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+              <div className="relative mx-auto shrink-0 sm:mx-0">
+                <StudentAvatar
+                  name={fullName || "Coach"}
+                  avatarUrl={avatarUrl}
+                  sexo={sexo}
+                  sizeClassName="h-[88px] w-[88px]"
+                  uploading={uploadingAvatar}
+                />
                 <label
                   className={cn(
-                    "absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-md cursor-pointer",
-                    "bg-brand hover:bg-brand/90 active:scale-95 transition-all",
-                    "flex items-center justify-center text-text-on-brand",
+                    "perfil-camera-btn absolute bottom-1 right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg",
+                    "bg-brand text-text-on-brand transition-all hover:bg-brand/90 active:scale-95",
                     uploadingAvatar && "pointer-events-none opacity-50",
                   )}
                 >
-                  <Camera className="w-3 h-3" />
+                  <Camera className="h-4 w-4" weight="bold" />
                   <input
                     type="file"
                     className="hidden"
@@ -637,109 +744,160 @@ export default function CoachPerfilPage() {
                 </label>
               </div>
 
-              <div className="field-flat-input flex-1 min-w-0 pt-0.5">
-                <div className="min-w-0">
-                  {editingIdentity ? (
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Nome de exibição"
-                      autoFocus
-                      aria-label="Nome de exibição"
-                      className="w-full text-sm font-semibold text-text-primary placeholder:text-text-disabled placeholder:font-medium leading-tight"
-                    />
-                  ) : (
-                    <p className="text-sm font-semibold text-text-primary truncate leading-tight">
-                      {fullName.trim() || "Nome de exibição"}
-                    </p>
-                  )}
-
-                  {editingIdentity ? (
-                    <div className="mt-1 flex items-baseline gap-0.5">
-                      <span className="text-xs font-medium text-brand shrink-0 leading-tight">
-                        @
-                      </span>
-                      <input
-                        type="text"
-                        name="handle"
-                        value={publicForm.handle}
-                        onChange={(e) =>
-                          patchPublic("handle", normalizeHandle(e.target.value))
-                        }
-                        placeholder="instagram"
-                        aria-label="@ do Instagram"
-                        className="min-w-0 flex-1 text-xs font-medium text-brand placeholder:text-text-disabled placeholder:font-normal leading-tight"
-                      />
-                    </div>
-                  ) : (
-                    <p
-                      className={cn(
-                        "text-xs mt-1 truncate leading-tight",
-                        publicForm.handle
-                          ? "text-brand font-medium"
-                          : "text-text-tertiary",
-                      )}
-                    >
-                      {publicForm.handle
-                        ? `@${publicForm.handle}`
-                        : "@ do Instagram"}
-                    </p>
-                  )}
+              <div className="min-w-0 flex-1 space-y-3.5">
+                <Input
+                  label="Nome"
+                  name="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  leftIcon={<User size={16} />}
+                />
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                  <Select
+                    label="Modalidade"
+                    value={publicForm.modality}
+                    onChange={(v) =>
+                      patchPublic(
+                        "modality",
+                        v as CoachPublicProfileForm["modality"],
+                      )
+                    }
+                    placeholder="Selecione"
+                    options={[
+                      { value: "", label: "Selecione" },
+                      ...COACH_MODALITIES.map((m) => ({
+                        value: m.value,
+                        label: m.label,
+                      })),
+                    ]}
+                  />
+                  <Input
+                    label="CREF"
+                    name="cref"
+                    value={publicForm.cref}
+                    onChange={(e) =>
+                      patchPublic("cref", formatCrefInput(e.target.value))
+                    }
+                    placeholder="000000-G/SP"
+                    leftIcon={<Briefcase size={16} />}
+                  />
                 </div>
+                <CityAutocomplete
+                  city={publicForm.city}
+                  state={publicForm.state}
+                  onCityChange={(city) => patchPublic("city", city)}
+                  onStateChange={(state) => patchPublic("state", state)}
+                />
+                <Input
+                  label="Instagram @"
+                  name="handle"
+                  value={publicForm.handle}
+                  onChange={(e) =>
+                    patchPublic("handle", normalizeHandle(e.target.value))
+                  }
+                  placeholder="seuusuario"
+                />
               </div>
             </div>
-          </Card>
+          </SectionCard>
 
-          <SettingsSection title="Assinatura">
-            {studentLimit != null ? (
-              <div className="px-3 pb-3">
+          <SectionCard title="Informações pessoais" icon={User}>
+            <div className="space-y-3.5">
+              <Input
+                label="E-mail"
+                name="email"
+                value={email}
+                readOnly
+                leftIcon={<Envelope size={16} />}
+              />
+              <Input
+                label="Celular"
+                name="telefone"
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+                placeholder="+55 11 99999 0000"
+                leftIcon={<Phone size={16} />}
+              />
+              <button
+                type="button"
+                onClick={() => setChangePasswordModalOpen(true)}
+                className="perfil-senha-btn flex w-full touch-manipulation items-center justify-center gap-2 rounded-[10px] border border-border-subtle bg-transparent px-4 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-2/40 dark:border-[#2d3748] dark:text-[#D8DCE6] dark:hover:border-[#9333ea] dark:hover:bg-[rgba(147,51,234,0.06)]"
+              >
+                <Lock size={16} className="text-text-tertiary" />
+                Alterar senha
+              </button>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Gestão de assinatura" icon={CreditCard}>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary">
+                  Plano atual
+                </p>
+                <p className="m-0 text-base font-semibold text-brand">
+                  {planName}
+                  {studentUsage ? (
+                    <span className="ml-2 text-sm font-medium text-text-secondary">
+                      · {studentUsage}
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+              {studentLimit != null && (
                 <PlanUsageCard
                   planLabel={planName}
                   studentCount={activeStudents ?? 0}
                   studentLimit={studentLimit}
                   isActive={subscriptionActive}
+                  className="!bg-surface-2"
                 />
+              )}
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => router.push("/admin/assinatura")}
+                >
+                  Gerenciar assinatura
+                </Button>
               </div>
-            ) : (
-              <div className="px-4 py-3 text-xs text-text-secondary">
-                {planName}
-                {studentUsage ? ` · ${studentUsage}` : null}
-              </div>
-            )}
-          </SettingsSection>
+            </div>
+          </SectionCard>
 
-          <div className="rounded-xl bg-surface-1 overflow-hidden">
+          <section className="perfil-section-card overflow-hidden !p-0">
             <button
               type="button"
               onClick={() => setPainelOpen((v) => !v)}
               aria-expanded={painelOpen}
-              className="w-full text-left border-0 bg-transparent cursor-pointer touch-manipulation"
+              className="w-full cursor-pointer touch-manipulation border-0 bg-transparent p-7 text-left"
             >
-              <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-                <span className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+              <div className="mb-4 flex items-center justify-between gap-2 border-b border-border-subtle pb-4">
+                <span className="perfil-section-title">
                   Painel profissional
                 </span>
                 <CaretDown
                   size={14}
                   weight="bold"
                   className={cn(
-                    "text-text-tertiary shrink-0 transition-transform duration-200",
+                    "shrink-0 text-text-tertiary transition-transform duration-200",
                     painelOpen && "rotate-180",
                   )}
                 />
               </div>
-              <div className="px-3 pb-3 pointer-events-none">
+              <div className="pointer-events-none">
                 <PublicProfilePreviewCard
                   form={publicForm}
                   fullName={fullName}
                   avatarUrl={avatarUrl}
+                  sexo={sexo}
                   activeStudents={activeStudents}
                   coachSinceYear={coachSinceYear}
                   compact
                 />
-                <p className="text-[10px] text-text-tertiary px-1 mt-2">
+                <p className="mt-2 px-1 text-[10px] text-text-tertiary">
                   {painelOpen
                     ? "Preview do card público no Mercado — edite os campos abaixo"
                     : "Preview do card público no Mercado — toque para editar"}
@@ -748,7 +906,7 @@ export default function CoachPerfilPage() {
             </button>
 
             {painelOpen && (
-            <div className="px-4 pb-5 space-y-5 border-t border-border-divider pt-4">
+            <div className="space-y-5 border-t border-border-divider px-7 pb-7 pt-4">
               <Input
                 label="Headline"
                 name="headline"
@@ -761,7 +919,7 @@ export default function CoachPerfilPage() {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="bio"
-                  className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary"
+                  className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary"
                 >
                   Bio / Sobre mim
                 </label>
@@ -779,16 +937,6 @@ export default function CoachPerfilPage() {
                 </p>
               </div>
               <Input
-                label="CREF"
-                name="cref"
-                value={publicForm.cref}
-                onChange={(e) =>
-                  patchPublic("cref", formatCrefInput(e.target.value))
-                }
-                placeholder="000000-G/SP"
-                helperText="Opcional, mas reforça confiança"
-              />
-              <Input
                 label="Anos de experiência"
                 name="years"
                 type="number"
@@ -799,7 +947,7 @@ export default function CoachPerfilPage() {
                 placeholder="Ex: 8"
               />
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary mb-2">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary">
                   Certificações / formação
                 </p>
                 <div className="flex gap-2">
@@ -852,7 +1000,7 @@ export default function CoachPerfilPage() {
               </div>
 
               <div>
-                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px] mb-3">
+                <p className="perfil-section-title mb-3">
                   Especialidades
                 </p>
                 <SpecialtyTagSelector
@@ -862,37 +1010,6 @@ export default function CoachPerfilPage() {
               </div>
 
               <div className="space-y-4">
-                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
-                  Atendimento
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
-                    Modalidade
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {COACH_MODALITIES.map((m) => (
-                      <button
-                        key={m.value}
-                        type="button"
-                        onClick={() => patchPublic("modality", m.value)}
-                        className={cn(
-                          "min-h-11 px-3 rounded-lg text-xs font-semibold touch-manipulation",
-                          publicForm.modality === m.value
-                            ? "bg-brand/15 text-brand"
-                            : "bg-surface-2 text-text-secondary",
-                        )}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <CityAutocomplete
-                  city={publicForm.city}
-                  state={publicForm.state}
-                  onCityChange={(city) => patchPublic("city", city)}
-                  onStateChange={(state) => patchPublic("state", state)}
-                />
                 <Select
                   label="Faixa de preço (opcional)"
                   value={publicForm.priceDisplay}
@@ -906,7 +1023,7 @@ export default function CoachPerfilPage() {
               </div>
 
               <div className="space-y-3">
-                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+                <p className="perfil-section-title">
                   Galeria e capa
                 </p>
                 <div className="rounded-lg border-0 bg-surface-2/60 px-3 py-2.5 text-[11px] text-text-secondary leading-relaxed">
@@ -944,7 +1061,7 @@ export default function CoachPerfilPage() {
               />
 
               <div className="space-y-3">
-                <p className="perfil-section-title text-[10px] font-semibold uppercase tracking-[1.5px]">
+                <p className="perfil-section-title">
                   Mercado
                 </p>
                 <AvailabilityToggle
@@ -969,85 +1086,92 @@ export default function CoachPerfilPage() {
               </div>
             </div>
             )}
+          </section>
+
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={saveDisabled}
+              loading={saving}
+              className={cn(!isDirty && !saving && "opacity-40")}
+            >
+              Salvar alterações
+            </Button>
           </div>
         </form>
-
-        <SettingsSection title="Negócio">
-          <SettingsRow
-            icon={Tag}
-            label="Planos de venda"
-            value="Personalize suas modalidades"
-            href="/admin/planos"
-          />
-        </SettingsSection>
-
-        {pushStatus !== "unsupported" && (
-          <SettingsSection title="Notificações">
-            <SettingsRow
-              icon={Bell}
-              label="Avisos no celular"
-              value={
-                pushBusy
-                  ? "Aguarde…"
-                  : pushStatus === "on"
-                    ? "Ativado"
-                    : pushStatus === "denied"
-                      ? "Bloqueado no navegador"
-                      : "Desativado — toque pra ativar"
-              }
-              onClick={pushStatus === "denied" ? undefined : () => void handleTogglePush()}
-            />
-          </SettingsSection>
         )}
 
-        <SettingsSection title="Acesso">
-          <SettingsRow icon={Envelope} label="E-mail" value={emailDisplay} />
-          <SettingsRow
-            icon={Lock}
-            label="Trocar senha"
-            onClick={() => setChangePasswordModalOpen(true)}
-          />
-        </SettingsSection>
-
-        <SettingsSection title="Sessão">
-          <SettingsRow
-            icon={SignOut}
-            label="Sair da conta"
-            onClick={() => void handleLogout()}
-            danger
-          />
-        </SettingsSection>
-      </div>
-
-      {(isDirty || saving) && (
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={saveDisabled}
-          aria-label={saving ? "Salvando alterações" : "Salvar alterações"}
+        <div
           className={cn(
-            "fixed z-50 right-4 lg:right-8",
-            "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-8",
-            "w-14 h-14 rounded-full bg-brand text-text-on-brand",
-            "flex items-center justify-center touch-manipulation overflow-hidden",
-            "shadow-[0_8px_28px_rgba(117, 27, 180,0.45)]",
-            "transition-all duration-200 active:scale-95",
-            "disabled:opacity-60",
+            "flex flex-col gap-6",
+            activeSec !== "config" && "hidden",
           )}
         >
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.42)_0%,rgba(255,255,255,0.08)_38%,transparent_62%)]"
-          />
-          <span className="relative z-10">
-            {saving ? (
-              <CircleNotch size={22} weight="bold" className="animate-spin" />
-            ) : (
-              <FloppyDisk size={22} weight="bold" />
-            )}
-          </span>
-        </button>
-      )}
+          <SettingsSection title="Configurações e preferências" icon={GearSix}>
+            <div className="-mx-1 overflow-hidden rounded-xl">
+              <div className="md:hidden">
+                <SettingsRow
+                  icon={Tag}
+                  label="Planos de venda"
+                  value="Personalize suas modalidades"
+                  href="/admin/planos"
+                />
+              </div>
+              <div className="hidden md:block">
+                <SettingsAccordionRow
+                  icon={Tag}
+                  label="Planos de venda"
+                  value="Personalize suas modalidades"
+                  open={planosOpen}
+                  onToggle={() => setPlanosOpen((v) => !v)}
+                >
+                  {profileId ? (
+                    <CoachPlanosManager coachId={profileId} embedded />
+                  ) : null}
+                </SettingsAccordionRow>
+              </div>
+              {pushStatus !== "unsupported" && (
+                <SettingsRow
+                  icon={Bell}
+                  label="Avisos no celular"
+                  value={
+                    pushBusy
+                      ? "Aguarde…"
+                      : pushStatus === "on"
+                        ? "Ativado"
+                        : pushStatus === "denied"
+                          ? "Bloqueado no navegador"
+                          : "Desativado — toque pra ativar"
+                  }
+                  onClick={
+                    pushStatus === "denied"
+                      ? undefined
+                      : () => void handleTogglePush()
+                  }
+                />
+              )}
+              <SettingsRow icon={Envelope} label="E-mail" value={emailDisplay} />
+              <SettingsRow
+                icon={Lock}
+                label="Trocar senha"
+                onClick={() => setChangePasswordModalOpen(true)}
+              />
+            </div>
+          </SettingsSection>
+
+          <SettingsSection title="Sessão" icon={SignOut}>
+            <div className="-mx-1 overflow-hidden rounded-xl">
+              <SettingsRow
+                icon={SignOut}
+                label="Sair da conta"
+                onClick={() => void handleLogout()}
+                danger
+              />
+            </div>
+          </SettingsSection>
+        </div>
+      </div>
 
       <ChangePasswordModal
         isOpen={changePasswordModalOpen}
@@ -1064,3 +1188,4 @@ export default function CoachPerfilPage() {
     </div>
   );
 }
+
