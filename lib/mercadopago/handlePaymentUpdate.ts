@@ -52,8 +52,7 @@ export async function handlePaymentUpdate(paymentId: string): Promise<void> {
   const lastPaymentStatus = payment.status;
   const planInfo =
     subscription.plan_tier &&
-    subscription.billing_period &&
-    subscription.student_limit != null
+    subscription.billing_period
       ? {
           planTier: subscription.plan_tier,
           billingPeriod: subscription.billing_period,

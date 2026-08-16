@@ -26,7 +26,18 @@
       "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright OK'\\)}catch\\(e\\){console.log\\('no playwright'\\)} try{require.resolve\\('puppeteer'\\);console.log\\('puppeteer OK'\\)}catch\\(e\\){console.log\\('no puppeteer'\\)}\")",
       "PowerShell(npx tsc --noEmit 2>&1)",
       "PowerShell(npx tsc --noEmit)",
-      "PowerShell(try { \\(Get-Command chromium-cli -ErrorAction Stop\\).Source } catch { \"no chromium-cli\" }; try { \\(Get-Command npx -ErrorAction Stop\\).Source } catch {}; Test-Path .env.local)"
+      "PowerShell(try { \\(Get-Command chromium-cli -ErrorAction Stop\\).Source } catch { \"no chromium-cli\" }; try { \\(Get-Command npx -ErrorAction Stop\\).Source } catch {}; Test-Path .env.local)",
+      "Read(//c/Users/lfern/AppData/Local/Temp/claude/bundled-skills/2.1.232/3cd03bcdb3b79f1645e193cd60f69218/**)",
+      "Read(//c//**)",
+      "Bash(node -e \"console.log\\(require\\('playwright'\\) ? 'has playwright' : ''\\)\")",
+      "Bash(npx --yes @tailwindcss/cli -i app/globals.css -o /tmp/out.css)",
+      "Bash(grep -n \"@layer\" /tmp/out.css | head -20; echo \"---\"; wc -l /tmp/out.css)",
+      "Read(//tmp/**)",
+      "Bash(grep -n \"auron-sidebar {\" /tmp/out.css | head -5; echo \"---layer utilities closes at:\"; awk 'NR==776{c=1} c{ if\\($0 ~ /^}/ && depth==0\\) {print NR; exit} } c{ for\\(i=1;i<=length\\($0\\);i++\\){ch=substr\\($0,i,1\\); if\\(ch==\"{\"\\)depth++; if\\(ch==\"}\"\\)depth--} }' /tmp/out.css)",
+      "Bash(node -e ' *)",
+      "Bash(npx --yes @tailwindcss/cli -i app/globals.css -o scratchcss.css)",
+      "Bash(python3 -)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

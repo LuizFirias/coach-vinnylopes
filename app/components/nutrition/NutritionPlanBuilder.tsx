@@ -27,6 +27,8 @@ import { readReturnUrl } from '@/lib/utils/adminNav';
 import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 import { concluirPasso } from '@/lib/onboarding/concluirPasso';
 import { TimeRollerPicker } from '@/app/components/ui/TimeRollerPicker';
+import { AiDietUpgradeBanner } from '@/app/components/nutrition/AiDietUpgradeBanner';
+import { planHasAiDiet } from '@/lib/subscriptions/plans';
 
 interface NutritionPlanBuilderProps {
   initialPlanData?: any;
@@ -73,6 +75,7 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
   const [activeGroup, setActiveGroup] = useState<FoodSearchGroup>('todos');
   /** IDs dos alimentos marcados no modal (seleção múltipla) */
   const [pickedFoodIds, setPickedFoodIds] = useState<string[]>([]);
+  const [showAiUpgrade, setShowAiUpgrade] = useState(false);
 
   const toggleCategory = (val: string) => {
     setSelectedCategories((prev) =>
@@ -88,6 +91,15 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         const { data: authData } = await supabaseClient.auth.getUser();
         const coachId = authData?.user?.id;
         if (!coachId) return;
+
+        const { data: coachProfile } = await supabaseClient
+          .from('profiles')
+          .select('plan_tier, role')
+          .eq('id', coachId)
+          .maybeSingle();
+        setShowAiUpgrade(
+          coachProfile?.role !== 'super_admin' && !planHasAiDiet(coachProfile?.plan_tier),
+        );
 
         // Check local storage cache for foods (24h cache)
         const cacheKey = 'auron_food_library_v2';
@@ -504,6 +516,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         <div className="mb-3 flex items-center gap-3 py-2 md:mb-4 md:pb-1 md:pt-1">
           <BackButton onClick={goBack} />
         </div>
+
+        {showAiUpgrade && <AiDietUpgradeBanner />}
 
         {/* Feedback Messages */}
         {error && (

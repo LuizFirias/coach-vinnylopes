@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check } from "@phosphor-icons/react";
+import { Check, X } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import {
   formatCurrencyBRL,
   formatPlanStudentCap,
   getMonthlyEquivalent,
+  getYearlySavings,
   YEARLY_PROMO_COPY,
   type BillingPeriod,
+  type PlanFeature,
   type PlanTier,
 } from "@/lib/subscriptions/plans";
 import { isNativeApp } from "@/lib/platform/isNativeApp";
@@ -16,10 +19,12 @@ import { isNativeApp } from "@/lib/platform/isNativeApp";
 export type PlanPricingCatalogItem = {
   tier: PlanTier;
   label: string;
-  studentLimit: number;
+  studentLimit: number | null;
   unlimitedStudents?: boolean;
   studentCapLabel?: string;
-  features: string[];
+  features: PlanFeature[];
+  cta?: string;
+  badge?: string | null;
   featured?: boolean;
   accent?: "danger" | null;
   billingOptions: {
@@ -35,13 +40,11 @@ type Props = {
   period: BillingPeriod;
   onPeriodChange: (period: BillingPeriod) => void;
   onSelectPlan: (tier: PlanTier, period: BillingPeriod) => void;
-  /** CTA quando elegível a trial (cartão). */
   trialEligible?: boolean;
   className?: string;
-  /** Cards menores (gestão de assinatura — conteúdo dos planos ainda vai mudar). */
   compact?: boolean;
-  /** Esconde o interruptor Mensal/Anual (quando o pai já mostra). */
   hidePeriodToggle?: boolean;
+  currentPlanTier?: PlanTier | null;
 };
 
 export function BillingCycleSwitcher({
@@ -53,7 +56,7 @@ export function BillingCycleSwitcher({
 }) {
   const monthly = period !== "yearly";
   return (
-    <div className="flex h-10 min-w-[180px] flex-1 overflow-hidden rounded-lg border border-border-subtle sm:flex-initial">
+    <div className="flex h-10 min-w-[180px] flex-1 overflow-hidden rounded-full border border-border-subtle sm:flex-initial">
       <button
         type="button"
         onClick={() => onPeriodChange("yearly")}
@@ -94,21 +97,12 @@ function priceForPeriod(
   };
 }
 
-function capLine(plan: PlanPricingCatalogItem): string {
-  if (plan.unlimitedStudents) return "alunos ilimitados";
-  const cap =
-    plan.studentCapLabel ?? formatPlanStudentCap(plan.tier, plan.studentLimit);
-  if (cap.toLowerCase().startsWith("até ")) {
-    return `${cap.toLowerCase()} ativos`;
-  }
-  return `${cap.toLowerCase()} ativos`;
-}
-
 function PlanCard({
   plan,
   period,
   featured,
   ctaLabel,
+  isCurrent,
   onSelect,
   compact,
 }: {
@@ -116,6 +110,7 @@ function PlanCard({
   period: BillingPeriod;
   featured: boolean;
   ctaLabel: string;
+  isCurrent: boolean;
   onSelect: () => void;
   compact?: boolean;
 }) {
@@ -124,7 +119,8 @@ function PlanCard({
 
   const displayPrice = period === "yearly" ? pricing.monthlyEq : pricing.total;
   const isTest = plan.tier === "test" || plan.accent === "danger";
-  const features = compact ? plan.features.slice(0, 3) : plan.features;
+  const features = compact ? plan.features.slice(0, 4) : plan.features;
+  const yearlySave = period === "yearly" ? getYearlySavings(plan.tier) : 0;
 
   return (
     <div
@@ -132,16 +128,16 @@ function PlanCard({
         "relative flex h-full flex-col overflow-visible rounded-2xl bg-surface-1",
         compact ? "auron-widget-shadow p-4" : "p-6",
         featured && !compact
-          ? "border-2 border-brand pt-8"
+          ? "border-2 border-brand pt-8 shadow-btn-glow"
           : featured && compact
-            ? "border border-brand"
+            ? "border border-brand shadow-btn-glow"
             : "border border-border-subtle",
         isTest && "border-danger/40",
       )}
     >
       {featured && !compact && (
         <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand px-3 py-1 text-xs font-bold text-white">
-          Mais popular
+          {plan.badge || "Mais popular"}
         </span>
       )}
 
@@ -167,48 +163,70 @@ function PlanCard({
       </div>
 
       {period === "yearly" && (
-        <p className="mt-0.5 text-xs text-text-tertiary">
-          {formatCurrencyBRL(pricing.total)} cobrado uma vez por ano
-        </p>
+        <>
+          <p className="mt-0.5 text-xs text-text-tertiary tabular-nums lining-nums">
+            cobrado {formatCurrencyBRL(pricing.total)}/ano
+          </p>
+          {yearlySave > 0 && (
+            <p className="mt-0.5 text-xs font-semibold text-success tabular-nums lining-nums">
+              economia de {formatCurrencyBRL(yearlySave)}/ano
+            </p>
+          )}
+        </>
       )}
 
-      <p className="mt-1 text-xs font-medium text-brand">{capLine(plan)}</p>
+      <p className="mt-1 text-xs font-medium text-brand">
+        {plan.unlimitedStudents
+          ? "alunos ilimitados"
+          : (plan.studentCapLabel ?? formatPlanStudentCap(plan.tier, plan.studentLimit)).toLowerCase()}
+      </p>
 
       <ul className={cn("flex flex-col", compact ? "mt-3 gap-1.5" : "mt-5 gap-2.5")}>
         {features.map((f) => (
           <li
-            key={f}
+            key={f.text}
             className={cn(
-              "flex items-start gap-2 text-text-secondary",
+              "flex items-start gap-2",
               compact ? "text-xs" : "text-sm",
+              f.included ? "text-text-secondary" : "text-text-disabled",
             )}
           >
-            <Check
-              size={compact ? 14 : 16}
-              weight="bold"
-              className="mt-0.5 shrink-0 text-brand"
-              aria-hidden
-            />
-            <span>{f}</span>
+            {f.included ? (
+              <Check
+                size={compact ? 14 : 16}
+                weight="bold"
+                className="mt-0.5 shrink-0 text-success"
+                aria-hidden
+              />
+            ) : (
+              <X
+                size={compact ? 14 : 16}
+                weight="bold"
+                className="mt-0.5 shrink-0 text-text-disabled"
+                aria-hidden
+              />
+            )}
+            {f.highlight && f.included ? (
+              <span className="rounded-md bg-brand/15 px-1.5 py-0.5 text-[11px] font-semibold text-brand">
+                ✦ IA de dietas
+              </span>
+            ) : (
+              <span>{f.text}</span>
+            )}
           </li>
         ))}
       </ul>
 
       <div className={cn("mt-auto", compact ? "pt-4" : "pt-6")}>
-        <button
+        <Button
           type="button"
+          variant="primary"
+          disabled={isCurrent}
           onClick={onSelect}
-          className={cn(
-            "flex w-full shrink-0 items-center justify-center rounded-[10px] font-bold text-white shadow-btn-glow",
-            compact ? "h-10 text-xs" : "h-12 text-sm",
-          )}
-          style={{
-            background: "var(--btn-primary-bg)",
-            color: "var(--text-on-brand)",
-          }}
+          className={cn("w-full", compact ? "h-10 text-xs" : "h-12 text-sm")}
         >
           {ctaLabel}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -223,6 +241,7 @@ export function PlanPricingCards({
   className,
   compact = false,
   hidePeriodToggle = false,
+  currentPlanTier = null,
 }: Props) {
   const [native, setNative] = useState(false);
   useEffect(() => {
@@ -292,18 +311,19 @@ export function PlanPricingCards({
         <div
           className={cn(
             "grid grid-cols-1 items-stretch",
-            compact
-              ? "gap-3 sm:grid-cols-2 xl:grid-cols-3"
-              : "gap-6 md:grid-cols-3",
+            compact ? "gap-3 sm:grid-cols-2" : "gap-6 md:grid-cols-2",
           )}
         >
           {commercial.map((plan) => {
             const featured = Boolean(plan.featured) || plan.tier === "pro";
-            const ctaLabel = compact
-              ? `Assinar ${plan.label}`
-              : trialEligible
-                ? "Liberar 30 dias grátis"
-                : "Assinar agora";
+            const isCurrent = currentPlanTier === plan.tier;
+            const ctaLabel = isCurrent
+              ? "Plano atual"
+              : compact
+                ? plan.cta || `Assinar ${plan.label}`
+                : trialEligible && plan.tier === "start"
+                  ? "Começar grátis"
+                  : plan.cta || "Assinar agora";
             return (
               <PlanCard
                 key={plan.tier}
@@ -311,6 +331,7 @@ export function PlanPricingCards({
                 period={period}
                 featured={featured}
                 compact={compact}
+                isCurrent={isCurrent}
                 ctaLabel={ctaLabel}
                 onSelect={() => onSelectPlan(plan.tier, period)}
               />

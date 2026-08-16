@@ -53,6 +53,7 @@ type Props = {
   plans: PlanPricingCatalogItem[];
   onSelectPlan: (tier: PlanTier, period: BillingPeriod) => void;
   trialEligible: boolean;
+  currentPlanTier?: PlanTier | null;
   checkout: ReactNode;
   pendingBlock: ReactNode;
 };
@@ -92,6 +93,7 @@ export function AssinaturaGestaoScreen({
   plans,
   onSelectPlan,
   trialEligible,
+  currentPlanTier = null,
   checkout,
   pendingBlock,
 }: Props) {
@@ -276,6 +278,7 @@ export function AssinaturaGestaoScreen({
                 onPeriodChange={onPeriodChange}
                 onSelectPlan={onSelectPlan}
                 trialEligible={trialEligible}
+                currentPlanTier={currentPlanTier}
               />
             )}
 

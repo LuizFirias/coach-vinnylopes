@@ -169,7 +169,7 @@ export function buildMpPreapprovalBody(
 
   const siteUrl = getSiteUrl();
 
-  // QA: ciclo diário só no plano TESTE — nunca em start/pro/elite
+  // QA: ciclo diário só no plano TESTE — nunca em start/pro
   const dailyCycle = tier === "test" && isMpTestDailyCycleEnabled();
 
   // source_news=webhooks: MP envia Webhooks (com x-signature), não IPN legado.

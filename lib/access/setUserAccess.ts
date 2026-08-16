@@ -46,7 +46,7 @@ export async function setUserAccess(
     if (planInfo && active) {
       if (planInfo.planTier) update.plan_tier = planInfo.planTier;
       if (planInfo.billingPeriod) update.billing_period = planInfo.billingPeriod;
-      if (planInfo.studentLimit != null) update.student_limit = planInfo.studentLimit;
+      update.student_limit = planInfo.studentLimit;
     }
     await supabase.from("profiles").update(update).eq("id", userId);
     return;
@@ -63,7 +63,7 @@ export async function setUserAccess(
   if (planInfo && (status === "authorized" || active)) {
     if (planInfo.planTier) update.plan_tier = planInfo.planTier;
     if (planInfo.billingPeriod) update.billing_period = planInfo.billingPeriod;
-    if (planInfo.studentLimit != null) update.student_limit = planInfo.studentLimit;
+    update.student_limit = planInfo.studentLimit;
   }
 
   if (active && currentPeriodEnd) {

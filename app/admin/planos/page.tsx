@@ -28,14 +28,14 @@ export default function CoachPlanosPage() {
 
   if (!coachId) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-0 lg:pl-28">
+      <div className="flex min-h-screen items-center justify-center bg-surface-0 lg:pl-8">
         <DumbbellLoader />
       </div>
     );
   }
 
   return (
-    <div className="auron-settings-page min-h-screen bg-surface-0 p-4 pb-24 font-sans text-text-primary md:p-8 lg:p-10 lg:pl-28">
+    <div className="auron-settings-page min-h-screen p-4 pb-24 font-sans text-text-primary md:p-8 lg:p-10 lg:pl-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <div className="flex items-center gap-3">
           <BackButton href="/admin/perfil?sec=config" aria-label="Voltar ao perfil" />

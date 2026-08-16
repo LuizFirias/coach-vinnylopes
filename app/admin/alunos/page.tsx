@@ -8,24 +8,24 @@ import { useAuth } from "@/app/components/AuthProvider";
 import {
   MagnifyingGlass,
   Plus,
-  TrendUp,
   WarningCircle,
-  CaretRight,
-  Bell,
   SlidersHorizontal,
   ArrowCounterClockwise,
   Clock,
-  Warning,
-  X
+  X,
+  EnvelopeSimple,
 } from "@phosphor-icons/react";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { StudentsEmptyState } from "@/app/components/admin/students/StudentsEmptyState";
 import { MobileListRow } from "@/app/components/MobileListRow";
 import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
+import { NovoAlunoModal } from "@/app/components/admin/alunos/NovoAlunoModal";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 import { textIncludes } from "@/lib/utils/textNormalize";
 import { withReturnUrl } from "@/lib/utils/adminNav";
+import { Select } from "@/components/ui/Select";
+import { getOuCriarConversa } from "@/lib/chat/queries";
 import {
   fetchCoachCustomPlans,
   mergedPlans,
@@ -101,18 +101,31 @@ export default function AdminAlunosPage() {
   const [planosPersonalizados, setPlanosPersonalizados] = useState<CoachPlan[]>([]);
   const [sortOption, setSortOption] = useState<'recentes' | 'atividade' | 'vencimento' | 'nome'>('atividade');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [cadastroOpen, setCadastroOpen] = useState(false);
+  const [openingChatId, setOpeningChatId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!filtersOpen) return;
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setFiltersOpen(false);
+      if (event.key === "Escape") setFiltersOpen(false);
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    const handlePointer = (event: MouseEvent) => {
+      const t = event.target as HTMLElement | null;
+      if (t?.closest("[data-alunos-filtros-desktop]")) return;
+      if (window.matchMedia("(min-width: 1024px)").matches) {
+        setFiltersOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("mousedown", handlePointer);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("mousedown", handlePointer);
+    };
   }, [filtersOpen]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       const session = await getSafeSession();
@@ -166,6 +179,29 @@ export default function AdminAlunosPage() {
     setStatusFilter("todos");
     setPlanoFilter("todos");
     setSortOption("atividade");
+  };
+
+  const openCadastro = () => {
+    if (isMobile) {
+      router.push(withReturnUrl("/admin/alunos/novo", "/admin/alunos"));
+      return;
+    }
+    setCadastroOpen(true);
+  };
+
+  const openChat = async (alunoId: string) => {
+    if (openingChatId) return;
+    setOpeningChatId(alunoId);
+    try {
+      const session = await getSafeSession();
+      if (!session?.user?.id) return;
+      const conversaId = await getOuCriarConversa(alunoId, session.user.id);
+      router.push(`/admin/chat/${conversaId}`);
+    } catch {
+      router.push("/admin/chat");
+    } finally {
+      setOpeningChatId(null);
+    }
   };
 
   const activeFilterCount =
@@ -245,19 +281,107 @@ export default function AdminAlunosPage() {
   });
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans">
-      <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
+    <div className="min-h-screen bg-surface-0 p-4 pb-24 text-text-primary font-sans md:p-8 lg:min-h-0 lg:bg-transparent lg:p-0 lg:pb-0">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8 lg:max-w-none lg:gap-4">
 
-        {/* ── Page Header ── */}
-        <div className="flex items-center justify-end gap-4">
+        {/* Mobile: botão no topo. Desktop: CTA na barra Nutrium abaixo */}
+        <div className="flex items-center justify-end gap-4 lg:hidden">
           <button
-            onClick={() =>
-              router.push(withReturnUrl("/admin/alunos/novo", "/admin/alunos"))
-            }
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand hover:bg-brand-hover text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-md shadow-brand/10 w-fit"
+            onClick={openCadastro}
+            className="auron-cta-btn inline-flex w-fit items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all active:scale-95"
           >
             <Plus size={13} weight="bold" /> Adicionar Aluno
           </button>
+        </div>
+
+        <div className="relative z-20 hidden items-center justify-between px-6 py-4 lg:flex">
+          <button
+            type="button"
+            onClick={openCadastro}
+            className="auron-cta-btn inline-flex h-[42px] items-center gap-1.5 rounded-lg px-4 text-sm font-medium"
+          >
+            Cadastrar aluno
+            <Plus size={16} weight="bold" />
+          </button>
+          <div className="flex items-center justify-end gap-2">
+            <Select
+              size="sm"
+              className="w-[215px]"
+              value={statusFilter}
+              onChange={(v) => setStatusFilter(v as typeof statusFilter)}
+              options={[
+                { value: "todos", label: "Todos os alunos" },
+                { value: "ativos", label: "Alunos ativos" },
+                { value: "pendentes", label: "Alunos pendentes" },
+                { value: "inativos", label: "Alunos inativos" },
+              ]}
+            />
+            <div className="relative" data-alunos-filtros-desktop>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-expanded={filtersOpen}
+                className="relative flex h-[42px] w-[42px] items-center justify-center rounded-lg border border-[#E4E7ED] bg-white text-[#5E6982] hover:text-brand"
+                aria-label="Filtros"
+              >
+                <SlidersHorizontal size={16} />
+                {activeFilterCount > 0 && (
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold text-text-on-brand tabular-nums">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              {filtersOpen && (
+                <div className="absolute right-0 z-50 mt-1.5 w-56 rounded-xl bg-surface-2 p-3 shadow-[0_8px_28px_rgba(0,0,0,0.28)]">
+                  <div className="mb-3">
+                    <Select
+                      label="Plano"
+                      size="sm"
+                      value={planoFilter}
+                      onChange={setPlanoFilter}
+                      options={[
+                        { value: "todos", label: "Todos os planos" },
+                        ...mergedPlans(planosPersonalizados).map((p) => ({
+                          value: p.slug,
+                          label: p.nome,
+                        })),
+                      ]}
+                    />
+                  </div>
+                  <Select
+                    label="Ordenar por"
+                    size="sm"
+                    value={sortOption}
+                    onChange={(v) => setSortOption(v as typeof sortOption)}
+                    options={[
+                      { value: "atividade", label: "Última atividade" },
+                      { value: "recentes", label: "Mais recentes" },
+                      { value: "vencimento", label: "Vencimento" },
+                      { value: "nome", label: "Nome" },
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden px-6 pb-4 lg:block">
+          <div className="relative">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Busque alunos por nome, ID ou contato..."
+              aria-label="Buscar alunos"
+              style={{ touchAction: "manipulation" }}
+              className="h-[37px] w-full rounded-lg border border-[#E4E7ED] bg-white px-2 pr-10 text-sm text-[#343A46] outline-none placeholder:text-[#5E6982] focus:border-brand focus:ring-1 focus:ring-brand/20"
+            />
+            <MagnifyingGlass
+              size={16}
+              className="pointer-events-none absolute right-3 top-1/2 z-10 -translate-y-1/2 text-[#5E6982]"
+            />
+          </div>
         </div>
 
         {loading ? (
@@ -265,20 +389,18 @@ export default function AdminAlunosPage() {
             <DumbbellLoader text="Sincronizando base de alunos..." variant="inline" />
           </div>
         ) : rows.length === 0 ? (
-          <div className="bg-surface-1 border-0 rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-hidden rounded-xl bg-surface-1 shadow-sm">
             <StudentsEmptyState
               variant="no-students"
-              onAddStudent={() =>
-                router.push(withReturnUrl("/admin/alunos/novo", "/admin/alunos"))
-              }
+              onAddStudent={openCadastro}
             />
           </div>
         ) : (
           /* Main Layout with Data */
           <div className="flex flex-col gap-5">
 
-            {/* ── Stats Bar / Metrics Cards ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* KPIs só no celular */}
+            <div className="grid grid-cols-2 gap-3 lg:hidden">
               {[
                 { label: "Ativos", value: ativosCount, dotColor: "bg-success" },
                 { label: "Pendentes", value: pendentesCount, dotColor: "bg-warning" },
@@ -308,13 +430,11 @@ export default function AdminAlunosPage() {
               ))}
             </div>
 
-            {/* Busca + grade — metade da largura disponível, centralizado */}
             <div className="alunos-list-panel flex flex-col gap-5">
 
-            {/* ── Filters and Search — padrão flat (sem caixa cinza nos inputs) ── */}
-            <div className="field-flat-input bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
-              <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4 px-4 py-3.5">
-                <div className="relative w-full lg:flex-1 lg:max-w-sm pl-6">
+            <div className="field-flat-input overflow-hidden rounded-2xl border border-border-subtle bg-surface-1 lg:hidden">
+              <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center">
+                <div className="relative w-full pl-6">
                   <MagnifyingGlass
                     size={14}
                     className="pointer-events-none absolute left-0 top-1/2 z-10 -translate-y-1/2 text-text-disabled"
@@ -326,14 +446,12 @@ export default function AdminAlunosPage() {
                     placeholder="Localizar por nome ou e-mail..."
                     aria-label="Buscar alunos"
                     style={{ touchAction: "manipulation" }}
-                    className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled"
+                    className="w-full border-0 bg-transparent text-sm text-text-primary shadow-none outline-none placeholder:text-text-disabled"
                   />
                 </div>
 
-                <div className="hidden lg:block w-px h-7 bg-border-divider shrink-0" />
-
-                <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 w-full lg:w-auto lg:justify-end lg:ml-auto">
-                  <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 rounded-lg p-1 h-9">
+                <div className="flex w-full flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+                  <div className="grid h-9 grid-cols-4 gap-1 rounded-lg p-1 sm:flex sm:items-center">
                     {(["todos", "ativos", "pendentes", "inativos"] as const).map((status) => (
                       <button
                         key={status}
@@ -341,7 +459,7 @@ export default function AdminAlunosPage() {
                         style={{ touchAction: "manipulation" }}
                         aria-pressed={statusFilter === status}
                         className={cn(
-                          "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md transition-all h-7 flex items-center justify-center border-0 cursor-pointer bg-transparent",
+                          "flex h-7 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-transparent px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-all sm:w-auto",
                           statusFilter === status
                             ? "font-bold text-brand"
                             : "text-text-tertiary hover:text-text-primary",
@@ -358,7 +476,7 @@ export default function AdminAlunosPage() {
                       onClick={() => setFiltersOpen(true)}
                       style={{ touchAction: "manipulation" }}
                       aria-haspopup="dialog"
-                      className="relative flex h-9 items-center gap-1.5 rounded-lg border border-border-subtle bg-transparent hover:bg-brand/5 px-3 text-[12px] font-semibold text-text-secondary hover:text-brand transition-colors cursor-pointer"
+                      className="relative flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-border-subtle bg-transparent px-3 text-[12px] font-semibold text-text-secondary transition-colors hover:bg-brand/5 hover:text-brand"
                     >
                       <SlidersHorizontal size={14} />
                       Filtros
@@ -373,7 +491,7 @@ export default function AdminAlunosPage() {
                       onClick={handleResetFilters}
                       style={{ touchAction: "manipulation" }}
                       aria-label="Limpar filtros"
-                      className="w-9 h-9 shrink-0 flex items-center justify-center border border-border-subtle bg-transparent hover:bg-brand/5 text-text-secondary hover:text-brand rounded-lg transition-colors cursor-pointer"
+                      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border-subtle bg-transparent text-text-secondary transition-colors hover:bg-brand/5 hover:text-brand"
                       title="Limpar filtros"
                     >
                       <ArrowCounterClockwise size={13} />
@@ -382,6 +500,7 @@ export default function AdminAlunosPage() {
                 </div>
               </div>
             </div>
+
 
             {/* ── Table / Grid of Athletes ── */}
             {processedRows.length === 0 ? (
@@ -397,9 +516,7 @@ export default function AdminAlunosPage() {
                     Limpar filtros
                   </button>
                   <button
-                    onClick={() =>
-                      router.push(withReturnUrl("/admin/alunos/novo", "/admin/alunos"))
-                    }
+                    onClick={openCadastro}
                     className="btn-primary text-[11px] py-1.5 px-3 rounded-lg"
                   >
                     Adicionar novo aluno
@@ -493,151 +610,135 @@ export default function AdminAlunosPage() {
                 )}
               </div>
             ) : (
-              <div className="alunos-table-shell border border-border-subtle rounded-2xl overflow-hidden bg-surface-2">
-                <div className="overflow-x-auto scrollbar-hide">
-                  <table className="w-full border-collapse text-left">
-                    <thead>
-                      <tr className="alunos-table-head border-b border-border-divider bg-surface-2">
-                        {/* Ajuste fino por coluna: edite o <th> e o <td> correspondente abaixo (mesmo nome de classe). */}
-                        <th className="alunos-col-aluno py-3 pl-3 pr-2 text-left text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Aluno</th>
-                        <th className="alunos-col-status py-3 px-1 text-center text-[10px] font-bold tracking-wider text-text-tertiary uppercase -translate-x-3">Status</th>
-                        <th className="alunos-col-plano py-3 px-1 text-center text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Plano</th>
-                        <th className="alunos-col-vencimento py-3 px-1 text-center text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Vencimento</th>
-                        <th className="alunos-col-atividade py-3 px-2 text-left text-[10px] font-bold tracking-wider text-text-tertiary uppercase translate-x-3">Última Atividade</th>
-                        <th className="alunos-col-acao py-3 pl-2 pr-4 text-right text-[10px] font-bold tracking-wider text-text-tertiary uppercase">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {processedRows.map((row) => {
-                        const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
-                        const isAtivo = row.status_pagamento === "pago";
-                        const isArquivado = !!row.arquivado;
-                        const expiration = row.data_expiracao ? new Date(row.data_expiracao) : null;
-                        const isExpired = expiration && expiration < new Date();
-                        const isActive = isAtivo && (!expiration || expiration >= new Date());
-                        
-                        const dias = diasRestantes(row.data_expiracao);
-                        const duracaoMeses =
-                          mergedPlans(planosPersonalizados).find((p) => p.slug === row.tipo_plano)?.duracao_meses ?? 1;
-                        const alerta = isArquivado ? null : nivelAlerta(dias, duracaoMeses);
+              <div className="flex flex-col gap-2">
+                <div className="hidden items-center gap-3 px-6 sm:flex">
+                  <div className="min-w-0 flex-[1.4] text-left text-sm font-normal text-[#5E6982]">
+                    Alunos ({processedRows.length})
+                  </div>
+                  <div className="grid min-w-0 flex-[3] grid-cols-5 gap-2">
+                    <div className="text-sm font-normal text-[#5E6982]">Plano</div>
+                    <div className="text-sm font-normal text-[#5E6982]">Contato</div>
+                    <div className="text-sm font-normal text-[#5E6982]">Vencimento</div>
+                    <div className="text-sm font-normal text-[#5E6982]">Última atividade</div>
+                    <div className="text-sm font-normal text-[#5E6982]">Status</div>
+                  </div>
+                  <div className="w-11 shrink-0" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  {processedRows.map((row) => {
+                    const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
+                    const isAtivo = row.status_pagamento === "pago";
+                    const isArquivado = !!row.arquivado;
+                    const expiration = row.data_expiracao ? new Date(row.data_expiracao) : null;
+                    const isExpired = expiration && expiration < new Date();
+                    const isActive = isAtivo && (!expiration || expiration >= new Date());
+                    const dias = diasRestantes(row.data_expiracao);
+                    const duracaoMeses =
+                      mergedPlans(planosPersonalizados).find((p) => p.slug === row.tipo_plano)?.duracao_meses ?? 1;
+                    const alerta = isArquivado ? null : nivelAlerta(dias, duracaoMeses);
+                    const statusLabel = isArquivado
+                      ? "Inativo"
+                      : isActive
+                        ? "Ativo"
+                        : isExpired
+                          ? "Expirado"
+                          : "Pendente";
 
-                        return (
-                          <tr
-                            key={row.id}
-                            onClick={() => router.push(withReturnUrl(`/admin/aluno/${row.id}`, "/admin/alunos"))}
-                            className={cn(
-                              "border-b border-divider/50 last:border-b-0 cursor-pointer transition-colors hover:bg-surface-2/40",
-                              isArquivado && "opacity-60",
-                              alerta === 'vencido' && "bg-danger/5 hover:bg-danger/10"
-                            )}
-                          >
-                            {/* Coluna Aluno — classe: alunos-col-aluno */}
-                            <td className="alunos-col-aluno py-3 pl-3 pr-2 text-left">
-                              <div className="flex items-center gap-2.5">
-                                <StudentAvatar
-                                  name={name}
-                                  avatarUrl={row.avatar_url}
-                                  sexo={row.sexo}
-                                  className={isArquivado ? "grayscale" : undefined}
-                                />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-bold text-text-primary leading-tight truncate">
-                                    {name}
-                                  </span>
-                                  <span className="text-[10px] text-text-tertiary leading-none mt-0.5 truncate">
-                                    {row.email}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Coluna Status — classe: alunos-col-status ( -translate-x-* move a coluna p/ esquerda ) */}
-                            <td className="alunos-col-status py-3 px-1 text-center -translate-x-3">
-                              <span className={cn(
-                                "inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
-                                isArquivado
-                                  ? "bg-surface-3 text-text-disabled border-transparent"
-                                  : isActive
-                                    ? "bg-success-subtle text-success border-success/15"
-                                    : "bg-danger-subtle text-danger border-danger/15"
-                              )}>
-                                <span className={cn(
-                                  "w-1.25 h-1.25 rounded-full",
-                                  isArquivado ? "bg-text-disabled" : isActive ? "bg-success" : "bg-danger"
-                                )} />
-                                {isArquivado ? "Inativo" : isActive ? "Ativo" : isExpired ? "Expirado" : "Pendente"}
-                              </span>
-                            </td>
-
-                            {/* Coluna Plano — classe: alunos-col-plano */}
-                            <td className="alunos-col-plano py-3 px-1 text-center text-xs text-text-secondary capitalize font-medium">
-                              {planDisplayName(row.tipo_plano, planosPersonalizados)}
-                            </td>
-
-                            {/* Coluna Vencimento — classe: alunos-col-vencimento */}
-                            <td className="alunos-col-vencimento py-3 px-1 text-center text-xs">
-                              {expiration ? (
-                                <div className="inline-flex flex-col items-center">
-                                  <span className={cn(
-                                    "inline-flex items-center justify-center gap-1 font-medium",
-                                    alerta === 'vencido' && "text-danger font-semibold",
-                                    alerta === 'semana' && "text-warning font-semibold",
-                                    alerta === 'mes' && "text-amber-500 font-semibold",
-                                    !alerta && "text-text-secondary"
-                                  )}>
-                                    {formatVencimentoCurto(row.data_expiracao!)}
-                                    {alerta === 'semana' && <Warning size={12} className="text-warning shrink-0" />}
-                                  </span>
-                                  {alerta === 'vencido' && dias !== null && (
-                                    <span className="text-[9px] text-danger/80 leading-none mt-0.5">Vencido há {Math.abs(dias)}d</span>
-                                  )}
-                                  {alerta === 'semana' && dias !== null && (
-                                    <span className="text-[9px] text-warning/80 leading-none mt-0.5">Vence em {dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `${dias}d`}</span>
-                                  )}
-                                  {alerta === 'mes' && dias !== null && (
-                                    <span className="text-[9px] text-amber-500/80 leading-none mt-0.5">{dias}d restantes</span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-text-tertiary">—</span>
-                              )}
-                            </td>
-
-                            {/* Coluna Última Atividade — classe: alunos-col-atividade ( translate-x-* move a coluna p/ direita ) */}
-                            <td className="alunos-col-atividade py-3 px-2 text-left text-xs text-text-secondary font-medium translate-x-3">
-                              {row.ultimo_checkin ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <span>{timeAgo(row.ultimo_checkin)}</span>
-                                  <Clock size={11} className="text-text-tertiary shrink-0" />
-                                </span>
-                              ) : (
-                                <span className="text-text-tertiary text-[9px] font-semibold uppercase tracking-wider">
-                                  Sem registros
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Coluna Ação — classe: alunos-col-acao */}
-                            <td className="alunos-col-acao py-3 pl-2 pr-4 text-right">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(withReturnUrl(`/admin/aluno/${row.id}`, "/admin/alunos"));
-                                }}
-                                className="text-[13px] font-medium text-brand hover:underline"
+                    return (
+                      <div
+                        key={row.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => router.push(withReturnUrl(`/admin/aluno/${row.id}`, "/admin/alunos"))}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            router.push(withReturnUrl(`/admin/aluno/${row.id}`, "/admin/alunos"));
+                          }
+                        }}
+                        className={cn(
+                          "alunos-result-row relative flex cursor-pointer items-center gap-3 border-b border-[#E4E7ED] bg-transparent px-6 py-3 transition-colors hover:bg-black/[0.02] last:border-b-0",
+                          isArquivado && "opacity-60",
+                          alerta === "vencido" && "bg-danger/5",
+                        )}
+                      >
+                        <div className="flex min-w-0 flex-[1.4] items-center gap-3">
+                          <StudentAvatar
+                            name={name}
+                            avatarUrl={row.avatar_url}
+                            sexo={row.sexo}
+                            className={isArquivado ? "grayscale" : undefined}
+                          />
+                          <span className="truncate text-sm font-medium text-brand" title={name}>
+                            {name}
+                          </span>
+                        </div>
+                        <div className="hidden min-w-0 flex-[3] grid-cols-5 items-center gap-2 sm:grid">
+                          <div className="truncate text-[13px] text-text-secondary capitalize">
+                            {planDisplayName(row.tipo_plano, planosPersonalizados)}
+                          </div>
+                          <div className="truncate text-[13px] text-text-secondary" title={row.email || undefined}>
+                            {row.email || "—"}
+                          </div>
+                          <div className="text-[13px]">
+                            {expiration ? (
+                              <span
+                                className={cn(
+                                  "font-medium",
+                                  alerta === "vencido" && "text-danger",
+                                  alerta === "semana" && "text-warning",
+                                  alerta === "mes" && "text-amber-500",
+                                  !alerta && "text-text-secondary",
+                                )}
                               >
-                                Ver perfil →
-                              </button>
-                            </td>
-
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                {formatVencimentoCurto(row.data_expiracao!)}
+                              </span>
+                            ) : (
+                              <span className="text-text-tertiary">—</span>
+                            )}
+                          </div>
+                          <div className="truncate text-[13px] text-text-secondary">
+                            {row.ultimo_checkin ? (
+                              <span className="inline-flex items-center gap-1">
+                                {timeAgo(row.ultimo_checkin)}
+                                <Clock size={11} className="shrink-0 text-text-tertiary" />
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </div>
+                          <div>
+                            <span
+                              className={cn(
+                                "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                                isArquivado
+                                  ? "bg-surface-3 text-text-disabled"
+                                  : isActive
+                                    ? "bg-success-subtle text-success"
+                                    : "bg-danger-subtle text-danger",
+                              )}
+                            >
+                              {statusLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Enviar mensagem"
+                          disabled={openingChatId === row.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void openChat(row.id);
+                          }}
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border-0 bg-transparent text-text-tertiary hover:text-brand"
+                        >
+                          <EnvelopeSimple size={18} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
                 {rows.length < 5 && (
-                  <div className="px-3 pb-3 border-t border-[color:var(--list-row-divider)]">
+                  <div className="px-1">
                     <StudentsEmptyState variant="grow" />
                   </div>
                 )}
@@ -651,8 +752,8 @@ export default function AdminAlunosPage() {
 
       </div>
 
-      {/* ── Modal de Filtros ── */}
-      {filtersOpen && (
+      {/* ── Modal de Filtros (mobile) ── */}
+      {isMobile && filtersOpen && (
         <>
           <div
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] animate-backdrop-in"
@@ -753,6 +854,14 @@ export default function AdminAlunosPage() {
           </div>
         </>
       )}
+
+      <NovoAlunoModal
+        open={cadastroOpen}
+        onClose={() => setCadastroOpen(false)}
+        onCreated={() => {
+          void fetchData({ silent: true });
+        }}
+      />
     </div>
   );
 }

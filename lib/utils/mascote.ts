@@ -5,3 +5,9 @@ export const MASCOTE_FEMININO = "/images/Mascote-feminino.png";
 export function mascoteSrc(sexo?: string | null): string {
   return sexo === "feminino" ? MASCOTE_FEMININO : MASCOTE_MASCULINO;
 }
+
+export function isMascoteSrc(src?: string | null): boolean {
+  if (!src) return true;
+  return src.includes("Mascote-masculino") || src.includes("Mascote-feminino");
+}
+

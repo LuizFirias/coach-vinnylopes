@@ -143,7 +143,7 @@ export default function AdminRankingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:pl-28 pb-24">
+    <div className="min-h-screen p-4 md:p-6 lg:pl-8 pb-24">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}

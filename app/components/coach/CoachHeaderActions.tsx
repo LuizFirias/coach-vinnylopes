@@ -142,7 +142,7 @@ export function CoachHeaderActions({
   };
 
   const iconBtn =
-    "relative flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-surface-1 text-text-tertiary shadow-sm transition-colors hover:text-text-primary";
+    "coach-header-icon-btn relative flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-surface-1 text-text-tertiary shadow-sm transition-colors hover:text-text-primary";
 
   return (
     <div className="flex max-w-full min-w-0 items-center justify-end gap-1.5 sm:gap-2">

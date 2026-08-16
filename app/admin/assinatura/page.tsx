@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import {
   BILLING_PERIOD_LABELS,
   getMonthlyEquivalent,
+  formatPlanStudentCap,
   type BillingPeriod,
   type PlanTier,
 } from "@/lib/subscriptions/plans";
@@ -32,11 +33,13 @@ interface PlanBillingOption {
 interface PlanCatalogItem {
   tier: PlanTier;
   label: string;
-  studentLimit: number;
+  studentLimit: number | null;
   unlimitedStudents?: boolean;
   studentCapLabel?: string;
   description: string;
-  features: string[];
+  features: { text: string; included: boolean; highlight?: boolean }[];
+  cta?: string;
+  badge?: string | null;
   accent?: "danger" | null;
   featured?: boolean;
   billingOptions: PlanBillingOption[];
@@ -66,7 +69,7 @@ interface SubscriptionData {
     period: BillingPeriod;
     label: string;
     priceDisplay: string;
-    studentLimit: number;
+    studentLimit: number | null;
   } | null;
   trialAtivo?: boolean;
   trialFim?: string | null;
@@ -786,11 +789,11 @@ export default function AssinaturaPage() {
     <ul className="flex flex-col mt-6">
       {selectedPlan.features.map((feature) => (
         <li
-          key={feature}
+          key={feature.text}
           className="flex items-center gap-2 py-2.5 border-b border-divider text-xs text-text-secondary last:border-0"
         >
           <Check className="w-3.5 h-3.5 text-brand shrink-0" weight="bold" />
-          {feature}
+          {feature.text}
         </li>
       ))}
     </ul>
@@ -970,7 +973,7 @@ export default function AssinaturaPage() {
     if (data.isFreeTier) {
       return {
         title: "Plano gratuito",
-        subtitle: `Até ${data.studentLimit ?? 3} alunos`,
+        subtitle: formatPlanStudentCap(data.planTier, data.studentLimit),
         pill: "Grátis",
         tone: "neutral" as const,
       };
@@ -1108,6 +1111,9 @@ export default function AssinaturaPage() {
           setForceCheckout(true);
         }}
         trialEligible={Boolean(data?.trialEligible)}
+        currentPlanTier={
+          data.isFreeTier || data.isSuperAdmin ? null : data.planTier
+        }
         checkout={checkoutBlock}
         pendingBlock={pendingBlock}
       >

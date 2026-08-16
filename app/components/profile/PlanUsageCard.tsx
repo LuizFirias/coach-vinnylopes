@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils/cn";
 type PlanUsageCardProps = {
   planLabel: string;
   studentCount: number;
-  studentLimit: number;
+  studentLimit: number | null;
   isActive?: boolean;
   href?: string;
   className?: string;
@@ -21,11 +21,12 @@ export function PlanUsageCard({
   href = "/admin/assinatura",
   className,
 }: PlanUsageCardProps) {
+  const unlimited = studentLimit == null;
   const pct =
-    studentLimit > 0
+    !unlimited && studentLimit > 0
       ? Math.min(100, Math.round((studentCount / studentLimit) * 100))
       : 0;
-  const vagas = Math.max(0, studentLimit - studentCount);
+  const vagas = unlimited ? null : Math.max(0, studentLimit - studentCount);
   const badge = (planLabel || "Plano").split(/\s+/)[0];
 
   return (
@@ -55,29 +56,31 @@ export function PlanUsageCard({
             {studentCount}
           </span>
           <span className="text-text-secondary font-medium">
-            {" "}
-            / {studentLimit} alunos
+            {unlimited ? " alunos · ilimitado" : ` / ${studentLimit} alunos`}
           </span>
         </p>
 
-        <div className="mt-2 flex items-center gap-1.5">
-          <div className="h-1 flex-1 overflow-hidden rounded-full bg-brand-subtle">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                isActive ? "bg-brand" : "bg-danger",
-              )}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <span className="text-[9px] font-medium tabular-nums text-text-tertiary shrink-0">
-            {pct}%
-          </span>
-        </div>
-
-        <p className="mt-1.5 text-[9px] leading-none text-text-tertiary">
-          {vagas} {vagas === 1 ? "vaga disponível" : "vagas disponíveis"}
-        </p>
+        {!unlimited && (
+          <>
+            <div className="mt-2 flex items-center gap-1.5">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-brand-subtle">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    isActive ? "bg-brand" : "bg-danger",
+                  )}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-[9px] font-medium tabular-nums text-text-tertiary shrink-0">
+                {pct}%
+              </span>
+            </div>
+            <p className="mt-1.5 text-[9px] leading-none text-text-tertiary">
+              {vagas} {vagas === 1 ? "vaga disponível" : "vagas disponíveis"}
+            </p>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-1.5 bg-brand/5 px-4 py-2">

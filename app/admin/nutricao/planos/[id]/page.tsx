@@ -513,7 +513,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
     : '';
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-28 lg:pl-28">
+    <div className="min-h-screen pb-28 lg:pl-8">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-6 border-b border-divider/50 mb-6">
           <div className="flex items-center gap-4 min-w-0">

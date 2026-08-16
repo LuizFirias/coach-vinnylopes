@@ -408,14 +408,14 @@ export default function TreinosPage() {
 
   if (fetchingData) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-28">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-8">
         <DumbbellLoader text="Sincronizando gestão de treinos..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans">
+    <div className="min-h-screen p-4 md:p-8 lg:p-10 lg:pl-8 pb-24 text-text-primary font-sans">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
 
         {/* ── Page Header ── */}

@@ -307,14 +307,14 @@ export default function SegurancaPrivacidadePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-0 lg:pl-28">
+      <div className="flex min-h-screen items-center justify-center bg-surface-0 lg:pl-8">
         <DumbbellLoader />
       </div>
     );
   }
 
   return (
-    <div className="auron-settings-page min-h-screen bg-surface-0 pb-24 lg:pl-28">
+    <div className="auron-settings-page min-h-screen pb-24 lg:pl-8">
       <div className="mx-auto flex w-full max-w-[min(860px,96vw)] flex-col gap-5 px-4 pt-4 sm:max-w-[66%] md:px-8 lg:px-10">
         <div className="flex items-center gap-3">
           <BackButton href="/admin/perfil" aria-label="Voltar ao perfil" />

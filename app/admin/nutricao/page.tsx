@@ -13,6 +13,8 @@ import { Select } from '@/components/ui/Select';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
 import { withReturnUrl } from '@/lib/utils/adminNav';
+import { AiDietUpgradeBanner } from '@/app/components/nutrition/AiDietUpgradeBanner';
+import { planHasAiDiet } from '@/lib/subscriptions/plans';
 
 interface Aluno {
   id: string;
@@ -47,6 +49,7 @@ export default function NutricaoPage() {
   // Search and filters
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [showPdfUpload, setShowPdfUpload] = useState(false);
+  const [showAiUpgrade, setShowAiUpgrade] = useState(false);
 
 
 
@@ -59,6 +62,15 @@ export default function NutricaoPage() {
         setFetchingData(false);
         return;
       }
+
+      const { data: coachProfile } = await supabaseClient
+        .from('profiles')
+        .select('plan_tier, role')
+        .eq('id', coachId)
+        .maybeSingle();
+      setShowAiUpgrade(
+        coachProfile?.role !== 'super_admin' && !planHasAiDiet(coachProfile?.plan_tier),
+      );
 
       // EstÃ¡gio 1 em paralelo: vÃ­nculos + planos digitais
       const [
@@ -285,7 +297,7 @@ export default function NutricaoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-28">
+    <div className="min-h-screen p-4 md:p-8 lg:p-10 lg:pl-8 pb-28">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
           <div className="flex flex-col gap-5">
             {/* Título no topo */}
@@ -312,6 +324,8 @@ export default function NutricaoPage() {
                 </button>
               </div>
             </div>
+
+            {showAiUpgrade && <AiDietUpgradeBanner />}
 
             {error && (
               <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">

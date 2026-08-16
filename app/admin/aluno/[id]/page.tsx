@@ -1327,7 +1327,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   };
 
   return (
-    <div className="min-h-screen bg-surface-0 p-4 md:p-8 lg:p-10 lg:pl-28 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-4 md:gap-6">
+    <div className="min-h-screen p-4 md:p-8 lg:p-10 lg:pl-8 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-4 md:gap-6">
 
       {/* ── Back + Profile ── */}
       <div className="relative will-change-transform">

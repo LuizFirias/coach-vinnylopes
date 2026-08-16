@@ -2,7 +2,11 @@ import "server-only";
 import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getActiveStudentCount } from "@/lib/subscriptions/getActiveStudentCount";
-import { getPlanLabel, FREE_TIER_STUDENT_LIMIT } from "@/lib/subscriptions/plans";
+import {
+  getPlanLabel,
+  isUnlimitedStudents,
+  FREE_TIER_STUDENT_LIMIT,
+} from "@/lib/subscriptions/plans";
 
 export interface StudentLimitCheck {
   allowed: boolean;
@@ -57,6 +61,10 @@ export async function checkStudentLimit(
       limit,
       message: "Assinatura inativa. Ative seu plano em Assinatura para convidar alunos.",
     };
+  }
+
+  if (isUnlimitedStudents(profile?.plan_tier)) {
+    return { allowed: true, count, limit: null };
   }
 
   if (limit == null || limit <= 0) {

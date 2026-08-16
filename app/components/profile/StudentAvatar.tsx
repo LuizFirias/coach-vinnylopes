@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils/cn";
 import { getPublicStorageUrl } from "@/lib/storageUrls";
-import { mascoteSrc } from "@/lib/utils/mascote";
+import { mascoteSrc, isMascoteSrc } from "@/lib/utils/mascote";
 
 function resolvePhotoSrc(avatarUrl?: string | null): string | null {
   if (!avatarUrl) return null;
@@ -42,6 +42,7 @@ export function StudentAvatar({
 }: StudentAvatarProps) {
   const photo = resolvePhotoSrc(avatarUrl);
   const src = photo || mascoteSrc(sexo);
+  const isMascote = isMascoteSrc(src);
 
   return (
     <div
@@ -55,7 +56,10 @@ export function StudentAvatar({
       <img
         src={src}
         alt={alt ?? name}
-        className="block h-full w-full object-cover object-center"
+        className={cn(
+          "block h-full w-full object-cover object-center",
+          isMascote && "opacity-60",
+        )}
       />
       {uploading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/70">

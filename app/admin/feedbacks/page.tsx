@@ -363,14 +363,14 @@ export default function FeedbacksCoachPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-28">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-8">
         <DumbbellLoader text="Carregando feedbacks..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
+    <div className="min-h-screen pb-24 lg:pl-8">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto px-4 md:px-6">
         <div className="py-6 border-b border-divider flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>

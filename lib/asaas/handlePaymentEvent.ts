@@ -59,11 +59,11 @@ export async function handlePaymentEvent(paymentId: string): Promise<void> {
 
   const mappedStatus = mapAsaasPaymentStatus(payment.status);
   const planInfo =
-    subscription.plan_tier && subscription.billing_period && subscription.student_limit != null
+    subscription.plan_tier && subscription.billing_period
       ? {
           planTier: subscription.plan_tier as PlanTier,
           billingPeriod: subscription.billing_period as BillingPeriod,
-          studentLimit: subscription.student_limit as number,
+          studentLimit: subscription.student_limit as number | null,
         }
       : null;
 

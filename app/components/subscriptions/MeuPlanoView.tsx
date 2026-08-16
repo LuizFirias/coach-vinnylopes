@@ -77,7 +77,7 @@ function ActionCard({
 export type MeuPlanoCatalogItem = {
   tier: PlanTier;
   label: string;
-  studentLimit: number;
+  studentLimit: number | null;
   unlimitedStudents?: boolean;
   description: string;
   billingOptions: {
@@ -107,7 +107,7 @@ type Props = {
   currentPeriod: BillingPeriod | null;
   trialAtivo?: boolean;
   trialFimLabel?: string | null;
-  /** Ex.: "R$ 47,90/mês" — usado na linha do trial. */
+  /** Ex.: "R$ 39,90/mês" — usado na linha do trial. */
   priceDisplayHint?: string | null;
 };
 

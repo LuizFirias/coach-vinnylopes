@@ -51,7 +51,7 @@ type MenuGroup = {
 };
 
 const SIDEBAR_EXPANDED_PX = 180;
-const SIDEBAR_COLLAPSED_PX = 54;
+const SIDEBAR_COLLAPSED_PX = 80;
 
 /**
  * Ajuste MANUAL da lateralidade do elo (só com sidebar aberto).
@@ -61,10 +61,10 @@ const SIDEBAR_COLLAPSED_PX = 54;
 const ELO_OFFSET_X_PX = 0;
 
 /**
- * Distância do topo até o elo — alinhar à saudação "Olá," do dashboard
- * (conteúdo usa lg:p-10 ≈ 40px). Aumente/diminua para calibrar.
+ * Distância do topo até o elo — alinhado à altura do topbar (92px),
+ * pra o item "Dashboard" nascer perto da linha do card branco.
  */
-const LOGO_TOP_OFFSET_PX = 50;
+const LOGO_TOP_OFFSET_PX = 16;
 
 /** Balão com “!” — feedbacks do aluno. */
 function FeedbackIcon({
@@ -179,7 +179,7 @@ export default function Sidebar() {
       type="button"
       onClick={toggleSidebar}
       className="sidebar-collapse-tab"
-      style={{ top: LOGO_TOP_OFFSET_PX + 22 }}
+      style={{ top: LOGO_TOP_OFFSET_PX + 38 }}
       title={isExpanded ? 'Recolher menu' : 'Expandir menu'}
       aria-label={isExpanded ? 'Recolher menu' : 'Expandir menu'}
     >
@@ -314,34 +314,38 @@ export default function Sidebar() {
         style={{
           width: isExpanded ? SIDEBAR_EXPANDED_PX : SIDEBAR_COLLAPSED_PX,
         }}
-        className="auron-sidebar fixed left-0 top-0 z-60 hidden h-full min-h-0 flex-col items-stretch overflow-visible border-r px-1.5 pb-2 transition-[width] duration-300 lg:flex"
+        className="auron-sidebar fixed left-0 top-0 z-60 hidden h-full min-h-0 flex-col items-stretch overflow-visible border-0 bg-transparent px-1.5 pb-2 transition-[width] duration-300 lg:flex"
       >
         {/* Aba “ponta de papel” — fora do fluxo, não empurra logo/nome */}
         {collapseTab}
 
         {/* Logo + nome centralizados no sidebar */}
         <div
-          className="mb-5 flex shrink-0 flex-col items-center px-1"
+          className="mb-3.5 flex shrink-0 flex-col items-center px-1"
           style={{ paddingTop: LOGO_TOP_OFFSET_PX }}
         >
           <div
-            className="mb-1.5 flex justify-center transition-transform duration-300"
-            style={{ transform: `translateX(${ELO_OFFSET_X_PX}px)` }}
+            className="mb-1.5 flex h-7 items-center justify-center transition-transform duration-300"
+            style={{
+              // Fechado: desce e ocupa o espaço (reservado) onde ficava o nome "AURON".
+              transform: `translate(${ELO_OFFSET_X_PX}px, ${isExpanded ? 0 : 23}px)`,
+            }}
           >
             <Link href={homeHref} className="group cursor-pointer">
               <AuronLinkIcon
+                active
                 size={isExpanded ? 28 : 22}
-                className="shrink-0 text-white transition-opacity group-hover:opacity-90"
+                className="sidebar-logo-icon shrink-0 transition-opacity group-hover:opacity-90"
               />
             </Link>
           </div>
 
           <div
             className={cn(
-              'overflow-hidden transition-all duration-300 ease-out',
-              isExpanded
-                ? 'max-h-10 translate-y-0 opacity-100'
-                : 'max-h-0 -translate-y-1 opacity-0',
+              // max-h fixo (não colapsa pra 0) — o espaço do nome fica reservado
+              // mesmo escondido, assim os itens do menu não sobem ao recolher.
+              'max-h-10 overflow-hidden transition-opacity duration-300 ease-out',
+              isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none',
             )}
             aria-hidden={!isExpanded}
           >

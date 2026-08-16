@@ -11,6 +11,7 @@ import {
   isTestPlanEnabled,
   isMpTestDailyCycleEnabled,
   isFreeTierProfile,
+  resolvePlanTier,
   FREE_TIER_STUDENT_LIMIT,
   type BillingPeriod,
   type PlanTier,
@@ -153,12 +154,11 @@ export async function GET(req: Request) {
 
         const planInfo =
           subscription.plan_tier &&
-          subscription.billing_period &&
-          subscription.student_limit != null
+          subscription.billing_period
             ? {
                 planTier: subscription.plan_tier as PlanTier,
                 billingPeriod: subscription.billing_period as BillingPeriod,
-                studentLimit: subscription.student_limit as number,
+                studentLimit: subscription.student_limit as number | null,
               }
             : null;
 
@@ -192,7 +192,8 @@ export async function GET(req: Request) {
       accountType,
     });
 
-    const planTier = (subscription?.plan_tier ?? profile?.plan_tier) as PlanTier | null;
+    const rawTier = (subscription?.plan_tier ?? profile?.plan_tier) as string | null;
+    const planTier = resolvePlanTier(rawTier);
     const billingPeriod = (subscription?.billing_period ??
       profile?.billing_period) as BillingPeriod | null;
     const studentLimit = subscription?.student_limit ?? profile?.student_limit ?? null;
@@ -202,7 +203,7 @@ export async function GET(req: Request) {
       period: BillingPeriod;
       label: string;
       priceDisplay: string;
-      studentLimit: number;
+      studentLimit: number | null;
     } | null = null;
 
     if (planTier && billingPeriod) {

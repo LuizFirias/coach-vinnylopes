@@ -92,7 +92,7 @@ export default function NovoParceiroPage() {
   const fieldCls = "w-full px-4 py-3 bg-surface-3 border-0 rounded-xl text-text-primary text-sm placeholder:text-text-disabled focus:outline-none focus:border-danger/40 transition-all disabled:opacity-50";
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
+    <div className="min-h-screen pb-24 lg:pl-8">
       <ScreenHeader
         title="Novo Parceiro"
         subtitle="Cadastre marcas e cupons exclusivos para seus atletas"

@@ -42,7 +42,7 @@ export async function confirmarCartaoTrial(
     trialFim: string;
     planTier: string;
     billingPeriod: string;
-    studentLimit: number;
+    studentLimit: number | null;
     asaasSubscriptionId: string;
     periodEndIso: string | null;
     creditCardToken?: string | null;

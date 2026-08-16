@@ -122,9 +122,10 @@ export function DashboardHeader({
         : null;
 
   return (
-    <div className="mb-5 flex items-center justify-between gap-3 pt-0">
+    <div className="mb-5 flex items-center justify-between gap-3 pt-0 lg:mb-3">
       <div className="min-w-0">
-        <h1 className="font-display text-xl font-extrabold tracking-tight text-text-primary md:text-2xl">
+        {/* Desktop: a saudação já aparece no topbar (CoachAppChrome) — evita duplicar. */}
+        <h1 className="font-display text-xl font-extrabold tracking-tight text-text-primary md:text-2xl lg:hidden">
           Olá, <span className="text-brand">{primeiroNome}</span>
         </h1>
         {subtitle && (

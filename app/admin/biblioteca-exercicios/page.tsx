@@ -323,14 +323,14 @@ export default function BibliotecaExerciciosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-28">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-8">
         <DumbbellLoader text="Carregando biblioteca..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 p-4 md:p-6 lg:p-10 lg:pl-28">
+    <div className="min-h-screen pb-24 p-4 md:p-6 lg:p-10 lg:pl-8">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-6">
 
         {/* Header */}

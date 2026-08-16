@@ -18,8 +18,8 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
 
   const className =
     isInternal && !hideCoachChrome
-      ? 'min-w-0 max-w-full overflow-x-clip lg:ml-[var(--sidebar-width,155px)] lg:w-[calc(100%-var(--sidebar-width,155px))] transition-[margin-left,width] duration-300'
-      : 'min-w-0 w-full max-w-full overflow-x-clip pt-0';
+      ? `${pathname.startsWith("/admin") ? "coach-main-shell " : ""}min-w-0 max-w-full overflow-x-clip lg:ml-[var(--sidebar-width,155px)] lg:w-[calc(100%-var(--sidebar-width,155px))] transition-[margin-left,width] duration-300`
+      : "min-w-0 w-full max-w-full overflow-x-clip pt-0";
 
   return <main className={className}>{children}</main>;
 }

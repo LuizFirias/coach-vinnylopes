@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { CaretDown, Check } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 
@@ -29,6 +29,8 @@ interface SelectProps {
   variant?: "default" | "underline";
   /** `sm` = altura compacta (listas / linhas densas) */
   size?: "default" | "sm";
+  /** Ícone à esquerda do trigger (formulários estilo prefixo) */
+  leftIcon?: ReactNode;
 }
 
 /** Classes compartilhadas do painel de lista (Select, autocomplete, multi-select). */
@@ -89,6 +91,7 @@ export function Select({
   emptyLabel,
   variant = "default",
   size = "default",
+  leftIcon,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,8 +147,17 @@ export function Select({
           aria-controls={listId}
           aria-invalid={!!error}
           onClick={() => !disabled && setOpen((v) => !v)}
-          className={selectTriggerClassName({ open, error: !!error, disabled, variant, size })}
+          className={cn(
+            "relative",
+            selectTriggerClassName({ open, error: !!error, disabled, variant, size }),
+            leftIcon && (compact ? "pl-8" : "pl-11"),
+          )}
         >
+          {leftIcon && (
+            <span className="pointer-events-none absolute left-3 flex items-center text-text-tertiary [&_svg]:h-4 [&_svg]:w-4">
+              {leftIcon}
+            </span>
+          )}
           <span
             className={cn(
               "flex-1 min-w-0 truncate",

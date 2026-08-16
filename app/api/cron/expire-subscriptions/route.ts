@@ -88,11 +88,11 @@ export async function GET(req: Request) {
     }
 
     const planInfo =
-      sub.plan_tier && sub.billing_period && sub.student_limit != null
+      sub.plan_tier && sub.billing_period
         ? {
             planTier: sub.plan_tier as PlanTier,
             billingPeriod: sub.billing_period as BillingPeriod,
-            studentLimit: sub.student_limit as number,
+            studentLimit: sub.student_limit as number | null,
           }
         : null;
 

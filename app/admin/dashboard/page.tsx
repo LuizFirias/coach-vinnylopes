@@ -666,7 +666,7 @@ export default function AdminDashboard() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-28">
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-8">
         <DumbbellLoader text="Carregando central de comando..." />
       </div>
     );
@@ -674,7 +674,7 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center lg:pl-28 p-6 text-center">
+      <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center lg:pl-8 p-6 text-center">
         <WarningCircle size={48} className="text-danger mb-4" />
         <h2 className="text-lg font-bold text-text-primary mb-2">Ops! Ocorreu um erro</h2>
         <p className="text-text-secondary text-sm max-w-sm mb-6">{error}</p>
@@ -686,7 +686,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 px-4 pb-24 pt-3 text-text-primary font-sans md:px-8 md:pt-4 lg:px-10 lg:pl-28 lg:pt-4">
+    <div className="min-h-screen px-4 pb-24 pt-3 text-text-primary font-sans md:px-8 md:pt-4 lg:px-10 lg:pl-8 lg:pt-4">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
         <DashboardHeader
           isMobile={isMobile}

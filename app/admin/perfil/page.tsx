@@ -845,15 +845,13 @@ function CoachPerfilPageInner() {
                   ) : null}
                 </p>
               </div>
-              {studentLimit != null && (
-                <PlanUsageCard
-                  planLabel={planName}
-                  studentCount={activeStudents ?? 0}
-                  studentLimit={studentLimit}
-                  isActive={subscriptionActive}
-                  className="!bg-surface-2"
-                />
-              )}
+              <PlanUsageCard
+                planLabel={planName}
+                studentCount={activeStudents ?? 0}
+                studentLimit={studentLimit}
+                isActive={subscriptionActive}
+                className="!bg-surface-2"
+              />
               <div className="flex justify-end">
                 <Button
                   type="button"
