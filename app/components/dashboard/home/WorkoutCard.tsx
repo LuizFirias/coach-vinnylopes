@@ -69,11 +69,11 @@ export function WorkoutCard({
         className="dashboard-card relative z-10 mx-4 -mt-6 rounded-[20px] border-0 p-5"
         style={workoutCardBackground}
       >
-        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: dashboardColors.accent }}>
+        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--dash-hero-icon)' }}>
           Treino de hoje
         </p>
         <p className="mt-2 text-2xl font-extrabold tracking-tight dashboard-text">Dia de descanso</p>
-        <p className="mt-1 text-sm dashboard-text-subtle">Recuperação ativa</p>
+        <p className="mt-1 text-sm" style={{ color: 'var(--dash-hero-icon)' }}>Recuperação ativa</p>
         <Link
           href="/aluno/medidas"
           className="dashboard-card mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-0 text-sm font-medium dashboard-text-muted"
@@ -96,7 +96,7 @@ export function WorkoutCard({
       style={workoutCardBackground}
     >
       <div className="mb-1 flex items-center justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: dashboardColors.accent }}>
+        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--dash-hero-icon)' }}>
           Treino de hoje
         </p>
         {onAlterar && (

@@ -16,6 +16,15 @@ export function formatVolume(kg: number): string {
   return `${kg.toLocaleString('pt-BR')} kg`;
 }
 
+/** Segundos -> "1h 23min" / "38min" — usado em cards de treino (histórico, perfil). */
+export function formatDurationLong(seconds: number | null | undefined): string {
+  if (!seconds || seconds <= 0) return '—';
+  const totalMin = Math.max(1, Math.round(seconds / 60));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}h ${m}min` : `${m}min`;
+}
+
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
   const h = Math.floor(total / 3600);

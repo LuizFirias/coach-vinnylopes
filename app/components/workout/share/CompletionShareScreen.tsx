@@ -37,6 +37,12 @@ export interface CompletionShareScreenProps {
   coachUsername: string;
   prsCount?: number;
   prPrincipal?: SharePrPrincipal | null;
+  /**
+   * Fecha a tela sem navegar — usada quando essa tela é aberta por cima de outra
+   * (ex.: compartilhar um treino antigo a partir do perfil). Sem essa prop, o
+   * comportamento é o de sempre: X/"Pular" navegam pra /aluno/treinos.
+   */
+  onClose?: () => void;
 }
 
 const SHARE_THEMES: ShareTheme[] = ['escuro', 'claro', 'transparente'];
@@ -60,6 +66,7 @@ export function CompletionShareScreen({
   coachUsername,
   prsCount = 0,
   prPrincipal = null,
+  onClose,
 }: CompletionShareScreenProps) {
   const [exporting, setExporting] = useState(false);
   const [temaAtivo, setTemaAtivo] = useState<ShareTheme>('escuro');
@@ -69,6 +76,7 @@ export function CompletionShareScreen({
   const router = useRouter();
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const bodyGender = useAlunoBodyGender();
+  const handleClose = onClose ?? (() => router.push('/aluno/treinos'));
 
   const durationFormatted = formatDuration(duracao);
   const workoutName = nomeRotina.toUpperCase();
@@ -287,7 +295,7 @@ export function CompletionShareScreen({
     <div className="relative flex min-h-screen flex-col bg-surface-0">
       <div className="flex items-center justify-between px-4 pb-3 pt-4">
         <button
-          onClick={() => router.push('/aluno/treinos')}
+          onClick={handleClose}
           className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-1"
         >
           <X className="h-4 w-4 text-text-secondary" />
@@ -398,7 +406,7 @@ export function CompletionShareScreen({
           )}
         </button>
         <button
-          onClick={() => router.push('/aluno/treinos')}
+          onClick={handleClose}
           className="h-10 w-full text-sm text-text-muted transition-colors hover:text-text-secondary"
         >
           Pular

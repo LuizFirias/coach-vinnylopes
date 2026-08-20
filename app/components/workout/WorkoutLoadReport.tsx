@@ -9,6 +9,7 @@ import { selectListboxClassName, selectOptionClassName } from '@/components/ui/S
 import { exercicioMostraPeso } from '@/app/components/workout-builder/exerciseColumns';
 import { CANONICAL_MUSCLE_GROUPS } from '@/lib/constants/muscle-groups';
 import { formatRestTime } from '@/lib/utils/restTime';
+import { toBrazilDateString } from '@/lib/dateUtils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -677,7 +678,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
   const filteredRows = useMemo(
     () =>
       rows.filter(r => {
-        const day = (r.data_conclusao || '').slice(0, 10);
+        const day = r.data_conclusao ? toBrazilDateString(r.data_conclusao) : '';
         return day >= start && day <= end;
       }),
     [rows, start, end],
@@ -777,7 +778,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
   const muscleFilteredRows = useMemo(
     () =>
       rows.filter(r => {
-        const day = (r.data_conclusao || '').slice(0, 10);
+        const day = r.data_conclusao ? toBrazilDateString(r.data_conclusao) : '';
         return day >= muscleFilterRange.start && day <= muscleFilterRange.end;
       }),
     [rows, muscleFilterRange],
@@ -820,7 +821,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
     const byDate = new Map<string, number>();
     for (const row of filteredRows) {
       if (row.exercicio_id !== selectedExercicio) continue;
-      const day = (row.data_conclusao || '').slice(0, 10);
+      const day = row.data_conclusao ? toBrazilDateString(row.data_conclusao) : '';
       const series = (row.dados_sessao?.series ?? []).filter(s => s.completado);
       const maxVal = series.reduce((m, s) => {
         const v = progMeta.isTime || progMeta.unit === 'reps'
@@ -849,7 +850,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
     for (const row of filteredRows) {
       const ds = row.dados_sessao;
       if (!ds) continue;
-      const day = (row.data_conclusao || '').slice(0, 10);
+      const day = row.data_conclusao ? toBrazilDateString(row.data_conclusao) : '';
       if (!day) continue;
 
       const date = new Date(day + 'T12:00:00');

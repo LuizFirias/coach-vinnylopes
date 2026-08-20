@@ -1,6 +1,13 @@
 @import './design-tokens.css';
 @import "tailwindcss";
 
+/* Sem isso, o Tailwind usa o padrão dele pra "dark:" — a preferência de
+   tema do sistema operacional — em vez do tema que o app controla (toggle
+   próprio, classe .dark em <html>). Isso fazia inputs/selects (que usam
+   dark: nativo) ficarem escuros mesmo com o app no tema claro, sempre que
+   o SO estivesse no modo escuro. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --font-display: var(--font-sans);
 }
@@ -17,6 +24,20 @@ html.dark select {
 
 html[data-theme="light"] select {
   color-scheme: light;
+}
+
+/* Não depende de .coach-app-typography — cobre também conteúdo em portal
+   (modais renderizados direto no <body>, fora da árvore do layout). */
+html[data-theme="light"] input[type="date"],
+html[data-theme="light"] input[type="time"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] input[type="date"],
+html[data-theme="dark"] input[type="time"],
+html.dark input[type="date"],
+html.dark input[type="time"] {
+  color-scheme: dark;
 }
 
 html[data-theme="dark"] select option,
@@ -145,16 +166,16 @@ body {
   html[data-theme="light"] body,
   [data-theme="light"] body,
   body.light {
-    background-color: #efe8ff;
+    background-color: #e8defc;
     background-image:
       radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(167, 139, 250, 0.45) 0%, transparent 65%),
+        rgba(167, 139, 250, 0.58) 0%, transparent 65%),
       radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(147, 51, 234, 0.28) 0%, transparent 60%),
+        rgba(147, 51, 234, 0.40) 0%, transparent 60%),
       radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(216, 180, 254, 0.50) 0%, transparent 55%),
+        rgba(216, 180, 254, 0.62) 0%, transparent 55%),
       radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.26) 0%, transparent 50%);
+        rgba(124, 58, 237, 0.36) 0%, transparent 50%);
     background-size: cover;
     background-attachment: fixed;
   }
@@ -803,8 +824,11 @@ html[data-theme="light"] .dashboard-mobile-toolbar.is-surface {
 /* ── Dashboard aluno — tokens theme-aware (surfaces globais) ── */
 .dashboard-aluno {
   --dash-bg: var(--surface-0);
-  --dash-hero-from: var(--surface-0);
-  --dash-hero-to: var(--surface-1);
+  /* Roxo forte (mesmos extremos do gradiente do botão primário --btn-primary-bg)
+     — em teste nos dois temas antes de decidir se fica definitivo. */
+  --dash-hero-from: #9B4DD4;
+  --dash-hero-to: #5E158F;
+  --dash-hero-icon: #FFFFFF;
   --dash-card: var(--surface-1);
   --dash-card-border: transparent;
   --dash-curve: var(--surface-0);
@@ -823,10 +847,15 @@ html[data-theme="light"] .dashboard-mobile-toolbar.is-surface {
 
 html[data-theme="light"] .dashboard-aluno {
   --dash-bg: var(--surface-0);
-  --dash-hero-from: var(--surface-0);
-  --dash-hero-to: var(--surface-1);
+  /* Roxo forte — igual ao dark, mesmos extremos do --btn-primary-bg (em teste). */
+  --dash-hero-from: #9B4DD4;
+  --dash-hero-to: #5E158F;
+  --dash-hero-icon: #FFFFFF;
   --dash-card: var(--surface-1);
-  --dash-card-border: transparent;
+  /* Cards do dashboard (Agenda, Sequência, Nutrição...) não têm sombra —
+     sem essa borda ficam "soltos" na tela no tema light, já que
+     surface-0/surface-1 são o mesmo branco. */
+  --dash-card-border: rgba(0, 0, 0, 0.06);
   --dash-curve: var(--surface-0);
   --dash-hero-chip: rgba(117, 27, 180, 0.08);
   --dash-habit-bg: rgba(117, 27, 180, 0.06);
@@ -848,11 +877,7 @@ html[data-theme="light"] .dashboard-aluno {
 .dashboard-hero-chip {
   background-color: transparent;
   border: 1px solid transparent;
-  color: var(--brand-hover);
-}
-
-html[data-theme="light"] .dashboard-hero-chip {
-  color: var(--brand-primary);
+  color: var(--dash-hero-icon, var(--brand-hover));
 }
 
 .dashboard-habit-bar {
@@ -1705,13 +1730,15 @@ html[data-theme="light"] .nutricao-acompanhamento-panel > .field-flat-input {
   }
 }
 
+/* Sombra do card é só no hover agora (ver hover:shadow-[...] no className da linha) —
+   antes essa regra deixava a sombra fixa, sem depender do mouse. */
 .alunos-result-row {
-  box-shadow: 0 1px 8px color-mix(in srgb, var(--text-primary) 6%, transparent);
+  box-shadow: none;
 }
 
 html[data-theme="dark"] .alunos-result-row,
 html.dark .alunos-result-row {
-  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 /* CTA roxo com gradiente (token) — não depende da classe Tailwind bg-btn-primary */
@@ -1794,16 +1821,16 @@ html.dark .coach-list-kpi-card {
   html[data-theme="light"] .auron-sidebar {
     /* Mesma receita do gradiente do body (background-attachment:fixed) —
        evita depender de transparência real, igual ao ajuste do topbar. */
-    background-color: #efe8ff !important;
+    background-color: #e8defc !important;
     background-image:
       radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(167, 139, 250, 0.45) 0%, transparent 65%),
+        rgba(167, 139, 250, 0.58) 0%, transparent 65%),
       radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(147, 51, 234, 0.28) 0%, transparent 60%),
+        rgba(147, 51, 234, 0.40) 0%, transparent 60%),
       radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(216, 180, 254, 0.50) 0%, transparent 55%),
+        rgba(216, 180, 254, 0.62) 0%, transparent 55%),
       radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.26) 0%, transparent 50%) !important;
+        rgba(124, 58, 237, 0.36) 0%, transparent 50%) !important;
     background-size: cover !important;
     background-attachment: fixed !important;
     border: 0 !important;
@@ -1847,34 +1874,27 @@ html.dark .coach-list-kpi-card {
   }
 
   html[data-theme="light"] .coach-app-typography .coach-chrome-header {
-    position: fixed !important;
-    top: 0;
-    left: var(--sidebar-width, 180px);
-    width: calc(100% - var(--sidebar-width, 180px));
-    right: auto;
-    z-index: 50;
+    /* Não fixo — rola junto com a página, igual ao Nutrium (só o sidebar fica parado). */
+    position: static !important;
     height: 92px;
     padding: 16px 24px 0;
-    /* Mesma "receita" do gradiente do body, com o mesmo background-attachment:fixed —
-       assim o topbar pinta EXATAMENTE os mesmos pixels que apareceriam atrás dele,
-       sem depender de transparência real (evita qualquer elemento opaco escondido). */
-    background-color: #efe8ff !important;
-    background-image:
-      radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(167, 139, 250, 0.45) 0%, transparent 65%),
-      radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(147, 51, 234, 0.28) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(216, 180, 254, 0.50) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.26) 0%, transparent 50%) !important;
-    background-size: cover !important;
-    background-attachment: fixed !important;
+    /* Transparente — agora é conteúdo normal do card (.coach-main-shell), não mais um
+       elemento fixo flutuando por cima da página. Deixa o fundo branco-translúcido do
+       próprio card aparecer, senão o canto arredondado fica sem contraste pra aparecer. */
+    background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     overflow: visible;
+  }
+
+  /* Perfil do aluno — header sem título/ações (ver CoachAppChrome), a faixa
+     de 92px ficaria vazia. Só nessa rota, só desktop. */
+  html[data-theme="light"] .coach-app-typography .coach-chrome-header.coach-chrome-header--compact {
+    height: 0 !important;
+    padding: 0 !important;
+    border-bottom: 0 !important;
   }
 
   html[data-theme="light"] .coach-chrome-header .coach-page-title {
@@ -1928,8 +1948,10 @@ html.dark .coach-list-kpi-card {
   }
 
   html[data-theme="light"] .coach-main-shell {
-    margin-top: 92px;
-    min-height: calc(100dvh - 92px);
+    /* Topbar não é mais fixo — não precisa de margem compensando ele. */
+    min-height: 100dvh;
+    /* Corta o topbar (1º filho) na curva do canto — senão o quadrado dele cobre a borda. */
+    overflow: hidden;
     background: rgba(255, 255, 255, 0.82);
     /* Sombra direcionada (baixo/direita) — evita o "borrão" escuro no canto
        superior-esquerdo arredondado, que agora fica exposto sobre o gradiente. */

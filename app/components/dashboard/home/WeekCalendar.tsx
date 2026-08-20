@@ -193,7 +193,7 @@ export function WeekCalendar({
                   className={cn(
                     'relative flex min-h-[70px] w-[60px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[14px] py-2',
                     'cursor-pointer select-none bg-[var(--dash-day-card-bg,var(--dash-card))]',
-                    dia.isHoje && 'border border-brand/40',
+                    dia.isHoje ? 'border border-brand/40' : 'border border-[var(--dash-card-border)]',
                     isEditing && isSelected && 'ring-1 ring-brand/50',
                   )}
                 >
@@ -231,7 +231,7 @@ export function WeekCalendar({
                 {...commonProps}
                 className={cn(
                   'relative flex min-h-[70px] min-w-[168px] shrink-0 items-stretch overflow-hidden rounded-[14px]',
-                  'cursor-pointer select-none',
+                  'cursor-pointer select-none border border-[var(--dash-card-border)]',
                   isEditing && isSelected && 'ring-1 ring-brand/50',
                 )}
               >

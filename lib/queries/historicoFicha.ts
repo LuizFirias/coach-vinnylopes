@@ -1,4 +1,5 @@
 import { supabaseClient } from '@/lib/supabaseClient';
+import { toBrazilDateString } from '@/lib/dateUtils';
 
 export type HistoricoPeriodo = '3m' | '1a' | 'all';
 export type HistoricoMetrica = 'volume' | 'reps' | 'duracao';
@@ -84,7 +85,8 @@ export async function getVolumeByFicha(
   const porData = new Map<string, Acc>();
 
   for (const row of data) {
-    const dia = (row.data_conclusao || '').slice(0, 10);
+    // Fuso de Brasília — evita treino tarde da noite "vazar" pro dia seguinte
+    const dia = row.data_conclusao ? toBrazilDateString(row.data_conclusao) : '';
     if (!dia) continue;
 
     const sessao = row.dados_sessao as DadosSessao | null;

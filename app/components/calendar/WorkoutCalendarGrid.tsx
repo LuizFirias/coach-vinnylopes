@@ -122,7 +122,7 @@ export function WorkoutCalendarGrid({
                       "border-[1.5px] border-brand text-brand",
                     state === "today-workout" && "bg-brand text-text-on-brand",
                     state === "past-workout" &&
-                      "bg-[#1a2d4a] text-brand [@media(hover:hover)]:hover:bg-[#1a2d4a]",
+                      "bg-brand text-text-on-brand [@media(hover:hover)]:hover:bg-brand",
                     state === "selected" && "bg-brand text-text-on-brand"
                   )}
                 >

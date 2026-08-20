@@ -47,14 +47,7 @@ function formatKpiValue(metrica: HistoricoMetrica, total: number): {
   unit: string;
 } {
   if (metrica === 'volume') {
-    if (total >= 1000) {
-      return {
-        value: (total / 1000).toLocaleString('pt-BR', {
-          maximumFractionDigits: 1,
-        }),
-        unit: 't',
-      };
-    }
+    // Sempre kg — nunca toneladas (regra do projeto).
     return { value: Math.round(total).toLocaleString('pt-BR'), unit: 'kg' };
   }
   if (metrica === 'reps') {
@@ -113,7 +106,7 @@ export function FichaHistoricoChart({
           <span
             className="font-black tabular-nums lining-nums"
             style={{
-              fontSize: 28,
+              fontSize: 20,
               letterSpacing: '-0.02em',
               color: '#1a1a1a',
             }}
@@ -122,8 +115,8 @@ export function FichaHistoricoChart({
           </span>
           <span
             style={{
-              fontSize: 11,
-              fontWeight: 600,
+              fontSize: 15,
+              fontWeight: 700,
               color: '#751BB4',
               marginLeft: 4,
             }}

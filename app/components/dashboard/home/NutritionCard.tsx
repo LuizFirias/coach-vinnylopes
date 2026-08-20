@@ -26,7 +26,8 @@ export function NutritionCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, type: 'spring', stiffness: 260, damping: 24 }}
-      className="dashboard-card rounded-2xl border-0 p-4"
+      className="dashboard-card rounded-2xl p-4"
+      style={{ border: '1px solid var(--dash-card-border)' }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">

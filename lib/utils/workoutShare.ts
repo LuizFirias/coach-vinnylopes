@@ -99,6 +99,36 @@ export interface ShareExerciseInput {
   series: Array<{ completado: boolean; peso_atual?: number }>;
 }
 
+/** Formato mínimo de uma linha crua de `historico_treinos` (uma por exercício). */
+export interface HistoricoTreinoRowLike {
+  exercicio_id: string | null;
+  dados_sessao: Record<string, unknown> | null;
+}
+
+/**
+ * Reconstrói o `ShareExerciseInput[]` de uma sessão passada a partir das linhas cruas
+ * de `historico_treinos` — mesmo shape que `flattenExercicios(blocks)` produz ao vivo
+ * na tela de execução, usado pra reabrir os cards de compartilhamento de um treino antigo.
+ */
+export function buildShareExerciseInputs(
+  rows: HistoricoTreinoRowLike[],
+  gruposPorExercicio: Map<string, string>,
+): ShareExerciseInput[] {
+  return rows.map((row) => {
+    const ds = (row.dados_sessao ?? {}) as Record<string, unknown>;
+    const series = Array.isArray(ds.series) ? (ds.series as Array<Record<string, unknown>>) : [];
+    return {
+      nome: (ds.nome_exercicio as string | undefined) || 'Exercício',
+      grupo_muscular: row.exercicio_id ? gruposPorExercicio.get(row.exercicio_id) : undefined,
+      series: series.map((s) => ({
+        completado: !!s.completado,
+        peso_atual:
+          typeof s.peso_atual === 'number' ? s.peso_atual : Number(s.peso_atual) || undefined,
+      })),
+    };
+  });
+}
+
 /** Volume sempre em kg com separador pt-BR — nunca em ton */
 export function formatShareVolume(kg: number): string {
   const rounded = Math.round(kg);

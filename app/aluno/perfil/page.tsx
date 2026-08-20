@@ -21,7 +21,9 @@ import { ProfileHeader } from '@/app/components/profile/ProfileHeader';
 import { AvatarCropModal } from '@/app/components/profile/AvatarCropModal';
 import { ProfileNavButtons } from '@/app/components/profile/ProfileNavButtons';
 import { ProfileWorkoutHistory } from '@/app/components/profile/ProfileWorkoutHistory';
+import { PastWorkoutShareOverlay } from '@/app/components/profile/PastWorkoutShareOverlay';
 import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
+import { useCoachShareHandle } from '@/lib/hooks/useCoachShareHandle';
 
 interface Profile {
   full_name: string;
@@ -149,6 +151,7 @@ export default function AlunoPerfil() {
   const [recentWorkouts, setRecentWorkouts] = useState<any[]>([]);
   const [lastWorkout, setLastWorkout] = useState<any | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [sharingWorkout, setSharingWorkout] = useState<any | null>(null);
 
   useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
@@ -223,7 +226,13 @@ export default function AlunoPerfil() {
             const firstEx = exerciciosSessao[0];
             const ds0 = (firstEx?.dados_sessao ?? {}) as Record<string, any>;
             const nome_rotina = ds0.nome_rotina || "Treino";
-            
+            const duracaoSegundos =
+              typeof ds0.duracao_segundos === "number"
+                ? ds0.duracao_segundos
+                : typeof ds0.duracao_segundos === "string" && ds0.duracao_segundos !== ""
+                  ? Number(ds0.duracao_segundos)
+                  : null;
+
             // Calcular volume total e quantidade de séries/reps
             let volumeTotal = 0;
             let totalSets = 0;
@@ -232,7 +241,7 @@ export default function AlunoPerfil() {
               const series = ds.series || [];
               const completedSeries = series.filter((s: any) => s.completado);
               totalSets += completedSeries.length;
-              
+
               completedSeries.forEach((s: any) => {
                 const peso = Number(s.peso_atual) || 0;
                 const reps = Number(s.reps) || 0;
@@ -247,10 +256,12 @@ export default function AlunoPerfil() {
             });
 
             return {
+              sessionKey: data,
               data_conclusao: data,
               nome_rotina,
               volumeTotal,
               totalSets,
+              duracaoSegundos,
               exercises: parsedExercises,
               satisfacao: (ds0.satisfacao_treino as string | null | undefined) || null,
               nivelDor:
@@ -273,6 +284,9 @@ export default function AlunoPerfil() {
     };
     fetchHistory();
   }, [userId]);
+
+  // Handle do coach (@instagram) — só usado na tela de compartilhar treino passado.
+  const coachUsername = useCoachShareHandle(userId);
 
   // ── Avatar ───────────────────────────────────────────────────────────────
 
@@ -842,8 +856,21 @@ export default function AlunoPerfil() {
           workouts={recentWorkouts}
           loading={loadingWorkouts}
           isDesktop={isDesktop}
+          userName={profile.full_name}
+          avatarUrl={profile.avatar_url}
+          sexo={profile.sexo}
+          onShare={setSharingWorkout}
         />
       </div>
+
+      {sharingWorkout && userId && (
+        <PastWorkoutShareOverlay
+          workout={sharingWorkout}
+          userId={userId}
+          coachUsername={coachUsername}
+          onClose={() => setSharingWorkout(null)}
+        />
+      )}
     </div>
   );
 }

@@ -306,8 +306,12 @@ export interface ExercicioExecucao {
     peso_input_str?: string;
     /** true assim que o aluno edita o peso desta série — trava o preenchimento em cascata das séries seguintes. */
     peso_manual?: boolean;
+    /** true = peso_atual veio pré-preenchido do histórico (última execução) — também trava a cascata. */
+    peso_historico?: boolean;
     reps: number | string;
     reps_executadas?: number | string;
+    /** true assim que o aluno edita as reps desta série (inclusive reconfirmando o valor pré-preenchido). */
+    reps_manual?: boolean;
     tecnica?: string;
     tecnica_extra?: string;
     completado: boolean;
@@ -397,11 +401,20 @@ function buildSerieExecucao(
   const prevReps = prev?.reps_executadas ?? prev?.reps ?? 0;
   const anterior = prev ? `${prev.peso_atual}kg × ${prevReps}` : "—";
   const isTempo = exercicioEhPorTempo(tipoExercicio) || isIsometria(s);
+  const temHistorico = !!prev;
+
   return {
     ordem,
-    // Zerado ao iniciar a ficha — a coluna "Ant." já mostra a referência da sessão anterior.
-    peso_atual: 0,
+    // Pré-preenchido com o peso da última execução dessa série (mesmo padrão do Hevy) —
+    // fica "fantasma" até o aluno confirmar/editar (ver peso_manual). Sem histórico, zera
+    // como sempre (o placeholder "0" cobre esse caso).
+    peso_atual: temHistorico ? Number(prev!.peso_atual) || 0 : 0,
+    // Trava a cascata de peso (handlePesoChange) pra essa série — ela já tem uma referência
+    // real do histórico, não deve ser sobrescrita pelo que o aluno digitar numa série anterior.
+    peso_historico: temHistorico,
     reps: isTempo ? (s.tempo_sugerido ?? s.tempo ?? "00:30") : (s.reps_sugerido ?? s.reps ?? "12"),
+    // Séries por tempo continuam usando tempo_executado_seg — sem pré-preenchimento aqui.
+    reps_executadas: !isTempo && temHistorico ? prevReps : undefined,
     tecnica: s.tecnica ?? undefined,
     tecnica_extra: s.tecnica_extra ?? undefined,
     completado: false,

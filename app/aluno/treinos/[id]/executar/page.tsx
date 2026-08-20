@@ -106,8 +106,12 @@ interface SerieState {
   peso_input_str?: string;
   /** true assim que o aluno edita o peso desta série — trava o preenchimento em cascata das séries seguintes. */
   peso_manual?: boolean;
+  /** true = peso_atual veio pré-preenchido do histórico (última execução) — também trava a cascata. */
+  peso_historico?: boolean;
   reps: number | string;
   reps_executadas?: number | string;
+  /** true assim que o aluno edita as reps desta série (inclusive reconfirmando o valor pré-preenchido). */
+  reps_manual?: boolean;
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
@@ -260,6 +264,41 @@ function calcTotalSets(exercicios: ExercicioState[]): number {
   return exercicios.reduce((acc, ex) => acc + ex.series.length, 0);
 }
 
+/**
+ * Cor do número de peso/reps de uma série: cinza claro ("fantasma", ainda não
+ * confirmado — seja vazio ou pré-preenchido do histórico) → cor normal (o aluno
+ * editou/confirmou) → verde (concluída). Nunca roxo — roxo é só pro destaque da
+ * série atual (background).
+ */
+function serieTextColor(completado: boolean, manual: boolean): string {
+  if (completado) return '#39c75a';
+  if (!manual) return 'var(--text-disabled)';
+  return 'var(--text-primary)';
+}
+
+/**
+ * Única série "atual" do treino inteiro — a próxima depois da última concluída,
+ * percorrendo os blocos na ordem da ficha (bi-set intercala A/B por rodada).
+ * Usado pra destacar só uma linha na lista, nunca a primeira de cada exercício.
+ */
+function findCurrentSerie(blocks: WorkoutBlock[]): { exercicioId: string; ordem: number } | null {
+  for (const block of blocks) {
+    if (block.kind === 'simples') {
+      const s = block.exercise.series.find((s) => !s.completado);
+      if (s) return { exercicioId: block.exercise.id, ordem: s.ordem };
+      continue;
+    }
+    const rodadas = Math.max(block.exercicioA.series.length, block.exercicioB.series.length);
+    for (let i = 0; i < rodadas; i++) {
+      const a = block.exercicioA.series[i];
+      const b = block.exercicioB.series[i];
+      if (a && !a.completado) return { exercicioId: block.exercicioA.id, ordem: a.ordem };
+      if (b && !b.completado) return { exercicioId: block.exercicioB.id, ordem: b.ordem };
+    }
+  }
+  return null;
+}
+
 // ─── SetRow ───────────────────────────────────────────────────────────────────
 
 interface SetRowProps {
@@ -270,13 +309,15 @@ interface SetRowProps {
   showPeso?: boolean;
   gridCols: string;
   isDesktop?: boolean;
+  /** Primeira série não concluída do exercício — destaque roxo, igual ao modal. */
+  isAtual?: boolean;
   onPesoChange: (peso: number, rawStr?: string) => void;
   onRepsChange: (reps: number | string) => void;
   onTempoChange: (seconds: number, rawStr?: string) => void;
   onCheck: () => void;
 }
 
-function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, gridCols, isDesktop = false, onPesoChange, onRepsChange, onTempoChange, onCheck }: SetRowProps) {
+function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, gridCols, isDesktop = false, isAtual = false, onPesoChange, onRepsChange, onTempoChange, onCheck }: SetRowProps) {
   return (
     <div
       className={cn(
@@ -289,9 +330,11 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
         padding: '10px 12px',
         background: serie.completado
           ? 'rgba(57,199,90,0.06)'
-          : idx % 2 === 0
-            ? 'var(--surface-1)'
-            : 'var(--surface-2)',
+          : isAtual
+            ? 'rgba(117, 27, 180, 0.14)'
+            : idx % 2 === 0
+              ? 'var(--surface-1)'
+              : 'var(--surface-3)',
       }}
     >
       <div className="flex justify-center">
@@ -339,7 +382,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
             style={{
               height: 28,
               fontSize: '12px',
-              color: 'var(--text-secondary)',
+              color: serieTextColor(serie.completado, serie.peso_manual ?? false),
               fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
               fontVariantNumeric: 'tabular-nums lining-nums',
               fontWeight: 500,
@@ -420,7 +463,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
               fontWeight: 500,
               fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
               fontVariantNumeric: 'tabular-nums lining-nums',
-              color: serie.completado ? '#39c75a' : 'var(--text-primary)',
+              color: serieTextColor(serie.completado, serie.reps_manual ?? false),
               borderBottom: '1.5px solid transparent',
             }}
             onFocus={(e) => {
@@ -469,6 +512,9 @@ interface ExercicioCardProps {
   treinoIniciado: boolean;
   showAnteriorCol: boolean;
   isDesktop?: boolean;
+  /** Exercício + série "atuais" no treino inteiro (não só deste card) — ver findCurrentSerie. */
+  currentExercicioId?: string;
+  currentOrdem?: number;
   onPesoChange: (ordem: number, peso: number, rawStr?: string) => void;
   onRepsChange: (ordem: number, reps: number | string) => void;
   onTempoChange: (ordem: number, seconds: number, rawStr?: string) => void;
@@ -479,7 +525,7 @@ interface ExercicioCardProps {
   onOpenCard?: () => void;
 }
 
-function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, onPesoChange, onRepsChange, onTempoChange, onCheck, onVideoOpen, onCargaInfo, onOpenCard }: ExercicioCardProps) {
+function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop = false, currentExercicioId, currentOrdem, onPesoChange, onRepsChange, onTempoChange, onCheck, onVideoOpen, onCargaInfo, onOpenCard }: ExercicioCardProps) {
   const completadas = exercicio.series.filter(s => s.completado).length;
   const total = exercicio.series.length;
   const all = completadas === total;
@@ -604,6 +650,11 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
               treinoIniciado={treinoIniciado}
               showAnteriorCol={showAnteriorCol}
               showPeso={showPeso}
+              isAtual={
+                treinoIniciado &&
+                currentExercicioId === exercicio.id &&
+                serie.ordem === currentOrdem
+              }
               gridCols={gridCols}
               isDesktop={isDesktop}
               onPesoChange={(peso, raw) => onPesoChange(serie.ordem, peso, raw)}
@@ -1173,7 +1224,14 @@ export default function ExecucaoTreinoPage() {
    * como manual — deixa de receber o vazamento (mesmo padrão da ficha).
    */
   function cascadePeso<
-    T extends { ordem: number; peso_atual: number; peso_input_str?: string; peso_manual?: boolean; completado: boolean }
+    T extends {
+      ordem: number;
+      peso_atual: number;
+      peso_input_str?: string;
+      peso_manual?: boolean;
+      peso_historico?: boolean;
+      completado: boolean;
+    }
   >(series: T[], serieOrdem: number, peso: number, rawStr: string | undefined): T[] {
     let cascata = false;
     return series.map((s) => {
@@ -1181,7 +1239,9 @@ export default function ExecucaoTreinoPage() {
         cascata = true;
         return { ...s, peso_atual: peso, peso_input_str: rawStr, peso_manual: true };
       }
-      if (cascata && !s.completado && !s.peso_manual) {
+      // Série que já veio preenchida do histórico não recebe o vazamento — já tem
+      // uma referência real da última execução, não deve ser sobrescrita.
+      if (cascata && !s.completado && !s.peso_manual && !s.peso_historico) {
         return { ...s, peso_atual: peso, peso_input_str: formatPesoDisplay(peso) };
       }
       return s;
@@ -1229,7 +1289,7 @@ export default function ExecucaoTreinoPage() {
               exercise: {
                 ...block.exercise,
                 series: block.exercise.series.map((s) =>
-                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps }
+                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps, reps_manual: true }
                 ),
               },
             };
@@ -1241,7 +1301,7 @@ export default function ExecucaoTreinoPage() {
               [half]: {
                 ...block[half],
                 series: block[half].series.map((s) =>
-                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps }
+                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps, reps_manual: true }
                 ),
               },
             };
@@ -1927,6 +1987,9 @@ export default function ExecucaoTreinoPage() {
               </div>
             )}
 
+            {(() => {
+              const current = treinoIniciado ? findCurrentSerie(blocks) : null;
+              return (
             <div className="flex flex-col gap-2.5">
               {blocks.map((block, index) => (
                 <div
@@ -1940,6 +2003,8 @@ export default function ExecucaoTreinoPage() {
                       treinoIniciado={treinoIniciado}
                       showAnteriorCol={hasHistorico}
                       isDesktop={isDesktop}
+                      currentExercicioId={current?.exercicioId}
+                      currentOrdem={current?.ordem}
                       onPesoChange={(ordem, peso, raw) => handlePesoChange(block.exercise.id, ordem, peso, raw)}
                       onRepsChange={(ordem, reps) => handleRepsChange(block.exercise.id, ordem, reps)}
                       onTempoChange={(ordem, seconds, raw) => handleTempoChange(block.exercise.id, ordem, seconds, raw)}
@@ -1971,6 +2036,8 @@ export default function ExecucaoTreinoPage() {
                 </div>
               ))}
             </div>
+              );
+            })()}
           </main>
         </div>
       </div>
@@ -2496,7 +2563,7 @@ export default function ExecucaoTreinoPage() {
                                     background: s.completado
                                       ? 'rgba(57,199,90,0.06)'
                                       : isAtualRow
-                                        ? 'rgba(117, 27, 180, 0.04)'
+                                        ? 'rgba(117, 27, 180, 0.14)'
                                         : 'transparent',
                                   }}
                                 >
@@ -2522,7 +2589,10 @@ export default function ExecucaoTreinoPage() {
                                     {s.anterior || '—'}
                                   </span>
                                   {showPesoRow && (isAtualRow ? (
-                                    <span className="font-bold tabular-nums lining-nums text-brand font-sans shrink-0">
+                                    <span
+                                      className="font-bold tabular-nums lining-nums font-sans shrink-0"
+                                      style={{ color: serieTextColor(s.completado, s.peso_manual ?? false) }}
+                                    >
                                       {pesoExibido ? (
                                         <>
                                           {pesoExibido}
@@ -2543,7 +2613,8 @@ export default function ExecucaoTreinoPage() {
                                       }}
                                       placeholder="—"
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
-                                      className="w-14 h-7 bg-transparent px-1 text-right text-xs font-medium font-sans tabular-nums lining-nums text-brand focus:outline-none border-b border-brand/30"
+                                      className="w-14 h-7 bg-transparent px-1 text-right text-xs font-medium font-sans tabular-nums lining-nums focus:outline-none border-b border-brand/30"
+                                      style={{ color: serieTextColor(s.completado, s.peso_manual ?? false) }}
                                     />
                                   ))}
                                   {(() => {
@@ -2606,7 +2677,7 @@ export default function ExecucaoTreinoPage() {
                                           'placeholder:text-text-disabled',
                                         )}
                                         style={{
-                                          color: s.completado ? '#39c75a' : 'var(--text-primary)',
+                                          color: serieTextColor(s.completado, s.reps_manual ?? false),
                                           borderBottom: '1.5px solid transparent',
                                         }}
                                         onFocus={(e) => {
@@ -2662,7 +2733,7 @@ export default function ExecucaoTreinoPage() {
                               background: s.completado
                                 ? 'rgba(57,199,90,0.06)'
                                 : isAtual
-                                  ? 'rgba(117, 27, 180, 0.04)'
+                                  ? 'rgba(117, 27, 180, 0.14)'
                                   : 'transparent',
                             }}
                           >
@@ -2716,7 +2787,7 @@ export default function ExecucaoTreinoPage() {
                                   }}
                                   placeholder="—"
                                   aria-label={`Editar peso da série ${idx + 1}`}
-                                  className="w-full max-w-10 bg-transparent text-center tabular-nums lining-nums text-brand font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                  className="w-full max-w-10 bg-transparent text-center tabular-nums lining-nums font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                   style={{
                                     fontSize: 12,
                                     fontWeight: 500,
@@ -2724,8 +2795,8 @@ export default function ExecucaoTreinoPage() {
                                     height: 22,
                                     fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
                                     fontVariantNumeric: 'tabular-nums lining-nums',
-                                    color: 'var(--brand-primary)',
-                                    WebkitTextFillColor: 'var(--brand-primary)',
+                                    color: serieTextColor(s.completado, s.peso_manual ?? false),
+                                    WebkitTextFillColor: serieTextColor(s.completado, s.peso_manual ?? false),
                                   }}
                                 />
                                 {(isAtual ? modalCarga : s.peso_atual) ? (
@@ -2803,7 +2874,7 @@ export default function ExecucaoTreinoPage() {
                                     fontSize: 11,
                                     fontWeight: 500,
                                     fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
-                                    color: s.completado ? '#39c75a' : 'var(--text-primary)',
+                                    color: serieTextColor(s.completado, s.reps_manual ?? false),
                                     height: 22,
                                   }}
                                 />

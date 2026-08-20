@@ -7,6 +7,7 @@ import { Trophy, Star, Clock, WarningCircle, Lightning } from '@phosphor-icons/r
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { cn } from '@/lib/utils/cn';
+import { toBrazilDateString } from '@/lib/dateUtils';
 
 interface RankingEntry {
   id: string;
@@ -81,7 +82,7 @@ export default function AdminRankingPage() {
 
         const sessoesUnicas = (fichasSessoes || []).reduce((acc: Record<string, Set<string>>, r) => {
           if (!acc[r.aluno_id]) acc[r.aluno_id] = new Set();
-          acc[r.aluno_id].add(r.data_conclusao.slice(0, 10));
+          acc[r.aluno_id].add(toBrazilDateString(r.data_conclusao));
           return acc;
         }, {});
 

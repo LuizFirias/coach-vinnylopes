@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { toBrazilDateString } from "@/lib/dateUtils";
 import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 import { concluirPasso } from "@/lib/onboarding/concluirPasso";
 import { extractStoragePath, getSignedStorageUrl, getPublicStorageUrl } from "@/lib/storageUrls";
@@ -56,6 +57,7 @@ import {
 } from "@/app/components/admin/alunos/PlanosNutricaoKanban";
 import { CloneToStudentsModal } from "@/app/components/admin/alunos/CloneToStudentsModal";
 import { AlunoObservacoesCard } from "@/app/components/admin/alunos/AlunoObservacoesCard";
+import { AlunoOverviewEverfit } from "@/app/components/profile/overview/AlunoOverviewEverfit";
 import { StudentPlanCard } from "@/app/components/admin/alunos/StudentPlanCard";
 import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import {
@@ -1042,7 +1044,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
     const limit30 = 30 * 86400000;
     const filtered = historicoTreinos.filter(h => now - new Date(h.data_conclusao).getTime() <= limit30);
     
-    const uniqueDays = new Set(filtered.map(h => h.data_conclusao?.slice(0, 10))).size;
+    const uniqueDays = new Set(filtered.map(h => h.data_conclusao ? toBrazilDateString(h.data_conclusao) : '')).size;
     
     let sets = 0;
     let volume = 0;
@@ -1327,7 +1329,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8 lg:p-10 lg:pl-8 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-4 md:gap-6">
+    <div className="min-h-screen p-4 md:p-8 lg:pt-4 lg:pr-10 lg:pb-10 lg:pl-8 pb-24 text-text-primary font-sans w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-4 md:gap-6">
 
       {/* ── Back + Profile ── */}
       <div className="relative will-change-transform">
@@ -1338,11 +1340,14 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           className="mb-3 self-start -ml-1 lg:mb-0 lg:absolute lg:-left-12 lg:top-1"
         />
 
-        {/* ── Profile Base Card ── */}
+        {/* ── Profile Base Card (mobile) — roxo, inalterado ── */}
         {profile && (
-          <Card className="rounded-2xl border border-brand p-4 bg-brand shadow-[0_12px_32px_rgba(147,51,234,0.35)] relative overflow-visible outline-none">
+          <Card className="lg:hidden rounded-2xl border-2 border-white/25 p-4 bg-brand shadow-[0_12px_32px_rgba(147,51,234,0.35)] relative overflow-visible outline-none">
+          {/* Roxo "diluído" com um véu branco opaco por cima — mais fraco, mas sem
+              transparência real (não deixa o fundo da página aparecer através). */}
           <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.14)_0%,transparent_55%)]" />
+            <div className="absolute inset-0 bg-white/20" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.22)_0%,transparent_55%)]" />
           </div>
 
           <button
@@ -1450,13 +1455,120 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           </div>
         </Card>
         )}
+
+        {/* ── Profile Header (desktop) — estilo Everfit: claro, sem roxo ── */}
+        {profile && (
+          <Card className="hidden lg:block rounded-2xl border border-border-subtle bg-surface-1 p-4 shadow-sm relative overflow-visible outline-none">
+            <button
+              type="button"
+              aria-label="Mais opções"
+              aria-expanded={profileMenuOpen}
+              onClick={() => setProfileMenuOpen((o) => !o)}
+              className="absolute top-2.5 right-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors"
+            >
+              <DotsThree size={20} weight="bold" />
+            </button>
+            {profileMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  aria-hidden
+                  onClick={() => setProfileMenuOpen(false)}
+                />
+                <div className="absolute right-2.5 top-11 z-30 min-w-[168px] rounded-lg border border-border-subtle bg-surface-1 py-1 shadow-elev-2">
+                  {!profile.arquivado && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        setActiveTab("financeiro");
+                        setEditingProfile(true);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-text-primary hover:bg-surface-2 border-0 bg-transparent cursor-pointer"
+                    >
+                      <Coins size={14} />
+                      Renovar plano
+                    </button>
+                  )}
+                  {profile.arquivado ? (
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        void handleReactivate();
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-text-primary hover:bg-surface-2"
+                    >
+                      Reativar aluno
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        void handleDelete();
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium text-danger hover:bg-danger/5"
+                    >
+                      <Trash size={14} />
+                      Desativar acesso
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="flex items-center gap-3 pr-9">
+              <StudentAvatar
+                name={profileName}
+                avatarUrl={avatarUrl}
+                sexo={profile.sexo}
+                sizeClassName="w-[50px] h-[50px]"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-bold text-text-primary tracking-tight truncate">
+                    {profileName}
+                  </h2>
+                  {profile.arquivado ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-text-tertiary">
+                      <span className="w-1.5 h-1.5 rounded-full bg-text-disabled" />
+                      desativado
+                    </span>
+                  ) : isPaid && !isExpired ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-success">
+                      <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                      ativo
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-danger">
+                      <span className="w-1.5 h-1.5 rounded-full bg-danger" />
+                      bloqueado
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[11px] text-text-tertiary">
+                  <span>{profile.email}</span>
+                  {profile.data_inicio && (
+                    <span>Início: {new Date(profile.data_inicio).toLocaleDateString("pt-BR")}</span>
+                  )}
+                  {ultimaAtividade && (
+                    <span>Última: {new Date(ultimaAtividade).toLocaleDateString("pt-BR")}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
 
-      {/* Quick action — Nova Ficha */}
+      {/* Quick action — Nova Ficha (mobile) */}
       <button
         type="button"
         onClick={() => router.push(withReturnUrl(`/admin/treinos/nova-ficha?alunoId=${id}`, `/admin/aluno/${id}`))}
-        className="inline-flex items-center justify-center gap-1.5 w-full min-h-11 px-3 py-3 bg-brand hover:bg-brand-hover text-text-on-brand text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all active:scale-[0.98] border border-brand outline-none"
+        className="lg:hidden inline-flex items-center justify-center gap-1.5 w-full min-h-11 px-3 py-3 bg-brand hover:bg-brand-hover text-text-on-brand text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all active:scale-[0.98] border border-brand outline-none"
       >
         <Plus size={14} weight="bold" /> Nova Ficha
       </button>
@@ -1497,8 +1609,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* ── Rotinas (carrossel) + métricas ── */}
-      <div className="flex flex-col gap-4">
+      {/* ── Rotinas (carrossel) + métricas (mobile) — no desktop os dados migram
+          pros cards da Visão Geral (Training, Body Metrics) ── */}
+      <div className="lg:hidden flex flex-col gap-4">
         <p className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
           Rotinas
         </p>
@@ -1742,12 +1855,12 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
       {/* ── Tab Contents ── */}
       <div className="flex flex-col gap-6 min-h-[400px]">
 
-        {/* ── VISÃO GERAL TAB ── */}
+        {/* ── VISÃO GERAL TAB (mobile) — grid antigo, inalterado ── */}
         {activeTab === 'visao-geral' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
+          <div className="grid grid-cols-1 lg:hidden gap-6">
+
             {/* Esquerda: Prioridades e Atividade */}
-            <div className="lg:col-span-8 flex flex-col gap-6">
+            <div className="flex flex-col gap-6">
               
               {/* Prioridades / Pendências do Aluno */}
               <div className="bg-surface-1 border-0 rounded-2xl px-4 py-3 shadow-sm">
@@ -1975,6 +2088,29 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ── VISÃO GERAL TAB (desktop) — grid 3 colunas estilo Everfit ── */}
+        {activeTab === 'visao-geral' && (
+          <div className="hidden lg:block">
+            <AlunoOverviewEverfit
+              alunoId={id}
+              alunoNome={profileName}
+              alunoAvatarUrl={avatarUrl}
+              alunoSexo={profile?.sexo}
+              coachId={coachUserId}
+              legacyOrientacoes={profile?.orientacoes}
+              historicoTreinos={historicoTreinos}
+              sessoesRecentes={sessoesRecentes}
+              fichasAtivasCount={fichas.filter((f) => f.ativo).length}
+              medidas={medidas}
+              fotos={fotos}
+              historicoFinanceiro={historicoFinanceiro}
+              onOpenTreinos={() => setActiveTab('treinos')}
+              onOpenEvolucao={() => setActiveTab('evolucao')}
+              onOpenFotos={() => setActiveTab('fotos')}
+            />
           </div>
         )}
 
@@ -2276,7 +2412,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
               {historicoTreinos.length > 0 ? (() => {
                 const sessoesPorData = new Map<string, any[]>();
                 historicoTreinos.forEach(h => {
-                  const dia = new Date(h.data_conclusao).toLocaleDateString("pt-BR");
+                  const dia = new Date(h.data_conclusao).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
                   if (!sessoesPorData.has(dia)) sessoesPorData.set(dia, []);
                   sessoesPorData.get(dia)!.push(h);
                 });

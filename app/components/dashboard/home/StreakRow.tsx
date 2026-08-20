@@ -44,8 +44,11 @@ export function StreakRow({ sequenciaDias, treinosSemana, metaSemana }: StreakRo
       className="mx-4 grid grid-cols-2 gap-3"
     >
       <div
-        className="dashboard-card rounded-2xl border-0 p-4"
-        style={{ borderBottom: `2px solid ${dashboardColors.streak}` }}
+        className="dashboard-card rounded-2xl p-4"
+        style={{
+          border: '1px solid var(--dash-card-border)',
+          borderBottom: `2px solid ${dashboardColors.streak}`,
+        }}
       >
         <p className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest dashboard-text-subtle">
           <Flame className="h-3.5 w-3.5" weight="fill" style={{ color: dashboardColors.streak }} />
@@ -60,8 +63,11 @@ export function StreakRow({ sequenciaDias, treinosSemana, metaSemana }: StreakRo
       </div>
 
       <div
-        className="dashboard-card relative rounded-2xl border-0 p-4"
-        style={{ borderBottom: `2px solid ${dashboardColors.accent}` }}
+        className="dashboard-card relative rounded-2xl p-4"
+        style={{
+          border: '1px solid var(--dash-card-border)',
+          borderBottom: `2px solid ${dashboardColors.accent}`,
+        }}
       >
         <div className="mb-1 flex items-center justify-between gap-1">
           <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest dashboard-text-subtle">

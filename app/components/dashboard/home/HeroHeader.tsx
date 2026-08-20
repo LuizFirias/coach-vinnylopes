@@ -9,7 +9,6 @@ import {
 } from '@phosphor-icons/react';
 import DashboardTopActions from '@/app/components/DashboardTopActions';
 import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
-import { dashboardColors } from '@/lib/tokens/dashboardColors';
 import { cn } from '@/lib/utils/cn';
 
 interface HabitData {
@@ -107,13 +106,11 @@ function HabitBar({
             <IconComponent
               className="h-4 w-4"
               weight="regular"
-              style={{ color: dashboardColors.accent }}
+              style={{ color: 'var(--dash-hero-icon)' }}
             />
             <span
-              className={cn(
-                'text-xs font-semibold',
-                habit.done ? 'text-emerald-500' : 'dashboard-text-muted',
-              )}
+              className={cn('text-xs font-semibold', habit.done && 'text-emerald-500')}
+              style={habit.done ? undefined : { color: 'var(--dash-hero-icon)' }}
             >
               {habit.value}
             </span>
@@ -150,7 +147,7 @@ export function HeroHeader({
   return (
     <div>
       <div
-        className="px-5 pb-2 pt-4"
+        className="rounded-b-[24px] px-5 pb-2 pt-4"
         style={{
           background: 'linear-gradient(180deg, var(--dash-hero-from) 0%, var(--dash-hero-to) 100%)',
         }}
@@ -165,12 +162,15 @@ export function HeroHeader({
               className="border-2 border-brand"
             />
             <div className="min-w-0">
-              <p className="text-[11px] font-medium capitalize tracking-wide dashboard-text-subtle">
+              <p
+                className="text-[11px] font-medium capitalize tracking-wide"
+                style={{ color: 'var(--dash-hero-icon)' }}
+              >
                 {hoje}
               </p>
               <h1 className="mt-0.5 text-xl font-bold dashboard-text">
                 Olá,{' '}
-                <span style={{ color: dashboardColors.accent }}>{primeiroNome}</span>
+                <span style={{ color: 'var(--dash-hero-icon)' }}>{primeiroNome}</span>
               </h1>
             </div>
           </div>

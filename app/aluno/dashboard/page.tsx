@@ -761,12 +761,10 @@ export default function AlunoDashboardPage() {
       selectedDia?.data ??
       diasSemana.find((d) => new Date(`${d.data}T12:00:00`).getDay() === dayOfWeek)?.data;
 
-    // O calendário começa em "ontem" (índice 0); a semana corrente (hoje..+6, índices 1-7)
-    // edita o padrão semanal recorrente. Ontem e dias além da semana corrente são
-    // ajustes pontuais só para aquela data (agenda_diaria).
-    const targetIndex = diasSemana.findIndex((d) => d.data === targetDate);
-    const useDateOverride = targetIndex <= 0 || targetIndex >= 8;
-    if (useDateOverride && !targetDate) return;
+    // Toda configuração de dia é um ajuste pontual só para aquela data (agenda_diaria).
+    // Não gravamos mais em agenda_semanal (padrão recorrente) — marcar um treino para
+    // uma quinta-feira, por exemplo, não deve repeti-lo automaticamente nas próximas semanas.
+    if (!targetDate) return;
 
     setSavingConfig(true);
     try {
@@ -785,7 +783,7 @@ export default function AlunoDashboardPage() {
         }
       }
 
-      if (useDateOverride) {
+      {
         const { error } = await supabaseClient
           .from('agenda_diaria')
           .upsert(
@@ -796,18 +794,6 @@ export default function AlunoDashboardPage() {
               updated_at: new Date().toISOString(),
             },
             { onConflict: 'aluno_id,data' },
-          );
-        if (error) throw error;
-      } else {
-        const { error } = await supabaseClient
-          .from('agenda_semanal')
-          .upsert(
-            {
-              aluno_id: userId,
-              dia_semana: dayOfWeek,
-              ...workoutFields,
-            },
-            { onConflict: 'aluno_id,dia_semana' },
           );
         if (error) throw error;
       }
@@ -826,7 +812,7 @@ export default function AlunoDashboardPage() {
       await fetchWeeklyAgenda(userId);
 
       const todayJS = new Date().getDay();
-      if (!useDateOverride && dayOfWeek === todayJS) {
+      if (dayOfWeek === todayJS) {
         invalidateDashboardAlunoCache(userId);
         void fetchDashboard({ force: true });
       }
