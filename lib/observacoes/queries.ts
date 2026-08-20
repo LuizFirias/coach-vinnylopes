@@ -1,5 +1,7 @@
 import { supabaseClient } from '@/lib/supabaseClient';
 
+export type ObservacaoTipo = 'nota' | 'lesao';
+
 export type AlunoObservacao = {
   id: string;
   aluno_id: string;
@@ -8,6 +10,7 @@ export type AlunoObservacao = {
   criada_em: string;
   visualizada_em: string | null;
   finalizada_em: string | null;
+  tipo: ObservacaoTipo;
 };
 
 function isMissingRelation(error: { code?: string; message?: string } | null): boolean {
@@ -20,11 +23,15 @@ function isMissingRelation(error: { code?: string; message?: string } | null): b
   );
 }
 
-export async function listObservacoesAluno(alunoId: string): Promise<AlunoObservacao[]> {
+export async function listObservacoesAluno(
+  alunoId: string,
+  tipo: ObservacaoTipo = 'nota',
+): Promise<AlunoObservacao[]> {
   const { data, error } = await supabaseClient
     .from('aluno_observacoes')
-    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em, finalizada_em')
+    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em, finalizada_em, tipo')
     .eq('aluno_id', alunoId)
+    .eq('tipo', tipo)
     .order('criada_em', { ascending: false });
 
   if (error) {
@@ -39,6 +46,7 @@ export async function criarObservacao(
   alunoId: string,
   coachId: string,
   conteudo: string,
+  tipo: ObservacaoTipo = 'nota',
 ): Promise<AlunoObservacao | null> {
   const texto = conteudo.trim();
   if (!texto) return null;
@@ -49,8 +57,9 @@ export async function criarObservacao(
       aluno_id: alunoId,
       coach_id: coachId,
       conteudo: texto,
+      tipo,
     })
-    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em, finalizada_em')
+    .select('id, aluno_id, coach_id, conteudo, criada_em, visualizada_em, finalizada_em, tipo')
     .single();
 
   if (error) {

@@ -31,6 +31,8 @@ interface SelectProps {
   size?: "default" | "sm";
   /** Ícone à esquerda do trigger (formulários estilo prefixo) */
   leftIcon?: ReactNode;
+  /** Classe extra pro texto do valor selecionado (ex.: destacar quando há filtro ativo) */
+  valueClassName?: string;
 }
 
 /** Classes compartilhadas do painel de lista (Select, autocomplete, multi-select). */
@@ -92,6 +94,7 @@ export function Select({
   variant = "default",
   size = "default",
   leftIcon,
+  valueClassName,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,6 +167,7 @@ export function Select({
               compact ? "text-[12px] font-medium" : "text-[16px] font-normal text-text-primary",
               !display && "text-text-disabled font-normal",
               !display && !compact && "text-[12px]",
+              display && valueClassName,
             )}
           >
             {display ?? placeholder}

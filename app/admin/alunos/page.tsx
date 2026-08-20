@@ -33,6 +33,50 @@ import {
   type CoachPlan,
 } from "@/lib/coachPlans";
 
+/**
+ * Larguras das colunas da tabela de Alunos (desktop).
+ * MESMO grid-template no cabeçalho e em cada linha — por isso ficam sempre
+ * alinhados. Ajuste cada valor aqui, um de cada vez (fr = fração do espaço
+ * disponível; px = largura fixa).
+ */
+const ALUNOS_COL_ALUNO = "1.7fr";
+const ALUNOS_COL_PLANO = "0.8fr";
+const ALUNOS_COL_CONTATO = "1.4fr";
+const ALUNOS_COL_VENCIMENTO = "1.2fr";
+const ALUNOS_COL_ATIVIDADE = "1.2fr";
+const ALUNOS_COL_STATUS = "1.4fr";
+const ALUNOS_COL_ACAO = "44px";
+
+/**
+ * Espaço ENTRE cada par de colunas — cada um é uma "trilha" vazia própria no
+ * grid, então dá pra ajustar cada distância sem afetar as outras.
+ * Contato→Vencimento é maior de propósito (e-mail costuma ser texto longo).
+ * Vencimento→Atividade e Atividade→Status são iguais entre si e menores
+ * (conteúdo curto nas duas colunas).
+ */
+const ALUNOS_GAP_ALUNO_PLANO = "16px";
+const ALUNOS_GAP_PLANO_CONTATO = "16px";
+const ALUNOS_GAP_CONTATO_VENCIMENTO = "40px";
+const ALUNOS_GAP_VENCIMENTO_ATIVIDADE = "16px";
+const ALUNOS_GAP_ATIVIDADE_STATUS = "16px";
+const ALUNOS_GAP_STATUS_ACAO = "16px";
+
+const ALUNOS_GRID_TEMPLATE = [
+  ALUNOS_COL_ALUNO,
+  ALUNOS_GAP_ALUNO_PLANO,
+  ALUNOS_COL_PLANO,
+  ALUNOS_GAP_PLANO_CONTATO,
+  ALUNOS_COL_CONTATO,
+  ALUNOS_GAP_CONTATO_VENCIMENTO,
+  ALUNOS_COL_VENCIMENTO,
+  ALUNOS_GAP_VENCIMENTO_ATIVIDADE,
+  ALUNOS_COL_ATIVIDADE,
+  ALUNOS_GAP_ATIVIDADE_STATUS,
+  ALUNOS_COL_STATUS,
+  ALUNOS_GAP_STATUS_ACAO,
+  ALUNOS_COL_ACAO,
+].join(" ");
+
 interface ProfileRow {
   id: string;
   coaching_reference?: string | null;
@@ -46,6 +90,20 @@ interface ProfileRow {
   data_inicio?: string | null;
   arquivado?: boolean | null;
   sexo?: string | null;
+  date_of_birth?: string | null;
+}
+
+function calcularIdade(dateOfBirth: string | null | undefined): number | null {
+  if (!dateOfBirth) return null;
+  const nascimento = new Date(dateOfBirth);
+  if (Number.isNaN(nascimento.getTime())) return null;
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const aindaNaoFezAniversario =
+    hoje.getMonth() < nascimento.getMonth() ||
+    (hoje.getMonth() === nascimento.getMonth() && hoje.getDate() < nascimento.getDate());
+  if (aindaNaoFezAniversario) idade -= 1;
+  return idade >= 0 ? idade : null;
 }
 
 function diasRestantes(dataExpiracao: string | null | undefined): number | null {
@@ -140,7 +198,7 @@ export default function AdminAlunosPage() {
       // Vínculo + perfil numa única query (embed) — antes eram 2 round-trips em série
       const { data, error: err } = await supabaseClient
         .from("coach_alunos")
-        .select("aluno:profiles!aluno_id(id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, arquivado, sexo)")
+        .select("aluno:profiles!aluno_id(id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, arquivado, sexo, date_of_birth)")
         .eq("coach_id", coachId)
         .limit(200);
 
@@ -305,10 +363,13 @@ export default function AdminAlunosPage() {
           </button>
           <div className="flex items-center justify-end gap-2">
             <Select
-              size="sm"
-              className="w-[215px]"
+              className="w-[172px]"
               value={statusFilter}
               onChange={(v) => setStatusFilter(v as typeof statusFilter)}
+              valueClassName={cn(
+                "text-[13px]",
+                statusFilter !== "todos" && "text-brand font-semibold",
+              )}
               options={[
                 { value: "todos", label: "Todos os alunos" },
                 { value: "ativos", label: "Alunos ativos" },
@@ -321,7 +382,12 @@ export default function AdminAlunosPage() {
                 type="button"
                 onClick={() => setFiltersOpen((v) => !v)}
                 aria-expanded={filtersOpen}
-                className="relative flex h-[42px] w-[42px] items-center justify-center rounded-lg border border-[#E4E7ED] bg-white text-[#5E6982] hover:text-brand"
+                className={cn(
+                  "relative flex h-11 w-11 items-center justify-center rounded-lg border bg-white hover:text-brand",
+                  activeFilterCount > 0
+                    ? "border-brand/40 text-brand"
+                    : "border-[#E4E7ED] text-[#5E6982]",
+                )}
                 aria-label="Filtros"
               >
                 <SlidersHorizontal size={16} />
@@ -611,22 +677,36 @@ export default function AdminAlunosPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <div className="hidden items-center gap-3 px-6 sm:flex">
-                  <div className="min-w-0 flex-[1.4] text-left text-sm font-normal text-[#5E6982]">
-                    Alunos ({processedRows.length})
+                {/* px-6 aqui = mesmo inset do campo de busca/botão "Cadastrar aluno" acima —
+                    os cards (e o cabeçalho) ficam alinhados nas duas bordas com eles. */}
+                <div className="flex flex-col gap-2 lg:px-6">
+                  <div
+                    className="hidden items-center px-6 sm:grid"
+                    style={{ gridTemplateColumns: ALUNOS_GRID_TEMPLATE }}
+                  >
+                    <div className="min-w-0 text-sm font-normal text-[#5E6982]">
+                      {/* Âncora do tamanho do avatar (w-7) — texto centralizado nela,
+                          transbordando os dois lados igualmente, fica alinhado com a imagem. */}
+                      <span className="inline-block w-7 whitespace-nowrap text-center">
+                        Alunos ({processedRows.length})
+                      </span>
+                    </div>
+                    <div />
+                    {/* Plano é a âncora — não mude o alinhamento dele, ajuste os outros por ele */}
+                    <div className="text-center text-sm font-normal text-[#5E6982]">Plano</div>
+                    <div />
+                    <div className="text-left text-sm font-normal text-[#5E6982]">Contato</div>
+                    <div />
+                    <div className="text-center text-sm font-normal text-[#5E6982]">Vencimento</div>
+                    <div />
+                    <div className="text-center text-sm font-normal text-[#5E6982]">Última atividade</div>
+                    <div />
+                    <div className="text-left text-sm font-normal text-[#5E6982]">Status</div>
+                    <div />
                   </div>
-                  <div className="grid min-w-0 flex-[3] grid-cols-5 gap-2">
-                    <div className="text-sm font-normal text-[#5E6982]">Plano</div>
-                    <div className="text-sm font-normal text-[#5E6982]">Contato</div>
-                    <div className="text-sm font-normal text-[#5E6982]">Vencimento</div>
-                    <div className="text-sm font-normal text-[#5E6982]">Última atividade</div>
-                    <div className="text-sm font-normal text-[#5E6982]">Status</div>
-                  </div>
-                  <div className="w-11 shrink-0" />
-                </div>
-                <div className="flex flex-col gap-2">
                   {processedRows.map((row) => {
                     const name = row.coaching_reference || row.full_name || row.email || "Sem Nome";
+                    const idade = calcularIdade(row.date_of_birth);
                     const isAtivo = row.status_pagamento === "pago";
                     const isArquivado = !!row.arquivado;
                     const expiration = row.data_expiracao ? new Date(row.data_expiracao) : null;
@@ -656,71 +736,110 @@ export default function AdminAlunosPage() {
                           }
                         }}
                         className={cn(
-                          "alunos-result-row relative flex cursor-pointer items-center gap-3 border-b border-[#E4E7ED] bg-transparent px-6 py-3 transition-colors hover:bg-black/[0.02] last:border-b-0",
+                          // Repouso: linha simples com divisor. Hover: vira "card" — arredonda,
+                          // some com o divisor e sobe com sombra (efeito 3D, padrão Nutrium).
+                          "alunos-result-row relative grid cursor-pointer items-center border-b border-[#E4E7ED] bg-transparent px-6 py-3 transition-all duration-200 ease-out hover:z-10 hover:rounded-xl hover:border-transparent hover:bg-surface-1 hover:shadow-[0_8px_24px_-8px_rgba(30,28,40,0.18)] last:border-b-0",
                           isArquivado && "opacity-60",
                           alerta === "vencido" && "bg-danger/5",
                         )}
+                        style={{ gridTemplateColumns: ALUNOS_GRID_TEMPLATE }}
                       >
-                        <div className="flex min-w-0 flex-[1.4] items-center gap-3">
+                        {/* Coluna: Aluno (avatar + nome + idade) */}
+                        <div className="flex min-w-0 items-center gap-3">
                           <StudentAvatar
                             name={name}
                             avatarUrl={row.avatar_url}
                             sexo={row.sexo}
                             className={isArquivado ? "grayscale" : undefined}
                           />
-                          <span className="truncate text-sm font-medium text-brand" title={name}>
-                            {name}
+                          <span className="flex min-w-0 items-baseline gap-1.5">
+                            <span
+                              className="truncate font-medium"
+                              style={{
+                                color: "#000000",
+                                fontFamily: "var(--font-nunito-sans), \"Nunito Sans\", serif",
+                                fontFeatureSettings: "normal",
+                                fontSize: "14px",
+                              }}
+                              title={name}
+                            >
+                              {name}
+                            </span>
+                            {idade !== null && (
+                              <span className="shrink-0 text-xs text-text-tertiary">
+                                {idade} anos
+                              </span>
+                            )}
                           </span>
                         </div>
-                        <div className="hidden min-w-0 flex-[3] grid-cols-5 items-center gap-2 sm:grid">
-                          <div className="truncate text-[13px] text-text-secondary capitalize">
-                            {planDisplayName(row.tipo_plano, planosPersonalizados)}
-                          </div>
-                          <div className="truncate text-[13px] text-text-secondary" title={row.email || undefined}>
-                            {row.email || "—"}
-                          </div>
-                          <div className="text-[13px]">
-                            {expiration ? (
-                              <span
-                                className={cn(
-                                  "font-medium",
-                                  alerta === "vencido" && "text-danger",
-                                  alerta === "semana" && "text-warning",
-                                  alerta === "mes" && "text-amber-500",
-                                  !alerta && "text-text-secondary",
-                                )}
-                              >
-                                {formatVencimentoCurto(row.data_expiracao!)}
-                              </span>
-                            ) : (
-                              <span className="text-text-tertiary">—</span>
-                            )}
-                          </div>
-                          <div className="truncate text-[13px] text-text-secondary">
-                            {row.ultimo_checkin ? (
-                              <span className="inline-flex items-center gap-1">
-                                {timeAgo(row.ultimo_checkin)}
-                                <Clock size={11} className="shrink-0 text-text-tertiary" />
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </div>
-                          <div>
+                        <div />
+
+                        {/* Coluna: Plano — âncora, não mude o alinhamento dela */}
+                        <div className="hidden min-w-0 truncate text-center text-[13px] text-text-secondary capitalize sm:block">
+                          {planDisplayName(row.tipo_plano, planosPersonalizados)}
+                        </div>
+                        <div />
+
+                        {/* Coluna: Contato — alinhado à esquerda */}
+                        <div
+                          className="hidden min-w-0 truncate text-left text-[13px] text-text-secondary sm:block"
+                          title={row.email || undefined}
+                        >
+                          {row.email || "—"}
+                        </div>
+                        <div />
+
+                        {/* Coluna: Vencimento — centralizado com o título */}
+                        <div className="hidden min-w-0 text-center text-[13px] sm:block">
+                          {expiration ? (
                             <span
                               className={cn(
-                                "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold",
-                                isArquivado
-                                  ? "bg-surface-3 text-text-disabled"
-                                  : isActive
-                                    ? "bg-success-subtle text-success"
-                                    : "bg-danger-subtle text-danger",
+                                "font-medium",
+                                alerta === "vencido" && "text-danger",
+                                alerta === "semana" && "text-warning",
+                                alerta === "mes" && "text-amber-500",
+                                !alerta && "text-text-secondary",
                               )}
                             >
-                              {statusLabel}
+                              {formatVencimentoCurto(row.data_expiracao!)}
                             </span>
-                          </div>
+                          ) : (
+                            <span className="text-text-tertiary">—</span>
+                          )}
                         </div>
+                        <div />
+
+                        {/* Coluna: Última atividade — centralizado com o título */}
+                        <div className="hidden min-w-0 truncate text-center text-[13px] text-text-secondary sm:block">
+                          {row.ultimo_checkin ? (
+                            <span className="inline-flex items-center gap-1">
+                              {timeAgo(row.ultimo_checkin)}
+                              <Clock size={11} className="shrink-0 text-text-tertiary" />
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                        <div />
+
+                        {/* Coluna: Status */}
+                        <div className="hidden min-w-0 text-left sm:block">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                              isArquivado
+                                ? "bg-surface-3 text-text-disabled"
+                                : isActive
+                                  ? "bg-success-subtle text-success"
+                                  : "bg-danger-subtle text-danger",
+                            )}
+                          >
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <div />
+
+                        {/* Coluna: Ação (mensagem) */}
                         <button
                           type="button"
                           aria-label="Enviar mensagem"
@@ -737,11 +856,6 @@ export default function AdminAlunosPage() {
                     );
                   })}
                 </div>
-                {rows.length < 5 && (
-                  <div className="px-1">
-                    <StudentsEmptyState variant="grow" />
-                  </div>
-                )}
               </div>
             )}
 

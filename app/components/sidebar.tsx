@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils/cn';
 import { useUnreadFeedbacksCount } from '@/lib/feedbacks/useUnreadFeedbacksCount';
 import { AuronLinkIcon } from '@/app/components/ui/Auronlinkicon';
 import {
+  CalendarBlank,
   Barbell,
   ForkKnife,
   Ruler,
@@ -108,6 +109,7 @@ const alunoMenuItems: MenuItem[] = [
 
 const coachItemConfig: Record<string, MenuItem> = {
   dashboard: { id: 'dashboard', name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
+  agenda: { id: 'agenda', name: 'Agenda', href: '/admin/agenda', icon: CalendarBlank },
   alunos: { id: 'alunos', name: 'Alunos', href: '/admin/alunos', icon: Users },
   treinos: { id: 'treinos', name: 'Treinos', href: '/admin/treinos', icon: Barbell },
   nutricao: { id: 'nutricao', name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
@@ -124,7 +126,7 @@ const coachItemConfig: Record<string, MenuItem> = {
 
 /** Dashboard fica solto após a logo (sem título de seção). */
 const coachMenuGroups: MenuGroup[] = [
-  { label: 'Gestão', items: ['alunos', 'treinos', 'nutricao', 'biblioteca'] },
+  { label: 'Gestão', items: ['alunos', 'treinos', 'nutricao', 'agenda', 'biblioteca'] },
   { label: 'Acompanhamento', items: ['ranking', 'chat', 'feedbacks'] },
   { label: 'Negócio', items: ['financeiro', 'parceiros', 'convites'] },
   { label: 'Sistema', items: ['master-control', 'perfil-master'] },
@@ -224,7 +226,11 @@ export default function Sidebar() {
 
   const renderNavLink = (m: MenuItem, opts?: { onNavigate?: () => void; mobile?: boolean }) => {
     const Icon = m.icon;
-    const isActive = pathname === m.href;
+    // Perfil de um aluno (/admin/aluno/[id]) conta como estando dentro da
+    // seção "Alunos" — o link do sidebar continua destacado lá também.
+    const isActive =
+      pathname === m.href ||
+      (m.href === '/admin/alunos' && Boolean(pathname?.startsWith('/admin/aluno/')));
     const showBadge = m.id === 'feedbacks' && hasUnreadFeedbacks;
 
     if (opts?.mobile) {
@@ -263,7 +269,7 @@ export default function Sidebar() {
         href={m.href}
         title={!isExpanded ? m.name : undefined}
         className={cn(
-          'sidebar-nav-link group relative flex h-9 items-center gap-2.5 px-1.5 transition-all',
+          'sidebar-nav-link group relative flex h-10 items-center gap-2.5 px-2.5 transition-all',
           isActive
             ? 'sidebar-nav-link--active rounded-l-none rounded-r-lg border-l-2 border-white bg-white/15 font-semibold text-white'
             : 'sidebar-nav-link--idle rounded-lg text-white/85 hover:bg-white/10 hover:text-white',
@@ -275,7 +281,7 @@ export default function Sidebar() {
         )}
         <span className="relative shrink-0">
           <Icon
-            size={18}
+            size={19}
             weight={isActive ? 'fill' : 'regular'}
             className={cn(!isActive && 'transition-transform group-hover:scale-105')}
           />
@@ -288,7 +294,14 @@ export default function Sidebar() {
         </span>
 
         {isExpanded && (
-          <span className="flex-1 truncate text-[12px] font-medium tracking-wide">
+          <span
+            className="flex-1 truncate font-semibold tracking-wide"
+            style={{
+              fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+              fontFeatureSettings: "normal",
+              fontSize: "14px",
+            }}
+          >
             {m.name}
           </span>
         )}
@@ -314,7 +327,7 @@ export default function Sidebar() {
         style={{
           width: isExpanded ? SIDEBAR_EXPANDED_PX : SIDEBAR_COLLAPSED_PX,
         }}
-        className="auron-sidebar fixed left-0 top-0 z-60 hidden h-full min-h-0 flex-col items-stretch overflow-visible border-0 bg-transparent px-1.5 pb-2 transition-[width] duration-300 lg:flex"
+        className="auron-sidebar fixed left-0 top-0 z-60 hidden h-full min-h-0 flex-col items-stretch overflow-visible border-0 bg-transparent px-3 pb-2 transition-[width] duration-300 lg:flex"
       >
         {/* Aba “ponta de papel” — fora do fluxo, não empurra logo/nome */}
         {collapseTab}
@@ -404,7 +417,16 @@ export default function Sidebar() {
             >
               <SignOut size={18} className="shrink-0" />
               {isExpanded && (
-                <span className="text-[12px] font-medium tracking-wide">Sair</span>
+                <span
+                  className="font-semibold tracking-wide"
+                  style={{
+                    fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+                    fontFeatureSettings: "normal",
+                    fontSize: "14px",
+                  }}
+                >
+                  Sair
+                </span>
               )}
             </button>
           </div>

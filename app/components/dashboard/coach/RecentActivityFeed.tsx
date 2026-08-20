@@ -1,15 +1,11 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Barbell,
-  ForkKnife,
-  Heartbeat,
-  Camera,
-  Ruler,
-} from "@phosphor-icons/react";
-import type { GroupedActivity, ActivityType } from "@/lib/utils/activityGrouping";
+import { ArrowRight, CaretDown } from "@phosphor-icons/react";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
+import { cn } from "@/lib/utils/cn";
+import type { GroupedActivity } from "@/lib/utils/activityGrouping";
 
 interface RecentActivityFeedProps {
   activities: GroupedActivity[];
@@ -18,12 +14,41 @@ interface RecentActivityFeedProps {
   className?: string;
 }
 
-function ActivityIcon({ type }: { type: ActivityType }) {
-  if (type === "cardio_completed") return <Heartbeat size={14} />;
-  if (type === "meal_done") return <ForkKnife size={14} />;
-  if (type === "measurement_added") return <Ruler size={14} />;
-  if (type === "photo_sent") return <Camera size={14} />;
-  return <Barbell size={14} />;
+/** Teto de dias mostrados dentro do painel expandido de um aluno, no desktop.
+ *  Acima disso, "Ver histórico completo" leva pro perfil dele. */
+const DESKTOP_GROUP_LIMIT = 5;
+
+interface StudentActivityBucket {
+  studentId: string;
+  studentName: string;
+  avatarUrl?: string | null;
+  sexo?: string | null;
+  link: string;
+  latestDate: string;
+  groups: GroupedActivity[];
+}
+
+/** Reagrupa os dias-com-atividade (já agrupados por dia) em um bucket por aluno,
+ * pra virar um item colapsável só — "N dias com atividade" quando fechado. */
+function bucketByStudent(activities: GroupedActivity[]): StudentActivityBucket[] {
+  const map = new Map<string, StudentActivityBucket>();
+  activities.forEach((group) => {
+    const existing = map.get(group.studentId);
+    if (existing) {
+      existing.groups.push(group);
+    } else {
+      map.set(group.studentId, {
+        studentId: group.studentId,
+        studentName: group.studentName,
+        avatarUrl: group.avatarUrl,
+        sexo: group.sexo,
+        link: group.link,
+        latestDate: group.date,
+        groups: [group],
+      });
+    }
+  });
+  return Array.from(map.values());
 }
 
 export function RecentActivityFeed({
@@ -32,17 +57,29 @@ export function RecentActivityFeed({
   showViewAll = false,
   className,
 }: RecentActivityFeedProps) {
-  const visible = activities.slice(0, limit);
+  const buckets = useMemo(() => bucketByStudent(activities), [activities]);
+  const visible = buckets.slice(0, limit);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggle = (studentId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
+  };
 
   return (
     <div
-      className={`rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)] ${className ?? ""}`}
+      className={`rounded-xl border-0 bg-surface-1 px-4 pb-4 pt-3 ${className ?? ""}`}
+      style={{ boxShadow: "0 3px 10px rgba(0,0,0,0.06)" }}
     >
       <h3 className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-text-secondary text-center whitespace-nowrap mb-4">
         Atividades recentes dos seus alunos
       </h3>
 
-      {showViewAll && activities.length > limit && (
+      {showViewAll && buckets.length > limit && (
         <div className="flex justify-end -mt-2 mb-3">
           <Link href="/admin/alunos" className="text-[10px] font-semibold text-brand hover:text-brand-hover">
             Ver tudo →
@@ -56,39 +93,90 @@ export function RecentActivityFeed({
             Nenhuma atividade ainda — aguardando atualizações dos alunos.
           </p>
         ) : (
-          visible.map((group, i) => (
-            <Link
-              key={`${group.studentId}-${i}`}
-              href={group.link}
-              className="group flex items-start justify-between gap-3 border-b border-white/10 py-3 last:border-b-0 -mx-2 px-2 rounded-lg hover:bg-surface-2/60 active:bg-surface-2 transition-colors min-h-[44px]"
-            >
-              <div className="flex gap-3 min-w-0 items-start">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border-0 bg-surface-2 text-text-secondary">
-                  <ActivityIcon type={group.events[0]?.type ?? "workout_completed"} />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-text-primary leading-tight truncate">
-                    {group.studentName}
-                  </span>
-                  {group.events.map((ev, j) => (
-                    <span
-                      key={j}
-                      className="text-[11px] text-text-secondary mt-0.5 leading-tight truncate"
-                    >
-                      {ev.label}
-                    </span>
-                  ))}
-                </div>
+          visible.map((bucket) => {
+            const isOpen = expandedIds.has(bucket.studentId);
+            const resumo =
+              bucket.groups.length > 1
+                ? `${bucket.groups.length} dias com atividade`
+                : bucket.groups[0]?.events.map((ev) => ev.label).join(" · ");
+
+            return (
+              <div key={bucket.studentId} className="border-b border-[#E4E7ED] last:border-b-0">
+                {/* Colapsado por padrão — abre inline, sem sair da tela */}
+                <button
+                  type="button"
+                  onClick={() => toggle(bucket.studentId)}
+                  aria-expanded={isOpen}
+                  style={{ touchAction: "manipulation" }}
+                  className="group flex w-full items-start justify-between gap-3 py-3 -mx-2 px-2 rounded-lg hover:bg-surface-2/60 active:bg-surface-2 transition-colors min-h-[44px] text-left"
+                >
+                  <div className="flex gap-3 min-w-0 items-start">
+                    <StudentAvatar
+                      name={bucket.studentName}
+                      avatarUrl={bucket.avatarUrl}
+                      sexo={bucket.sexo}
+                      sizeClassName="h-8 w-8"
+                      className="rounded-lg shrink-0"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-text-primary leading-tight truncate">
+                        {bucket.studentName}
+                      </span>
+                      {/* Data já aparece por dia dentro do expandido — evita repetir aqui */}
+                      <span className="text-[11px] text-text-secondary mt-0.5 leading-tight truncate">
+                        {resumo}
+                      </span>
+                    </div>
+                  </div>
+                  <CaretDown
+                    size={12}
+                    className={cn(
+                      "shrink-0 mt-1 text-text-tertiary transition-transform group-hover:text-brand",
+                      isOpen && "rotate-180",
+                    )}
+                  />
+                </button>
+
+                {isOpen && (
+                  <div className="flex flex-col gap-2.5 pb-3 pl-11">
+                    {bucket.groups.slice(0, DESKTOP_GROUP_LIMIT).map((group, gi) => (
+                      <div key={gi} className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap">
+                          {group.date}
+                        </span>
+                        <div className="flex min-w-0 flex-col gap-2.5">
+                          {group.events.map((ev, j) => (
+                            <span
+                              key={j}
+                              className="text-[11px] text-text-secondary leading-tight"
+                            >
+                              {ev.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {bucket.groups.length > DESKTOP_GROUP_LIMIT ? (
+                      <Link
+                        href={bucket.link}
+                        className="mt-0.5 text-center text-[10px] font-semibold text-brand hover:text-brand-hover"
+                      >
+                        Ver histórico completo
+                      </Link>
+                    ) : (
+                      <Link
+                        href={bucket.link}
+                        className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-brand hover:text-brand-hover"
+                      >
+                        Ver perfil do aluno <ArrowRight size={10} />
+                      </Link>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-                <span className="text-[10px] text-text-tertiary whitespace-nowrap">{group.date}</span>
-                <ArrowRight
-                  size={12}
-                  className="text-text-tertiary group-hover:text-brand transition-colors"
-                />
-              </div>
-            </Link>
-          ))
+            );
+          })
         )}
       </div>
     </div>

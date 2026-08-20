@@ -13,6 +13,9 @@ export type Theme = 'dark' | 'light';
 
 export const THEME_STORAGE_KEY = 'auron-theme';
 
+/** Dark temporariamente desativado no desktop — mobile continua normal. */
+const DESKTOP_QUERY = '(min-width: 1024px)';
+
 type ThemeContextValue = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -40,6 +43,16 @@ export function applyTheme(theme: Theme) {
   }
 }
 
+function isDesktopViewport(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(DESKTOP_QUERY).matches;
+}
+
+/** Aplica o tema de fato na tela — no desktop força light, mesmo com dark
+ *  guardado/selecionado (a preferência do usuário continua intacta). */
+function applyEffectiveTheme(theme: Theme) {
+  applyTheme(isDesktopViewport() ? 'light' : theme);
+}
+
 function readStoredTheme(): Theme {
   try {
     // Migração única para o tema claro oficial
@@ -62,9 +75,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = readStoredTheme();
-    applyTheme(stored);
+    applyEffectiveTheme(stored);
     setThemeState((current) => (current === stored ? current : stored));
   }, []);
+
+  // Cruzar o breakpoint (ex.: redimensionar a janela) reaplica o tema efetivo,
+  // sem mexer na preferência guardada.
+  useEffect(() => {
+    const mql = window.matchMedia(DESKTOP_QUERY);
+    const onChange = () => applyEffectiveTheme(theme);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [theme]);
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
@@ -73,7 +95,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore storage errors */
     }
-    applyTheme(next);
+    applyEffectiveTheme(next);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -84,7 +106,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore storage errors */
       }
-      applyTheme(next);
+      applyEffectiveTheme(next);
       return next;
     });
   }, []);

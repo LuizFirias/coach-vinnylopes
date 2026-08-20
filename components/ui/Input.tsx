@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils/cn';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  /** Classe extra pro label — ex: reduzir o peso da fonte em algum contexto específico */
+  labelClassName?: string;
   helperText?: string;
   error?: string;
   /** Ícone à esquerda do input (ex: Search) */
@@ -14,7 +16,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, helperText, error, className, id, leftIcon, rightElement, ...rest },
+  { label, labelClassName, helperText, error, className, id, leftIcon, rightElement, ...rest },
   ref
 ) {
   const inputId = id || rest.name;
@@ -25,7 +27,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       {label && (
         <label
           htmlFor={inputId}
-          className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary dark:text-[#4a5568]"
+          className={cn(
+            "text-[11px] font-medium uppercase tracking-[0.08em] text-text-tertiary dark:text-[#4a5568]",
+            labelClassName,
+          )}
         >
           {label}
         </label>

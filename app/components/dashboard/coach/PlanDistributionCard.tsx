@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
 
 export interface PlanDistributionItem {
@@ -15,6 +16,17 @@ interface PlanDistributionCardProps {
   align?: "center" | "start";
   className?: string;
 }
+
+/**
+ * Ajustes manuais do card "Distribuição de Planos" (dashboard, align="center").
+ * Mude esses valores em pixels pra calibrar a posição sem depender de flex.
+ */
+const DONUT_CARD_MIN_HEIGHT_PX = 180;
+/** Deslocamento horizontal do donut. Negativo = esquerda, positivo = direita.
+ *  Resetado pra 0 — sem legenda ao lado, o justify-center já centraliza sozinho. */
+const DONUT_OFFSET_X_PX = 0;
+/** Só usado quando align="start" (fora do dashboard) — lá ainda tem legenda. */
+const LEGEND_OFFSET_X_PX = -60;
 
 /* Ordem fixa de cores por posição na lista de planos (nunca por ranking) —
    filtrar planos zerados não repinta os que sobram. Tons médio-claros para
@@ -61,6 +73,8 @@ export function PlanDistributionCard({
   align = "center",
   className,
 }: PlanDistributionCardProps) {
+  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+
   const colored = plans.map((p, i) => ({
     ...p,
     color:
@@ -146,30 +160,45 @@ export function PlanDistributionCard({
           .join(", ")}`}
         className={cn(
           "relative shrink-0 h-auto",
-          collapsed ? "w-28" : "w-32 sm:w-36 lg:w-40",
+          collapsed
+            ? "w-28"
+            // +30% só no dashboard (align="center") — não mexe no uso com align="start"
+            : align === "center"
+              ? "w-[166px] sm:w-[187px] lg:w-[208px]"
+              : "w-32 sm:w-36 lg:w-40",
         )}
       >
         {slices.map((s) => (
-          <path key={s.name} d={s.path} fill={s.color} />
+          <path
+            key={s.name}
+            d={s.path}
+            fill={s.color}
+            onMouseEnter={() => setHoveredPlan(s.name)}
+            onMouseLeave={() => setHoveredPlan((cur) => (cur === s.name ? null : cur))}
+            style={{ cursor: "pointer", transition: "opacity 120ms ease" }}
+            opacity={hoveredPlan && hoveredPlan !== s.name ? 0.5 : 1}
+          />
         ))}
-        {visible.length > 1 &&
-          slices
-            .filter((s) => s.frac >= 0.07 && s.frac < 0.92)
-            .map((s) => (
-              <text
-                key={`label-${s.name}`}
-                x={s.labelX}
-                y={s.labelY}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="#000000"
-                fontSize={s.frac >= 0.15 ? 17 : 13}
-                fontWeight={800}
-                className="tabular-nums"
-              >
-                {s.count}
-              </text>
-            ))}
+        {/* Número da fatia — fora do centro, no anel (molde antigo), só aparece no hover dela */}
+        {slices
+          .filter((s) => s.name === hoveredPlan)
+          .map((s) => (
+            <text
+              key={`label-${s.name}`}
+              x={s.labelX}
+              y={s.labelY}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="#000000"
+              fontSize={s.frac >= 0.15 ? 17 : 13}
+              fontWeight={800}
+              className="tabular-nums"
+            >
+              {s.count}
+            </text>
+          ))}
+
+        {/* Centro — sempre o total, não troca no hover */}
         <text
           x={CX}
           y={CX - 6}
@@ -222,29 +251,42 @@ export function PlanDistributionCard({
 
   return (
     <div
-      className={cn(
-        "h-full flex flex-col min-w-0",
-        align === "start" ? "min-h-0" : "min-h-[240px]",
-        className,
-      )}
+      className={cn("h-full flex flex-col min-w-0", align === "start" && "min-h-0", className)}
+      style={align === "start" ? undefined : { minHeight: DONUT_CARD_MIN_HEIGHT_PX }}
     >
       <div
         className={cn(
-          "flex items-start justify-start shrink-0",
-          align === "start" ? "mb-2" : "mb-3 min-h-[52px] pt-0.5",
+          "flex items-start shrink-0",
+          align === "start" ? "justify-start mb-2" : "justify-center mb-3 min-h-[52px] pt-0.5",
         )}
       >
         {title}
       </div>
 
+      {/* flex-1 + items-center: centraliza verticalmente entre o título e o fim do card.
+          O deslocamento horizontal (esquerda/direita) é manual, via as constantes acima. */}
       <div
         className={cn(
           "flex-1 flex items-center gap-3 sm:gap-4 min-w-0",
-          align === "start" ? "justify-start" : "justify-between",
+          align === "start" ? "justify-start" : "justify-center",
         )}
       >
-        <div className="shrink-0 overflow-visible">{donut}</div>
-        <div className="min-w-0 flex-1 overflow-hidden pl-1">{renderLegend()}</div>
+        <div
+          className="shrink-0 overflow-visible"
+          style={{ transform: `translateX(${DONUT_OFFSET_X_PX}px)` }}
+        >
+          {donut}
+        </div>
+        {/* Sem legenda ao lado — quantidade/porcentagem de cada plano aparece
+            dentro do próprio donut, ao passar o mouse na fatia. */}
+        {align === "start" && (
+          <div
+            className="min-w-0 max-w-[55%] overflow-hidden pl-1"
+            style={{ transform: `translateX(${LEGEND_OFFSET_X_PX}px)` }}
+          >
+            {renderLegend()}
+          </div>
+        )}
       </div>
     </div>
   );

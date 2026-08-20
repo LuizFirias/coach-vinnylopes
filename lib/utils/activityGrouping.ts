@@ -9,6 +9,8 @@ export interface RawActivity {
   id: string;
   studentId: string;
   studentName: string;
+  avatarUrl?: string | null;
+  sexo?: string | null;
   type: ActivityType;
   workoutName?: string;
   description?: string;
@@ -25,6 +27,8 @@ export interface GroupedActivityEvent {
 export interface GroupedActivity {
   studentId: string;
   studentName: string;
+  avatarUrl?: string | null;
+  sexo?: string | null;
   date: string;
   events: GroupedActivityEvent[];
   latestTimestamp: Date;
@@ -123,6 +127,8 @@ export function groupActivities(raw: RawActivity[]): GroupedActivity[] {
     result.push({
       studentId: first.studentId,
       studentName: first.studentName,
+      avatarUrl: first.avatarUrl,
+      sexo: first.sexo,
       date: formatRelativeDate(first.timestamp),
       events,
       latestTimestamp: first.timestamp,

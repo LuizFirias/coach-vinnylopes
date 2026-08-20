@@ -46,7 +46,7 @@ const CHART_H_MOBILE = 168;
 const CHART_H_DESKTOP = 196;
 
 /** Sombra = 50% da intensidade do card de ações requeridas (0.28 → 0.14). */
-const MRR_CARD_SHADOW = "0 8px 24px rgba(0,0,0,0.14)";
+const MRR_CARD_SHADOW = "0 3px 10px rgba(0,0,0,0.06)";
 
 /** Passos “bonitos” (múltiplos de 50) que crescem com a receita. */
 const STEP_CANDIDATES = [50, 100, 150, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 50000];

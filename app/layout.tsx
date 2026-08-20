@@ -1,5 +1,5 @@
 import './globals.css';
-import { Inter, JetBrains_Mono, Poppins, Montserrat, DM_Sans } from 'next/font/google';
+import { Inter, JetBrains_Mono, Poppins, Montserrat, DM_Sans, Nunito_Sans } from 'next/font/google';
 import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
 import SessionManager from './components/SessionManager';
@@ -21,7 +21,10 @@ const themeInitScript = `
       localStorage.setItem('auron-theme', 'light');
       localStorage.setItem('auron-theme-v2-light', '1');
     }
-    var theme = localStorage.getItem('auron-theme') === 'dark' ? 'dark' : 'light';
+    // Dark temporariamente desativado no desktop — lógica/preferência continuam
+    // salvas normalmente, só a aplicação visual é forçada pra light acima de 1024px.
+    var isDesktop = window.innerWidth >= 1024;
+    var theme = (!isDesktop && localStorage.getItem('auron-theme') === 'dark') ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.style.colorScheme = theme;
     if (theme === 'dark') document.documentElement.classList.add('dark');
@@ -70,6 +73,14 @@ const dmSans = DM_Sans({
   variable: '--font-kpi',
 });
 
+/** Nome do aluno na listagem (padrão Nutrium: "NunitoSans Regular") */
+const nunitoSans = Nunito_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '500', '600'],
+  variable: '--font-nunito-sans',
+});
+
 export const metadata: Metadata = {
   title: 'Auronfit | High Performance',
   description: 'A Jornada Começa Agora - Ecossistema de Treinamento',
@@ -106,7 +117,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable} ${dmSans.variable} overflow-x-clip`} data-theme="light">
+    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable} ${dmSans.variable} ${nunitoSans.variable} overflow-x-clip`} data-theme="light">
       <head>
         {/* Inline (sem next/script) — evita ChunkLoadError do Script em HMR/restart */}
         <script

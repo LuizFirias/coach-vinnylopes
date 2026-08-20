@@ -11,6 +11,10 @@ type ChatInputProps = {
   onSent?: (msg: ChatMensagem) => void;
 };
 
+/** Altura fixa (~2 linhas) — o texto/placeholder fica ancorado no topo,
+ *  não centralizado verticalmente. Igual ao textarea rows=2 do Nutrium. */
+const INPUT_HEIGHT_PX = 64;
+
 export function ChatInput({ conversaId, onSent }: ChatInputProps) {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -21,9 +25,6 @@ export function ChatInput({ conversaId, onSent }: ChatInputProps) {
     if (!t || enviando) return;
     setEnviando(true);
     setTexto('');
-    if (textareaRef.current) {
-      textareaRef.current.style.height = '40px';
-    }
 
     try {
       const session = await getSafeSession();
@@ -58,7 +59,7 @@ export function ChatInput({ conversaId, onSent }: ChatInputProps) {
 
   return (
     <div
-      className="flex items-center gap-2 px-3 py-3"
+      className="flex items-end gap-2 px-3 py-3"
       style={{
         borderTop: '1px solid var(--mobile-card-border, rgba(0,0,0,0.07))',
         background: 'var(--mobile-page-bg-solid, #fff)',
@@ -70,41 +71,26 @@ export function ChatInput({ conversaId, onSent }: ChatInputProps) {
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Digite uma mensagem..."
-        rows={1}
+        placeholder="Digite uma mensagem"
+        rows={2}
         maxLength={4000}
         style={{
           flex: 1,
           boxSizing: 'border-box',
-          height: 40,
-          minHeight: 40,
-          maxHeight: 120,
+          height: INPUT_HEIGHT_PX,
           fontSize: 16,
           fontWeight: 400,
           color: 'var(--text-primary, #1a1a1a)',
           background: 'var(--filter-bg, #ebebf0)',
           border: 'none',
-          borderRadius: 20,
-          padding: '0 14px',
+          borderRadius: 16,
+          // Placeholder/texto fixo no topo — mais distância do que antes (era centralizado).
+          padding: '14px 14px 0',
           outline: 'none',
           resize: 'none',
-          lineHeight: '40px',
+          appearance: 'none',
+          lineHeight: 1.4,
           overflowY: 'auto',
-          verticalAlign: 'middle',
-        }}
-        onInput={(e) => {
-          const el = e.currentTarget;
-          const multiline = el.value.includes('\n') || el.scrollHeight > 44;
-          if (multiline) {
-            el.style.lineHeight = '1.4';
-            el.style.padding = '8px 14px';
-            el.style.height = 'auto';
-            el.style.height = `${Math.min(Math.max(el.scrollHeight, 40), 120)}px`;
-          } else {
-            el.style.lineHeight = '40px';
-            el.style.padding = '0 14px';
-            el.style.height = '40px';
-          }
         }}
       />
       <button

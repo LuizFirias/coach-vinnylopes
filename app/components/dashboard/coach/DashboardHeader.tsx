@@ -128,8 +128,9 @@ export function DashboardHeader({
         <h1 className="font-display text-xl font-extrabold tracking-tight text-text-primary md:text-2xl lg:hidden">
           Olá, <span className="text-brand">{primeiroNome}</span>
         </h1>
+        {/* Desktop: a contagem de alunos já aparece no card do topbar — evita duplicar. */}
         {subtitle && (
-          <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>
+          <p className="mt-0.5 text-xs text-text-tertiary lg:hidden">{subtitle}</p>
         )}
       </div>
 

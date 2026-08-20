@@ -200,6 +200,8 @@ export interface DashboardKpiRowProps {
   activeStudentsSubtitle?: string;
   mrrDeltaPercent?: number | null;
   compact?: boolean;
+  /** Título da seção acima dos cards — "Visão geral" por padrão, "Meu Negócio" no layout novo do desktop. */
+  title?: string;
 }
 
 export function DashboardKpiRow({
@@ -210,11 +212,12 @@ export function DashboardKpiRow({
   activeStudentsSubtitle = 'Perfis pagantes vigentes',
   mrrDeltaPercent,
   compact,
+  title = 'Visão geral',
 }: DashboardKpiRowProps) {
   return (
     <div>
       <h2 className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
-        Visão geral
+        {title}
       </h2>
       <div
         className={cn(

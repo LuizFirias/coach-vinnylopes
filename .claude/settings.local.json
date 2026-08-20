@@ -37,7 +37,12 @@
       "Bash(node -e ' *)",
       "Bash(npx --yes @tailwindcss/cli -i app/globals.css -o scratchcss.css)",
       "Bash(python3 -)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(xargs grep -n \"CREATE TABLE IF NOT EXISTS public.pagamentos_alunos\" -A 20)",
+      "Bash(npx eslint *)",
+      "Bash(node \"C:\\\\Users\\\\lfern\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-lfern-Documents-Apps-Auronfit\\\\a4e3709a-117b-4e51-bfff-eb7aac06b3ec\\\\scratchpad\\\\diagnose_data_conclusao.js\")",
+      "Bash(node _tmp_diagnose.js)",
+      "Bash(awk '/data-theme=\"light\"\\\\]/,0' app/design-tokens.css)"
     ]
   }
 }
