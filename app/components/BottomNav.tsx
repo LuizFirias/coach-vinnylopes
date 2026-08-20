@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ForkKnife, User, HeartStraight, Barbell,
   Users, Chat, ChatCircle, BookOpen, X, Handshake, ChartBar, ShieldWarning,
-  AppleLogo, Trophy, Link as LinkIcon,
+  AppleLogo, Trophy, Link as LinkIcon, Bell, SignOut,
 } from '@phosphor-icons/react';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
@@ -14,6 +14,9 @@ import { createPortal } from 'react-dom';
 import { AuronLinkIcon } from '@/app/components/ui/Auronlinkicon';
 import { AuronAIcon } from '@/app/components/ui/auronAIcon';
 import { useUnreadFeedbacksCount } from '@/lib/feedbacks/useUnreadFeedbacksCount';
+import { useNaoLidasRealtime } from '@/lib/chat/realtime';
+import { useNotificacoesNaoLidas } from '@/lib/notifications/realtime';
+import { CoachNotificationsPanel } from '@/app/components/notifications/CoachNotificationsPanel';
 
 // ── Student nav — Início no centro ────────────────────────────────────────────
 const STUDENT_ITEMS = [
@@ -34,7 +37,15 @@ const COACH_RIGHT = [
   { href: '/admin/relatorios', label: 'Financeiro', icon: ChartBar  },
 ];
 
-/** Barra fixa full-bleed — padrão flat (Wellhub), sem notch/curva. */
+/**
+ * Barra fixa full-bleed — padrão flat (Wellhub), sem notch/curva.
+ * O fundo/sombra ficam no shell (não só na barra interna) para que a
+ * faixa de safe-area (env(safe-area-inset-bottom)) — que varia por
+ * aparelho — seja preenchida com a mesma cor da nav. Sem isso, em
+ * dispositivos com inset > 0 (notch/gesto) essa faixa fica transparente
+ * e revela o fundo da página, dando a impressão de barra "flutuando"
+ * com espaço embaixo.
+ */
 const NAV_SHELL: CSSProperties = {
   position: 'fixed',
   left: 0,
@@ -42,21 +53,24 @@ const NAV_SHELL: CSSProperties = {
   bottom: 0,
   zIndex: 50,
   paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-  pointerEvents: 'none',
-};
-
-const NAV_BAR: CSSProperties = {
   background: 'var(--nav-bg)',
   boxShadow: '0 -1px 0 0 var(--border-subtle), 0 -8px 24px rgba(0,0,0,0.06)',
 };
 
+const NAV_BAR: CSSProperties = {};
+
 export default function BottomNav() {
   const pathname  = usePathname();
   const router    = useRouter();
-  const { userRole, loading } = useAuth();
+  const { userRole, loading, user } = useAuth();
   const { hasUnread: hasUnreadFeedbacks } = useUnreadFeedbacksCount();
   const [fabOpen, setFabOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  // Sem topbar no mobile (removida — ver CoachAppChrome) — chat/notificações e
+  // sair só ficam acessíveis por aqui.
+  const chatNaoLidas = useNaoLidasRealtime(user?.id ?? null, 'coach');
+  const notifNaoLidas = useNotificacoesNaoLidas(user?.id ?? null);
 
   useEffect(() => {
     setMounted(true);
@@ -91,18 +105,40 @@ export default function BottomNav() {
 
   const profileRoute = userRole === 'super_admin' ? '/super-admin/perfil' : '/admin/perfil';
 
-  const actions = [
+  const handleLogout = async () => {
+    setFabOpen(false);
+    try {
+      const { supabaseClient } = await import('@/lib/supabaseClient');
+      await supabaseClient.auth.signOut({ scope: 'local' });
+    } catch {
+      /* ignore */
+    } finally {
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+  };
+
+  const actions: {
+    label: string;
+    icon: typeof ChatCircle;
+    href?: string;
+    onClick?: () => void;
+    badge?: boolean;
+    danger?: boolean;
+  }[] = [
+    { label: 'Notificações', onClick: () => { setFabOpen(false); setNotifOpen(true); }, icon: Bell, badge: chatNaoLidas + notifNaoLidas > 0 },
     { label: 'Mensagens',  href: '/admin/chat',                 icon: ChatCircle },
     { label: 'Nutrição',   href: '/admin/nutricao',             icon: AppleLogo },
     { label: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen  },
     { label: 'Parceiros',  href: '/admin/parceiros',            icon: Handshake },
-    { label: 'Feedbacks',  href: '/admin/feedbacks',            icon: Chat      },
+    { label: 'Feedbacks',  href: '/admin/feedbacks',            icon: Chat, badge: hasUnreadFeedbacks },
     { label: 'Ranking',    href: '/admin/ranking',              icon: Trophy    },
     { label: 'Perfil',     href: profileRoute,                  icon: User      },
     ...(userRole === 'super_admin' ? [
       { label: 'Master Control', href: '/super-admin', icon: ShieldWarning },
       { label: 'Convites', href: '/super-admin/convites', icon: LinkIcon },
     ] : []),
+    { label: 'Sair', onClick: () => void handleLogout(), icon: SignOut, danger: true },
   ];
 
   // ── Student ─────────────────────────────────────────────────────────────────
@@ -176,38 +212,39 @@ export default function BottomNav() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-surface-1 rounded-2xl overflow-hidden shadow-elev-3">
-              {actions.map(({ href, label, icon: Icon }) => {
-                const showFeedbackBadge = href === '/admin/feedbacks' && hasUnreadFeedbacks;
-                return (
-                  <button
-                    key={href}
-                    type="button"
-                    onClick={() => {
-                      setFabOpen(false);
-                      router.push(href);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left bg-transparent border-0 transition-colors active:bg-surface-2 cursor-pointer"
-                  >
-                    <span className="relative shrink-0">
-                      <Icon size={18} weight="regular" className="text-brand" />
-                      {showFeedbackBadge && (
-                        <span
-                          className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand ring-2 ring-surface-1"
-                          aria-hidden
-                        />
-                      )}
-                    </span>
-                    <span className="text-[12px] font-medium text-text-primary truncate flex-1">
-                      {label}
-                    </span>
-                    {showFeedbackBadge && (
-                      <span className="text-[9px] font-bold text-brand uppercase tracking-wide">
-                        Novo
-                      </span>
+              {actions.map(({ href, label, icon: Icon, onClick, badge, danger }, i) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    if (onClick) { onClick(); return; }
+                    setFabOpen(false);
+                    if (href) router.push(href);
+                  }}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-3.5 py-3 text-left bg-transparent border-0 transition-colors active:bg-surface-2 cursor-pointer',
+                    danger && i > 0 && 'border-t border-border-subtle',
+                  )}
+                >
+                  <span className="relative shrink-0">
+                    <Icon size={18} weight="regular" className={danger ? 'text-danger' : 'text-brand'} />
+                    {badge && (
+                      <span
+                        className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand ring-2 ring-surface-1"
+                        aria-hidden
+                      />
                     )}
-                  </button>
-                );
-              })}
+                  </span>
+                  <span className={cn('text-[12px] font-medium truncate flex-1', danger ? 'text-danger' : 'text-text-primary')}>
+                    {label}
+                  </span>
+                  {badge && (
+                    <span className="text-[9px] font-bold text-brand uppercase tracking-wide">
+                      Novo
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -268,7 +305,7 @@ export default function BottomNav() {
                       className="block w-7 h-[13px] leading-none"
                     />
                   )}
-                  {!fabOpen && hasUnreadFeedbacks && (
+                  {!fabOpen && (hasUnreadFeedbacks || chatNaoLidas + notifNaoLidas > 0) && (
                     <span
                       className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-brand ring-2 ring-[var(--nav-bg)]"
                       aria-hidden
@@ -317,6 +354,12 @@ export default function BottomNav() {
           </ul>
         </div>
       </nav>
+
+      <CoachNotificationsPanel
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        chatNaoLidas={chatNaoLidas}
+      />
     </>
   );
 

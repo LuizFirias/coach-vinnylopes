@@ -8,6 +8,8 @@ export type PriorityAction = {
   link: string;
   /** Default: navigate via link. cobrar_checkin / solicitar_fotos enviam notificação ao aluno. */
   kind?: 'navigate' | 'cobrar_checkin' | 'solicitar_fotos';
+  avatar_url?: string | null;
+  sexo?: string | null;
 };
 
 export type AlunoComAcoes = {
@@ -16,6 +18,8 @@ export type AlunoComAcoes = {
   acoes: PriorityAction[];
   /** Derivado do pior tipo entre as ações do aluno. */
   urgenciaMax: 'alta' | 'media';
+  avatarUrl?: string | null;
+  sexo?: string | null;
 };
 
 function urgenciaFromTipo(tipo: PriorityAction['tipo']): 'alta' | 'media' {
@@ -34,6 +38,8 @@ export function agruparAcoesPorAluno(acoes: PriorityAction[]): AlunoComAcoes[] {
         alunoNome: acao.nome,
         acoes: [],
         urgenciaMax: 'media',
+        avatarUrl: acao.avatar_url ?? null,
+        sexo: acao.sexo ?? null,
       };
       map.set(acao.aluno_id, entry);
     }

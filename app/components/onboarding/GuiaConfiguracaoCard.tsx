@@ -79,7 +79,7 @@ export function GuiaConfiguracaoCard({
   };
 
   return (
-    <div className="mb-6 overflow-hidden rounded-xl border-0 bg-surface-1">
+    <div className="mb-6 overflow-hidden rounded-xl border border-card bg-surface-1">
       <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-text-primary">

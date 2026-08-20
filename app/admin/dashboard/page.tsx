@@ -20,6 +20,8 @@ import { PlanDistributionCard } from "@/app/components/dashboard/coach/PlanDistr
 import { PriorityActionsCard, type PriorityAction } from "@/app/components/dashboard/coach/PriorityActionsCard";
 import { RecentActivityFeed } from "@/app/components/dashboard/coach/RecentActivityFeed";
 import { AtalhosRapidos } from "@/app/components/dashboard/coach/AtalhosRapidos";
+import { ProximaAulaCard } from "@/app/components/dashboard/coach/ProximaAulaCard";
+import { fetchProximaAula, type AulaAgenda } from "@/lib/agenda/queries";
 import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
 import {
   fetchCoachCustomPlans,
@@ -50,6 +52,7 @@ interface ProfileRow {
   tipo_plano?: string | null;
   ultimo_checkin?: string | null;
   avatar_url?: string | null;
+  sexo?: string | null;
   data_expiracao?: string | null;
   data_inicio?: string | null;
   created_at?: string | null;
@@ -103,6 +106,7 @@ export default function AdminDashboard() {
   const [coachName, setCoachName] = useState("");
   const [onboardingPassos, setOnboardingPassos] = useState<PassoProgresso[]>([]);
   const [guiaPronto, setGuiaPronto] = useState(false);
+  const [proximaAula, setProximaAula] = useState<AulaAgenda | null>(null);
 
   const activeStudentsSubtitle = useMemo(() => {
     if (coachStudentLimit !== null) {
@@ -127,7 +131,7 @@ export default function AdminDashboard() {
       }
 
       const accessToken = session?.access_token;
-      const [statusResult, coachAlunosResult, coachProfileResult, customPlans, passos] =
+      const [statusResult, coachAlunosResult, coachProfileResult, customPlans, passos, proximaAulaResult] =
         await Promise.all([
         accessToken
           ? fetchSubscriptionStatusCached(accessToken)
@@ -143,10 +147,12 @@ export default function AdminDashboard() {
           .maybeSingle(),
         fetchCoachCustomPlans(coachId).catch(() => [] as CoachPlan[]),
         sincronizarProgressoOnboarding(coachId),
+        fetchProximaAula(coachId).catch(() => null),
       ]);
 
       setOnboardingPassos(passos);
       setGuiaPronto(true);
+      setProximaAula(proximaAulaResult);
 
       if (coachProfileResult.data?.onboarding_visto === false) {
         router.replace("/admin/boas-vindas");
@@ -180,13 +186,17 @@ export default function AdminDashboard() {
       const seteDiasAtras = new Date();
       seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
       const seteDiasAtrasIso = seteDiasAtras.toISOString();
+      // Card "Atividades recentes" — janela própria, maior que a de check-ins pendentes (7 dias)
+      const dezDiasAtras = new Date();
+      dezDiasAtras.setDate(dezDiasAtras.getDate() - 10);
+      const dezDiasAtrasIso = dezDiasAtras.toISOString();
 
       // Profiles + planos de nutrição + check-ins em paralelo
       // (check-ins por student_id em vez de plan_id — filtramos por plano ativo depois)
       const [{ data: profiles, error: profilesError }, { data: activePlans }, { data: checkinsRaw }] = await Promise.all([
         supabaseClient
           .from('profiles')
-          .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, data_expiracao, data_inicio, created_at, valor_plano, arquivado')
+          .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, sexo, data_expiracao, data_inicio, created_at, valor_plano, arquivado')
           .in('id', alunosIds)
           .eq('arquivado', false),
         supabaseClient
@@ -262,6 +272,8 @@ export default function AdminDashboard() {
                 id: `expiring-${r.id}`,
                 aluno_id: r.id,
                 nome: r.coaching_reference || r.full_name || "Atleta",
+                avatar_url: r.avatar_url,
+                sexo: r.sexo,
                 tipo: 'warning',
                 descricao: `Plano vence em ${diffDays} dias`,
                 acao: 'Renovar',
@@ -277,6 +289,8 @@ export default function AdminDashboard() {
             id: `expired-${r.id}`,
             aluno_id: r.id,
             nome: r.coaching_reference || r.full_name || "Atleta",
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
             tipo: 'danger',
             descricao: isExpired ? 'Plano Expirado' : 'Pagamento Pendente',
             acao: 'Cobrar',
@@ -294,6 +308,8 @@ export default function AdminDashboard() {
               id: `inactive-${r.id}`,
               aluno_id: r.id,
               nome: r.coaching_reference || r.full_name || "Atleta",
+              avatar_url: r.avatar_url,
+              sexo: r.sexo,
               tipo: 'danger',
               descricao: `Sem treinar há ${diffDays} dias`,
               acao: 'Enviar Mensagem',
@@ -306,6 +322,8 @@ export default function AdminDashboard() {
             id: `nocheckin-${r.id}`,
             aluno_id: r.id,
             nome: r.coaching_reference || r.full_name || "Atleta",
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
             tipo: 'info',
             descricao: 'Nenhum treino realizado ainda',
             acao: 'Prescrever',
@@ -335,6 +353,8 @@ export default function AdminDashboard() {
                 id: `low-adherence-${r.id}`,
                 aluno_id: r.id,
                 nome: r.coaching_reference || r.full_name || "Atleta",
+                avatar_url: r.avatar_url,
+                sexo: r.sexo,
                 tipo: 'warning',
                 descricao: `Adesão à dieta baixa: ${studentAdherence}%`,
                 acao: 'Ver Plano',
@@ -352,6 +372,8 @@ export default function AdminDashboard() {
                   id: `no-diet-checkin-${r.id}`,
                   aluno_id: r.id,
                   nome: r.coaching_reference || r.full_name || "Atleta",
+                  avatar_url: r.avatar_url,
+                  sexo: r.sexo,
                   tipo: 'danger',
                   descricao: `Sem registrar dieta há ${diffDays} dias`,
                   acao: 'Cobrar Check-in',
@@ -365,6 +387,8 @@ export default function AdminDashboard() {
                 id: `no-diet-checkin-at-all-${r.id}`,
                 aluno_id: r.id,
                 nome: r.coaching_reference || r.full_name || "Atleta",
+                avatar_url: r.avatar_url,
+                sexo: r.sexo,
                 tipo: 'warning',
                 descricao: `Sem check-in de dieta na semana`,
                 acao: 'Cobrar Check-in',
@@ -379,6 +403,8 @@ export default function AdminDashboard() {
             id: `nodigitalplan-${r.id}`,
             aluno_id: r.id,
             nome: r.coaching_reference || r.full_name || "Atleta",
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
             tipo: 'info',
             descricao: `Sem plano de nutrição digital`,
             acao: 'Criar Plano',
@@ -436,12 +462,14 @@ export default function AdminDashboard() {
           .select('id, aluno_id, ficha_id, data_conclusao, ficha:fichas_treino(nome_rotina)')
           .in('aluno_id', alunosIds)
           .not('data_conclusao', 'is', null)
+          .gte('data_conclusao', dezDiasAtrasIso)
           .order('data_conclusao', { ascending: false })
           .limit(120),
         supabaseClient
           .from('cardio_sessoes')
           .select('id, aluno_id, modalidade, data, created_at')
           .in('aluno_id', alunosIds)
+          .gte('created_at', dezDiasAtrasIso)
           .order('created_at', { ascending: false })
           .limit(40),
         supabaseClient
@@ -449,19 +477,21 @@ export default function AdminDashboard() {
           .select('id, student_id, checkin_date, status, created_at')
           .in('student_id', alunosIds)
           .in('status', ['done', 'substituted'])
-          .gte('checkin_date', seteDiasAtrasIso.slice(0, 10))
+          .gte('checkin_date', dezDiasAtrasIso.slice(0, 10))
           .order('created_at', { ascending: false })
           .limit(60),
         supabaseClient
           .from('medidas_aluno')
           .select('id, aluno_id, data_medicao')
           .in('aluno_id', alunosIds)
+          .gte('data_medicao', dezDiasAtrasIso)
           .order('data_medicao', { ascending: false })
           .limit(40),
         supabaseClient
           .from('fotos_evolucao')
           .select('id, aluno_id, data_upload')
           .in('aluno_id', alunosIds)
+          .gte('data_upload', dezDiasAtrasIso)
           .order('data_upload', { ascending: false })
           .limit(40),
         supabaseClient
@@ -492,6 +522,8 @@ export default function AdminDashboard() {
             id: `no-photos-${r.id}`,
             aluno_id: r.id,
             nome,
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
             tipo: 'warning',
             descricao: 'Nenhuma foto de evolução cadastrada',
             acao: 'Solicitar Fotos',
@@ -507,6 +539,8 @@ export default function AdminDashboard() {
               id: `photos-old-${r.id}`,
               aluno_id: r.id,
               nome,
+              avatar_url: r.avatar_url,
+              sexo: r.sexo,
               tipo: 'warning',
               descricao: `Fotos desatualizadas (há ${diffDays} dias)`,
               acao: 'Solicitar Renovação',
@@ -523,6 +557,10 @@ export default function AdminDashboard() {
       const studentLabel = (alunoId: string) => {
         const student = rows.find((r) => r.id === alunoId);
         return student?.coaching_reference || student?.full_name || "Atleta";
+      };
+      const studentAvatar = (alunoId: string) => {
+        const student = rows.find((r) => r.id === alunoId);
+        return { avatarUrl: student?.avatar_url ?? null, sexo: student?.sexo ?? null };
       };
 
       // historico_treinos grava 1 linha por exercício na conclusão —
@@ -545,6 +583,7 @@ export default function AdminDashboard() {
           id: w.id,
           studentId: w.aluno_id,
           studentName: studentLabel(w.aluno_id),
+          ...studentAvatar(w.aluno_id),
           type: "workout_completed",
           workoutName: routine?.nome_rotina || "Treino Digital",
           timestamp: concluidoAt,
@@ -559,6 +598,7 @@ export default function AdminDashboard() {
           id: c.id,
           studentId: c.aluno_id,
           studentName: studentLabel(c.aluno_id),
+          ...studentAvatar(c.aluno_id),
           type: "cardio_completed",
           description: c.modalidade || undefined,
           timestamp: at,
@@ -573,6 +613,7 @@ export default function AdminDashboard() {
           id: m.id,
           studentId: m.student_id,
           studentName: studentLabel(m.student_id),
+          ...studentAvatar(m.student_id),
           type: "meal_done",
           timestamp: at,
           link: fromDashboard(`/admin/aluno/${m.student_id}?tab=nutricao`),
@@ -586,6 +627,7 @@ export default function AdminDashboard() {
           id: m.id,
           studentId: m.aluno_id,
           studentName: studentLabel(m.aluno_id),
+          ...studentAvatar(m.aluno_id),
           type: "measurement_added",
           timestamp: at,
           link: fromDashboard(`/admin/aluno/${m.aluno_id}?tab=evolucao`),
@@ -599,6 +641,7 @@ export default function AdminDashboard() {
           id: f.id,
           studentId: f.aluno_id,
           studentName: studentLabel(f.aluno_id),
+          ...studentAvatar(f.aluno_id),
           type: "photo_sent",
           timestamp: at,
           link: fromDashboard(`/admin/aluno/${f.aluno_id}?tab=fotos`),
@@ -765,30 +808,30 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <div className="flex flex-col gap-6">
-            <PriorityActionsCard actions={prioridades} />
-            <DashboardKpiRow
-              activeStudents={alunosAtivos}
-              mrr={mrr}
-              studentsAtRisk={alunosEmRisco}
-              pendingCheckIns={checkinsPendentes}
-              activeStudentsSubtitle={activeStudentsSubtitle}
-            />
-            <div className="grid grid-cols-4 items-stretch gap-4">
-              <MrrChartCard
-                currentMrr={mrr}
-                chartData={chartData}
-                className="col-span-2 min-w-0"
-              />
-              <div className="col-span-2 flex min-w-0 items-stretch">
-                <PlanDistributionCard
-                  plans={alunosPorPlano}
-                  totalStudents={totalAlunos}
-                  className="w-full"
+            {/* Layout Nutrium: esquerda = próxima aula + ações + atividade,
+                direita = "Meu Negócio" (KPIs 2x2 + gráfico + distribuição). */}
+            <div className="grid grid-cols-2 items-start gap-6">
+              <div className="flex min-w-0 flex-col gap-6">
+                <ProximaAulaCard aula={proximaAula} />
+                <PriorityActionsCard actions={prioridades} />
+                <RecentActivityFeed activities={groupedAtividades} />
+                <AtalhosRapidos compact />
+              </div>
+              <div className="flex min-w-0 flex-col gap-6">
+                <DashboardKpiRow
+                  title="Meu Negócio"
+                  activeStudents={alunosAtivos}
+                  mrr={mrr}
+                  studentsAtRisk={alunosEmRisco}
+                  pendingCheckIns={checkinsPendentes}
+                  activeStudentsSubtitle={activeStudentsSubtitle}
+                  compact
                 />
+                <MrrChartCard currentMrr={mrr} chartData={chartData} />
+                {/* Solto no fundo — sem card branco, sem sombra (pedido explícito). */}
+                <PlanDistributionCard plans={alunosPorPlano} totalStudents={totalAlunos} />
               </div>
             </div>
-            <AtalhosRapidos />
-            <RecentActivityFeed activities={groupedAtividades} />
           </div>
         )}
       </div>
