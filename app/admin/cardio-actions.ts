@@ -13,6 +13,9 @@ export interface CriarPrescricaoInput {
   duracaoMin: number;
   intensidade: CardioIntensidade;
   distanciaAlvoKm?: number;
+  velocidadeAlvoKmh?: number;
+  inclinacaoAlvoPct?: number;
+  nivelResistenciaAlvo?: number;
   diasSemana?: number[];
   observacao?: string;
 }
@@ -33,6 +36,24 @@ export async function criarPrescricaoCardio(
     if (!input.modalidade?.trim()) return { success: false, error: 'Informe a modalidade.' };
     if (!Number.isFinite(input.duracaoMin) || input.duracaoMin <= 0 || input.duracaoMin > 600) {
       return { success: false, error: 'Duração deve estar entre 1 e 600 minutos.' };
+    }
+    if (
+      input.velocidadeAlvoKmh !== undefined &&
+      (input.velocidadeAlvoKmh <= 0 || input.velocidadeAlvoKmh > 40)
+    ) {
+      return { success: false, error: 'Velocidade alvo inválida.' };
+    }
+    if (
+      input.inclinacaoAlvoPct !== undefined &&
+      (input.inclinacaoAlvoPct < 0 || input.inclinacaoAlvoPct > 25)
+    ) {
+      return { success: false, error: 'Inclinação alvo inválida.' };
+    }
+    if (
+      input.nivelResistenciaAlvo !== undefined &&
+      (input.nivelResistenciaAlvo < 1 || input.nivelResistenciaAlvo > 20)
+    ) {
+      return { success: false, error: 'Nível de resistência alvo inválido.' };
     }
 
     const supabase = createClient(accessToken);
@@ -69,6 +90,9 @@ export async function criarPrescricaoCardio(
       fc_alvo_min: fcAlvo?.min ?? null,
       fc_alvo_max: fcAlvo?.max ?? null,
       distancia_alvo_km: input.distanciaAlvoKm ?? null,
+      velocidade_alvo_kmh: input.velocidadeAlvoKmh ?? null,
+      inclinacao_alvo_pct: input.inclinacaoAlvoPct ?? null,
+      nivel_resistencia_alvo: input.nivelResistenciaAlvo ?? null,
       dias_semana: input.diasSemana?.length ? input.diasSemana : null,
       observacao: input.observacao?.trim() || null,
     });

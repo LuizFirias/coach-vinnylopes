@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, type CSSProperties, type FocusEvent } from 'react';
-import { CaretDown } from '@phosphor-icons/react';
+import { useEffect, useRef, useState, type CSSProperties, type FocusEvent } from 'react';
+import { CaretDown, Check } from '@phosphor-icons/react';
 import { toISODate } from '@/lib/utils/cardio';
+import { MODALIDADES_CARDIO, CARDIO_CAMPOS, CARDIO_CAMPOS_DEFAULT } from '@/lib/constants/cardio';
+import { cn } from '@/lib/utils/cn';
 import { RpeSelector } from './RpeSelector';
-import { ModalidadePickerModal } from './ModalidadePickerModal';
 
 export interface CardioFormValues {
   modalidade: string;
@@ -14,6 +15,10 @@ export interface CardioFormValues {
   distanciaKm?: number;
   rpe?: number;
   observacao?: string;
+  kcalManual?: number;
+  velocidadeKmh?: number;
+  inclinacaoPct?: number;
+  nivelResistencia?: number;
 }
 
 interface CardioFormProps {
@@ -45,7 +50,7 @@ const INPUT_BG_FOCUS = '#e4e4ea';
 
 const inputStyle: CSSProperties = {
   width: '100%',
-  height: 44,
+  height: 40,
   fontSize: 16,
   fontWeight: 400,
   color: '#1a1a1a',
@@ -81,10 +86,36 @@ export function CardioForm({
   const [duracao, setDuracao] = useState(duracaoPreset?.toString() ?? '');
   const [fcMedia, setFcMedia] = useState('');
   const [distancia, setDistancia] = useState('');
+  const [kcalManual, setKcalManual] = useState('');
+  const [velocidade, setVelocidade] = useState('');
+  const [inclinacao, setInclinacao] = useState('');
+  const [resistencia, setResistencia] = useState('');
   const [rpe, setRpe] = useState<number | null>(null);
   const [observacao, setObservacao] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onPointer = (e: MouseEvent | TouchEvent) => {
+      if (pickerRef.current?.contains(e.target as Node)) return;
+      setPickerOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPickerOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pickerOpen]);
+
+  const campos = CARDIO_CAMPOS[modalidade] ?? CARDIO_CAMPOS_DEFAULT;
 
   const podeEnviar = Boolean(modalidade && duracao) && !submitting;
 
@@ -106,9 +137,33 @@ export function CardioForm({
       return;
     }
 
-    const km = distancia ? parseFloat(distancia.replace(',', '.')) : undefined;
+    const km = campos.distancia && distancia ? parseFloat(distancia.replace(',', '.')) : undefined;
     if (km !== undefined && (!Number.isFinite(km) || km <= 0)) {
       setLocalError('Distância inválida.');
+      return;
+    }
+
+    const kcal = kcalManual ? parseInt(kcalManual, 10) : undefined;
+    if (kcal !== undefined && (!Number.isFinite(kcal) || kcal <= 0 || kcal > 5000)) {
+      setLocalError('Calorias inválidas.');
+      return;
+    }
+
+    const vel = campos.velocidade && velocidade ? parseFloat(velocidade.replace(',', '.')) : undefined;
+    if (vel !== undefined && (!Number.isFinite(vel) || vel <= 0 || vel > 40)) {
+      setLocalError('Velocidade inválida.');
+      return;
+    }
+
+    const inclin = campos.inclinacao && inclinacao ? parseFloat(inclinacao.replace(',', '.')) : undefined;
+    if (inclin !== undefined && (!Number.isFinite(inclin) || inclin < 0 || inclin > 25)) {
+      setLocalError('Inclinação inválida.');
+      return;
+    }
+
+    const nivel = campos.resistencia && resistencia ? parseInt(resistencia, 10) : undefined;
+    if (nivel !== undefined && (!Number.isFinite(nivel) || nivel < 1 || nivel > 20)) {
+      setLocalError('Nível de resistência inválido.');
       return;
     }
 
@@ -121,14 +176,18 @@ export function CardioForm({
       distanciaKm: km,
       rpe: rpe ?? undefined,
       observacao: observacao || undefined,
+      kcalManual: kcal,
+      velocidadeKmh: vel,
+      inclinacaoPct: inclin,
+      nivelResistencia: nivel,
     });
   };
 
   const mensagem = localError ?? error;
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
+    <div className="flex flex-col gap-4">
+      <div ref={pickerRef} className="relative">
         <label style={LABEL_STYLE} id="cardio-modalidade-label">
           Modalidade
         </label>
@@ -136,9 +195,9 @@ export function CardioForm({
           type="button"
           id="cardio-modalidade"
           aria-labelledby="cardio-modalidade-label"
-          aria-haspopup="dialog"
+          aria-haspopup="listbox"
           aria-expanded={pickerOpen}
-          onClick={() => setPickerOpen(true)}
+          onClick={() => setPickerOpen((v) => !v)}
           className="relative flex w-full items-center touch-manipulation"
           style={{
             ...inputStyle,
@@ -155,21 +214,69 @@ export function CardioForm({
           <CaretDown
             size={14}
             weight="bold"
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+            className={cn(
+              'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 transition-transform',
+              pickerOpen && 'rotate-180',
+            )}
             style={{ color: '#751BB4' }}
             aria-hidden
           />
         </button>
 
-        <ModalidadePickerModal
-          open={pickerOpen}
-          value={modalidade}
-          onClose={() => setPickerOpen(false)}
-          onChange={setModalidade}
-        />
+        {pickerOpen && (
+          <div
+            role="listbox"
+            aria-labelledby="cardio-modalidade-label"
+            className="absolute top-full left-0 z-30 mt-1.5 max-h-52 w-full overflow-y-auto overscroll-contain rounded-[10px] py-1.5"
+            style={{
+              background: '#fff',
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            }}
+          >
+            {MODALIDADES_CARDIO.map((grupo, gi) => (
+              <div key={grupo.grupo}>
+                {gi > 0 && (
+                  <div className="mx-3 my-1.5" style={{ height: 1, background: 'rgba(117,27,180,0.15)' }} aria-hidden />
+                )}
+                <p
+                  className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                  style={{ color: '#751BB4' }}
+                >
+                  {grupo.grupo}
+                </p>
+                {grupo.itens.map((item) => {
+                  const selected = modalidade === item;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => {
+                        setModalidade(item);
+                        setPickerOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between gap-2 border-0 px-3 py-2 text-left touch-manipulation"
+                      style={{
+                        background: 'transparent',
+                        color: selected ? '#751BB4' : '#1a1a1a',
+                        fontSize: 13,
+                        fontWeight: selected ? 600 : 400,
+                      }}
+                    >
+                      <span className="truncate">{item}</span>
+                      {selected && <Check size={13} weight="bold" style={{ color: '#751BB4' }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
         <div>
           <label style={LABEL_STYLE} htmlFor="cardio-duracao">
             Duração (min)
@@ -210,26 +317,28 @@ export function CardioForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label style={LABEL_STYLE} htmlFor="cardio-distancia">
-            Distância (km)
-            <OptionalHint />
-          </label>
-          <input
-            id="cardio-distancia"
-            type="number"
-            inputMode="decimal"
-            value={distancia}
-            onChange={(e) => setDistancia(e.target.value)}
-            onFocus={onInputFocus}
-            onBlur={onInputBlur}
-            placeholder="5.0"
-            step="0.1"
-            min={0}
-            style={inputStyle}
-          />
-        </div>
+      <div className={cn('grid gap-2.5', campos.distancia ? 'grid-cols-2' : 'grid-cols-1')}>
+        {campos.distancia && (
+          <div>
+            <label style={LABEL_STYLE} htmlFor="cardio-distancia">
+              Distância (km)
+              <OptionalHint />
+            </label>
+            <input
+              id="cardio-distancia"
+              type="number"
+              inputMode="decimal"
+              value={distancia}
+              onChange={(e) => setDistancia(e.target.value)}
+              onFocus={onInputFocus}
+              onBlur={onInputBlur}
+              placeholder="5.0"
+              step="0.1"
+              min={0}
+              style={inputStyle}
+            />
+          </div>
+        )}
 
         <div>
           <label style={LABEL_STYLE} htmlFor="cardio-data">
@@ -248,6 +357,96 @@ export function CardioForm({
         </div>
       </div>
 
+      {(campos.velocidade || campos.inclinacao) && (
+        <div className={cn('grid gap-2.5', campos.velocidade && campos.inclinacao ? 'grid-cols-2' : 'grid-cols-1')}>
+          {campos.velocidade && (
+            <div>
+              <label style={LABEL_STYLE} htmlFor="cardio-velocidade">
+                Velocidade (km/h)
+                <OptionalHint />
+              </label>
+              <input
+                id="cardio-velocidade"
+                type="number"
+                inputMode="decimal"
+                value={velocidade}
+                onChange={(e) => setVelocidade(e.target.value)}
+                onFocus={onInputFocus}
+                onBlur={onInputBlur}
+                placeholder="9.0"
+                step="0.1"
+                min={0}
+                style={inputStyle}
+              />
+            </div>
+          )}
+
+          {campos.inclinacao && (
+            <div>
+              <label style={LABEL_STYLE} htmlFor="cardio-inclinacao">
+                Inclinação (%)
+                <OptionalHint />
+              </label>
+              <input
+                id="cardio-inclinacao"
+                type="number"
+                inputMode="decimal"
+                value={inclinacao}
+                onChange={(e) => setInclinacao(e.target.value)}
+                onFocus={onInputFocus}
+                onBlur={onInputBlur}
+                placeholder="1.0"
+                step="0.5"
+                min={0}
+                style={inputStyle}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {campos.resistencia && (
+        <div>
+          <label style={LABEL_STYLE} htmlFor="cardio-resistencia">
+            Nível de resistência
+            <OptionalHint />
+          </label>
+          <input
+            id="cardio-resistencia"
+            type="number"
+            inputMode="numeric"
+            value={resistencia}
+            onChange={(e) => setResistencia(e.target.value)}
+            onFocus={onInputFocus}
+            onBlur={onInputBlur}
+            placeholder="10"
+            min={1}
+            max={20}
+            style={inputStyle}
+          />
+        </div>
+      )}
+
+      <div>
+        <label style={LABEL_STYLE} htmlFor="cardio-kcal">
+          Calorias (kcal)
+          <OptionalHint />
+        </label>
+        <input
+          id="cardio-kcal"
+          type="number"
+          inputMode="numeric"
+          value={kcalManual}
+          onChange={(e) => setKcalManual(e.target.value)}
+          onFocus={onInputFocus}
+          onBlur={onInputBlur}
+          placeholder="350"
+          min={1}
+          max={5000}
+          style={inputStyle}
+        />
+      </div>
+
       <RpeSelector value={rpe} onChange={setRpe} />
 
       <div>
@@ -262,20 +461,24 @@ export function CardioForm({
           onFocus={onInputFocus}
           onBlur={onInputBlur}
           placeholder="Como foi a sessão?"
-          rows={3}
+          rows={2}
           style={{
             ...inputStyle,
             height: 'auto',
-            padding: '10px 12px',
+            padding: '9px 12px',
             resize: 'none',
             lineHeight: 1.5,
           }}
         />
       </div>
 
-      <p style={{ fontSize: 11, color: '#aaa', lineHeight: 1.5 }}>
-        Use a FC média para estimar as calorias e a zona de treino.
-      </p>
+      {!kcalManual && (
+        <p style={{ fontSize: 11, color: '#aaa', lineHeight: 1.5 }}>
+          {fcMedia
+            ? 'Use a FC média para estimar as calorias e a zona de treino.'
+            : 'Sem FC média, estimamos as calorias pelo seu peso e duração.'}
+        </p>
+      )}
 
       {mensagem && <p className="text-[12px] text-danger">{mensagem}</p>}
 
@@ -285,7 +488,7 @@ export function CardioForm({
         disabled={!podeEnviar}
         style={{
           width: '100%',
-          height: 48,
+          height: 44,
           borderRadius: 12,
           border: 'none',
           background: 'var(--btn-primary-bg)',

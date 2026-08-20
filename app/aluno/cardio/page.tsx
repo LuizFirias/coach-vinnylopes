@@ -232,20 +232,21 @@ export default function CardioPage() {
 
       {formOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+          className="fixed inset-x-0 top-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="cardio-form-title"
           onClick={() => !submitting && setFormOpen(false)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] border-0 bg-white p-5 sm:rounded-[20px]"
+            className="max-h-full w-full max-w-md overflow-y-auto overscroll-contain rounded-[18px] border-0 bg-white p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-5 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <h2
                 id="cardio-form-title"
-                style={{ fontSize: 17, fontWeight: 600, color: '#1a1a1a' }}
+                style={{ fontSize: 16, fontWeight: 600, color: '#1a1a1a' }}
               >
                 Registrar cardio
               </h2>
@@ -255,8 +256,8 @@ export default function CardioPage() {
                 aria-label="Fechar"
                 className="touch-manipulation"
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 30,
+                  height: 30,
                   borderRadius: 8,
                   border: 'none',
                   background: 'var(--surface-2)',

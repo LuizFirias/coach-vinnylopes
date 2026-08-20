@@ -5,6 +5,8 @@ import { CaretDown, X } from '@phosphor-icons/react';
 import {
   CARDIO_INTENSIDADES,
   DIAS_SEMANA_CURTO,
+  CARDIO_CAMPOS,
+  CARDIO_CAMPOS_DEFAULT,
   type CardioIntensidade,
 } from '@/lib/constants/cardio';
 import { ModalidadePickerModal } from '@/app/aluno/cardio/components/ModalidadePickerModal';
@@ -15,6 +17,9 @@ export interface PrescricaoCardioValues {
   duracaoMin: number;
   intensidade: CardioIntensidade;
   distanciaAlvoKm?: number;
+  velocidadeAlvoKmh?: number;
+  inclinacaoAlvoPct?: number;
+  nivelResistenciaAlvo?: number;
   diasSemana?: number[];
   observacao?: string;
 }
@@ -43,12 +48,17 @@ export function PrescricaoCardioModal({
   const [duracao, setDuracao] = useState('');
   const [intensidade, setIntensidade] = useState<CardioIntensidade>('moderada');
   const [distancia, setDistancia] = useState('');
+  const [velocidade, setVelocidade] = useState('');
+  const [inclinacao, setInclinacao] = useState('');
+  const [resistencia, setResistencia] = useState('');
   const [dias, setDias] = useState<number[]>([]);
   const [observacao, setObservacao] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!open) return null;
+
+  const campos = CARDIO_CAMPOS[modalidade] ?? CARDIO_CAMPOS_DEFAULT;
 
   const toggleDia = (d: number) => {
     setDias((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
@@ -65,9 +75,27 @@ export function PrescricaoCardioModal({
       return;
     }
 
-    const km = distancia ? parseFloat(distancia.replace(',', '.')) : undefined;
+    const km = campos.distancia && distancia ? parseFloat(distancia.replace(',', '.')) : undefined;
     if (km !== undefined && (!Number.isFinite(km) || km <= 0)) {
       setLocalError('Distância inválida.');
+      return;
+    }
+
+    const vel = campos.velocidade && velocidade ? parseFloat(velocidade.replace(',', '.')) : undefined;
+    if (vel !== undefined && (!Number.isFinite(vel) || vel <= 0 || vel > 40)) {
+      setLocalError('Velocidade alvo inválida.');
+      return;
+    }
+
+    const inclin = campos.inclinacao && inclinacao ? parseFloat(inclinacao.replace(',', '.')) : undefined;
+    if (inclin !== undefined && (!Number.isFinite(inclin) || inclin < 0 || inclin > 25)) {
+      setLocalError('Inclinação alvo inválida.');
+      return;
+    }
+
+    const nivel = campos.resistencia && resistencia ? parseInt(resistencia, 10) : undefined;
+    if (nivel !== undefined && (!Number.isFinite(nivel) || nivel < 1 || nivel > 20)) {
+      setLocalError('Nível de resistência alvo inválido.');
       return;
     }
 
@@ -77,6 +105,9 @@ export function PrescricaoCardioModal({
       duracaoMin,
       intensidade,
       distanciaAlvoKm: km,
+      velocidadeAlvoKmh: vel,
+      inclinacaoAlvoPct: inclin,
+      nivelResistenciaAlvo: nivel,
       diasSemana: dias.length ? dias : undefined,
       observacao: observacao || undefined,
     });
@@ -178,7 +209,7 @@ export function PrescricaoCardioModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn('grid gap-3', campos.distancia ? 'grid-cols-2' : 'grid-cols-1')}>
             <div className="field-flat-input border-b border-border-divider pb-1">
               <label className={LABEL_CLS} htmlFor="presc-duracao">
                 Duração (min)
@@ -195,23 +226,91 @@ export function PrescricaoCardioModal({
                 className={INPUT_CLS}
               />
             </div>
-            <div className="field-flat-input border-b border-border-divider pb-1">
-              <label className={LABEL_CLS} htmlFor="presc-distancia">
-                Distância (km) <span className="normal-case text-text-disabled">opcional</span>
-              </label>
-              <input
-                id="presc-distancia"
-                type="number"
-                inputMode="decimal"
-                value={distancia}
-                onChange={(e) => setDistancia(e.target.value)}
-                placeholder="5.0"
-                step="0.1"
-                min={0}
-                className={INPUT_CLS}
-              />
-            </div>
+            {campos.distancia && (
+              <div className="field-flat-input border-b border-border-divider pb-1">
+                <label className={LABEL_CLS} htmlFor="presc-distancia">
+                  Distância (km) <span className="normal-case text-text-disabled">opcional</span>
+                </label>
+                <input
+                  id="presc-distancia"
+                  type="number"
+                  inputMode="decimal"
+                  value={distancia}
+                  onChange={(e) => setDistancia(e.target.value)}
+                  placeholder="5.0"
+                  step="0.1"
+                  min={0}
+                  className={INPUT_CLS}
+                />
+              </div>
+            )}
           </div>
+
+          {(campos.velocidade || campos.inclinacao || campos.resistencia) && (
+            <div
+              className={cn(
+                'grid gap-3',
+                campos.resistencia && !campos.velocidade && !campos.inclinacao
+                  ? 'grid-cols-1'
+                  : 'grid-cols-2',
+              )}
+            >
+              {campos.velocidade && (
+                <div className="field-flat-input border-b border-border-divider pb-1">
+                  <label className={LABEL_CLS} htmlFor="presc-velocidade">
+                    Velocidade (km/h) <span className="normal-case text-text-disabled">opcional</span>
+                  </label>
+                  <input
+                    id="presc-velocidade"
+                    type="number"
+                    inputMode="decimal"
+                    value={velocidade}
+                    onChange={(e) => setVelocidade(e.target.value)}
+                    placeholder="9.0"
+                    step="0.1"
+                    min={0}
+                    className={INPUT_CLS}
+                  />
+                </div>
+              )}
+              {campos.inclinacao && (
+                <div className="field-flat-input border-b border-border-divider pb-1">
+                  <label className={LABEL_CLS} htmlFor="presc-inclinacao">
+                    Inclinação (%) <span className="normal-case text-text-disabled">opcional</span>
+                  </label>
+                  <input
+                    id="presc-inclinacao"
+                    type="number"
+                    inputMode="decimal"
+                    value={inclinacao}
+                    onChange={(e) => setInclinacao(e.target.value)}
+                    placeholder="1.0"
+                    step="0.5"
+                    min={0}
+                    className={INPUT_CLS}
+                  />
+                </div>
+              )}
+              {campos.resistencia && (
+                <div className="field-flat-input border-b border-border-divider pb-1">
+                  <label className={LABEL_CLS} htmlFor="presc-resistencia">
+                    Nível <span className="normal-case text-text-disabled">opcional</span>
+                  </label>
+                  <input
+                    id="presc-resistencia"
+                    type="number"
+                    inputMode="numeric"
+                    value={resistencia}
+                    onChange={(e) => setResistencia(e.target.value)}
+                    placeholder="10"
+                    min={1}
+                    max={20}
+                    className={INPUT_CLS}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className={LABEL_CLS}>

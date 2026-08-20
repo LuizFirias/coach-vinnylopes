@@ -1,4 +1,10 @@
-import { ZONAS_FC, type CardioIntensidade, type ZonaFC } from '@/lib/constants/cardio';
+import {
+  ZONAS_FC,
+  MET_POR_MODALIDADE,
+  MET_DEFAULT,
+  type CardioIntensidade,
+  type ZonaFC,
+} from '@/lib/constants/cardio';
 
 export type SexoBiologico = 'M' | 'F';
 
@@ -43,6 +49,32 @@ export function calcKcal(params: {
   if (kcalPerMin <= 0) return null;
 
   return Math.round(kcalPerMin * duracaoMin);
+}
+
+function faixaMetPorRpe(rpe: number | null | undefined): 'leve' | 'moderada' | 'intensa' {
+  if (!rpe) return 'moderada';
+  if (rpe <= 3) return 'leve';
+  if (rpe <= 7) return 'moderada';
+  return 'intensa';
+}
+
+/**
+ * Estimativa de gasto calórico por MET (Compêndio de Atividades Físicas, Ainsworth et al.) —
+ * usada quando não há FC média informada. O RPE (se houver) escolhe a faixa leve/moderada/intensa.
+ */
+export function calcKcalMet(params: {
+  modalidade: string;
+  pesoKg: number;
+  duracaoMin: number;
+  rpe?: number | null;
+}): number | null {
+  const { modalidade, pesoKg, duracaoMin, rpe } = params;
+  if (!pesoKg || !duracaoMin) return null;
+
+  const faixas = MET_POR_MODALIDADE[modalidade] ?? MET_DEFAULT;
+  const met = faixas[faixaMetPorRpe(rpe)];
+
+  return Math.round(met * pesoKg * (duracaoMin / 60));
 }
 
 export function calcFcAlvo(

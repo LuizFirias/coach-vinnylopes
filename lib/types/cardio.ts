@@ -11,9 +11,13 @@ export interface CardioSessao {
   distancia_km: number | null;
   rpe: number | null;
   kcal_calculado: number | null;
+  kcal_origem: 'fc' | 'met' | 'manual' | null;
   peso_usado: number | null;
   idade_usada: number | null;
   zona_fc: ZonaFC | null;
+  velocidade_kmh: number | null;
+  inclinacao_pct: number | null;
+  nivel_resistencia: number | null;
   observacao: string | null;
   created_at: string;
 }
@@ -28,6 +32,9 @@ export interface CardioPrescricao {
   fc_alvo_min: number | null;
   fc_alvo_max: number | null;
   distancia_alvo_km: number | null;
+  velocidade_alvo_kmh: number | null;
+  inclinacao_alvo_pct: number | null;
+  nivel_resistencia_alvo: number | null;
   observacao: string | null;
   dias_semana: number[] | null;
   ativo: boolean;
