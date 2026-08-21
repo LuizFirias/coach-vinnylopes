@@ -26,6 +26,8 @@ export type BiSetGroupFicha = {
   descanso: string;
   exercicioA: BiSetHalfFicha;
   exercicioB: BiSetHalfFicha | null;
+  /** Segue a pré-configuração global de SET/REPS — false assim que o coach ajusta esse grupo na mão. */
+  usaPreConfig?: boolean;
 };
 
 export type ExercicioFichaItem =
@@ -54,6 +56,7 @@ export function simpleToBiSetGroup(ex: ExercicioFicha): BiSetGroupFicha {
     id: crypto.randomUUID(),
     tipo: "biset",
     descanso: ex.descanso,
+    usaPreConfig: ex.usaPreConfig,
     exercicioA: {
       exercicio_id: ex.id,
       nome: ex.nome,
@@ -294,6 +297,8 @@ export interface ExercicioExecucao {
   descanso: number;
   video_url?: string;
   gif_url?: string;
+  /** Miniatura estática (1º frame do GIF) — usada na lista, pra não animar. */
+  imagem_url?: string;
   observacoes?: string;
   grupo_muscular?: string;
   equipamento?: string;
@@ -363,9 +368,17 @@ type PrevSerieSessao = {
 type BibMeta = {
   gruposMusculares: Record<string, string>;
   gifs: Record<string, string>;
+  /** Versão feminina do gif_url — usada quando generoAluno === 'feminino' e existir. */
+  gifsFemininos: Record<string, string>;
+  /** Miniatura estática (1º frame) — padrão/masculino. */
+  imagens: Record<string, string>;
+  /** Miniatura estática (1º frame) — feminino. */
+  imagensFemininas: Record<string, string>;
   videos: Record<string, string>;
   equipamentos: Record<string, string>;
   ultimoPorExercicio: Record<string, { dados_sessao?: { series?: PrevSerieSessao[] } }>;
+  /** profiles.sexo do aluno logado — decide qual versão (padrão/feminino) mostrar. */
+  generoAluno?: string | null;
 };
 
 /** Última série válida da sessão anterior (completada com carga), por ordem. */
@@ -423,6 +436,15 @@ function buildSerieExecucao(
   };
 }
 
+/** GIF + miniatura do exercício — versão feminina quando o aluno é feminino e ela existir. */
+function pickGenderedMedia(meta: BibMeta, eid: string): { gif_url: string; imagem_url: string } {
+  const fem = meta.generoAluno === "feminino";
+  return {
+    gif_url: (fem && meta.gifsFemininos[eid]) || meta.gifs[eid] || "",
+    imagem_url: (fem && meta.imagensFemininas[eid]) || meta.imagens[eid] || "",
+  };
+}
+
 function buildHalfExecucao(
   half: BiSetHalfPrescricao,
   meta: BibMeta
@@ -435,7 +457,7 @@ function buildHalfExecucao(
     nome: half.nome,
     descanso: 0,
     video_url: meta.videos[eid] || half.video_url || undefined,
-    gif_url: meta.gifs[eid] || "",
+    ...pickGenderedMedia(meta, eid),
     observacoes: half.observacoes,
     grupo_muscular: meta.gruposMusculares[eid] || "",
     equipamento: meta.equipamentos[eid] || "",
@@ -454,7 +476,7 @@ function buildSimpleExecucao(ex: ExercicioSimplesPrescricao, meta: BibMeta): Exe
     nome: ex.nome,
     descanso,
     video_url: meta.videos[eid] || ex.video_url || undefined,
-    gif_url: meta.gifs[eid] || "",
+    ...pickGenderedMedia(meta, eid),
     observacoes: ex.observacoes,
     grupo_muscular: meta.gruposMusculares[eid] || "",
     equipamento: meta.equipamentos[eid] || "",

@@ -94,9 +94,12 @@ export function BiSetGroupCard({
           isDragging && "opacity-95 ring-1 ring-brand/40 shadow-elev-3"
         )}
         style={{
+          // Sombra pra dentro (inset) — uma sombra "pra fora" normal fica cortada
+          // pelos vários containers com overflow-hidden/auto no builder (colunas,
+          // painel de scroll), então usamos glow interno pra sempre aparecer inteiro.
           boxShadow: isDragging
             ? undefined
-            : "0 0 0 1px rgba(147,51,234,0.3), 0 0 18px rgba(147,51,234,0.28)",
+            : "inset 0 0 0 1.5px rgba(147,51,234,0.55), inset 0 0 22px rgba(147,51,234,0.18)",
         }}
       >
         {/* Exercício A */}
@@ -311,7 +314,7 @@ export function BiSetGroupCard({
               <button
                 type="button"
                 onClick={() => { setShowUndoModal(false); onUndoBiSet(); }}
-                className="flex-1 h-10 rounded-lg bg-surface-2 border-0 text-xs font-semibold text-text-primary"
+                className="flex-1 h-10 rounded-lg bg-surface-2 border border-border-subtle text-xs font-semibold text-text-primary"
               >
                 Desfazer Bi-Set
               </button>

@@ -22,6 +22,8 @@ export interface LibraryExercise {
   tipo_exercicio?: string;
   equipamento?: string;
   video_url?: string;
+  gif_url?: string;
+  imagem_url?: string;
 }
 
 interface ExerciseLibraryModalProps {
@@ -452,6 +454,15 @@ export function ExerciseLibraryModal({
                   alreadyIn && "cursor-default",
                 )}
               >
+                {(ex.imagem_url || ex.gif_url) && (
+                  <img
+                    src={ex.imagem_url || ex.gif_url}
+                    alt=""
+                    aria-hidden
+                    className="w-10 h-10 shrink-0 rounded-lg object-cover bg-surface-2"
+                  />
+                )}
+
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-bold text-text-primary truncate">
                     {ex.nome}

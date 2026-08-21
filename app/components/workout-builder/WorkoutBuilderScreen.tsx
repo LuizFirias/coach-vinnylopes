@@ -17,6 +17,7 @@ import { useAuth } from "@/app/components/AuthProvider";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
 import { alunoTreinosReturnUrl, readReturnUrl } from "@/lib/utils/adminNav";
+import { getPublicR2Url } from "@/lib/r2/urls";
 import { WorkoutBuilderHeader } from "@/app/components/workout-builder/WorkoutBuilderHeader";
 import { WorkoutBuilderBottomBar } from "@/app/components/workout-builder/WorkoutBuilderBottomBar";
 import { WorkoutBuilderSettingsSheet } from "@/app/components/workout-builder/WorkoutBuilderSettingsSheet";
@@ -65,6 +66,10 @@ interface Exercicio {
   tipo_exercicio?: string;
   equipamento?: string;
   video_url?: string;
+  gif_url?: string;
+  gif_url_feminino?: string;
+  imagem_url?: string;
+  imagem_url_feminino?: string;
 }
 
 const EQUIPAMENTOS = [...CANONICAL_EQUIPMENTS];
@@ -86,6 +91,39 @@ function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
   }
 }
 
+/**
+ * Reaplica a pré-configuração global (nº de séries e reps) em cima de uma
+ * lista de séries existente — mantém técnica/peso/etc. do 1º modelo, só
+ * ajusta a quantidade e o reps sugerido. `setNum: null` mantém a quantidade
+ * atual; `repsStr: ""` mantém o reps atual.
+ */
+function gerarSeriesComPreConfig(
+  base: SerieDefinicao[],
+  setNum: number | null,
+  repsStr: string,
+): SerieDefinicao[] {
+  const modelo: SerieDefinicao =
+    base[0] || { ordem: 1, tecnica: "", tecnica_extra: "", peso_sugerido: null, reps_sugerido: "12" };
+  const count = setNum && setNum > 0 ? setNum : base.length || 3;
+  const repsTrim = repsStr.trim();
+  return Array.from({ length: count }, (_, i) => ({
+    ...modelo,
+    ordem: i + 1,
+    ...(repsTrim ? { reps_sugerido: repsTrim } : {}),
+  }));
+}
+
+/** Catálogo guarda a key do R2 (ex.: "exercicios/uuid.gif") — resolve pra URL pública uma vez, ao carregar. */
+function resolveExercicioMedia(ex: Exercicio): Exercicio {
+  return {
+    ...ex,
+    gif_url: getPublicR2Url(ex.gif_url) || undefined,
+    gif_url_feminino: getPublicR2Url(ex.gif_url_feminino) || undefined,
+    imagem_url: getPublicR2Url(ex.imagem_url) || undefined,
+    imagem_url_feminino: getPublicR2Url(ex.imagem_url_feminino) || undefined,
+  };
+}
+
 function exercicioFromCatalog(ex: Exercicio): ExercicioFicha {
   const tipoEx = ex.tipo_exercicio || "Peso & Repetições";
   return {
@@ -95,6 +133,10 @@ function exercicioFromCatalog(ex: Exercicio): ExercicioFicha {
     tipo_exercicio: tipoEx,
     descanso: "01:00",
     video_url: ex.video_url || "",
+    gif_url: ex.gif_url || "",
+    gif_url_feminino: ex.gif_url_feminino || "",
+    imagem_url: ex.imagem_url || "",
+    imagem_url_feminino: ex.imagem_url_feminino || "",
     observacoes: "",
     series: criarSeriesPadrao(tipoEx),
   };
@@ -131,6 +173,19 @@ export function WorkoutBuilderScreen({
   const [dragHint, setDragHint] = useState<string | null>(null);
   /** Índice do Bi-Set aguardando seleção do exercício B na biblioteca */
   const [biSetPickIndex, setBiSetPickIndex] = useState<number | null>(null);
+
+  // Pré-configuração SET/REPS — aplicada em todo exercício que ainda não foi
+  // ajustado na mão (usaPreConfig !== false). Ver gerarSeriesComPreConfig.
+  const [preConfigSet, setPreConfigSet] = useState("");
+  const [preConfigReps, setPreConfigReps] = useState("");
+  const [modeloSaveOpen, setModeloSaveOpen] = useState(false);
+  const [modeloNome, setModeloNome] = useState("");
+  const [savingModelo, setSavingModelo] = useState(false);
+  const [modeloPickerOpen, setModeloPickerOpen] = useState(false);
+  const [modelos, setModelos] = useState<
+    { id: string; nome: string; configuracao: { exercicios?: unknown[]; preConfigSet?: string; preConfigReps?: string }; updated_at: string }[]
+  >([]);
+  const [modelosLoading, setModelosLoading] = useState(false);
   const libraryAnchorRef = useRef<HTMLDivElement>(null);
   const [libraryFloatRect, setLibraryFloatRect] = useState<{
     top: number;
@@ -212,9 +267,9 @@ export function WorkoutBuilderScreen({
       setAlunos(alunosData);
 
       const { data: exerciciosData } = await supabaseClient
-        .from("exercicios_biblioteca").select("id, nome, grupo_muscular, tipo_exercicio, equipamento, video_url")
+        .from("exercicios_biblioteca").select("id, nome, grupo_muscular, tipo_exercicio, equipamento, video_url, gif_url, gif_url_feminino, imagem_url, imagem_url_feminino")
         .order("nome", { ascending: true });
-      setExerciciosCatalogo(exerciciosData || []);
+      setExerciciosCatalogo((exerciciosData || []).map(resolveExercicioMedia));
 
       if (isEdit && fichaId) {
         const { data: ficha, error: fichaError } = await supabaseClient
@@ -284,6 +339,39 @@ export function WorkoutBuilderScreen({
     }
   }, [exerciciosFicha.length]);
 
+  /** Aplica SET/REPS em todo exercício que ainda não foi ajustado manualmente (usaPreConfig !== false). */
+  const aplicarPreConfigATodos = useCallback((setVal: string, repsVal: string) => {
+    const setNum = setVal.trim() ? Math.max(1, parseInt(setVal, 10) || 0) : null;
+    const repsStr = repsVal;
+    if (!setNum && !repsStr.trim()) return;
+
+    setExerciciosFicha((prev) =>
+      prev.map((item) => {
+        if (item.usaPreConfig === false) return item;
+        if (isBiSetFichaItem(item)) {
+          const exercicioA = { ...item.exercicioA, series: gerarSeriesComPreConfig(item.exercicioA.series, setNum, repsStr) };
+          const exercicioB = item.exercicioB
+            ? { ...item.exercicioB, series: gerarSeriesComPreConfig(item.exercicioB.series, setNum, repsStr) }
+            : null;
+          return { ...item, exercicioA, exercicioB };
+        }
+        return { ...item, series: gerarSeriesComPreConfig(item.series, setNum, repsStr) };
+      }),
+    );
+  }, []);
+
+  const handlePreConfigSetChange = (val: string) => {
+    setPreConfigSet(val);
+    markDirty();
+    aplicarPreConfigATodos(val, preConfigReps);
+  };
+
+  const handlePreConfigRepsChange = (val: string) => {
+    setPreConfigReps(val);
+    markDirty();
+    aplicarPreConfigATodos(preConfigSet, val);
+  };
+
   const showBisetToast = (msg: string) => {
     setBisetToast(msg);
     setTimeout(() => setBisetToast(null), 3500);
@@ -302,7 +390,11 @@ export function WorkoutBuilderScreen({
       selecionarParceiroBiSet(biSetPickIndex, ex);
       return;
     }
-    setExerciciosFicha((prev) => [...prev, exercicioFromCatalog(ex)]);
+    const setNum = preConfigSet.trim() ? Math.max(1, parseInt(preConfigSet, 10) || 0) : null;
+    const novo = exercicioFromCatalog(ex);
+    novo.series = gerarSeriesComPreConfig(novo.series, setNum, preConfigReps);
+    novo.usaPreConfig = true;
+    setExerciciosFicha((prev) => [...prev, novo]);
     markDirty();
     setModalExercicio(false);
   };
@@ -312,7 +404,13 @@ export function WorkoutBuilderScreen({
       selecionarParceiroBiSet(biSetPickIndex, selected[0] as Exercicio);
       return;
     }
-    const novos = selected.map((ex) => exercicioFromCatalog(ex as Exercicio));
+    const setNum = preConfigSet.trim() ? Math.max(1, parseInt(preConfigSet, 10) || 0) : null;
+    const novos = selected.map((ex) => {
+      const item = exercicioFromCatalog(ex as Exercicio);
+      item.series = gerarSeriesComPreConfig(item.series, setNum, preConfigReps);
+      item.usaPreConfig = true;
+      return item;
+    });
     setExerciciosFicha((prev) => [...prev, ...novos]);
     markDirty();
     if (isMobile) setModalExercicio(false);
@@ -410,7 +508,7 @@ export function WorkoutBuilderScreen({
       const target = half === "a" ? group.exercicioA : group.exercicioB;
       if (!target) return prev;
       target.series[serieIndex] = { ...target.series[serieIndex], [campo]: valor };
-      next[index] = group;
+      next[index] = { ...group, usaPreConfig: false };
       return next;
     });
     markDirty();
@@ -427,7 +525,7 @@ export function WorkoutBuilderScreen({
       const ordem = group.exercicioA.series.length + 1;
       group.exercicioA.series.push({ ...modeloA, ordem });
       group.exercicioB.series.push({ ...modeloB, ordem });
-      next[index] = group;
+      next[index] = { ...group, usaPreConfig: false };
       return next;
     });
     markDirty();
@@ -441,7 +539,7 @@ export function WorkoutBuilderScreen({
       const group = { ...item, exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] }, exercicioB: { ...item.exercicioB, series: [...item.exercicioB.series] } };
       group.exercicioA.series = group.exercicioA.series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
       group.exercicioB.series = group.exercicioB.series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
-      next[index] = group;
+      next[index] = { ...group, usaPreConfig: false };
       return next;
     });
     showBisetToast("Em Bi-Sets, séries são adicionadas e removidas em par. Ambos os exercícios foram atualizados.");
@@ -487,7 +585,7 @@ export function WorkoutBuilderScreen({
         };
       }
       series[serieIndex] = atualizada;
-      novos[exIndex] = { ...item, series };
+      novos[exIndex] = { ...item, series, usaPreConfig: false };
       return novos;
     });
     markDirty();
@@ -521,7 +619,7 @@ export function WorkoutBuilderScreen({
         tecnica_extra: "",
         peso_sugerido: null,
       };
-      novos[exIndex] = { ...item, series: [...series, { ...modelo, ordem: proximaOrdem }] };
+      novos[exIndex] = { ...item, series: [...series, { ...modelo, ordem: proximaOrdem }], usaPreConfig: false };
       return novos;
     });
     markDirty();
@@ -533,7 +631,7 @@ export function WorkoutBuilderScreen({
       if (!item || isBiSetFichaItem(item)) return prev;
       const novos = [...prev];
       const series = item.series.filter((_, i) => i !== serieIndex).map((s, i) => ({ ...s, ordem: i + 1 }));
-      novos[exIndex] = { ...item, series };
+      novos[exIndex] = { ...item, series, usaPreConfig: false };
       return novos;
     });
     markDirty();
@@ -622,6 +720,96 @@ export function WorkoutBuilderScreen({
       alert("Erro ao salvar: " + message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSalvarModelo = async () => {
+    if (!modeloNome.trim()) { alert("Dê um nome ao modelo"); return; }
+    if (exerciciosFicha.length === 0) { alert("Adicione pelo menos um exercício"); return; }
+    for (const item of exerciciosFicha) {
+      if (isBiSetFichaItem(item)) {
+        const err = validateBiSetGroup(item);
+        if (err) { alert(err); return; }
+      }
+    }
+
+    setSavingModelo(true);
+    try {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const res = await fetch("/api/admin/fichas-modelo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+          nome: modeloNome.trim(),
+          configuracao: {
+            exercicios: serializeFichaItems(exerciciosFicha),
+            preConfigSet,
+            preConfigReps,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Erro ao salvar modelo");
+
+      setModeloSaveOpen(false);
+      setModeloNome("");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      alert("Erro ao salvar modelo: " + message);
+    } finally {
+      setSavingModelo(false);
+    }
+  };
+
+  const carregarModelos = useCallback(async () => {
+    setModelosLoading(true);
+    try {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const res = await fetch("/api/admin/fichas-modelo", {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      });
+      const json = await res.json();
+      if (res.ok) setModelos(json.modelos || []);
+    } catch {
+      /* silencioso — picker fica vazio */
+    } finally {
+      setModelosLoading(false);
+    }
+  }, []);
+
+  const abrirPickerModelo = () => {
+    setModeloPickerOpen(true);
+    void carregarModelos();
+  };
+
+  const aplicarModelo = (modelo: (typeof modelos)[number]) => {
+    const items = parseFichaItems(modelo.configuracao?.exercicios || []).map((item) => ({
+      ...item,
+      usaPreConfig: true,
+    }));
+    setExerciciosFicha(items);
+    setPreConfigSet(modelo.configuracao?.preConfigSet || "");
+    setPreConfigReps(modelo.configuracao?.preConfigReps || "");
+    markDirty();
+    setModeloPickerOpen(false);
+  };
+
+  const excluirModelo = async (id: string) => {
+    try {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      await fetch(`/api/admin/fichas-modelo/${id}`, {
+        method: "DELETE",
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      });
+      setModelos((prev) => prev.filter((m) => m.id !== id));
+    } catch {
+      /* silencioso */
     }
   };
 
@@ -772,11 +960,41 @@ export function WorkoutBuilderScreen({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between mt-4">
-                    <h2 className="text-sm font-semibold text-text-primary">
+                  <div className="flex items-center justify-between mt-4 gap-3">
+                    <h2 className="text-sm font-semibold text-text-primary shrink-0">
                       Exercícios{" "}
                       <span className="text-brand">({exerciciosFicha.length})</span>
                     </h2>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+                          Pré-config. SET
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={preConfigSet}
+                          onChange={(e) => handlePreConfigSetChange(e.target.value.replace(/\D/g, ""))}
+                          placeholder="—"
+                          title="Aplica esse nº de séries em todo exercício ainda não ajustado na mão"
+                          className="input-inline-bare w-7 text-center font-semibold text-text-primary"
+                        />
+                      </label>
+                      <label className="flex items-center gap-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+                          REPS
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={preConfigReps}
+                          onChange={(e) => handlePreConfigRepsChange(e.target.value)}
+                          placeholder="—"
+                          title="Aplica esse reps em todo exercício ainda não ajustado na mão"
+                          className="input-inline-bare w-14 text-center font-semibold text-text-primary"
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -787,9 +1005,18 @@ export function WorkoutBuilderScreen({
                       <h3 className="text-sm font-semibold text-text-primary mb-1">
                         Nenhum exercício na ficha
                       </h3>
-                      <p className="text-xs text-text-tertiary">
+                      <p className="text-xs text-text-tertiary mb-3">
                         Clique em um exercício na biblioteca ao lado para adicionar.
                       </p>
+                      {!isEdit && (
+                        <button
+                          type="button"
+                          onClick={abrirPickerModelo}
+                          className="text-xs font-semibold text-brand hover:underline"
+                        >
+                          Começar de um modelo salvo
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <ExerciseList {...exerciseListProps} />
@@ -799,29 +1026,41 @@ export function WorkoutBuilderScreen({
             </div>
 
             <div
-              className="shrink-0 flex flex-col gap-4 overflow-hidden relative"
+              className="shrink-0 flex flex-col gap-4 relative"
               style={{ width: 480 }}
             >
               <div className="flex flex-col gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleSalvarFicha}
-                  disabled={saving || !canSave || !isDirty}
-                  aria-label={isEdit ? "Salvar alterações" : "Salvar ficha"}
-                  title={isEdit ? "Salvar alterações" : "Salvar ficha"}
-                  className="w-full h-14 rounded-2xl flex items-center justify-center text-text-on-brand transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
-                    boxShadow: "0 4px 16px rgba(117,27,180,0.35)",
-                  }}
-                >
-                  {saving ? (
-                    <CircleNotch size={22} className="animate-spin" weight="bold" />
-                  ) : (
-                    <FloppyDisk size={22} weight="fill" />
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSalvarFicha}
+                    disabled={saving || !canSave || !isDirty}
+                    aria-label={isEdit ? "Salvar alterações" : "Publicar ficha"}
+                    title={isEdit ? "Salvar alterações" : "Publicar ficha"}
+                    className="flex-1 h-11 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold text-text-on-brand transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                      boxShadow: "0 4px 16px rgba(117,27,234,0.35)",
+                    }}
+                  >
+                    {saving ? (
+                      <CircleNotch size={16} className="animate-spin" weight="bold" />
+                    ) : (
+                      <FloppyDisk size={16} weight="fill" />
+                    )}
+                    {isEdit ? "Salvar alterações" : "Publicar ficha"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModeloSaveOpen(true)}
+                    disabled={exerciciosFicha.length === 0}
+                    title="Salvar essa estrutura como modelo reutilizável"
+                    className="flex-1 h-11 rounded-xl border border-border-subtle text-xs font-semibold text-text-primary hover:bg-surface-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Salvar modelo
+                  </button>
+                </div>
                 <WorkoutPrescriptionSummary
                   items={exerciciosFicha}
                   isMobile={false}
@@ -832,7 +1071,7 @@ export function WorkoutBuilderScreen({
 
               <div
                 ref={libraryAnchorRef}
-                className="flex-1 min-h-0 rounded-2xl border-0 bg-surface-1 shadow-sm overflow-hidden flex flex-col"
+                className="flex-1 min-h-0 rounded-2xl border-0 bg-surface-1 shadow-sm overflow-visible flex flex-col"
               >
                 {/* Placeholder mantém o layout enquanto a biblioteca flutua no portal */}
                 {isBiSetPicking ? (
@@ -947,7 +1186,7 @@ export function WorkoutBuilderScreen({
               role="dialog"
               aria-modal="true"
               aria-label="Selecionar exercício B do Bi-Set"
-              className="fixed z-[110] rounded-2xl overflow-hidden bg-surface-1 ring-2 ring-brand shadow-[0_0_60px_rgba(117, 27, 180,0.45)]"
+              className="coach-app-typography fixed z-[110] rounded-2xl overflow-hidden bg-surface-1 ring-2 ring-brand shadow-[0_0_60px_rgba(117, 27, 180,0.45)]"
               style={{
                 top: libraryFloatRect.top,
                 left: libraryFloatRect.left,
@@ -1097,6 +1336,94 @@ export function WorkoutBuilderScreen({
               >
                 Criar e adicionar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modeloSaveOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-surface-0/80 backdrop-blur-sm">
+          <div className="bg-surface-1 border-0 w-full max-w-sm rounded-xl p-5">
+            <h3 className="text-sm font-bold text-text-primary mb-1">Salvar como modelo</h3>
+            <p className="text-xs text-text-secondary mb-4 leading-relaxed">
+              Guarda os exercícios e a pré-configuração dessa ficha pra usar como ponto de partida em fichas futuras.
+            </p>
+            <label className="block text-[10px] font-bold uppercase text-text-tertiary mb-1">
+              Nome do modelo
+            </label>
+            <input
+              type="text"
+              value={modeloNome}
+              onChange={(e) => setModeloNome(e.target.value)}
+              placeholder="Ex.: Upper/Lower — iniciante"
+              autoFocus
+              className={cn(inputCls, "mb-4")}
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setModeloSaveOpen(false); setModeloNome(""); }}
+                className="flex-1 h-9 bg-surface-3 rounded-lg text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSalvarModelo}
+                disabled={savingModelo || !modeloNome.trim()}
+                className="flex-1 h-9 bg-brand text-text-on-brand rounded-lg text-xs font-semibold disabled:opacity-40"
+              >
+                {savingModelo ? "Salvando..." : "Salvar modelo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modeloPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-surface-0/80 backdrop-blur-sm">
+          <div className="bg-surface-1 border-0 w-full max-w-md rounded-xl max-h-[75vh] flex flex-col">
+            <div className="p-4 border-b border-divider flex justify-between items-center shrink-0">
+              <h3 className="text-sm font-bold text-text-primary">Começar de um modelo</h3>
+              <button type="button" onClick={() => setModeloPickerOpen(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-3 space-y-1.5">
+              {modelosLoading ? (
+                <p className="text-xs text-text-tertiary text-center py-8">Carregando...</p>
+              ) : modelos.length === 0 ? (
+                <p className="text-xs text-text-tertiary text-center py-8">
+                  Nenhum modelo salvo ainda. Monte uma ficha e use "Salvar modelo" pra guardar a primeira.
+                </p>
+              ) : (
+                modelos.map((modelo) => (
+                  <div
+                    key={modelo.id}
+                    className="flex items-center gap-2 rounded-lg hover:bg-surface-2 transition-colors"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => aplicarModelo(modelo)}
+                      className="flex-1 min-w-0 text-left px-3 py-2.5"
+                    >
+                      <p className="text-sm font-semibold text-text-primary truncate">{modelo.nome}</p>
+                      <p className="text-[11px] text-text-tertiary">
+                        {(modelo.configuracao?.exercicios?.length ?? 0)} exercício
+                        {(modelo.configuracao?.exercicios?.length ?? 0) !== 1 ? "s" : ""}
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => excluirModelo(modelo.id)}
+                      title="Excluir modelo"
+                      className="w-8 h-8 shrink-0 mr-1.5 flex items-center justify-center rounded-md text-text-muted hover:text-danger"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

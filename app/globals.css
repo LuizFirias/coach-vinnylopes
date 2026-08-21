@@ -230,6 +230,7 @@ body {
 .z-70  { z-index: 70; }
 .z-100 { z-index: 100; }
 .z-101 { z-index: 101; }
+.z-300 { z-index: 300; }
 
 /* iOS anti-zoom: font-size mínimo 16px em inputs */
 input[type="email"],
@@ -1368,6 +1369,23 @@ html.dark .coach-app-typography textarea.field-token-input {
   appearance: none;
 }
 
+/* A baseline de tema (html[data-theme="light/dark"] .coach-app-typography …,
+   mais abaixo neste arquivo) força border:1px nos inputs — e por começar
+   com um seletor de elemento (html) a mais, empata em especificidade com a
+   regra acima e VENCE mesmo com a mesma quantidade de classes. Por isso o
+   campo continuava com contorno mesmo com "border: none !important" escrito
+   ali em cima. Repetir o mesmo prefixo aqui garante que esta regra sempre
+   vença, nos dois temas. */
+html[data-theme="light"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input,
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input {
+  border: none !important;
+  background: transparent !important;
+}
+
 /* Underline (login / nova ficha): sem fundo — só linha inferior sutil */
 .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
@@ -1475,7 +1493,8 @@ html.dark .coach-app-typography textarea.field-token-input {
   font-variant-numeric: tabular-nums lining-nums;
   color: var(--text-primary) !important;
   -webkit-appearance: none;
-  appearance: textfield;
+  -moz-appearance: textfield;
+  appearance: none;
 }
 
 .coach-app-typography :is(
@@ -1513,7 +1532,8 @@ html.dark .coach-app-typography textarea.field-token-input {
   line-height: 1;
   color: var(--text-primary) !important;
   -webkit-appearance: none;
-  appearance: textfield;
+  -moz-appearance: textfield;
+  appearance: none;
 }
 
 .coach-app-typography :is(
@@ -1564,8 +1584,43 @@ html.dark .coach-app-typography textarea.field-token-input {
 }
 
 .coach-app-typography input.serie-metric-input[type="number"] {
+  /* -moz-appearance: textfield é o único jeito de esconder as setas no
+     Firefox — mas "textfield" não é um valor válido pra propriedade
+     appearance sem prefixo, então o Chrome/Edge ignorava e caía no visual
+     nativo (borda quadrada). appearance: none também remove essa borda. */
   -moz-appearance: textfield;
-  appearance: textfield;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none !important;
+}
+
+/* Campo solto sem caixa nenhuma (ex.: pré-configuração SET/REPS) — mesmo
+   truque de especificidade do .serie-metric-input logo acima: precisa do
+   prefixo html[data-theme] pra vencer a baseline de tema nos dois temas. */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare,
+html[data-theme="light"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare,
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 12px !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare::placeholder {
+  color: var(--text-disabled) !important;
 }
 
 /* Formulário agrupado estilo Wellhub — inputs sem caixa própria (tokens do tema) */
@@ -1586,6 +1641,23 @@ html.dark .coach-app-typography textarea.field-token-input {
   font-weight: 400;
   line-height: 1.35;
   color: var(--text-primary) !important;
+}
+
+/* Mesmo problema de especificidade do .serie-metric-input (ver comentário
+   lá em cima): a baseline de tema (html[data-theme] .coach-app-typography …)
+   empata e vence por ter um seletor "html" a mais. Repete o prefixo aqui. */
+html[data-theme="light"] .coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+),
+html[data-theme="dark"] .coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  border: none !important;
+  background: transparent !important;
 }
 
 .coach-app-typography .field-flat-input :is(
@@ -2074,7 +2146,7 @@ html.dark .coach-list-kpi-card {
 .coach-chrome-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 300;
   overflow-x: clip;
 }
 
@@ -2396,7 +2468,7 @@ html.dark .perfil-page .perfil-camera-btn svg {
 }
 
 .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact.filter-control-search {
-  padding-left: 30px !important;
+  padding-left: 34px !important;
 }
 
 /* iOS dá zoom ao focar inputs < 16px — no mobile a fonte volta a 16px */

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { CaretDown, Check } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 import { BackButton } from "@/app/components/ui/BackButton";
-import { AUTH_UNDERLINE_INPUT } from "@/lib/auth/authFormStyles";
 
 interface AlunoOption {
   id: string;
@@ -78,12 +77,11 @@ function AlunoSelectInline({
         aria-expanded={open}
         aria-label="Selecionar aluno"
         className={cn(
-          AUTH_UNDERLINE_INPUT,
-          "flex items-center justify-between gap-2 text-left cursor-pointer disabled:cursor-not-allowed",
+          "w-full flex items-center justify-between gap-2 bg-transparent border-0 p-0 text-left cursor-pointer disabled:cursor-not-allowed",
           selected ? "text-text-primary" : "text-text-disabled font-normal",
         )}
       >
-        <span className="truncate text-[15px] font-medium">{label}</span>
+        <span className="truncate text-sm font-medium">{label}</span>
         <CaretDown
           size={14}
           weight="bold"
@@ -165,40 +163,50 @@ export function WorkoutBuilderHeader({
       <div className="sticky top-0 z-20 bg-surface-0 border-0 py-3">
         <div className="flex items-start gap-2">
           <BackButton onClick={onBack} className="mt-0.5" />
-          <div className="min-w-0 flex-1 flex flex-col">
-            <input
-              type="text"
-              value={nomeRotina}
-              onChange={(e) => onRotinaChange(e.target.value)}
-              placeholder="nome da rotina"
-              aria-label="Nome da rotina"
-              className={cn(AUTH_UNDERLINE_INPUT, "h-10 font-semibold")}
-            />
-            {alunoLocked ? (
-              <span
-                className={cn(
-                  AUTH_UNDERLINE_INPUT,
-                  "flex items-center h-10 text-[13px] font-medium text-brand",
-                )}
-              >
-                {alunoLabel || "selecione um aluno"}
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenAlunoPicker}
-                className={cn(
-                  "w-full h-10 flex items-center justify-between gap-2 bg-transparent border-0 border-b border-black/15 rounded-none px-0 text-left cursor-pointer",
-                  hasAluno ? "text-brand font-medium" : "text-text-disabled font-normal",
-                )}
-                aria-label="Selecionar aluno"
-              >
-                <span className="truncate text-[13px]">
-                  {hasAluno ? alunoLabel : "selecione um aluno"}
+          <div className="field-flat-input min-w-0 flex-1 flex flex-col rounded-2xl border border-border-subtle bg-surface-1 overflow-visible">
+            <div className="px-3.5 py-2.5 border-b border-border-divider">
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-text-tertiary mb-1">
+                Nome da rotina
+              </label>
+              <input
+                type="text"
+                value={nomeRotina}
+                onChange={(e) => onRotinaChange(e.target.value)}
+                placeholder="Ex.: Treino A — Peito e tríceps"
+                aria-label="Nome da rotina"
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                data-bwignore
+                className="w-full appearance-none bg-transparent border-0 rounded-none p-0 text-[13px] font-semibold text-text-primary placeholder:text-text-disabled placeholder:font-normal focus:outline-none focus:ring-0"
+                style={{ border: "none", boxShadow: "none", outline: "none" }}
+              />
+            </div>
+            <div className="px-3.5 py-2.5">
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-text-tertiary mb-1">
+                Aluno
+              </label>
+              {alunoLocked ? (
+                <span className="flex items-center text-[13px] font-medium text-brand">
+                  {alunoLabel || "selecione um aluno"}
                 </span>
-                <CaretDown size={12} weight="bold" className="text-brand shrink-0" />
-              </button>
-            )}
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenAlunoPicker}
+                  className={cn(
+                    "w-full flex items-center justify-between gap-2 bg-transparent border-0 p-0 text-left cursor-pointer",
+                    hasAluno ? "text-brand font-medium" : "text-text-disabled font-normal",
+                  )}
+                  aria-label="Selecionar aluno"
+                >
+                  <span className="truncate text-[13px]">
+                    {hasAluno ? alunoLabel : "selecione um aluno"}
+                  </span>
+                  <CaretDown size={12} weight="bold" className="text-brand shrink-0" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -207,34 +215,48 @@ export function WorkoutBuilderHeader({
 
   return (
     <div className="sticky top-0 z-20 bg-surface-0 border-0 px-4 md:px-0 py-3 mb-4">
-      <div className="flex items-start gap-3">
-        <BackButton onClick={onBack} className="mt-2 shrink-0" />
+      <div className="flex flex-col gap-2">
+        <BackButton onClick={onBack} className="self-start" />
 
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <input
-            type="text"
-            value={nomeRotina}
-            onChange={(e) => onRotinaChange(e.target.value)}
-            placeholder="nome da rotina"
-            aria-label="Nome da rotina"
-            className={cn(AUTH_UNDERLINE_INPUT, "font-semibold")}
-          />
-          {alunoLocked ? (
-            <span
-              className={cn(
-                AUTH_UNDERLINE_INPUT,
-                "flex items-center text-sm font-medium text-brand",
-              )}
-            >
-              {alunoLabel || "selecione um aluno"}
-            </span>
-          ) : (
-            <AlunoSelectInline
-              alunos={alunos}
-              value={alunoSelecionado}
-              onChange={onAlunoChange}
+        <div className="field-flat-input min-w-0 flex flex-col rounded-2xl border border-border-subtle bg-surface-1 overflow-visible">
+          <div className="px-4 py-3 border-b border-border-divider">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary mb-1">
+              Nome da rotina
+            </label>
+            <input
+              type="text"
+              value={nomeRotina}
+              onChange={(e) => onRotinaChange(e.target.value)}
+              placeholder="Ex.: Treino A — Peito e tríceps"
+              aria-label="Nome da rotina"
+              autoComplete="off"
+              spellCheck={false}
+              data-1p-ignore
+              data-lpignore="true"
+              data-bwignore
+              data-gramm="false"
+              data-gramm_editor="false"
+              data-enable-grammarly="false"
+              className="w-full appearance-none bg-transparent border-0 rounded-none p-0 text-sm font-semibold text-text-primary placeholder:text-text-disabled placeholder:font-normal focus:outline-none focus:ring-0"
+              style={{ border: "none", boxShadow: "none", outline: "none" }}
             />
-          )}
+          </div>
+          <div className="px-4 py-3">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary mb-1">
+              Aluno
+            </label>
+            {alunoLocked ? (
+              <span className="flex items-center text-sm font-medium text-brand">
+                {alunoLabel || "selecione um aluno"}
+              </span>
+            ) : (
+              <AlunoSelectInline
+                alunos={alunos}
+                value={alunoSelecionado}
+                onChange={onAlunoChange}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

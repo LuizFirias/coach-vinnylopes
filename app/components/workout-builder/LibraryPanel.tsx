@@ -90,7 +90,7 @@ export function LibraryPanel({
   return (
     <div
       className={cn(
-        "flex flex-col h-full overflow-hidden bg-surface-1 transition-shadow",
+        "flex flex-col h-full bg-surface-1 transition-shadow",
         pickMode && "ring-2 ring-brand shadow-[0_0_48px_rgba(117, 27, 180,0.35)]",
       )}
     >
@@ -216,9 +216,14 @@ export function LibraryPanel({
                 <Plus size={12} weight="bold" />
               </span>
 
-              <span className="relative w-9 h-9 shrink-0 flex items-center justify-center">
-                {hasVid ? (
-                  <Play size={16} weight="fill" className="text-brand" />
+              <span className="relative w-9 h-9 shrink-0 flex items-center justify-center overflow-hidden rounded-lg">
+                {ex.imagem_url || ex.gif_url ? (
+                  <img
+                    src={ex.imagem_url || ex.gif_url}
+                    alt=""
+                    aria-hidden
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <Barbell size={16} className="text-text-disabled" />
                 )}
@@ -234,6 +239,16 @@ export function LibraryPanel({
                   {blocked ? " · exercício A" : ""}
                 </p>
               </div>
+
+              {hasVid && (
+                <span
+                  aria-hidden
+                  title="Possui demonstração em vídeo"
+                  className="w-6 h-6 shrink-0 flex items-center justify-center ml-1 text-brand"
+                >
+                  <Play size={14} weight="fill" />
+                </span>
+              )}
             </button>
           );
         })}

@@ -28,6 +28,7 @@ import { secondsToDescanso } from '@/lib/utils/restTime';
 import { digitsFromTempoInput, digitsToSeconds, digitsToMMSS } from '@/lib/utils/tempoInput';
 import { getSeriesGridCols, GRID_COLS_HISTORICO, GRID_COLS_HISTORICO_NO_PESO } from '@/lib/utils/seriesGrid';
 import { parsePesoInput, formatPesoDisplay } from '@/lib/utils/pesoInput';
+import { getPublicR2Url } from '@/lib/r2/urls';
 import type { WorkoutBlock } from '@/lib/utils/biset';
 import {
   buildWorkoutBlocksFromConfig,
@@ -136,6 +137,7 @@ interface ExercicioState {
   descanso: number;
   video_url?: string;
   gif_url?: string;
+  imagem_url?: string;
   observacoes?: string;
   grupo_muscular?: string;
   equipamento?: string;
@@ -573,9 +575,11 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
             Descanso: {formatRestTime(exercicio.descanso)}
           </p>
         </div>
-        {exercicio.gif_url ? (
+        {exercicio.imagem_url || exercicio.gif_url ? (
           <img
-            src={exercicio.gif_url}
+            // Miniatura estática (1º frame) — cai pro GIF animado se o exercício
+            // ainda não tem a miniatura gerada (compatibilidade com dados antigos).
+            src={exercicio.imagem_url || exercicio.gif_url}
             alt={exercicio.nome}
             className="rounded-lg object-cover flex-shrink-0"
             style={{ width: 48, height: 48, background: 'var(--surface-0)' }}
@@ -850,12 +854,12 @@ export default function ExecucaoTreinoPage() {
 
       const exercicioIds = collectBibliotecaIds(exerciciosConfig);
 
-      // Biblioteca + última sessão por exercício (cargas "Anterior") em paralelo
-      const [{ data: bibData }, { data: historicoPorExercicio }] = await Promise.all([
+      // Biblioteca + última sessão por exercício (cargas "Anterior") + gênero do aluno em paralelo
+      const [{ data: bibData }, { data: historicoPorExercicio }, { data: alunoProfile }] = await Promise.all([
         exercicioIds.length > 0
           ? supabaseClient
               .from('exercicios_biblioteca')
-              .select('id, grupo_muscular, gif_url, video_url, equipamento')
+              .select('id, grupo_muscular, gif_url, gif_url_feminino, imagem_url, imagem_url_feminino, video_url, equipamento')
               .in('id', exercicioIds)
           : Promise.resolve({ data: null as null }),
         exercicioIds.length > 0
@@ -867,13 +871,23 @@ export default function ExecucaoTreinoPage() {
               .order('data_conclusao', { ascending: false })
               .limit(Math.max(exercicioIds.length * 10, 50))
           : Promise.resolve({ data: null as null }),
+        supabaseClient.from('profiles').select('sexo').eq('id', uid).maybeSingle(),
       ]);
 
       const gruposMusculares: Record<string, string> = Object.fromEntries(
         (bibData || []).map(ex => [ex.id, ex.grupo_muscular || ''])
       );
       const gifsExercicios: Record<string, string> = Object.fromEntries(
-        (bibData || []).map(ex => [ex.id, ex.gif_url || ''])
+        (bibData || []).map(ex => [ex.id, getPublicR2Url(ex.gif_url) || ''])
+      );
+      const gifsFemininosExercicios: Record<string, string> = Object.fromEntries(
+        (bibData || []).map(ex => [ex.id, getPublicR2Url(ex.gif_url_feminino) || ''])
+      );
+      const imagensExercicios: Record<string, string> = Object.fromEntries(
+        (bibData || []).map(ex => [ex.id, getPublicR2Url(ex.imagem_url) || ''])
+      );
+      const imagensFemininasExercicios: Record<string, string> = Object.fromEntries(
+        (bibData || []).map(ex => [ex.id, getPublicR2Url(ex.imagem_url_feminino) || ''])
       );
       const videosBiblioteca: Record<string, string> = Object.fromEntries(
         (bibData || []).map(ex => [ex.id, ex.video_url || ''])
@@ -892,9 +906,13 @@ export default function ExecucaoTreinoPage() {
       const blocksState = buildWorkoutBlocksFromConfig(exerciciosConfig, {
         gruposMusculares,
         gifs: gifsExercicios,
+        gifsFemininos: gifsFemininosExercicios,
+        imagens: imagensExercicios,
+        imagensFemininas: imagensFemininasExercicios,
         videos: videosBiblioteca,
         equipamentos: equipamentosBiblioteca,
         ultimoPorExercicio,
+        generoAluno: alunoProfile?.sexo ?? null,
       });
 
       const mergeSavedIntoBlocks = (base: WorkoutBlock[], savedFlat: ExercicioState[]): WorkoutBlock[] => {

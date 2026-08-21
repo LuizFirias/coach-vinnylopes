@@ -20,10 +20,15 @@ export interface ExercicioFicha {
   tipo_exercicio: string;
   descanso: string;
   video_url: string;
+  gif_url?: string;
+  gif_url_feminino?: string;
   imagem_url?: string;
+  imagem_url_feminino?: string;
   observacoes: string;
   series: SerieDefinicao[];
   biset_parceiro_id?: string;
+  /** Segue a pré-configuração global de SET/REPS — false assim que o coach ajusta esse exercício na mão. */
+  usaPreConfig?: boolean;
 }
 
 export interface ColunaSerie {

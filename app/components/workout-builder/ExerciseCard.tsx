@@ -65,9 +65,14 @@ export function ExerciseCard({
           <DotsSixVertical size={15} />
         </button>
 
-        <span className="shrink-0 w-9 h-9 flex items-center justify-center">
-          {hasVideo ? (
-            <Play size={16} weight="fill" className="text-brand" />
+        <span className="shrink-0 w-9 h-9 flex items-center justify-center overflow-hidden rounded-lg">
+          {exercicio.imagem_url || exercicio.gif_url ? (
+            <img
+              src={exercicio.imagem_url || exercicio.gif_url}
+              alt=""
+              aria-hidden
+              className="w-full h-full object-cover"
+            />
           ) : (
             <Barbell size={16} className="text-brand" />
           )}
@@ -77,13 +82,19 @@ export function ExerciseCard({
           <p
             className={cn(
               "min-w-0 flex-1 font-semibold text-text-primary truncate",
-              isMobile ? "text-[11px] leading-snug whitespace-normal break-words" : "text-sm",
+              isMobile ? "text-[11px] leading-snug" : "text-sm",
             )}
             title={exercicio.nome}
           >
             {exercicio.nome}
           </p>
         </div>
+
+        {hasVideo && (
+          <span className="shrink-0 w-6 h-6 flex items-center justify-center ml-1">
+            <Play size={16} weight="fill" className="text-brand" />
+          </span>
+        )}
 
         <div className="flex items-center gap-1 shrink-0 relative">
           <RestBadge
@@ -120,16 +131,6 @@ export function ExerciseCard({
           )}
         </div>
       </div>
-
-      {exercicio.imagem_url && (
-        <div className="overflow-hidden">
-          <img
-            src={exercicio.imagem_url}
-            alt={`Demonstração de ${exercicio.nome}`}
-            className="w-full h-40 object-cover"
-          />
-        </div>
-      )}
 
       <div className="px-3 py-2.5 space-y-0.5 overflow-x-auto">
         <div className="min-w-[min(100%,340px)]">
