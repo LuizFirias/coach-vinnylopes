@@ -27,6 +27,7 @@ import { CANONICAL_MUSCLE_GROUPS } from "@/lib/constants/muscle-groups";
 import { CANONICAL_EQUIPMENTS } from "@/lib/constants/equipment";
 import { textEquals, textIncludes } from "@/lib/utils/textNormalize";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { getPublicR2Url } from "@/lib/r2/urls";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -36,8 +37,10 @@ interface Exercicio {
   grupo_muscular: string;
   video_url?: string;
   gif_url?: string;
+  gif_url_feminino?: string;
   descricao?: string;
   imagem_url?: string;
+  imagem_url_feminino?: string;
   equipamento?: string;
   musculos_secundarios?: string;
   tipo_exercicio?: string;
@@ -81,14 +84,16 @@ export default function BibliotecaExerciciosPage() {
   const [modoEdicao, setModoEdicao] = useState(false);
   const [exercicioEditando, setExercicioEditando] = useState<Exercicio | null>(null);
   const [formData, setFormData] = useState({
-    nome: "", grupo_muscular: "", video_url: "", gif_url: "",
+    nome: "", grupo_muscular: "", video_url: "", gif_url: "", gif_url_feminino: "",
+    imagem_url: "", imagem_url_feminino: "",
     descricao: "", equipamento: "", musculos_secundarios: "", tipo_exercicio: "",
   });
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
-  
+
   const inputGifRef = useRef<HTMLInputElement>(null);
+  const inputGifFemininoRef = useRef<HTMLInputElement>(null);
   const gruposScrollRef = useRef<HTMLDivElement>(null);
-  const [uploadingGif, setUploadingGif] = useState(false);
+  const [uploadingGif, setUploadingGif] = useState<"padrao" | "feminino" | null>(null);
   const [canScrollGruposLeft, setCanScrollGruposLeft] = useState(false);
   const [canScrollGruposRight, setCanScrollGruposRight] = useState(false);
 
@@ -185,7 +190,11 @@ export default function BibliotecaExerciciosPage() {
   const abrirModalNovo = () => {
     setModoEdicao(false);
     setExercicioEditando(null);
-    setFormData({ nome: "", grupo_muscular: "", video_url: "", gif_url: "", descricao: "", equipamento: "", musculos_secundarios: "", tipo_exercicio: "" });
+    setFormData({
+      nome: "", grupo_muscular: "", video_url: "", gif_url: "", gif_url_feminino: "",
+      imagem_url: "", imagem_url_feminino: "",
+      descricao: "", equipamento: "", musculos_secundarios: "", tipo_exercicio: "",
+    });
     setErroValidacao(null);
     setModalAberto(true);
   };
@@ -198,6 +207,9 @@ export default function BibliotecaExerciciosPage() {
       grupo_muscular: exercicio.grupo_muscular,
       video_url: exercicio.video_url || "",
       gif_url: exercicio.gif_url || "",
+      gif_url_feminino: exercicio.gif_url_feminino || "",
+      imagem_url: exercicio.imagem_url || "",
+      imagem_url_feminino: exercicio.imagem_url_feminino || "",
       descricao: exercicio.descricao || "",
       equipamento: exercicio.equipamento || "",
       musculos_secundarios: exercicio.musculos_secundarios || "",
@@ -207,10 +219,8 @@ export default function BibliotecaExerciciosPage() {
     setModalAberto(true);
   };
 
-  const handleGifUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  /** Sobe pro R2 (via rota de servidor) — gera a miniatura estática (1º frame) automaticamente. */
+  const uploadGif = async (file: File, genero: "padrao" | "feminino") => {
     if (!['image/gif', 'image/webp'].includes(file.type)) {
       alert("Apenas arquivos GIF ou WebP animado são permitidos.");
       return;
@@ -221,32 +231,53 @@ export default function BibliotecaExerciciosPage() {
     }
 
     try {
-      setUploadingGif(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${coachId || 'admin'}_exercise_${Date.now()}.${fileExt}`;
+      setUploadingGif(genero);
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const accessToken = session?.access_token || "";
 
-      const { error: uploadError } = await supabaseClient.storage
-        .from('exercicios-gifs')
-        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("genero", genero);
 
-      if (uploadError) throw uploadError;
+      const res = await fetch("/api/admin/upload-exercicio-media", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Falha no upload");
 
-      const { data: { publicUrl } } = supabaseClient.storage
-        .from('exercicios-gifs')
-        .getPublicUrl(fileName);
-
-      setFormData(prev => ({ ...prev, gif_url: publicUrl }));
+      if (genero === "feminino") {
+        setFormData(prev => ({ ...prev, gif_url_feminino: json.gifKey, imagem_url_feminino: json.posterKey || "" }));
+      } else {
+        setFormData(prev => ({ ...prev, gif_url: json.gifKey, imagem_url: json.posterKey || "" }));
+      }
     } catch (err) {
       console.error("Erro no upload do GIF:", err);
       alert("Erro ao enviar o GIF. Tente novamente.");
     } finally {
-      setUploadingGif(false);
+      setUploadingGif(null);
     }
   };
 
+  const handleGifUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void uploadGif(file, "padrao");
+  };
+
+  const handleGifUploadFeminino = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void uploadGif(file, "feminino");
+  };
+
   const removerGif = () => {
-    setFormData(prev => ({ ...prev, gif_url: "" }));
+    setFormData(prev => ({ ...prev, gif_url: "", imagem_url: "" }));
     if (inputGifRef.current) inputGifRef.current.value = "";
+  };
+
+  const removerGifFeminino = () => {
+    setFormData(prev => ({ ...prev, gif_url_feminino: "", imagem_url_feminino: "" }));
+    if (inputGifFemininoRef.current) inputGifFemininoRef.current.value = "";
   };
 
   const fecharModal = () => {
@@ -282,6 +313,9 @@ export default function BibliotecaExerciciosPage() {
         musculos_secundarios: formData.musculos_secundarios.trim() || null,
         video_url: videoId ? `https://youtube.com/embed/${videoId}` : null,
         gif_url: formData.gif_url.trim() || null,
+        gif_url_feminino: formData.gif_url_feminino.trim() || null,
+        imagem_url: formData.imagem_url.trim() || null,
+        imagem_url_feminino: formData.imagem_url_feminino.trim() || null,
         descricao: formData.descricao.trim() || null,
       };
 
@@ -631,16 +665,16 @@ export default function BibliotecaExerciciosPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-brand">GIF de demonstração (opcional)</label>
-                
-                {uploadingGif ? (
+                <label className="text-xs font-medium text-brand">GIF de demonstração — padrão (opcional)</label>
+
+                {uploadingGif === "padrao" ? (
                   <div className="border border-dashed border-border-default rounded-xl p-6 flex flex-col items-center justify-center gap-2 bg-surface-3">
                     <CircleNotch className="w-5 h-5 animate-spin text-brand" />
                     <p className="text-xs text-text-secondary">Enviando arquivo...</p>
                   </div>
                 ) : formData.gif_url ? (
                   <div className="relative rounded-xl overflow-hidden border-0 aspect-video bg-surface-3 flex items-center justify-center">
-                    <img src={formData.gif_url} alt="Demonstração" className="max-h-full object-contain" />
+                    <img src={getPublicR2Url(formData.gif_url) ?? undefined} alt="Demonstração" className="max-h-full object-contain" />
                     <button
                       type="button"
                       onClick={removerGif}
@@ -662,13 +696,55 @@ export default function BibliotecaExerciciosPage() {
                     </p>
                   </div>
                 )}
-                
+
                 <input
                   ref={inputGifRef}
                   type="file"
                   accept="image/gif,image/webp"
                   className="hidden"
                   onChange={handleGifUpload}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-brand">GIF de demonstração — feminino (opcional)</label>
+
+                {uploadingGif === "feminino" ? (
+                  <div className="border border-dashed border-border-default rounded-xl p-6 flex flex-col items-center justify-center gap-2 bg-surface-3">
+                    <CircleNotch className="w-5 h-5 animate-spin text-brand" />
+                    <p className="text-xs text-text-secondary">Enviando arquivo...</p>
+                  </div>
+                ) : formData.gif_url_feminino ? (
+                  <div className="relative rounded-xl overflow-hidden border-0 aspect-video bg-surface-3 flex items-center justify-center">
+                    <img src={getPublicR2Url(formData.gif_url_feminino) ?? undefined} alt="Demonstração feminino" className="max-h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={removerGifFeminino}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-surface-0/80 border-0 flex items-center justify-center hover:bg-surface-1 transition-colors"
+                      title="Remover GIF feminino"
+                    >
+                      <X className="w-3.5 h-3.5 text-text-primary" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => inputGifFemininoRef.current?.click()}
+                    className="border border-dashed border-border-default rounded-xl p-6 flex flex-col items-center gap-2 bg-surface-3 cursor-pointer hover:border-brand/40 hover:bg-brand/5 transition-all"
+                  >
+                    <UploadSimple className="w-5 h-5 text-text-tertiary" />
+                    <p className="text-xs text-text-secondary text-center">
+                      Clique para enviar GIF ou WebP animado (versão feminina)<br/>
+                      <span className="text-2xs text-text-tertiary">Máximo 2MB · 480×480px mínimo</span>
+                    </p>
+                  </div>
+                )}
+
+                <input
+                  ref={inputGifFemininoRef}
+                  type="file"
+                  accept="image/gif,image/webp"
+                  className="hidden"
+                  onChange={handleGifUploadFeminino}
                 />
               </div>
 
