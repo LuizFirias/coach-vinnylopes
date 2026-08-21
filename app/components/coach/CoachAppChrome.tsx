@@ -18,7 +18,10 @@ function shouldHideChrome(pathname: string): boolean {
   return (
     pathname.startsWith("/admin/boas-vindas") ||
     pathname.startsWith("/admin/preview-aluno") ||
-    pathname.startsWith("/admin/trocar-senha")
+    pathname.startsWith("/admin/trocar-senha") ||
+    // Tela já tem seu próprio cabeçalho ("Biblioteca de Exercícios") —
+    // a faixa superior do desktop ficava duplicando o título.
+    pathname.startsWith("/admin/biblioteca-exercicios")
   );
 }
 
