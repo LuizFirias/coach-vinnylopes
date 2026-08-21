@@ -129,7 +129,7 @@ export function CoachAppChrome({ children }: { children: React.ReactNode }) {
         className={cn(
           // Título e ações são desktop-only agora (ver abaixo) — a barra inteira
           // some no mobile, sem faixa vazia sobrando.
-          "coach-chrome-header sticky top-0 z-50 isolate hidden w-full max-w-full overflow-x-clip border-b border-border-subtle/40 bg-surface-0/95 backdrop-blur-md lg:flex lg:overflow-visible",
+          "coach-chrome-header sticky top-0 z-[300] isolate hidden w-full max-w-full overflow-x-clip border-b border-border-subtle/40 bg-surface-0/95 backdrop-blur-md lg:flex lg:overflow-visible",
           pathname.startsWith("/admin/aluno/") && "coach-chrome-header--compact",
         )}
       >

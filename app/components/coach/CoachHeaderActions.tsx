@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   Bell,
@@ -76,7 +77,13 @@ export function CoachHeaderActions({
   const [pushBusy, setPushBusy] = useState(false);
   const [pushUnsupported, setPushUnsupported] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
   const notifBtnRef = useRef<HTMLButtonElement>(null);
+  // Portal (document.body) — igual ao painel de notificações: preso na
+  // árvore normal, o menu fica na stacking context do header (com
+  // backdrop-blur) e o Chrome às vezes o desenha por baixo de cards com
+  // glass/blur na página (ex.: KPIs).
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   const displayName = (userName ?? "").trim() || "Coach";
   const hasCount = chatNaoLidas > 0;
@@ -99,7 +106,10 @@ export function CoachHeaderActions({
   useEffect(() => {
     if (!menuOpen) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      const t = e.target as Node;
+      if (menuRef.current?.contains(t)) return;
+      if (menuBtnRef.current?.contains(t)) return;
+      setMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
@@ -109,6 +119,25 @@ export function CoachHeaderActions({
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const updatePos = () => {
+      const rect = menuBtnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({
+        top: rect.bottom + 8,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    };
+    updatePos();
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
+    return () => {
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
     };
   }, [menuOpen]);
 
@@ -196,8 +225,9 @@ export function CoachHeaderActions({
         />
       </div>
 
-      <div ref={menuRef} className="relative min-w-0 max-w-[min(100%,18rem)]">
+      <div className="relative min-w-0 max-w-[min(100%,18rem)]">
         <button
+          ref={menuBtnRef}
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
@@ -236,10 +266,12 @@ export function CoachHeaderActions({
           </span>
         </button>
 
-        {menuOpen && (
+        {menuOpen && menuPos && typeof document !== "undefined" && createPortal(
           <div
+            ref={menuRef}
             role="menu"
-            className="absolute left-0 top-[calc(100%+8px)] z-50 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl bg-surface-1 py-1 shadow-elev-3 sm:left-auto sm:right-0"
+            className="fixed z-300 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl bg-surface-1 py-1 shadow-elev-3"
+            style={{ top: menuPos.top, right: menuPos.right }}
           >
             {MENU_LINKS.map(({ label, href, icon: Icon }) => (
               <Link
@@ -275,7 +307,8 @@ export function CoachHeaderActions({
                 Encerrar sessão
               </span>
             </button>
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     </div>

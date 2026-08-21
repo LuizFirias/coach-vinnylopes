@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Barbell, Bell, Camera, ChatCircle, ForkKnife, X } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
@@ -58,6 +59,11 @@ export function CoachNotificationsPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [notifs, setNotifs] = useState<Notificacao[]>([]);
+  // Popover desktop sai via portal (documento.body) — dentro da árvore normal
+  // ele fica preso na stacking context do header (backdrop-blur cria uma
+  // nova, e o Chrome às vezes desrespeita z-index entre contexts assim),
+  // abrindo por baixo de cards com blur/glass na página (ex.: KPIs).
+  const [popoverPos, setPopoverPos] = useState<{ top: number; right: number } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,6 +90,25 @@ export function CoachNotificationsPanel({
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open || isMobile) return;
+    const updatePos = () => {
+      const rect = anchorRef?.current?.getBoundingClientRect();
+      if (!rect) return;
+      setPopoverPos({
+        top: rect.bottom + 8,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    };
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+    return () => {
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [open, isMobile, anchorRef]);
 
   useEffect(() => {
     if (!open || isMobile) return;
@@ -244,16 +269,19 @@ export function CoachNotificationsPanel({
   );
 
   if (usePopover) {
-    return (
+    if (!popoverPos || typeof document === 'undefined') return null;
+    return createPortal(
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="false"
         aria-labelledby="coach-notif-panel-title"
-        className="absolute right-0 top-[calc(100%+8px)] z-[60] w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-0 bg-surface-1 shadow-[0_12px_40px_rgba(0,0,0,0.28)]"
+        className="fixed z-300 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-0 bg-surface-1 shadow-[0_12px_40px_rgba(0,0,0,0.28)]"
+        style={{ top: popoverPos.top, right: popoverPos.right }}
       >
         {panelBody}
-      </div>
+      </div>,
+      document.body,
     );
   }
 
