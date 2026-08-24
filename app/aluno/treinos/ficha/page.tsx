@@ -1022,6 +1022,7 @@ function FichaContent() {
                                     inputMode="decimal"
                                     value={serie.pesoInputStr ?? formatPesoDisplay(serie.peso_atual)}
                                     onChange={(e) => handlePesoInputChange(exercicio.id, serie.ordem, e.target.value)}
+                                    onFocus={(e) => e.currentTarget.select()}
                                     disabled={!treinoIniciado || serie.completado}
                                     placeholder="0"
                                     style={{
@@ -1048,7 +1049,7 @@ function FichaContent() {
                                 style={{
                                   fontSize: 12,
                                   fontWeight: 600,
-                                  color: '#751BB4',
+                                  color: 'var(--text-primary)',
                                   textAlign: 'center',
                                   fontVariantNumeric: 'tabular-nums',
                                   fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
@@ -1132,6 +1133,7 @@ function FichaContent() {
                                     inputMode="decimal"
                                     value={serie.pesoInputStr ?? formatPesoDisplay(serie.peso_atual)}
                                     onChange={(e) => handlePesoInputChange(exercicio.id, serie.ordem, e.target.value)}
+                                    onFocus={(e) => e.currentTarget.select()}
                                     disabled={!treinoIniciado}
                                     className={cn(
                                       "w-full h-8 bg-surface-3 border border-input rounded-md text-center text-xs font-semibold focus:border-brand/40 outline-none disabled:opacity-40",
@@ -1155,7 +1157,7 @@ function FichaContent() {
                               )}
                               <div className="flex justify-center">
                                 <div className="w-full h-8 bg-surface-2 border border-card rounded-md flex items-center justify-center">
-                                  <span className="text-xs font-semibold text-brand">{serie.reps || "0"}</span>
+                                  <span className="text-xs font-semibold text-text-primary">{serie.reps || "0"}</span>
                                 </div>
                               </div>
                               <div className="flex justify-end">

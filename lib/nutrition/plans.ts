@@ -444,7 +444,11 @@ export async function loadStudentNutritionPageData(
   agua: { id: string; copos: number; ml_por_copo: number } | null;
   checkins: Array<{ meal_id: string; status: string }>;
 }> {
-  const [planRes, pdfRes, aguaRes, checkinsRes] = await Promise.all([
+  // nutrition_plans usa embed profundo (plano→dias→refeições→itens→alimento) —
+  // o PostgREST já resolve isso numa única query no banco, então continua
+  // separado. As outras 3 são tabelas simples (sem join) e viram 1 RPC só
+  // (get_nutrition_page_extras) — reduz a rajada de 4 conexões pra 2.
+  const [planRes, extrasRes] = await Promise.all([
     client
       .from('nutrition_plans')
       .select(STUDENT_PLAN_DEEP_SELECT)
@@ -454,22 +458,7 @@ export async function loadStudentNutritionPageData(
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    client
-      .from('plano_alimentar_pdf')
-      .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
-      .eq('aluno_id', studentId)
-      .order('criado_em', { ascending: false }),
-    client
-      .from('registros_agua')
-      .select('id, copos, ml_por_copo')
-      .eq('aluno_id', studentId)
-      .eq('data_registro', todayISO)
-      .maybeSingle(),
-    client
-      .from('nutrition_meal_checkins')
-      .select('meal_id, status')
-      .eq('student_id', studentId)
-      .eq('checkin_date', todayISO),
+    client.rpc('get_nutrition_page_extras', { p_aluno_id: studentId, p_today: todayISO }),
   ]);
 
   let digitalPlan: any | null = null;
@@ -480,11 +469,16 @@ export async function loadStudentNutritionPageData(
     digitalPlan = normalizeDeepPlan(planRes.data);
   }
 
+  if (extrasRes.error) {
+    console.warn('[loadStudentNutritionPageData] get_nutrition_page_extras falhou:', extrasRes.error.message);
+  }
+  const extras = (extrasRes.data ?? {}) as Record<string, any>;
+
   return {
     digitalPlan,
-    plansPDF: pdfRes.data ?? [],
-    agua: aguaRes.data ?? null,
-    checkins: checkinsRes.data ?? [],
+    plansPDF: extras.plano_alimentar_pdf ?? [],
+    agua: extras.registros_agua ?? null,
+    checkins: extras.nutrition_meal_checkins ?? [],
   };
 }
 

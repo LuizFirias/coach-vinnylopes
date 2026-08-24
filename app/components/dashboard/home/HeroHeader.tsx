@@ -114,7 +114,7 @@ function HabitBar({
             >
               {habit.value}
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-wide dashboard-text-subtle">
+            <span className="text-[10px] font-medium uppercase tracking-wide dashboard-hero-text-subtle">
               {habit.label}
             </span>
           </div>
@@ -168,7 +168,7 @@ export function HeroHeader({
               >
                 {hoje}
               </p>
-              <h1 className="mt-0.5 text-xl font-bold dashboard-text">
+              <h1 className="mt-0.5 text-xl font-bold dashboard-hero-text">
                 Olá,{' '}
                 <span style={{ color: 'var(--dash-hero-icon)' }}>{primeiroNome}</span>
               </h1>

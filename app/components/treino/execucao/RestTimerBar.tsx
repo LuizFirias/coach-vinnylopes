@@ -79,14 +79,6 @@ export function RestTimerBar({
             </button>
             <button
               type="button"
-              onClick={() => onAddSeconds(15)}
-              className="h-10 flex-1 rounded-xl border border-card bg-surface-1 text-xs font-bold text-text-primary transition-colors [@media(hover:hover)]:hover:bg-[#1a1a1a]"
-              style={{ touchAction: 'manipulation' }}
-            >
-              +15
-            </button>
-            <button
-              type="button"
               onClick={() => {
                 haptic('light');
                 onSkip();
@@ -94,7 +86,15 @@ export function RestTimerBar({
               className="h-10 flex-[1.4] rounded-xl bg-brand text-xs font-bold text-text-on-brand shadow-sm shadow-brand/30 transition-opacity [@media(hover:hover)]:hover:opacity-90"
               style={{ touchAction: 'manipulation' }}
             >
-              Skip
+              Pular
+            </button>
+            <button
+              type="button"
+              onClick={() => onAddSeconds(15)}
+              className="h-10 flex-1 rounded-xl border border-card bg-surface-1 text-xs font-bold text-text-primary transition-colors [@media(hover:hover)]:hover:bg-[#1a1a1a]"
+              style={{ touchAction: 'manipulation' }}
+            >
+              +15
             </button>
           </div>
         </div>

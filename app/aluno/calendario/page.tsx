@@ -28,11 +28,12 @@ function getISOString(date: Date | null): string {
   return `${y}-${m}-${d}`;
 }
 
+// Recebe a chave "YYYY-MM-DD" já resolvida pro fuso de Brasília (ver comentário
+// em workoutsByDate) — não reconverte, só formata por extenso.
 function formatWorkoutDate(isoString: string) {
-  const dateKey = toWorkoutDateKey(isoString);
-  if (!dateKey) return "";
-  const parts = dateKey.split("-").map(Number);
-  if (parts.length < 3) return dateKey;
+  if (!isoString) return "";
+  const parts = isoString.split("-").map(Number);
+  if (parts.length < 3) return isoString;
   const date = new Date(parts[0], parts[1] - 1, parts[2]);
   const formatted = date.toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -176,10 +177,15 @@ export default function AlunoCalendario() {
     setSelectedDayISO(null);
   };
 
+  // `w.data_conclusao` aqui já é a chave "YYYY-MM-DD" (fetchHistory já converteu
+  // pra fuso de Brasília ao agrupar as sessões) — NÃO passar de novo por
+  // toWorkoutDateKey: uma string só-data é interpretada como meia-noite UTC,
+  // e reconvertida pro fuso de Brasília isso "volta" um dia (ex.: treino feito
+  // dia 22 às 10h aparecia marcado no dia 21 no calendário).
   const workoutsByDate = useMemo(() => {
     const map = new Map<string, WorkoutSession[]>();
     workouts.forEach((w) => {
-      const key = toWorkoutDateKey(w.data_conclusao);
+      const key = w.data_conclusao;
       if (!key) return;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(w);

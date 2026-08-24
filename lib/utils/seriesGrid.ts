@@ -32,9 +32,9 @@ const GRID_COLS_SERIES_WITH_ANT_DESKTOP_NO_PESO_NO_EXTRA = '36px minmax(64px, 11
 const GRID_COLS_SERIES_NO_ANT_MOBILE_NO_PESO_NO_EXTRA = '28px minmax(48px, 96px) minmax(0, 1fr) 32px';
 const GRID_COLS_SERIES_NO_ANT_DESKTOP_NO_PESO_NO_EXTRA = '36px minmax(52px, 104px) minmax(0, 1fr) 36px';
 
-// Histórico: SET ANT PESO REPS ·spacer· TÉC
-export const GRID_COLS_HISTORICO = '28px minmax(48px, 88px) minmax(44px, 60px) minmax(44px, 72px) minmax(0, 1fr) 64px';
-export const GRID_COLS_HISTORICO_NO_PESO = '28px minmax(48px, 88px) minmax(44px, 72px) minmax(0, 1fr) 64px';
+// Histórico: SET ANT PESO REPS ·spacer· TÉC CHECK
+export const GRID_COLS_HISTORICO = '28px minmax(48px, 88px) minmax(44px, 60px) minmax(44px, 72px) minmax(0, 1fr) 64px 28px';
+export const GRID_COLS_HISTORICO_NO_PESO = '28px minmax(48px, 88px) minmax(44px, 72px) minmax(0, 1fr) 64px 28px';
 
 export function getSeriesGridCols(showAnterior: boolean, isDesktop: boolean, showPeso = true, showExtra = true): string {
   if (showAnterior) {

@@ -38,6 +38,7 @@ import { getPublicR2Url } from "@/lib/r2/urls";
 import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { toBrazilDateString } from "@/lib/dateUtils";
+import { secondsToDescanso } from "@/lib/utils/restTime";
 
 const figtree = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
@@ -70,6 +71,8 @@ interface SerieSessao {
   reps_executadas?: string | number;
   peso_atual?: number | null;
   completado?: boolean;
+  tempo_executado_seg?: number | null;
+  is_tempo?: boolean;
 }
 
 interface SessaoHistorico {
@@ -120,17 +123,80 @@ function calcularStatsSessao(dadosSessao: SessaoHistorico["dados_sessao"]) {
   const series = Array.isArray(dadosSessao?.series) ? dadosSessao!.series! : [];
   let pesoMax = 0;
   let umRM = 0;
-  let volume = 0;
+  let volumeKg = 0;
+  let repsMax = 0;
+  let repsTotal = 0;
+  let tempoMax = 0;
+  let tempoTotal = 0;
   for (const s of series) {
     if (s.completado === false) continue;
     const peso = Number(s.peso_atual) || 0;
     const reps = Number(s.reps_executadas ?? s.reps) || 0;
+    const tempo = Number(s.tempo_executado_seg) || 0;
     if (peso > pesoMax) pesoMax = peso;
     const rm = estimarUmRM(peso, reps);
     if (rm > umRM) umRM = rm;
-    volume += peso * reps;
+    volumeKg += peso * reps;
+    if (reps > repsMax) repsMax = reps;
+    repsTotal += reps;
+    if (tempo > tempoMax) tempoMax = tempo;
+    tempoTotal += tempo;
   }
-  return { pesoMax, umRM, volume };
+  return { pesoMax, umRM, volumeKg, repsMax, repsTotal, tempoMax, tempoTotal };
+}
+
+type MetricaKey = keyof ReturnType<typeof calcularStatsSessao>;
+
+interface MetricaConfig {
+  key: MetricaKey;
+  titulo: string;
+  formatar: (v: number) => string;
+}
+
+const formatarKg = (v: number) => `${v.toLocaleString("pt-BR")} kg`;
+const formatarReps = (v: number) => `${v.toLocaleString("pt-BR")} reps`;
+const formatarTempo = (v: number) => secondsToDescanso(v);
+
+const METRICAS_PESO_REPS: MetricaConfig[] = [
+  { key: "pesoMax", titulo: "Peso (kg)", formatar: formatarKg },
+  { key: "umRM", titulo: "1RM estimado (kg)", formatar: formatarKg },
+  { key: "volumeKg", titulo: "Volume por sessão (kg)", formatar: formatarKg },
+];
+
+/** Cada tipo de exercício rastreia grandezas diferentes — o gráfico se adapta ao tipo. */
+function getMetricasPorTipo(tipo: string | undefined): MetricaConfig[] {
+  switch (tipo) {
+    case "Peso & Repetições":
+    case "Peso Corporal com Peso Acrescido":
+      return METRICAS_PESO_REPS;
+    case "Repetições":
+      return [
+        { key: "repsMax", titulo: "Repetições (máx. por série)", formatar: formatarReps },
+        { key: "repsTotal", titulo: "Volume (repetições totais)", formatar: formatarReps },
+      ];
+    case "Duração":
+      return [
+        { key: "tempoMax", titulo: "Duração (máx. por série)", formatar: formatarTempo },
+        { key: "tempoTotal", titulo: "Tempo total na sessão", formatar: formatarTempo },
+      ];
+    case "Duração e Peso":
+      return [
+        { key: "pesoMax", titulo: "Peso (kg)", formatar: formatarKg },
+        { key: "tempoTotal", titulo: "Tempo total na sessão", formatar: formatarTempo },
+      ];
+    case "Distância e Duração":
+      // A execução do aluno ainda não salva distância percorrida — só duração.
+      return [
+        { key: "tempoTotal", titulo: "Tempo total na sessão", formatar: formatarTempo },
+      ];
+    case "Peso e Distância":
+      // Idem — sem distância salva hoje, mostra só o peso.
+      return [
+        { key: "pesoMax", titulo: "Peso (kg)", formatar: formatarKg },
+      ];
+    default:
+      return METRICAS_PESO_REPS;
+  }
 }
 
 // Curva neutra só pra desenhar o gráfico "fake" quando não há dado nenhum.
@@ -388,22 +454,25 @@ export default function BibliotecaExerciciosPage() {
     })();
   }, [selecionado]);
 
-  const statsChartData = useMemo(() => {
-    return {
-      peso: statsSessoes.map((s) => ({
-        label: toBrazilDateString(s.data_conclusao).slice(5).split("-").reverse().join("/"),
-        v: calcularStatsSessao(s.dados_sessao).pesoMax,
-      })),
-      umRM: statsSessoes.map((s) => ({
-        label: toBrazilDateString(s.data_conclusao).slice(5).split("-").reverse().join("/"),
-        v: Math.round(calcularStatsSessao(s.dados_sessao).umRM * 10) / 10,
-      })),
-      volume: statsSessoes.map((s) => ({
-        label: toBrazilDateString(s.data_conclusao).slice(5).split("-").reverse().join("/"),
-        v: Math.round(calcularStatsSessao(s.dados_sessao).volume),
-      })),
-    };
-  }, [statsSessoes]);
+  const metricasAtivas = useMemo(
+    () => getMetricasPorTipo(selecionado?.tipo_exercicio),
+    [selecionado?.tipo_exercicio],
+  );
+
+  const statsPorMetrica = useMemo(() => {
+    const mapa: Record<string, { label: string; v: number }[]> = {};
+    for (const metrica of metricasAtivas) {
+      mapa[metrica.key] = statsSessoes.map((s) => {
+        const valores = calcularStatsSessao(s.dados_sessao);
+        const bruto = valores[metrica.key];
+        return {
+          label: toBrazilDateString(s.data_conclusao).slice(5).split("-").reverse().join("/"),
+          v: Math.round(bruto * 10) / 10,
+        };
+      });
+    }
+    return mapa;
+  }, [statsSessoes, metricasAtivas]);
 
   const abrirModalNovo = () => {
     setModoEdicao(false);
@@ -631,7 +700,7 @@ export default function BibliotecaExerciciosPage() {
             </div>
           </div>
 
-          <div className="w-full sm:w-[180px] sm:ml-auto aspect-square rounded-xl bg-surface-3 flex items-center justify-center overflow-hidden shrink-0">
+          <div className="w-full sm:w-70 sm:ml-auto aspect-square rounded-xl bg-surface-3 flex items-center justify-center overflow-hidden shrink-0">
             {selecionado.gif_url ? (
               <img
                 src={getPublicR2Url(selecionado.gif_url) ?? undefined}
@@ -695,27 +764,16 @@ export default function BibliotecaExerciciosPage() {
                 </div>
               ) : (
                 <>
-                  <StatChart
-                    titulo="Peso (kg)"
-                    dados={statsChartData.peso}
-                    dataKey="v"
-                    formatarValor={(v) => `${v} kg`}
-                    loading={statsLoading}
-                  />
-                  <StatChart
-                    titulo="1RM estimado (kg)"
-                    dados={statsChartData.umRM}
-                    dataKey="v"
-                    formatarValor={(v) => `${v} kg`}
-                    loading={statsLoading}
-                  />
-                  <StatChart
-                    titulo="Volume por sessão (kg)"
-                    dados={statsChartData.volume}
-                    dataKey="v"
-                    formatarValor={(v) => `${v.toLocaleString("pt-BR")} kg`}
-                    loading={statsLoading}
-                  />
+                  {metricasAtivas.map((metrica) => (
+                    <StatChart
+                      key={metrica.key}
+                      titulo={metrica.titulo}
+                      dados={statsPorMetrica[metrica.key] || []}
+                      dataKey="v"
+                      formatarValor={metrica.formatar}
+                      loading={statsLoading}
+                    />
+                  ))}
                 </>
               )}
             </div>

@@ -22,12 +22,10 @@ interface FichaTreino {
   id: string;
   nome_rotina: string;
   criado_em: string;
-  configuracao?: {
-    exercicios?: Array<{
-      nome: string;
-      grupo_muscular?: string;
-    }>;
-  };
+  exercicios?: Array<{
+    nome: string;
+    grupo_muscular?: string;
+  }>;
 }
 
 export default function AlunoTreinosPage() {
@@ -68,24 +66,19 @@ export default function AlunoTreinosPage() {
 
         const uid = user.id;
 
-        const [{ data: fichasData }, { data: pdfsData }] = await Promise.all([
-          supabaseClient
-            .from('fichas_treino')
-            .select('id, nome_rotina, criado_em, configuracao')
-            .eq('aluno_id', uid)
-            .eq('ativo', true)
-            .order('criado_em', { ascending: false }),
-          supabaseClient
-            .from('treinos_alunos')
-            .select('id, aluno_id, url_pdf, nome_arquivo, data_upload')
-            .eq('aluno_id', uid)
-            .order('data_upload', { ascending: false }),
-        ]);
+        // Antes eram 2 requisições, e a de fichas trazia a configuração inteira
+        // (todas as séries/técnicas) só pra montar o resuminho de exercícios do
+        // card. Agora é 1 RPC só, que já devolve só {nome, grupo_muscular} por
+        // exercício — bem mais leve em fichas com muitos exercícios.
+        const { data: listaData, error: listaError } = await supabaseClient
+          .rpc('get_treinos_lista_aluno', { p_aluno_id: uid });
+        if (listaError) throw listaError;
+        const lista = (listaData ?? {}) as Record<string, any>;
 
         setUserId(uid);
-        setFichas(fichasData || []);
+        setFichas(lista.fichas ?? []);
         // URL assinada só quando o aluno abre o PDF — evita 1 request por PDF no boot
-        setTreinosPdf(pdfsData || []);
+        setTreinosPdf(lista.treinos_pdf ?? []);
       } catch {
         setError('Erro ao conectar com o servidor');
       } finally {
@@ -135,7 +128,7 @@ export default function AlunoTreinosPage() {
                 `}
               >
                 {fichas.map((ficha, index) => {
-                  const exercicios = ficha.configuracao?.exercicios ?? [];
+                  const exercicios = ficha.exercicios ?? [];
                   const isLastOddOnTablet =
                     fichas.length % 2 === 1 && index === fichas.length - 1;
 

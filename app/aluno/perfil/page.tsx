@@ -61,30 +61,50 @@ function SettingsRow({
   value,
   onClick,
   danger,
+  truncateStart,
 }: {
   icon?: React.FC<any>;
   label: string;
   value?: string;
   onClick?: () => void;
   danger?: boolean;
+  /** Valor longo (ex.: e-mail): trunca pelo início em vez do final, então se não
+   *  couber tudo é o começo que some — o final (o domínio, @gmail.com) fica sempre
+   *  visível, encostado no canto direito da linha, igual antes. */
+  truncateStart?: boolean;
 }) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <button
-      type="button"
+    <Tag
+      type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-divider last:border-b-0',
-        danger ? 'text-danger hover:text-danger/80' : 'hover:opacity-80'
+        danger ? 'text-danger hover:text-danger/80' : onClick ? 'hover:opacity-80' : ''
       )}
-      style={{ borderColor: 'rgba(41,48,61,0.5)' }}
     >
       {Icon && <Icon className={cn('w-4 h-4 flex-shrink-0', danger ? 'text-danger' : 'text-text-tertiary')} />}
       <span className={cn('flex-1 text-sm', danger ? 'text-danger font-medium' : 'text-text-primary')}>
         {label}
       </span>
-      {value && <span className="text-xs text-text-tertiary mr-1">{value}</span>}
-      {!danger && <CaretRight className="w-4 h-4 text-text-tertiary flex-shrink-0" />}
-    </button>
+      {value && (
+        <span
+          className={cn(
+            'text-xs text-text-tertiary mr-1',
+            truncateStart && 'max-w-[180px] overflow-hidden whitespace-nowrap text-ellipsis'
+          )}
+          // Trunca pelo início preservando o final visível — o texto continua lendo
+          // normalmente da esquerda pra direita, só a reticência de overflow que
+          // passa a "nascer" do lado esquerdo em vez do direito.
+          style={truncateStart ? { direction: 'rtl', textAlign: 'left' } : undefined}
+        >
+          {value}
+        </span>
+      )}
+      {/* Seta só quando o campo pode ser editado (tem onClick) — e-mail e outros
+          campos fixos ficam só com o valor, sem sugerir que dá pra tocar. */}
+      {onClick && !danger && <CaretRight className="w-4 h-4 text-text-tertiary flex-shrink-0" />}
+    </Tag>
   );
 }
 
@@ -95,7 +115,8 @@ function SectionCard({ title, children }: { title: string; children: React.React
       style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
     >
       <div
-        className="px-4 py-2.5 border-b border-divider bg-surface-2"
+        className="px-4 py-2.5 border-b bg-surface-2"
+        style={{ borderColor: 'var(--border-default)' }}
       >
         <span className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">{title}</span>
       </div>
@@ -129,6 +150,7 @@ export default function AlunoPerfil() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -386,18 +408,228 @@ export default function AlunoPerfil() {
   // ── Exportar dados ────────────────────────────────────────────────────────
 
   const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
     try {
       const { data, error } = await supabaseClient.rpc('export_user_data');
       if (error) throw error;
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `meus-dados-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+
+      const nomeAluno = profile?.full_name || 'Atleta';
+      const unidadePeso = (profile?.unidade_peso || 'kg').toUpperCase();
+      const fmtData = (iso?: string | null) =>
+        iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const PURPLE: [number, number, number] = [117, 27, 180];
+      const GRAY: [number, number, number] = [100, 100, 100];
+      let y = 20;
+
+      const ensureSpace = (needed: number) => {
+        if (y + needed > 280) {
+          doc.addPage();
+          y = 20;
+        }
+      };
+
+      const sectionTitle = (title: string) => {
+        ensureSpace(14);
+        doc.setFontSize(13);
+        doc.setTextColor(...PURPLE);
+        doc.text(title, 20, y);
+        doc.setDrawColor(230, 230, 230);
+        doc.line(20, y + 2, 190, y + 2);
+        y += 9;
+      };
+
+      // Header
+      doc.setFontSize(20);
+      doc.setTextColor(40, 40, 40);
+      doc.text('MEUS DADOS', 105, y, { align: 'center' });
+      y += 8;
+      doc.setFontSize(11);
+      doc.setTextColor(...GRAY);
+      doc.text(nomeAluno, 105, y, { align: 'center' });
+      y += 6;
+      doc.setFontSize(9);
+      doc.text(`Exportado em ${fmtData(data.exportado_em)}`, 105, y, { align: 'center' });
+      y += 12;
+
+      // ── Dados pessoais ──
+      sectionTitle('Dados pessoais');
+      const p = data.profile || {};
+      const dadosPessoais = [
+        ['Nome', p.full_name || '—'],
+        ['E-mail', email || '—'],
+        ['Data de nascimento', fmtData(p.date_of_birth)],
+        ['Sexo', p.sexo ? labelSexo[p.sexo as keyof typeof labelSexo] || p.sexo : '—'],
+        ['Objetivo', p.objetivo ? labelObjetivo[p.objetivo as keyof typeof labelObjetivo] || p.objetivo : '—'],
+        ['Unidade de peso', (p.unidade_peso || 'kg').toUpperCase()],
+        ['Unidade de medida', (p.unidade_medida || 'cm').toUpperCase()],
+      ];
+      autoTable(doc, {
+        startY: y,
+        body: dadosPessoais,
+        theme: 'plain',
+        styles: { fontSize: 9, textColor: [60, 60, 60] },
+        columnStyles: { 0: { fontStyle: 'bold', textColor: [30, 30, 30], cellWidth: 50 } },
+        margin: { left: 20 },
+        tableWidth: 170,
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+
+      // ── Medidas corporais ──
+      const medidas: any[] = data.medidas || [];
+      if (medidas.length > 0) {
+        sectionTitle('Medidas corporais');
+        const medidasRows = [...medidas]
+          .sort((a, b) => (a.data_medicao > b.data_medicao ? -1 : 1))
+          .map((m) => [
+            fmtData(m.data_medicao),
+            m.peso != null ? `${m.peso} ${unidadePeso}` : '—',
+            m.gordura_corporal != null ? `${m.gordura_corporal}%` : '—',
+            m.cintura != null ? `${m.cintura} ${profile?.unidade_medida?.toUpperCase() || 'CM'}` : '—',
+            m.abdomen != null ? `${m.abdomen} ${profile?.unidade_medida?.toUpperCase() || 'CM'}` : '—',
+          ]);
+        autoTable(doc, {
+          startY: y,
+          head: [['Data', 'Peso', 'Gordura', 'Cintura', 'Abdômen']],
+          body: medidasRows,
+          theme: 'grid',
+          headStyles: { fillColor: PURPLE, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8.5, textColor: [60, 60, 60] },
+          margin: { left: 20 },
+          tableWidth: 170,
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // ── Histórico de treinos (resumido por sessão) ──
+      const historico: any[] = data.historico_treinos || [];
+      if (historico.length > 0) {
+        sectionTitle('Histórico de treinos');
+        const porSessao = new Map<string, { data: string; nome: string; exercicios: number; volume: number }>();
+        for (const h of historico) {
+          const key = h.data_conclusao;
+          const sessao = porSessao.get(key) || {
+            data: h.data_conclusao,
+            nome: h.dados_sessao?.nome_rotina || 'Treino',
+            exercicios: 0,
+            volume: 0,
+          };
+          sessao.exercicios += 1;
+          for (const s of h.dados_sessao?.series || []) {
+            if (s.completado && s.peso_atual > 0) {
+              const reps = parseFloat(s.reps_executadas ?? s.reps) || 0;
+              sessao.volume += s.peso_atual * reps;
+            }
+          }
+          porSessao.set(key, sessao);
+        }
+        const sessoesRows = [...porSessao.values()]
+          .sort((a, b) => (a.data > b.data ? -1 : 1))
+          .map((s) => [
+            fmtData(s.data),
+            s.nome,
+            String(s.exercicios),
+            `${Math.round(s.volume).toLocaleString('pt-BR')} ${unidadePeso}`,
+          ]);
+        autoTable(doc, {
+          startY: y,
+          head: [['Data', 'Ficha', 'Exercícios', 'Volume']],
+          body: sessoesRows,
+          theme: 'grid',
+          headStyles: { fillColor: PURPLE, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8.5, textColor: [60, 60, 60] },
+          margin: { left: 20 },
+          tableWidth: 170,
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // ── Feedbacks de treino ──
+      const feedbacks: any[] = data.feedbacks || [];
+      if (feedbacks.length > 0) {
+        sectionTitle('Feedbacks de treino');
+        const feedbackRows = [...feedbacks]
+          .sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
+          .map((f) => [fmtData(f.created_at), f.tipo || '—', f.feedback || '—']);
+        autoTable(doc, {
+          startY: y,
+          head: [['Data', 'Tipo', 'Comentário']],
+          body: feedbackRows,
+          theme: 'grid',
+          headStyles: { fillColor: PURPLE, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8.5, textColor: [60, 60, 60] },
+          columnStyles: { 2: { cellWidth: 100 } },
+          margin: { left: 20 },
+          tableWidth: 170,
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // ── Pontuação ──
+      if (data.pontuacao) {
+        sectionTitle('Pontuação');
+        doc.setFontSize(9);
+        doc.setTextColor(60, 60, 60);
+        doc.text(`Total de pontos: ${data.pontuacao.total_pontos ?? 0}`, 20, y);
+        y += 10;
+      }
+
+      // ── Fichas de treino ──
+      const fichas: any[] = data.fichas_treino || [];
+      if (fichas.length > 0) {
+        sectionTitle('Fichas de treino');
+        for (const f of fichas) {
+          ensureSpace(10);
+          doc.setFontSize(10);
+          doc.setTextColor(30, 30, 30);
+          doc.text(f.nome_rotina || 'Ficha', 20, y);
+          y += 5;
+          const exercicios: string[] = (f.configuracao?.exercicios || []).map((e: any) => e.nome).filter(Boolean);
+          if (exercicios.length > 0) {
+            doc.setFontSize(8.5);
+            doc.setTextColor(...GRAY);
+            const linhas = doc.splitTextToSize(exercicios.join(' · '), 170);
+            ensureSpace(linhas.length * 4);
+            doc.text(linhas, 20, y);
+            y += linhas.length * 4 + 6;
+          } else {
+            y += 6;
+          }
+        }
+        y += 4;
+      }
+
+      // ── Treinos manuais (check-ins) ──
+      const manuais: any[] = data.treinos_manuais || [];
+      if (manuais.length > 0) {
+        sectionTitle('Check-ins manuais');
+        const manuaisRows = [...manuais]
+          .sort((a, b) => (a.data_treino > b.data_treino ? -1 : 1))
+          .map((m) => [fmtData(m.data_treino), m.descricao || '—', m.concluido ? 'Concluído' : 'Pendente']);
+        autoTable(doc, {
+          startY: y,
+          head: [['Data', 'Descrição', 'Status']],
+          body: manuaisRows,
+          theme: 'grid',
+          headStyles: { fillColor: PURPLE, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8.5, textColor: [60, 60, 60] },
+          margin: { left: 20 },
+          tableWidth: 170,
+        });
+      }
+
+      doc.save(`meus-dados-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (err: any) {
       showToast('err', err.message || 'Erro ao exportar');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -428,20 +660,17 @@ export default function AlunoPerfil() {
   if (showSettings) {
     return (
       <div
-        className="min-h-screen p-4 md:p-6 lg:p-10 lg:pl-28 pb-28 mobile-page-bg"
+        className="min-h-screen px-4 pt-2 pb-28 md:px-6 md:pt-3 lg:px-10 lg:pl-28 lg:pt-4 mobile-page-bg"
       >
-        <div className="max-w-lg mx-auto flex flex-col gap-6">
-          {/* Header de Voltar */}
-          <div className="flex items-center justify-between border-b border-divider pb-4" style={{ borderColor: 'rgba(41,48,61,0.5)' }}>
-            <button
-              onClick={() => setShowSettings(false)}
-              className="inline-flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-            >
-              <CaretLeft size={16} /> Voltar para Perfil
-            </button>
-            <h1 className="text-xs font-bold text-text-primary uppercase tracking-wider font-display">Ajustes</h1>
-            <div className="w-10" />
-          </div>
+        <div className="max-w-lg mx-auto flex flex-col gap-4">
+          {/* Voltar */}
+          <button
+            onClick={() => setShowSettings(false)}
+            aria-label="Voltar para o perfil"
+            className="inline-flex items-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+          >
+            <CaretLeft size={18} />
+          </button>
 
           {/* ── Toast ── */}
           {toast && (
@@ -455,16 +684,13 @@ export default function AlunoPerfil() {
           )}
 
           {/* ── Foto no settings ── */}
-          <div
-            className="flex items-center gap-4 px-4 py-6 border rounded-2xl shadow-sm"
-            style={{ background: 'var(--mobile-card-bg)', borderColor: 'var(--mobile-card-border)' }}
-          >
+          <div className="flex flex-col items-center gap-3 py-2">
             <div className="relative flex-shrink-0">
               <StudentAvatar
                 name={profile.full_name || 'Atleta'}
                 avatarUrl={avatarSrc}
                 sexo={profile.sexo}
-                sizeClassName="w-16 h-16"
+                sizeClassName="w-20 h-20"
                 uploading={uploadingAvatar}
               />
               <label
@@ -475,17 +701,14 @@ export default function AlunoPerfil() {
               </label>
               <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarSelect} />
             </div>
-            <div>
-              <p className="text-base font-bold text-text-primary">{profile.full_name || 'Atleta'}</p>
-              <p className="text-xs text-text-tertiary">Foto de perfil</p>
-            </div>
+            <p className="text-base font-bold text-text-primary">{profile.full_name || 'Atleta'}</p>
           </div>
 
           {/* ── Dados pessoais ── */}
           <SectionCard title="Dados pessoais">
             <SettingsRow icon={User} label="Nome" value={profile.full_name} onClick={() => setChangeNameOpen(true)} />
             <SettingsRow icon={Calendar} label="Data de nascimento" value={profile.date_of_birth ? new Date(profile.date_of_birth + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não informada'} onClick={() => setDateOfBirthOpen(true)} />
-            <SettingsRow icon={Envelope} label="E-mail" value={email.length > 22 ? email.slice(0, 20) + '…' : email} />
+            <SettingsRow icon={Envelope} label="E-mail" value={email} truncateStart />
             <SettingsRow icon={UserCircle} label="Sexo" value={profile.sexo ? labelSexo[profile.sexo] : 'Não informado'} onClick={() => setEditingSexo(true)} />
             <SettingsRow icon={Target} label="Objetivo" value={profile.objetivo ? labelObjetivo[profile.objetivo] : 'Não informado'} onClick={() => setEditingObjetivo(true)} />
           </SectionCard>
@@ -496,8 +719,7 @@ export default function AlunoPerfil() {
             <SettingsRow icon={Ruler} label="Unidade de medida" value={profile.unidade_medida.toUpperCase()} onClick={() => setEditingUnidadeMedida(true)} />
             <SettingsRow icon={Barbell} label="Incremento padrão de carga" value={`${profile.incremento_peso_padrao} ${profile.unidade_peso}`} onClick={() => setEditingIncrementoPeso(true)} />
             <div
-              className="flex items-center gap-3 px-4 py-3.5 border-b last:border-b-0"
-              style={{ borderColor: 'rgba(41,48,61,0.5)' }}
+              className="flex items-center gap-3 px-4 py-3.5 border-b border-divider last:border-b-0"
             >
               <EyeSlash className="w-4 h-4 text-text-tertiary flex-shrink-0" />
               <span className="flex-1 text-sm text-text-primary">Oculto no ranking</span>
@@ -543,13 +765,29 @@ export default function AlunoPerfil() {
 
           {/* ── Meus dados ── */}
           <SectionCard title="Meus dados">
-            <SettingsRow icon={DownloadSimple} label="Exportar meus dados" onClick={handleExport} />
+            <SettingsRow
+              icon={DownloadSimple}
+              label="Exportar meus dados"
+              value={exporting ? 'Gerando PDF…' : undefined}
+              onClick={handleExport}
+            />
           </SectionCard>
 
           {/* ── Conta ── */}
-          <SectionCard title="Conta">
-            <SettingsRow icon={Trash} label="Excluir minha conta" onClick={() => setDeleteConfirmOpen(true)} danger />
-          </SectionCard>
+          <button
+            type="button"
+            onClick={() => setDeleteConfirmOpen(true)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[0.99]"
+            style={{
+              background: 'var(--danger-subtle)',
+              border: '1px solid var(--danger-border)',
+              boxShadow: '0 4px 20px rgba(224, 85, 85, 0.35)',
+            }}
+          >
+            <Trash className="w-4 h-4 text-danger shrink-0" />
+            <span className="flex-1 text-sm font-semibold text-danger">Excluir minha conta</span>
+            <CaretRight className="w-4 h-4 text-danger/70 shrink-0" />
+          </button>
 
           {/* ── Logout ── */}
           <button
@@ -768,17 +1006,23 @@ export default function AlunoPerfil() {
                 <Warning className="w-6 h-6 text-danger" />
               </div>
               <h3 className="text-base font-bold text-text-primary text-center mb-1">Excluir conta</h3>
-              <p className="text-sm text-text-secondary text-center mb-4 leading-relaxed">
-                Todos os seus dados serão removidos permanentemente. Esta ação <span className="font-semibold text-text-primary">não pode ser desfeita</span>.
+              <p className="text-sm text-text-secondary text-center mb-3 leading-relaxed">
+                Esta ação é <span className="font-semibold text-text-primary">permanente e não pode ser desfeita</span>. Ao excluir sua conta, você perde:
               </p>
+              <ul className="text-xs text-text-secondary mb-4 space-y-1.5 px-1">
+                <li className="flex gap-2"><span className="text-danger">•</span> Fichas de treino e histórico de execuções</li>
+                <li className="flex gap-2"><span className="text-danger">•</span> Medidas corporais e fotos de evolução</li>
+                <li className="flex gap-2"><span className="text-danger">•</span> Pontuação, ranking e feedbacks trocados com o coach</li>
+                <li className="flex gap-2"><span className="text-danger">•</span> Acesso à sua consultoria com o coach atual</li>
+              </ul>
               <p className="text-xs text-text-tertiary mb-2">
-                Digite <span className="font-semibold text-text-primary">excluir</span> para confirmar:
+                Digite <span className="font-semibold text-text-primary">EXCLUIR</span> para confirmar:
               </p>
               <input
                 type="text"
                 value={deleteInput}
                 onChange={e => setDeleteInput(e.target.value)}
-                placeholder="excluir"
+                placeholder="EXCLUIR"
                 className="w-full bg-surface-3 border border-border-default rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-danger mb-4"
               />
               <div className="flex gap-2">

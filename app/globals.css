@@ -225,6 +225,23 @@ body {
   border-color: transparent !important;
 }
 
+/* Cores de borda "curtas" (border-subtle, border-divider, border-input...) —
+   o tailwind.config.ts antigo registrava essas cores em colors.border.*, mas
+   o Tailwind v4 (CSS-first, via @theme acima) não lê mais esse arquivo JS sem
+   um @config explícito (não existe aqui). Resultado: essas classes nunca
+   geravam CSS nenhum — o border-color caía no padrão do navegador
+   (currentColor = a cor do texto), o que passava batido no tema escuro mas
+   ficava com contorno forte/preto no tema claro. Usadas em 60+ arquivos, então
+   em vez de reescrever tudo pra `border-border-subtle` (nome "correto" que o
+   Tailwind geraria a partir de --color-border-subtle), registramos aqui as
+   classes do jeito que o app inteiro já espera. */
+.border-subtle  { border-color: var(--border-subtle); }
+.border-default { border-color: var(--border-default); }
+.border-strong  { border-color: var(--border-strong); }
+.border-divider { border-color: var(--border-divider); }
+.border-input   { border-color: var(--border-input); }
+.border-accent  { border-color: var(--border-accent); }
+
 /* Explicit z-index utilities (Tailwind v4 default scale stops at z-50) */
 .z-60  { z-index: 60; }
 .z-70  { z-index: 70; }
@@ -889,6 +906,14 @@ html[data-theme="light"] .dashboard-aluno {
 .dashboard-text-muted { color: var(--dash-text-muted); }
 .dashboard-text-subtle { color: var(--dash-text-subtle); }
 .dashboard-progress-track { background-color: var(--dash-progress-track); }
+
+/* Texto sobre o card roxo fixo (hero / WorkoutCard) — NÃO usar --dash-text aqui:
+   esse token muda com o tema (fica quase preto no light) mas o fundo roxo do
+   hero é sempre o mesmo roxo nos dois temas, então o texto precisa ser sempre
+   branco/quase-branco, fixo, igual ao --dash-hero-icon. */
+.dashboard-hero-text { color: var(--dash-hero-icon, #FFFFFF); }
+.dashboard-hero-text-muted { color: rgba(255, 255, 255, 0.78); }
+.dashboard-hero-text-subtle { color: rgba(255, 255, 255, 0.58); }
 
 /* ── Mercado Pago Card Brick (assinatura) ──
    Herança HTML: classes internas do Brick mudam a cada build.
