@@ -1001,7 +1001,6 @@ function FichaContent() {
 
                               {/* ANT. */}
                               <span
-                                className={cn(serie.completado && "line-through")}
                                 style={{
                                   fontFamily: 'var(--font-kpi), "DM Sans", system-ui, sans-serif',
                                   fontSize: 10,

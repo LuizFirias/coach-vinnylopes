@@ -149,7 +149,11 @@
      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
                Roboto, Oxygen, Ubuntu, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  /* Era JetBrains Mono — trocado pra sempre usar a fonte principal do app
+     (mesmo valor de --font-sans, herdando o font-family real do next/font
+     aplicado no html/body: Inter, "Inter Fallback"). Um alias só aqui já
+     troca todo mundo que usa font-mono/var(--font-mono) no app inteiro. */
+  --font-mono: var(--font-sans);
 
   /* Escala (mobile-first, base 16px) */
   --text-2xs:    11px;

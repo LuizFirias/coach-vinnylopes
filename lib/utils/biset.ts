@@ -426,8 +426,10 @@ function buildSerieExecucao(
     // real do histórico, não deve ser sobrescrita pelo que o aluno digitar numa série anterior.
     peso_historico: temHistorico,
     reps: isTempo ? (s.tempo_sugerido ?? s.tempo ?? "00:30") : (s.reps_sugerido ?? s.reps ?? "12"),
-    // Séries por tempo continuam usando tempo_executado_seg — sem pré-preenchimento aqui.
-    reps_executadas: !isTempo && temHistorico ? prevReps : undefined,
+    // Reps NUNCA vem pré-preenchida do histórico — sempre a prescrita pelo coach
+    // (a coluna "anterior" já mostra a última reps real; só o peso pré-preenche
+    // com a última carga usada, reps o aluno digita se for diferente do prescrito).
+    reps_executadas: undefined,
     tecnica: s.tecnica ?? undefined,
     tecnica_extra: s.tecnica_extra ?? undefined,
     completado: false,

@@ -379,10 +379,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
       {showAnteriorCol && (
         <div className="min-w-0 overflow-hidden" style={{ paddingLeft: ANT_COL_PAD_LEFT }}>
           <p
-            className={cn(
-              'text-[11px] font-sans tabular-nums lining-nums truncate',
-              serie.completado && 'line-through'
-            )}
+            className="text-[11px] font-sans tabular-nums lining-nums truncate"
             style={{ color: serie.completado ? 'var(--text-disabled)' : 'var(--text-tertiary)' }}
             title={serie.anterior || '—'}
           >
@@ -569,10 +566,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
       )}
       style={{ background: 'transparent' }}
     >
-      <div
-        className="flex items-center justify-between gap-2 px-4 pt-4 pb-3"
-        style={{ borderBottom: '1px solid var(--border-subtle)' }}
-      >
+      <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
         {exercicio.imagem_url || exercicio.gif_url ? (
           <img
             // Miniatura estática (1º frame) — cai pro GIF animado se o exercício
@@ -1661,15 +1655,16 @@ export default function ExecucaoTreinoPage() {
         iniciarRest(ex.descanso, () => {}, { title: 'Descanso' });
         abrirModalBlock(modalBlockIdx + 1);
       } else {
-        iniciarRest(ex.descanso, () => {
-          const nextCarga = exAtualizado.series[prox]?.peso_atual || carga;
-          const nextReps = repsEfetivas(exAtualizado.series[prox]) || reps;
-          setModalRodadaIdx(prox);
-          setModalCarga(nextCarga);
-          setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
-          setModalReps(nextReps);
-          setModalRepsStr(nextReps > 0 ? String(nextReps) : '');
-        });
+        // Foco vai pra próxima série na hora — não espera o descanso terminar
+        // pra mudar o destaque, o timer só continua contando por cima.
+        const nextCarga = exAtualizado.series[prox]?.peso_atual || carga;
+        const nextReps = repsEfetivas(exAtualizado.series[prox]) || reps;
+        setModalRodadaIdx(prox);
+        setModalCarga(nextCarga);
+        setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+        setModalReps(nextReps);
+        setModalRepsStr(nextReps > 0 ? String(nextReps) : '');
+        iniciarRest(ex.descanso, () => {});
       }
       return;
     }
@@ -1753,19 +1748,19 @@ export default function ExecucaoTreinoPage() {
         abrirModalBlock(modalBlockIdx + 1);
       }
     } else {
+      // Foco vai pra próxima posição na hora — não espera o descanso terminar.
+      const serieAlvo = proxPos.fase === 'a' ? seriesA[proxPos.rodada] : seriesB[proxPos.rodada];
+      const carga2 = serieAlvo?.peso_atual || 0;
+      const reps2 = repsEfetivas(serieAlvo);
+      setModalRodadaIdx(proxPos.rodada);
+      setBisetFase(proxPos.fase);
+      setModalCarga(carga2);
+      setModalCargaStr(carga2 > 0 ? String(carga2) : '');
+      setModalReps(reps2);
+      setModalRepsStr(reps2 > 0 ? String(reps2) : '');
       iniciarRest(
         descanso,
-        () => {
-          const serieAlvo = proxPos.fase === 'a' ? seriesA[proxPos.rodada] : seriesB[proxPos.rodada];
-          const carga2 = serieAlvo?.peso_atual || 0;
-          const reps2 = repsEfetivas(serieAlvo);
-          setModalRodadaIdx(proxPos.rodada);
-          setBisetFase(proxPos.fase);
-          setModalCarga(carga2);
-          setModalCargaStr(carga2 > 0 ? String(carga2) : '');
-          setModalReps(reps2);
-          setModalRepsStr(reps2 > 0 ? String(reps2) : '');
-        },
+        () => {},
         {
           title: 'Descanso do Bi-Set',
           subtitle: `Próxima: ${proxPos.fase === 'a' ? bisetBlock.exercicioA.nome : bisetBlock.exercicioB.nome} · série ${proxPos.rodada + 1}`,
@@ -2019,14 +2014,18 @@ export default function ExecucaoTreinoPage() {
       style={{ background: 'var(--surface-0)' }}
     >
 
-      {/* ── Header sticky (mobile + treino em andamento) ── */}
+      {/* ── Header sticky (mobile + treino em andamento) ──
+          Fundo sólido (sem blur/transparência) + padding pra área segura do
+          celular — sem isso, o topo da tela (atrás do relógio/bateria) ficava
+          sem a cor do app, criando uma linha visível separando o app do
+          sistema. Com fundo sólido esticando até ali, fica contínuo. */}
       <header
         className={cn(
-          'sticky top-0 z-40 backdrop-blur-sm',
+          'sticky top-0 z-40 pt-safe',
           !treinoIniciado && 'lg:hidden'
         )}
         style={{
-          background: 'color-mix(in srgb, var(--surface-0) 95%, transparent)',
+          background: 'var(--surface-0)',
           borderBottom: '1px solid var(--border-divider)',
         }}
       >
@@ -2060,18 +2059,6 @@ export default function ExecucaoTreinoPage() {
 
           {treinoIniciado && (
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowConfirmAbandon(true)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 active:opacity-70"
-                style={{
-                  background: 'transparent',
-                  color: 'var(--brand-primary)',
-                }}
-                title="Descartar treino"
-                aria-label="Descartar treino"
-              >
-                <Trash size={18} weight="bold" />
-              </button>
               <div className="text-right">
                 <p
                   className="font-sans tabular-nums lining-nums text-sm font-bold leading-none"
@@ -2086,7 +2073,19 @@ export default function ExecucaoTreinoPage() {
                 disabled={saving}
                 className="h-8 px-3 bg-brand text-text-on-brand rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
               >
-                {saving ? '...' : 'Finish'}
+                {saving ? '...' : 'Finalizar'}
+              </button>
+              <button
+                onClick={() => setShowConfirmAbandon(true)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 active:opacity-70"
+                style={{
+                  background: 'transparent',
+                  color: 'var(--brand-primary)',
+                }}
+                title="Descartar treino"
+                aria-label="Descartar treino"
+              >
+                <Trash size={18} weight="bold" />
               </button>
             </div>
           )}

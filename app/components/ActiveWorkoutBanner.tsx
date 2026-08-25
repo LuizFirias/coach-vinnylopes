@@ -80,7 +80,12 @@ export default function ActiveWorkoutBanner() {
 
   return (
     <div className={cn(
-      'fixed z-50 left-3 right-3 bottom-[4.75rem]',
+      // Antes era um valor fixo (4.75rem) que não contava a safe-area do
+      // celular (notch/home indicator) — em telas com safe-area maior, a
+      // barra inferior de navegação ficava mais alta que isso e cortava o
+      // card. Agora soma a altura real da nav (3.5rem) + a safe-area + uma
+      // folga por cima dela.
+      'fixed z-50 left-3 right-3 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)]',
       'lg:left-auto lg:right-6 lg:w-80 lg:bottom-6'
     )}>
       <button

@@ -292,10 +292,14 @@ export function ExerciseLibraryModal({
       onClose();
       return;
     }
-    // Só envia exercícios novos — os já na ficha ficam de fora
-    const selected = catalog.filter(
-      (ex) => selectedIds.has(ex.id) && !existingIds?.has(ex.id),
-    );
+    // Ordem de seleção do aluno (Set preserva a ordem de inserção), não a
+    // ordem alfabética do catálogo — senão os exercícios entravam na ficha
+    // em ordem alfabética em vez da ordem em que foram clicados.
+    const catalogById = new Map(catalog.map((ex) => [ex.id, ex]));
+    const selected = [...selectedIds]
+      .filter((id) => !existingIds?.has(id))
+      .map((id) => catalogById.get(id))
+      .filter((ex): ex is LibraryExercise => Boolean(ex));
     onAdd(selected);
   };
 

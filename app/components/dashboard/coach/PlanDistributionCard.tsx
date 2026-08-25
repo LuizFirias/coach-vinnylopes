@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
+import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 
 export interface PlanDistributionItem {
   name: string;
@@ -12,7 +13,8 @@ interface PlanDistributionCardProps {
   plans: PlanDistributionItem[];
   totalStudents: number;
   collapsed?: boolean;
-  /** `start` alinha o donut à esquerda (ex.: Financeiro); default centraliza como na dashboard. */
+  /** `start` alinha o donut à esquerda (ex.: Financeiro); default centraliza como na dashboard.
+   *  No mobile isso é ignorado — o donut sempre fica centralizado (ver `isMobile`). */
   align?: "center" | "start";
   className?: string;
 }
@@ -25,8 +27,10 @@ const DONUT_CARD_MIN_HEIGHT_PX = 180;
 /** Deslocamento horizontal do donut. Negativo = esquerda, positivo = direita.
  *  Resetado pra 0 — sem legenda ao lado, o justify-center já centraliza sozinho. */
 const DONUT_OFFSET_X_PX = 0;
-/** Só usado quando align="start" (fora do dashboard) — lá ainda tem legenda. */
+/** Só usado quando align="start" no desktop (fora do dashboard) — lá ainda tem legenda. */
 const LEGEND_OFFSET_X_PX = -60;
+/** Quanto a fatia selecionada "estica" pra fora no mobile (raio extra em px). */
+const MOBILE_SELECTED_R_BOOST = 7;
 
 /* Ordem fixa de cores por posição na lista de planos (nunca por ranking) —
    filtrar planos zerados não repinta os que sobram. Tons médio-claros para
@@ -74,6 +78,8 @@ export function PlanDistributionCard({
   className,
 }: PlanDistributionCardProps) {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const isMobile = useBreakpoint("mobile");
 
   const colored = plans.map((p, i) => ({
     ...p,
@@ -92,6 +98,10 @@ export function PlanDistributionCard({
   const R_LABEL = (R_OUT + R_IN) / 2;
   const PAD = visible.length > 1 ? 0.035 : 0;
 
+  // No mobile, tocar numa fatia seleciona ela (toca de novo pra desmarcar);
+  // no desktop continua sendo hover, como antes.
+  const activePlan = isMobile ? selectedPlan : hoveredPlan;
+
   let cursor = 0;
   const slices = visible.map((p) => {
     const frac = total > 0 ? p.count / total : 0;
@@ -103,11 +113,23 @@ export function PlanDistributionCard({
     return {
       ...p,
       frac,
-      path: annularSectorPath(CX, CX, R_OUT, R_IN, a0, Math.min(a1, a0 + TAU - 0.0001)),
+      a0,
+      a1: Math.min(a1, a0 + TAU - 0.0001),
       labelX: CX + R_LABEL * Math.cos(labelRad),
       labelY: CX + R_LABEL * Math.sin(labelRad),
     };
   });
+
+  const selectedSlice = isMobile
+    ? slices.find((s) => s.name === selectedPlan) ?? null
+    : null;
+  const selectedPct =
+    selectedSlice && total > 0 ? Math.round((selectedSlice.count / total) * 100) : 0;
+
+  const handleSliceClick = (name: string) => {
+    if (!isMobile) return;
+    setSelectedPlan((cur) => (cur === name ? null : name));
+  };
 
   const title = (
     <span className="coach-kpi-label text-[10px] font-semibold uppercase tracking-[1.5px] text-text-tertiary">
@@ -159,69 +181,119 @@ export function PlanDistributionCard({
           .map((p) => `${p.name} ${p.count}`)
           .join(", ")}`}
         className={cn(
-          "relative shrink-0 h-auto",
-          collapsed
-            ? "w-28"
-            // +30% só no dashboard (align="center") — não mexe no uso com align="start"
-            : align === "center"
-              ? "w-[166px] sm:w-[187px] lg:w-[208px]"
-              : "w-32 sm:w-36 lg:w-40",
+          "relative shrink-0 h-auto overflow-visible",
+          isMobile
+            ? "w-[188px]"
+            : collapsed
+              ? "w-28"
+              // +30% só no dashboard (align="center") — não mexe no uso com align="start"
+              : align === "center"
+                ? "w-[166px] sm:w-[187px] lg:w-[208px]"
+                : "w-32 sm:w-36 lg:w-40",
         )}
+        style={{ overflow: "visible" }}
       >
-        {slices.map((s) => (
-          <path
-            key={s.name}
-            d={s.path}
-            fill={s.color}
-            onMouseEnter={() => setHoveredPlan(s.name)}
-            onMouseLeave={() => setHoveredPlan((cur) => (cur === s.name ? null : cur))}
-            style={{ cursor: "pointer", transition: "opacity 120ms ease" }}
-            opacity={hoveredPlan && hoveredPlan !== s.name ? 0.5 : 1}
-          />
-        ))}
-        {/* Número da fatia — fora do centro, no anel (molde antigo), só aparece no hover dela */}
-        {slices
-          .filter((s) => s.name === hoveredPlan)
-          .map((s) => (
+        {slices.map((s) => {
+          const isSelected = isMobile && s.name === selectedPlan;
+          return (
+            <path
+              key={s.name}
+              d={annularSectorPath(
+                CX,
+                CX,
+                isSelected ? R_OUT + MOBILE_SELECTED_R_BOOST : R_OUT,
+                R_IN,
+                s.a0,
+                s.a1
+              )}
+              fill={s.color}
+              onClick={() => handleSliceClick(s.name)}
+              onMouseEnter={() => !isMobile && setHoveredPlan(s.name)}
+              onMouseLeave={() =>
+                !isMobile && setHoveredPlan((cur) => (cur === s.name ? null : cur))
+              }
+              style={{ cursor: "pointer", transition: "opacity 120ms ease, d 150ms ease" }}
+              opacity={activePlan && activePlan !== s.name ? 0.5 : 1}
+            />
+          );
+        })}
+        {/* Número da fatia — fora do centro, no anel (molde antigo), só aparece no hover dela
+            (desktop apenas — no mobile o dado aparece no centro, ver abaixo). */}
+        {!isMobile &&
+          slices
+            .filter((s) => s.name === hoveredPlan)
+            .map((s) => (
+              <text
+                key={`label-${s.name}`}
+                x={s.labelX}
+                y={s.labelY}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="#000000"
+                fontSize={s.frac >= 0.15 ? 17 : 13}
+                fontWeight={800}
+                className="tabular-nums"
+              >
+                {s.count}
+              </text>
+            ))}
+
+        {/* Centro: no desktop sempre o total. No mobile, troca pro plano
+            selecionado (quantidade + %) quando uma fatia está tocada. */}
+        {selectedSlice ? (
+          <>
             <text
-              key={`label-${s.name}`}
-              x={s.labelX}
-              y={s.labelY}
+              x={CX}
+              y={CX - 6}
               textAnchor="middle"
               dominantBaseline="central"
-              fill="#000000"
-              fontSize={s.frac >= 0.15 ? 17 : 13}
+              fill="var(--text-primary)"
+              fontSize={30}
               fontWeight={800}
               className="tabular-nums"
             >
-              {s.count}
+              {selectedSlice.count}
             </text>
-          ))}
-
-        {/* Centro — sempre o total, não troca no hover */}
-        <text
-          x={CX}
-          y={CX - 6}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="var(--text-primary)"
-          fontSize={30}
-          fontWeight={800}
-          className="tabular-nums"
-        >
-          {total}
-        </text>
-        <text
-          x={CX}
-          y={CX + 18}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="var(--text-secondary)"
-          fontSize={11}
-          fontWeight={500}
-        >
-          {total === 1 ? "aluno" : "alunos"}
-        </text>
+            <text
+              x={CX}
+              y={CX + 18}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="var(--text-secondary)"
+              fontSize={11}
+              fontWeight={600}
+              className="capitalize"
+            >
+              {selectedSlice.name} · {selectedPct}%
+            </text>
+          </>
+        ) : (
+          <>
+            <text
+              x={CX}
+              y={CX - 6}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="var(--text-primary)"
+              fontSize={30}
+              fontWeight={800}
+              className="tabular-nums"
+            >
+              {total}
+            </text>
+            <text
+              x={CX}
+              y={CX + 18}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="var(--text-secondary)"
+              fontSize={11}
+              fontWeight={500}
+            >
+              {total === 1 ? "aluno" : "alunos"}
+            </text>
+          </>
+        )}
       </svg>
     </div>
   );
@@ -233,6 +305,17 @@ export function PlanDistributionCard({
         <div className="flex-1 flex items-center justify-center text-xs text-text-tertiary">
           Nenhum plano ativo encontrado.
         </div>
+      </div>
+    );
+  }
+
+  // Mobile: donut sempre centralizado, sem legenda ao lado — o dado do plano
+  // aparece dentro do próprio donut ao tocar na fatia (ignora `align`/`collapsed`).
+  if (isMobile) {
+    return (
+      <div className={cn("flex flex-col gap-3 min-w-0", className)}>
+        <div className="flex justify-center">{title}</div>
+        <div className="flex items-center justify-center">{donut}</div>
       </div>
     );
   }

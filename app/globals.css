@@ -774,7 +774,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Safe areas iOS */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
-.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.pt-safe,
+/* Alias — "pt-safe-top" era usada em algumas telas mas nunca tinha sido
+   definida (nunca gerava CSS nenhum), então o topo delas ficava sem
+   respeitar a área do relógio/bateria do celular. */
+.pt-safe-top { padding-top: env(safe-area-inset-top, 0px); }
 
 /* Bottom nav height — para calcular scroll padding */
 :root { --bottom-nav-height: 64px; }

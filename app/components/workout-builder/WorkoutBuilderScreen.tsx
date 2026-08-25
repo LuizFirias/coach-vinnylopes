@@ -74,8 +74,10 @@ interface Exercicio {
 
 const EQUIPAMENTOS = [...CANONICAL_EQUIPMENTS];
 
-const inputCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors h-10";
-const selectCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-brand/40 transition-colors appearance-none h-10";
+// text-base (16px), não text-xs — abaixo de 16px o iOS dá zoom automático ao
+// focar o campo (regra do CLAUDE.md: font-size em inputs sempre ≥ 16px).
+const inputCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-base placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors h-10";
+const selectCls = "w-full bg-surface-2 border border-input text-text-primary px-3 py-2 rounded-lg text-base focus:outline-none focus:border-brand/40 transition-colors appearance-none h-10";
 
 function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
   const base = { ordem: 1, tecnica: "", tecnica_extra: "", peso_sugerido: null as number | null };
