@@ -28,11 +28,12 @@
      SURFACES â€” 60-30-10 neutros (dark base)
      Page 60% Â· Card 30% Â· Input/elevaÃ§Ã£o Â· Accent â‰¤10%
      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-  --surface-0:        #000000;   /* page bg (60%) */
+  --surface-0:        #1C1C1E;   /* page bg (60%) — padrão Mobills dark */
   --surface-1:        #141414;   /* card (30%) */
   --surface-2:        #222222;   /* input / elevaÃ§Ã£o â€” NÃƒO card */
   --surface-3:        #2A2A2A;   /* overlay / divisor */
   --surface-4:        #333333;   /* borda input */
+  --card-shadow:      none;      /* só o tema light adota a sombra em camadas do Mobills */
 
   /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      TEXT
@@ -326,7 +327,7 @@
    ═══════════════════════════════════════════════════════════ */
 html[data-theme="light"] {
   color-scheme: light;
-  --surface-0:        #FFFFFF;
+  --surface-0:        #EDF3FB;   /* fundo da página — cinza-azulado (padrão Mobills) */
   --surface-1:        #FFFFFF;   /* cards — sempre branco */
   --surface-2:        #FFFFFF;   /* inputs/selects — sempre branco */
   --surface-3:        #F4F4F5;   /* só elevação interna rara (quase branco) */
@@ -391,11 +392,11 @@ html[data-theme="light"] {
   --tab-active-text:      #751BB4;
   --tab-inactive-text:    #999999;
 
-  --mobile-page-bg-solid: #FFFFFF;
-  --mobile-page-bg: #FFFFFF;
+  --mobile-page-bg-solid: var(--surface-0);
+  --mobile-page-bg: var(--surface-0);
   --mobile-card-bg: #FFFFFF;
   --mobile-card-border: rgba(0, 0, 0, 0.06);
-  --mobile-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --mobile-card-shadow: var(--card-shadow);
   --mobile-empty-bg: #FFFFFF;
   --mobile-empty-border: rgba(0, 0, 0, 0.06);
   --mobile-card-border-soft: rgba(0, 0, 0, 0.04);
@@ -433,12 +434,18 @@ html[data-theme="light"] {
   --mc-fat-color:      #059669;
 
   --mc-shadow:         0 1px 4px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+
+  /* Sombra padrão dos cards (Card.tsx) — mesma receita do Mobills. */
+  --card-shadow:
+    0 2px 1px -1px rgba(0, 0, 0, 0.2),
+    0 1px 1px 0 rgba(0, 0, 0, 0.14),
+    0 1px 3px 0 rgba(0, 0, 0, 0.12);
 }
 
 html[data-theme="dark"],
 html.dark {
   color-scheme: dark;
-  --surface-0: #000000;
+  --surface-0: #1C1C1E;   /* padrão Mobills dark */
   --surface-1: #141414;
   --surface-2: #222222;
   --surface-3: #2A2A2A;
@@ -448,6 +455,7 @@ html.dark {
   --text-tertiary: #8A8A8A;
   --text-disabled: #737373;
   --theme-color-meta: #000000;
+  --card-shadow: none; /* dark mantém sem sombra própria — só o tema light adota o padrão Mobills */
 }
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

@@ -162,37 +162,16 @@ body {
   overscroll-behavior: none;
 }
 
+/* Fundo padrão Mobills (chapado, sem gradiente roxo) — antes só no mobile
+   via `body { background: var(--surface-0) }`, agora também no desktop. */
 @media (min-width: 1024px) {
   html[data-theme="light"] body,
   [data-theme="light"] body,
-  body.light {
-    background-color: #e8defc;
-    background-image:
-      radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(167, 139, 250, 0.58) 0%, transparent 65%),
-      radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(147, 51, 234, 0.40) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(216, 180, 254, 0.62) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.36) 0%, transparent 50%);
-    background-size: cover;
-    background-attachment: fixed;
-  }
-
+  body.light,
   html[data-theme="dark"] body,
   body.dark {
-    background-color: #080c14;
-    background-image:
-      radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(147, 51, 234, 0.12) 0%, transparent 65%),
-      radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(109, 40, 217, 0.10) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(167, 139, 250, 0.07) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.08) 0%, transparent 50%);
-    background-size: cover;
+    background-color: var(--surface-0);
+    background-image: none;
     background-attachment: fixed;
   }
 }
@@ -1920,59 +1899,18 @@ html.dark .coach-list-kpi-card {
 
 @media (min-width: 1024px) {
   html[data-theme="light"] .auron-sidebar {
-    /* Mesma receita do gradiente do body (background-attachment:fixed) —
-       evita depender de transparência real, igual ao ajuste do topbar. */
-    background-color: #e8defc !important;
-    background-image:
-      radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(167, 139, 250, 0.58) 0%, transparent 65%),
-      radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(147, 51, 234, 0.40) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(216, 180, 254, 0.62) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.36) 0%, transparent 50%) !important;
-    background-size: cover !important;
-    background-attachment: fixed !important;
+    /* Roxo original chapado (--brand-primary), igual ao sidebar do dark —
+       sem gradiente, sem depender do fundo da página. */
+    background: var(--brand-primary) !important;
     border: 0 !important;
     border-right: none !important;
     box-shadow: none !important;
-    color: #5e6982;
+    color: #ffffff;
   }
 
-  html[data-theme="light"] .auron-sidebar .sidebar-logo-icon {
-    color: #5e6982 !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-group-label {
-    color: #5e6982 !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle {
-    color: #5e6982 !important;
-    background: transparent !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--active {
-    color: #343a46 !important;
-    background: #ffffff !important;
-    border-left: 0 !important;
-    border-radius: 4px !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-logout {
-    color: #5e6982 !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-logout:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
+  /* Ícone/grupo/links/logout do sidebar: sem override de cor no light —
+     o fundo agora é o mesmo roxo sólido do dark, então usa o texto branco
+     das regras base (ver .auron-sidebar .sidebar-* mais abaixo). */
 
   html[data-theme="light"] .coach-app-typography .coach-chrome-header {
     /* Não fixo — rola junto com a página, igual ao Nutrium (só o sidebar fica parado). */
@@ -1990,12 +1928,11 @@ html.dark .coach-list-kpi-card {
     overflow: visible;
   }
 
-  /* Perfil do aluno — header sem título/ações (ver CoachAppChrome), a faixa
-     de 92px ficaria vazia. Só nessa rota, só desktop. */
+  /* Título da seção some no desktop (já está marcado no sidebar) — a faixa
+     de 92px do header some junto, subindo o conteúdo. Só a dashboard mantém
+     o header (saudação + avatar/notificações). */
   html[data-theme="light"] .coach-app-typography .coach-chrome-header.coach-chrome-header--compact {
-    height: 0 !important;
-    padding: 0 !important;
-    border-bottom: 0 !important;
+    display: none !important;
   }
 
   html[data-theme="light"] .coach-chrome-header .coach-page-title {
@@ -2053,7 +1990,10 @@ html.dark .coach-list-kpi-card {
     min-height: 100dvh;
     /* Corta o topbar (1º filho) na curva do canto — senão o quadrado dele cobre a borda. */
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.82);
+    /* Sólido, azul (padrão Mobills) — antes era um branco translúcido pra
+       deixar o gradiente roxo do body vazar; agora o body é roxo só no
+       sidebar/bordas, então o shell fica opaco e contrasta com ele. */
+    background: var(--surface-0);
     /* Sombra direcionada (baixo/direita) — evita o "borrão" escuro no canto
        superior-esquerdo arredondado, que agora fica exposto sobre o gradiente. */
     box-shadow: 6px 8px 24px -6px rgba(30, 28, 40, 0.14);
@@ -2078,6 +2018,17 @@ html.dark .coach-list-kpi-card {
     background: transparent;
     border: 0;
     backdrop-filter: none;
+  }
+
+  /* Título da seção some no desktop (dark) — mesmo tratamento do light:
+     header some e o shell ocupa a tela toda desde o topo. */
+  html[data-theme="dark"] .coach-app-typography .coach-chrome-header.coach-chrome-header--compact {
+    display: none !important;
+  }
+
+  html[data-theme="dark"] .coach-main-shell:has(.coach-chrome-header--compact) {
+    margin-top: 0;
+    min-height: 100dvh;
   }
 }
 
@@ -2141,33 +2092,6 @@ html.dark .coach-list-kpi-card {
 .auron-sidebar .sidebar-logout:hover {
   color: #ffffff !important;
   background: rgba(255, 255, 255, 0.12) !important;
-}
-
-@media (min-width: 1024px) {
-  html[data-theme="light"] .auron-sidebar .sidebar-group-label {
-    color: #5e6982 !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle {
-    color: #5e6982 !important;
-    background: transparent !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--active {
-    color: #343a46 !important;
-    background: #ffffff !important;
-    border-left-width: 0 !important;
-    border-radius: 4px !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-logout {
-    color: #5e6982 !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-logout:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
 }
 
 /* ── Perfil — tema claro: cards/inputs brancos · dark: surface navy ─ */

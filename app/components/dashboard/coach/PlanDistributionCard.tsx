@@ -29,8 +29,6 @@ const DONUT_CARD_MIN_HEIGHT_PX = 180;
 const DONUT_OFFSET_X_PX = 0;
 /** Só usado quando align="start" no desktop (fora do dashboard) — lá ainda tem legenda. */
 const LEGEND_OFFSET_X_PX = -60;
-/** Quanto a fatia selecionada "estica" pra fora no mobile (raio extra em px). */
-const MOBILE_SELECTED_R_BOOST = 7;
 
 /* Ordem fixa de cores por posição na lista de planos (nunca por ranking) —
    filtrar planos zerados não repinta os que sobram. Tons médio-claros para
@@ -94,12 +92,12 @@ export function PlanDistributionCard({
   const SIZE = 200;
   const CX = SIZE / 2;
   const R_OUT = 96;
-  const R_IN = 58;
+  const R_IN = 73;
   const R_LABEL = (R_OUT + R_IN) / 2;
   const PAD = visible.length > 1 ? 0.035 : 0;
 
-  // No mobile, tocar numa fatia seleciona ela (toca de novo pra desmarcar);
-  // no desktop continua sendo hover, como antes.
+  // Desktop: passar o mouse já destaca (como no Mobills), sem precisar clicar.
+  // Mobile: não tem hover, então tocar na fatia seleciona (toca de novo desmarca).
   const activePlan = isMobile ? selectedPlan : hoveredPlan;
 
   let cursor = 0;
@@ -120,9 +118,7 @@ export function PlanDistributionCard({
     };
   });
 
-  const selectedSlice = isMobile
-    ? slices.find((s) => s.name === selectedPlan) ?? null
-    : null;
+  const selectedSlice = slices.find((s) => s.name === activePlan) ?? null;
   const selectedPct =
     selectedSlice && total > 0 ? Math.round((selectedSlice.count / total) * 100) : 0;
 
@@ -193,51 +189,33 @@ export function PlanDistributionCard({
         )}
         style={{ overflow: "visible" }}
       >
-        {slices.map((s) => {
-          const isSelected = isMobile && s.name === selectedPlan;
-          return (
-            <path
-              key={s.name}
-              d={annularSectorPath(
-                CX,
-                CX,
-                isSelected ? R_OUT + MOBILE_SELECTED_R_BOOST : R_OUT,
-                R_IN,
-                s.a0,
-                s.a1
-              )}
-              fill={s.color}
-              onClick={() => handleSliceClick(s.name)}
-              onMouseEnter={() => !isMobile && setHoveredPlan(s.name)}
-              onMouseLeave={() =>
-                !isMobile && setHoveredPlan((cur) => (cur === s.name ? null : cur))
-              }
-              style={{ cursor: "pointer", transition: "opacity 120ms ease, d 150ms ease" }}
-              opacity={activePlan && activePlan !== s.name ? 0.5 : 1}
-            />
-          );
-        })}
-        {/* Número da fatia — fora do centro, no anel (molde antigo), só aparece no hover dela
-            (desktop apenas — no mobile o dado aparece no centro, ver abaixo). */}
-        {!isMobile &&
-          slices
-            .filter((s) => s.name === hoveredPlan)
-            .map((s) => (
-              <text
-                key={`label-${s.name}`}
-                x={s.labelX}
-                y={s.labelY}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="#000000"
-                fontSize={s.frac >= 0.15 ? 17 : 13}
-                fontWeight={800}
-                className="tabular-nums"
-              >
-                {s.count}
-              </text>
-            ))}
-
+        {slices.map((s) => (
+          <path
+            key={s.name}
+            d={annularSectorPath(CX, CX, R_OUT, R_IN, s.a0, s.a1)}
+            fill={s.color}
+            onClick={() => handleSliceClick(s.name)}
+            onMouseEnter={() => !isMobile && setHoveredPlan(s.name)}
+            onMouseLeave={() =>
+              !isMobile && setHoveredPlan((cur) => (cur === s.name ? null : cur))
+            }
+            style={{ cursor: "pointer", transition: "opacity 120ms ease" }}
+            opacity={activePlan && activePlan !== s.name ? 0.5 : 1}
+          />
+        ))}
+        {/* Anel de destaque dentro do furo — mesmo recurso do Mobills: em vez de
+            esticar a fatia (o que cortava borda no mobile), um contorno fino na
+            cor do plano selecionado aparece ao redor do texto central. */}
+        <circle
+          cx={CX}
+          cy={CX}
+          r={R_IN - 8}
+          fill="none"
+          stroke={selectedSlice?.color ?? "transparent"}
+          strokeWidth={1.5}
+          opacity={selectedSlice ? 1 : 0}
+          style={{ transition: "opacity 150ms ease" }}
+        />
         {/* Centro: no desktop sempre o total. No mobile, troca pro plano
             selecionado (quantidade + %) quando uma fatia está tocada. */}
         {selectedSlice ? (
