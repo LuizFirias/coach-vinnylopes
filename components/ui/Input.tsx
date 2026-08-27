@@ -40,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       <div className="relative flex items-center">
         {/* Ícone esquerdo */}
         {leftIcon && (
-          <span className="pointer-events-none absolute left-3.5 z-[1] flex h-11 w-5 items-center justify-center text-text-disabled [&_svg]:h-4 [&_svg]:w-4">
+          <span className="pointer-events-none absolute left-3 z-[1] flex h-11 w-5 items-center justify-center text-text-disabled [&_svg]:h-4 [&_svg]:w-4">
             {leftIcon}
           </span>
         )}
@@ -52,7 +52,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           className={cn(
             'h-11 w-full',
             'px-3.5',
-            leftIcon && 'pl-11 has-left-icon',
+            leftIcon && 'pl-9 has-left-icon',
             rightElement && 'pr-10 has-right-element',
             'text-[16px] font-normal text-text-primary dark:text-[#D8DCE6]',
             'placeholder:text-text-disabled placeholder:font-normal placeholder:text-[12px] dark:placeholder:text-[#4a5568]',

@@ -409,10 +409,13 @@ export default function AlunoSignup() {
                 )}
               >
                 <option value="" disabled className="text-text-disabled">Objetivo Principal</option>
-                <option value="cutting" className="text-text-primary bg-surface-1">Emagrecimento (Definição / Cutting)</option>
-                <option value="bulking" className="text-text-primary bg-surface-1">Ganho de Massa (Hipertrofia / Bulking)</option>
-                <option value="manutencao" className="text-text-primary bg-surface-1">Manutenção de Peso / Performance</option>
-                <option value="recomposicao" className="text-text-primary bg-surface-1">Recomposição Corporal (Perder gordura & Ganhar músculo)</option>
+                <option value="hipertrofia" className="text-text-primary bg-surface-1">Hipertrofia</option>
+                <option value="emagrecimento" className="text-text-primary bg-surface-1">Emagrecimento</option>
+                <option value="definicao" className="text-text-primary bg-surface-1">Definição / Recomposição</option>
+                <option value="performance" className="text-text-primary bg-surface-1">Performance Esportiva</option>
+                <option value="saude" className="text-text-primary bg-surface-1">Saúde / Condicionamento</option>
+                <option value="reabilitacao" className="text-text-primary bg-surface-1">Reabilitação</option>
+                <option value="outro" className="text-text-primary bg-surface-1">Outro</option>
               </select>
             </div>
 

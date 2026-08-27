@@ -50,7 +50,7 @@ function exercicioFromCatalog(ex: LibraryExercise): ExercicioFicha {
     id: ex.id,
     nome: ex.nome,
     tipo_exercicio: tipoEx,
-    descanso: "01:00",
+    descanso: "01:30",
     video_url: ex.video_url || "",
     observacoes: "",
     series: criarSeriesPadrao(tipoEx),
@@ -113,13 +113,8 @@ export function KanbanWorkoutBuilderSheet({
     setTimeout(() => setBisetToast(null), 3500);
   };
 
-  const handleReorder = (fromIndex: number, toIndex: number) => {
-    setItems((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
+  const handleReorder = (next: ExercicioFichaItem[]) => {
+    setItems(next);
   };
 
   const addFromLibrary = (selected: LibraryExercise[]) => {

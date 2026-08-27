@@ -24,6 +24,7 @@ import { ProfileWorkoutHistory } from '@/app/components/profile/ProfileWorkoutHi
 import { PastWorkoutShareOverlay } from '@/app/components/profile/PastWorkoutShareOverlay';
 import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { useCoachShareHandle } from '@/lib/hooks/useCoachShareHandle';
+import { OBJETIVOS_ALUNO, normalizeObjetivoAluno, type ObjetivoAluno } from '@/lib/constants/student-profile';
 
 interface Profile {
   full_name: string;
@@ -34,7 +35,7 @@ interface Profile {
   unidade_medida: 'cm' | 'in';
   incremento_peso_padrao: number;
   sexo: 'masculino' | 'feminino' | 'outro' | null;
-  objetivo: 'cutting' | 'bulking' | 'manutencao' | 'recomposicao' | null;
+  objetivo: ObjetivoAluno | null;
   oculto_no_ranking: boolean;
   notificacoes_ativas: boolean;
 }
@@ -212,7 +213,7 @@ export default function AlunoPerfil() {
           unidade_medida: data.unidade_medida || 'cm',
           incremento_peso_padrao: data.incremento_peso_padrao ?? 2.5,
           sexo: data.sexo || null,
-          objetivo: data.objetivo || null,
+          objetivo: normalizeObjetivoAluno(data.objetivo),
           oculto_no_ranking: data.oculto_no_ranking ?? false,
           notificacoes_ativas: data.notificacoes_ativas ?? true,
         });
@@ -642,7 +643,7 @@ export default function AlunoPerfil() {
 
   // ── Labels ────────────────────────────────────────────────────────────────
 
-  const labelObjetivo = { cutting: 'Definição', bulking: 'Ganho de massa', manutencao: 'Manutenção', recomposicao: 'Recomposição' };
+  const labelObjetivo = Object.fromEntries(OBJETIVOS_ALUNO.map((o) => [o.value, o.label])) as Record<ObjetivoAluno, string>;
   const labelSexo = { masculino: 'Masculino', feminino: 'Feminino', outro: 'Outro' };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -862,10 +863,7 @@ export default function AlunoPerfil() {
               <h3 className="text-base font-bold text-text-primary mb-4">Selecione seu objetivo</h3>
               <div className="flex flex-col gap-3 mb-4">
                 {[
-                  { value: 'cutting', label: 'Definição (Cutting)' },
-                  { value: 'bulking', label: 'Ganho de massa (Bulking)' },
-                  { value: 'manutencao', label: 'Manutenção' },
-                  { value: 'recomposicao', label: 'Recomposição' },
+                  ...OBJETIVOS_ALUNO,
                   { value: null, label: 'Não informado' },
                 ].map((opt) => (
                   <button

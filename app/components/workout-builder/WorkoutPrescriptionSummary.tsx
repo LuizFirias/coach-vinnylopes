@@ -46,19 +46,19 @@ export function WorkoutPrescriptionSummary({
   if (variant === "stats") {
     return (
       <div className={cn("grid grid-cols-2 gap-3", className)}>
-        <div className="rounded-2xl border-0 bg-surface-1 px-5 py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border-0 bg-surface-1 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
             Exercícios
           </p>
-          <p className="text-2xl font-extrabold text-text-primary tabular-nums leading-none">
+          <p className="text-xl font-extrabold text-text-primary tabular-nums leading-none">
             {stats.exerciseCount}
           </p>
         </div>
-        <div className="rounded-2xl border-0 bg-surface-1 px-5 py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary mb-1">
+        <div className="flex items-center justify-between gap-2 rounded-2xl border-0 bg-surface-1 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
             Séries totais
           </p>
-          <p className="text-2xl font-extrabold text-text-primary tabular-nums leading-none">
+          <p className="text-xl font-extrabold text-text-primary tabular-nums leading-none">
             {stats.totalSets}
           </p>
         </div>

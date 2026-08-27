@@ -94,6 +94,12 @@ export function DayConfigPicker({
     return list;
   }, [canChangeStatus, workouts]);
 
+  // Só recalcula/reposiciona quando o picker ABRE — nunca em resposta ao
+  // próprio `index` mudando. Antes, um 2º efeito ficava de olho em `index` e
+  // chamava scrollTo() de novo a cada item cruzado durante o arraste do
+  // usuário — brigando com o scroll nativo (inércia) e travando o gesto.
+  // Clicar num item já reposiciona sozinho (abaixo); arrastar já reposiciona
+  // sozinho (é scroll nativo) — não precisa de mais ninguém "ajudando".
   useEffect(() => {
     if (!open) return;
     const start = canChangeStatus ? 1 : 0;
@@ -113,13 +119,13 @@ export function DayConfigPicker({
     } else if (canChangeStatus && dia) {
       initial = dia.treinoConcluido ? 0 : start;
     }
-    setIndex(Math.max(0, Math.min(initial, items.length - 1)));
-  }, [open, canChangeStatus, dia, items]);
-
-  useEffect(() => {
-    if (!open || !listRef.current) return;
-    listRef.current.scrollTo({ top: index * ITEM_H, behavior: 'smooth' });
-  }, [open, index]);
+    const clamped = Math.max(0, Math.min(initial, items.length - 1));
+    setIndex(clamped);
+    // Sem behavior:'smooth' aqui — é o picker abrindo, não um gesto do
+    // usuário; salta direto pra posição certa.
+    listRef.current?.scrollTo({ top: clamped * ITEM_H });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 

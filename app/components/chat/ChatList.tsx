@@ -126,13 +126,22 @@ export function ChatList({
                   <span
                     aria-label={`${c.nao_lidas} não lida${c.nao_lidas === 1 ? '' : 's'}`}
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: '#e05555',
+                      minWidth: 18,
+                      height: 18,
+                      padding: '0 5px',
+                      borderRadius: 9,
+                      background: 'var(--brand-primary, #9333ea)',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       flexShrink: 0,
                     }}
-                  />
+                  >
+                    {c.nao_lidas > 99 ? '99+' : c.nao_lidas}
+                  </span>
                 )}
               </div>
             </div>

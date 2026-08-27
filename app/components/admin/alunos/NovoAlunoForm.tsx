@@ -21,17 +21,14 @@ import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
 import { concluirPasso } from "@/lib/onboarding/concluirPasso";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { MODALIDADES_ESPORTE, OBJETIVOS_ALUNO } from "@/lib/constants/student-profile";
 
 const DRAFT_KEY = "draft_novo_aluno";
 
-const OBJETIVO_OPTIONS = [
-  { value: "bulking", label: "Hipertrofia (Bulking)" },
-  { value: "cutting", label: "Emagrecimento (Cutting)" },
-  { value: "recomposicao", label: "Definição (Recomposição)" },
-  { value: "manutencao", label: "Condicionamento / Saúde / Outro" },
-];
+const OBJETIVO_OPTIONS = OBJETIVOS_ALUNO as unknown as { value: string; label: string }[];
 
 function todayISO() {
   const d = new Date();
@@ -86,7 +83,8 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [objetivo, setObjetivo] = useState("bulking");
+  const [modalidadesEsporte, setModalidadesEsporte] = useState<string[]>(["musculacao"]);
+  const [objetivo, setObjetivo] = useState("hipertrofia");
   const [tipoPlano, setTipoPlano] = useState("mensal");
   const [dataInicio, setDataInicio] = useState(todayISO);
   const [dataExpiracao, setDataExpiracao] = useState("");
@@ -123,6 +121,7 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
         whatsapp?: string;
         dateOfBirth?: string;
         objetivo?: string;
+        modalidadesEsporte?: string[];
         tipoPlano?: string;
         valorPlano?: string;
         dataInicio?: string;
@@ -134,6 +133,7 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
       if (d.whatsapp) setWhatsapp(d.whatsapp);
       if (d.dateOfBirth) setDateOfBirth(d.dateOfBirth);
       if (d.objetivo) setObjetivo(d.objetivo);
+      if (d.modalidadesEsporte?.length) setModalidadesEsporte(d.modalidadesEsporte);
       if (d.tipoPlano) setTipoPlano(d.tipoPlano);
       if (d.valorPlano) setValorPlano(d.valorPlano);
       if (d.dataInicio) setDataInicio(d.dataInicio);
@@ -169,6 +169,7 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
         whatsapp,
         dateOfBirth,
         objetivo,
+        modalidadesEsporte,
         tipoPlano,
         valorPlano,
         dataInicio,
@@ -190,6 +191,14 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
     }
     if (!whatsapp.trim()) {
       setError("O número do WhatsApp é obrigatório para envio do convite.");
+      return;
+    }
+    if (modalidadesEsporte.length === 0) {
+      setError("Selecione pelo menos uma modalidade.");
+      return;
+    }
+    if (!objetivo.trim()) {
+      setError("Selecione um objetivo.");
       return;
     }
     if (!tipoPlano.trim()) {
@@ -224,6 +233,7 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
           whatsapp: cleanedPhone,
           date_of_birth: dateOfBirth || null,
           objetivo: objetivo || null,
+          modalidades_esporte: modalidadesEsporte.length ? modalidadesEsporte : ["musculacao"],
           tipo_plano: tipoPlano || null,
           data_inicio: dataInicio || null,
           data_expiracao: dataExpiracao || null,
@@ -322,9 +332,21 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
         />
       </div>
 
+      <div>
+        <FieldLabel htmlFor="novo-aluno-modalidade" required>Modalidade praticada</FieldLabel>
+        <MultiSelect
+          id="novo-aluno-modalidade"
+          value={modalidadesEsporte}
+          onChange={setModalidadesEsporte}
+          options={MODALIDADES_ESPORTE as unknown as { value: string; label: string }[]}
+          helperText="Selecione uma ou mais modalidades"
+          disabled={loading}
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <FieldLabel htmlFor="novo-aluno-objetivo">Objetivo</FieldLabel>
+          <FieldLabel htmlFor="novo-aluno-objetivo" required>Objetivo</FieldLabel>
           <Select
             id="novo-aluno-objetivo"
             value={objetivo}
@@ -353,22 +375,16 @@ export function NovoAlunoForm({ layout, onCancel, onCreated }: NovoAlunoFormProp
           <FieldLabel htmlFor="novo-aluno-whatsapp" required>
             Número de celular
           </FieldLabel>
-          <div className="relative flex items-center">
-            <span className="pointer-events-none absolute left-3.5 z-[1] flex items-center gap-1.5 text-text-tertiary">
-              <Phone size={18} />
-              <span className="text-[13px] text-text-disabled">(+55)</span>
-            </span>
-            <Input
-              id="novo-aluno-whatsapp"
-              type="tel"
-              name="whatsapp"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="11 99999-9999"
-              disabled={loading}
-              className="has-phone-prefix"
-            />
-          </div>
+          <Input
+            id="novo-aluno-whatsapp"
+            type="tel"
+            name="whatsapp"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="+55 11 99999-9999"
+            disabled={loading}
+            leftIcon={<Phone size={18} />}
+          />
         </div>
         <div>
           <FieldLabel htmlFor="novo-aluno-email" required>

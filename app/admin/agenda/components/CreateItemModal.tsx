@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, MapPin, Clock } from "@phosphor-icons/react";
+import { X, MapPin } from "@phosphor-icons/react";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { DatePickerField } from "@/components/ui/DatePickerField";
+import { TimePickerField } from "@/components/ui/TimePickerField";
 import { criarAula, criarEvento, type LocalTipo, type ItemTipo } from "@/lib/agenda/queries";
 
 interface AlunoOption {
@@ -141,20 +143,17 @@ export function CreateItemModal({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <Input
+            <DatePickerField
               label="Data"
               labelClassName="font-normal"
-              type="date"
               value={data}
-              onChange={(e) => setData(e.target.value)}
+              onChange={setData}
               required
             />
-            <Input
+            <TimePickerField
               label="Horário"
-              type="time"
               value={hora}
-              onChange={(e) => setHora(e.target.value)}
-              leftIcon={<Clock size={16} />}
+              onChange={setHora}
               required
             />
           </div>

@@ -1,14 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { DotsSixVertical, DotsThree, Trash, Play, Barbell, Timer } from "@phosphor-icons/react";
+import { DotsSixVertical, Trash, Play, Barbell, Timer, ChatCircle } from "@phosphor-icons/react";
 import { RestBadge } from "./RestBadge";
 import { SetRow, SetsTableHeader } from "./SetRow";
 import { getColunasPorTipo, showPesoColumn } from "./exerciseColumns";
-import { isClusterSet } from "@/lib/constants/workout-techniques";
+import { isClusterSet, isMyoReps, contarBlocosReps } from "@/lib/constants/workout-techniques";
+import { clusterInputCls } from "./RepsField";
 import type { ExercicioFicha } from "./types";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
 import { cn } from "@/lib/utils/cn";
+
+/** Mesmo desenho do ícone de "Feedbacks" do sidebar (balão de chat + "!") —
+ *  usado aqui pra abrir a observação do exercício. */
+function ObservacaoIcon({
+  size = 16,
+  weight = "regular",
+  className,
+}: {
+  size?: number;
+  weight?: "fill" | "regular";
+  className?: string;
+}) {
+  return (
+    <span className={cn("relative inline-flex items-center justify-center", className)} style={{ width: size, height: size }} aria-hidden>
+      <ChatCircle size={size} weight={weight} className="absolute inset-0" />
+      <span className="relative z-[1] font-bold leading-none" style={{ fontSize: Math.max(8, Math.round(size * 0.42)), marginTop: -1 }}>
+        !
+      </span>
+    </span>
+  );
+}
 
 interface ExerciseCardProps {
   exercicio: ExercicioFicha;
@@ -23,6 +45,7 @@ interface ExerciseCardProps {
   onUpdateSerie: (exIndex: number, serieIndex: number, field: string, value: unknown) => void;
   onDeleteSerie: (exIndex: number, serieIndex: number) => void;
   onUpdateClusterDescanso?: (exIndex: number, segundos: number) => void;
+  onUpdateMyoDescanso?: (exIndex: number, segundos: number) => void;
 }
 
 export function ExerciseCard({
@@ -36,14 +59,18 @@ export function ExerciseCard({
   onUpdateSerie,
   onDeleteSerie,
   onUpdateClusterDescanso,
+  onUpdateMyoDescanso,
 }: ExerciseCardProps) {
   const isMobile = useBreakpoint("mobile");
   const [showObservation, setShowObservation] = useState(Boolean(exercicio.observacoes));
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const colunas = getColunasPorTipo(exercicio.tipo_exercicio);
   const showPeso = showPesoColumn(exercicio.tipo_exercicio);
   const temClusterSet = exercicio.series.some((s) => isClusterSet(s));
+  const temMyoReps = exercicio.series.some((s) => isMyoReps(s));
+  // Maior nº de blocos entre as séries em Cluster Set/Myo Reps — larga a
+  // coluna de reps o bastante pra caber em todas as linhas, mantendo tudo alinhado.
+  const maxClusterBlocos = exercicio.series.reduce((max, s) => Math.max(max, contarBlocosReps(s)), 1);
 
   const hasVideo = Boolean(exercicio.video_url?.trim());
 
@@ -104,37 +131,28 @@ export function ExerciseCard({
           />
           <button
             type="button"
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setShowObservation((v) => !v)}
             className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary transition-colors"
-            title="Opções"
+            title="Observação do exercício"
+            aria-label="Observação do exercício"
           >
-            <DotsThree size={16} weight="bold" />
+            <ObservacaoIcon size={16} weight={showObservation ? "fill" : "regular"} className={showObservation ? "text-brand" : undefined} />
           </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-surface-1 border-0 rounded-lg shadow-elev-2 py-1">
-              <button
-                type="button"
-                onClick={() => { setShowObservation(true); setMenuOpen(false); }}
-                className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-2"
-              >
-                Observação
-              </button>
-              <div className="h-px bg-border-divider my-1" />
-              <button
-                type="button"
-                onClick={() => { onDelete(exIndex); setMenuOpen(false); }}
-                className="w-full px-3 py-2 text-left text-sm text-danger hover:bg-danger/10 flex items-center gap-2"
-              >
-                <Trash size={14} /> Remover
-              </button>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => onDelete(exIndex)}
+            className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:text-danger transition-colors"
+            title="Remover exercício"
+            aria-label="Remover exercício"
+          >
+            <Trash size={16} />
+          </button>
         </div>
       </div>
 
       <div className="px-3 py-2.5 space-y-0.5 overflow-x-auto">
         <div className="min-w-[min(100%,340px)]">
-          <SetsTableHeader colunas={colunas} showPeso={showPeso} />
+          <SetsTableHeader colunas={colunas} showPeso={showPeso} maxClusterBlocos={maxClusterBlocos} />
 
           {exercicio.series.map((serie, sIndex) => (
             <SetRow
@@ -143,6 +161,7 @@ export function ExerciseCard({
               serieIndex={sIndex}
               colunas={colunas}
               showPeso={showPeso}
+              maxClusterBlocos={maxClusterBlocos}
               onChange={(field, value) => onUpdateSerie(exIndex, sIndex, field, value)}
               onDelete={() => onDeleteSerie(exIndex, sIndex)}
             />
@@ -166,8 +185,25 @@ export function ExerciseCard({
                 value={exercicio.series.find((s) => isClusterSet(s))?.cluster_descanso_seg ?? ""}
                 onChange={(e) => onUpdateClusterDescanso(exIndex, parseInt(e.target.value, 10) || 0)}
                 placeholder="15"
-                className="w-10 rounded border border-border-subtle bg-transparent text-center text-xs tabular-nums lining-nums focus:outline-none focus:border-brand/40"
+                className={clusterInputCls}
                 aria-label="Descanso entre clusters em segundos"
+              />
+              <span className="text-xs text-text-tertiary">s</span>
+            </div>
+          )}
+
+          {temMyoReps && onUpdateMyoDescanso && (
+            <div className="mt-2 flex items-center gap-2 border-t border-border-divider pt-2">
+              <Timer size={13} weight="bold" className="text-brand shrink-0" />
+              <span className="text-xs text-text-tertiary">Descanso entre mini-séries</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={exercicio.series.find((s) => isMyoReps(s))?.myo_descanso_seg ?? ""}
+                onChange={(e) => onUpdateMyoDescanso(exIndex, parseInt(e.target.value, 10) || 0)}
+                placeholder="15"
+                className={clusterInputCls}
+                aria-label="Descanso entre mini-séries de Myo Reps em segundos"
               />
               <span className="text-xs text-text-tertiary">s</span>
             </div>

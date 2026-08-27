@@ -741,7 +741,7 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
           id: ex.id,
           nome: ex.nome,
           tipo_exercicio: tipoEx,
-          descanso: "01:00",
+          descanso: "01:30",
           video_url: ex.video_url || "",
           observacoes: "",
           series: criarSeriesPadraoLocal(tipoEx),
@@ -1992,20 +1992,33 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                                   Exercícios
                                 </p>
                                 <ul className="space-y-1.5">
-                                  {sessao.exerciciosDetalhe.map((ex, i) => (
-                                    <li
-                                      key={`${ex.nome}-${i}`}
-                                      className="flex items-center justify-between gap-2 text-[12px]"
-                                    >
-                                      <span className="truncate text-text-primary font-medium">
-                                        {ex.nome}
-                                      </span>
-                                      <span className="shrink-0 tabular-nums text-text-tertiary text-[11px]">
-                                        {ex.seriesCompletas}{' '}
-                                        {ex.seriesCompletas === 1 ? 'série' : 'séries'}
-                                      </span>
-                                    </li>
-                                  ))}
+                                  {sessao.exerciciosDetalhe.map((ex, i) => {
+                                    // Nenhuma série marcada como feita — não conta pra carga,
+                                    // então fica riscado/opaco (não é escondido, só sinalizado).
+                                    const naoFeito = ex.seriesCompletas === 0;
+                                    return (
+                                      <li
+                                        key={`${ex.nome}-${i}`}
+                                        className={cn(
+                                          'flex items-center justify-between gap-2 text-[12px]',
+                                          naoFeito && 'opacity-45',
+                                        )}
+                                      >
+                                        <span
+                                          className={cn(
+                                            'truncate text-text-primary font-medium',
+                                            naoFeito && 'line-through decoration-2',
+                                          )}
+                                        >
+                                          {ex.nome}
+                                        </span>
+                                        <span className="shrink-0 tabular-nums text-text-tertiary text-[11px]">
+                                          {ex.seriesCompletas}{' '}
+                                          {ex.seriesCompletas === 1 ? 'série' : 'séries'}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
                                 </ul>
 
                                 <div className="pt-2 mt-1 border-t border-border-divider space-y-1.5">

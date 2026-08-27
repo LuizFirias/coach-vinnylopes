@@ -104,10 +104,13 @@ export async function POST(req: Request) {
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.auronfit.com.br";
       const goalLabel =
-        cleanGoal === "cutting" ? "Emagrecimento (Definição)" :
-        cleanGoal === "bulking" ? "Ganho de Massa (Hipertrofia)" :
-        cleanGoal === "manutencao" ? "Manutenção de Peso" :
-        cleanGoal === "recomposicao" ? "Recomposição Corporal" :
+        cleanGoal === "hipertrofia" ? "Hipertrofia" :
+        cleanGoal === "emagrecimento" ? "Emagrecimento" :
+        cleanGoal === "definicao" ? "Definição / Recomposição" :
+        cleanGoal === "performance" ? "Performance Esportiva" :
+        cleanGoal === "saude" ? "Saúde / Condicionamento" :
+        cleanGoal === "reabilitacao" ? "Reabilitação" :
+        cleanGoal === "outro" ? "Outro" :
         null;
 
       await resend.emails.send({

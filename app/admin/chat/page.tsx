@@ -2,14 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { EnvelopeSimple, Plus, PaperPlaneTilt, CaretDown } from '@phosphor-icons/react';
+import { ChatsCircle, Plus, DotsThreeVertical, PaperPlaneTilt, MagnifyingGlass } from '@phosphor-icons/react';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { ChatList } from '@/app/components/chat/ChatList';
 import { NovoChatSheet } from '@/app/components/chat/NovoChatSheet';
 import { EnviarMensagemModal } from '@/app/components/chat/EnviarMensagemModal';
 import { InlineChatPanel } from '@/app/components/chat/InlineChatPanel';
-import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
-import { Select } from '@/components/ui/Select';
 import { cn } from '@/lib/utils/cn';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getBootstrapProfile } from '@/lib/auth/bootstrapProfile';
@@ -31,9 +29,10 @@ export default function ChatCoachPage() {
   const [novoChatOpen, setNovoChatOpen] = useState(false);
   const [enviarMensagemOpen, setEnviarMensagemOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('todas');
-  const [alunoFiltro, setAlunoFiltro] = useState('todos');
-  // Desktop: conversa expandida inline na lista (não navega pra outra tela)
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop: conversa aberta no painel da direita (2 colunas, estilo WhatsApp)
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,9 +78,15 @@ export default function ChatCoachPage() {
   const conversasFiltradas = useMemo(() => {
     let list = conversasAtivas;
     if (tab === 'nao-lidas') list = list.filter((c) => c.nao_lidas > 0);
-    if (alunoFiltro !== 'todos') list = list.filter((c) => c.alunoId === alunoFiltro);
+    const termo = busca.trim().toLowerCase();
+    if (termo) list = list.filter((c) => (c.outro.full_name ?? '').toLowerCase().includes(termo));
     return list;
-  }, [conversasAtivas, tab, alunoFiltro]);
+  }, [conversasAtivas, tab, busca]);
+
+  const selecionada = useMemo(
+    () => conversasAtivas.find((c) => c.id === selectedId) ?? null,
+    [conversasAtivas, selectedId],
+  );
 
   /** Mobile: continua navegando pra tela cheia (padrão WhatsApp em telefone). */
   const handleSelectMobile = async (item: ChatListItem) => {
@@ -104,22 +109,6 @@ export default function ChatCoachPage() {
       setAbrindo(false);
     }
   };
-
-  /** Desktop: expande/colapsa na mesma tela, sem navegar. */
-  const handleToggleDesktop = (item: ChatListItem) => {
-    if (expandedId === item.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(item.id);
-  };
-
-  const alunoFiltroOptions = [
-    { value: 'todos', label: 'Todos os alunos' },
-    ...[...conversas]
-      .sort((a, b) => (a.outro.full_name ?? '').localeCompare(b.outro.full_name ?? '', 'pt-BR'))
-      .map((c) => ({ value: c.alunoId, label: c.outro.full_name ?? 'Aluno' })),
-  ];
 
   return (
     <div className="min-h-screen pb-24 lg:pb-8" style={{ background: 'var(--surface-0)' }}>
@@ -174,166 +163,133 @@ export default function ChatCoachPage() {
         )}
       </div>
 
-      {/* ── Desktop (padrão Nutrium) ── */}
-      <div className="hidden px-10 pt-4 lg:block">
-        <div className="mx-auto w-full max-w-[min(1100px,96vw)]">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setEnviarMensagemOpen(true)}
-              className="auron-cta-btn inline-flex h-11 items-center gap-1.5 rounded-lg px-4 text-sm font-semibold"
-            >
-              Enviar mensagem <PaperPlaneTilt size={15} weight="fill" />
-            </button>
-
-            <Select
-              className="w-[220px]"
-              value={alunoFiltro}
-              onChange={setAlunoFiltro}
-              options={alunoFiltroOptions}
-            />
+      {/* ── Desktop (2 colunas, estilo WhatsApp — cores da marca AURON) ── */}
+      <div className="hidden lg:flex" style={{ height: '100vh' }}>
+        {/* Coluna esquerda — lista */}
+        <div className="flex w-[360px] shrink-0 flex-col border-r border-border-subtle bg-surface-1">
+          <div className="flex items-center justify-between gap-2 px-4 pt-4">
+            <h1 className="text-xl font-extrabold text-text-primary">Conversas</h1>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setNovoChatOpen(true)}
+                title="Novo chat"
+                aria-label="Novo chat"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+              >
+                <Plus size={18} weight="bold" />
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  title="Mais opções"
+                  aria-label="Mais opções"
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+                >
+                  <DotsThreeVertical size={18} weight="bold" />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 z-20 mt-1.5 w-52 rounded-xl bg-surface-2 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.28)]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setEnviarMensagemOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium text-text-primary hover:bg-surface-1"
+                      >
+                        <PaperPlaneTilt size={15} /> Enviar mensagem
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div
-            className="rounded-xl border-0 bg-surface-1 p-5"
-            style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.06)' }}
-          >
-            <div className="mb-4 flex items-center gap-5 border-b border-border-subtle pb-3">
-              <button
-                type="button"
-                onClick={() => setTab('todas')}
-                className={
-                  'relative pb-3 text-sm font-semibold transition-colors ' +
-                  (tab === 'todas' ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary')
-                }
-              >
-                Todas as conversas
-                {tab === 'todas' && (
-                  <span className="absolute -bottom-[13px] left-0 right-0 h-[2px] bg-text-primary" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab('nao-lidas')}
-                className={
-                  'relative pb-3 text-sm font-semibold transition-colors ' +
-                  (tab === 'nao-lidas' ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary')
-                }
-              >
-                Não lidas
-                {tab === 'nao-lidas' && (
-                  <span className="absolute -bottom-[13px] left-0 right-0 h-[2px] bg-text-primary" />
-                )}
-              </button>
+          {/* Busca */}
+          <div className="px-4 pt-3">
+            <div className="field-flat-input flex items-center gap-2 rounded-2xl border border-border-subtle bg-surface-2 px-3.5 py-2.5">
+              <MagnifyingGlass size={15} className="shrink-0 text-text-disabled" />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Pesquisar conversa"
+                className="w-full border-0 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-disabled"
+                style={{ touchAction: 'manipulation' }}
+              />
             </div>
+          </div>
 
+          {/* Pills Tudo / Não lidas */}
+          <div className="flex items-center gap-2 px-4 pb-3 pt-3">
+            <button
+              type="button"
+              onClick={() => setTab('todas')}
+              className={cn(
+                'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                tab === 'todas' ? 'bg-brand text-white' : 'bg-surface-2 text-text-secondary hover:text-text-primary',
+              )}
+            >
+              Tudo
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('nao-lidas')}
+              className={cn(
+                'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                tab === 'nao-lidas' ? 'bg-brand text-white' : 'bg-surface-2 text-text-secondary hover:text-text-primary',
+              )}
+            >
+              Não lidas
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto border-t border-border-subtle">
             {loading ? (
               <div className="flex justify-center py-16">
                 <DumbbellLoader />
               </div>
             ) : erro ? (
-              <p className="py-8 text-center text-sm text-danger">{erro}</p>
-            ) : conversasFiltradas.length === 0 ? (
-              <div className="rounded-xl bg-surface-2/60 px-6 py-10 text-center">
-                <EnvelopeSimple size={26} className="mx-auto mb-3 text-text-tertiary" />
-                <p className="mb-1.5 text-sm font-bold text-text-primary">
-                  Não existem mensagens para os filtros ativos
-                </p>
-                <p className="mx-auto max-w-sm text-xs text-text-tertiary">
-                  Não foram encontradas mensagens para os filtros atuais. Altere os filtros
-                  acima para obter melhores resultados ou envie uma nova mensagem.
-                </p>
-              </div>
+              <p className="px-4 py-8 text-center text-sm text-danger">{erro}</p>
             ) : (
-              <div className="flex flex-col gap-2">
-                {conversasFiltradas.map((item) => {
-                  const isOpen = expandedId === item.id;
-                  const unread = item.nao_lidas > 0;
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        'overflow-hidden rounded-xl border transition-colors',
-                        isOpen ? 'border-brand/30' : 'border-border-subtle',
-                        // Não lida: um pouco mais destacado, mesmo fechada
-                        unread && !isOpen && 'border-brand/20 bg-[#F4EBFC]/50',
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleToggleDesktop(item)}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/60"
-                      >
-                        <div className="relative shrink-0">
-                          <StudentAvatar
-                            name={item.outro.full_name ?? 'Aluno'}
-                            avatarUrl={item.outro.avatar_url}
-                            sexo={item.outro.sexo}
-                            sizeClassName="h-10 w-10"
-                          />
-                          {/* Dot vermelho — só some quando a conversa é aberta (marcada como lida) */}
-                          {unread && (
-                            <span
-                              className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-danger ring-2 ring-surface-1"
-                              aria-label={`${item.nao_lidas} mensagem${item.nao_lidas === 1 ? '' : 's'} não lida${item.nao_lidas === 1 ? '' : 's'}`}
-                            />
-                          )}
-                        </div>
-                        {/* Nome só — sem prévia da última mensagem (mensagem só aparece dentro do chat) */}
-                        <p
-                          className={cn(
-                            'min-w-0 flex-1 truncate text-sm',
-                            unread ? 'font-bold text-text-primary' : 'font-semibold text-text-primary',
-                          )}
-                        >
-                          {item.outro.full_name ?? 'Aluno'}
-                        </p>
-                        <div className="flex shrink-0 items-center gap-3">
-                          {item.ultima_msg_em && (
-                            <span
-                              className={cn(
-                                'text-[11px]',
-                                unread ? 'font-semibold text-text-primary' : 'text-text-tertiary',
-                              )}
-                            >
-                              {new Date(item.ultima_msg_em).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: 'short',
-                              })}{' '}
-                              às{' '}
-                              {new Date(item.ultima_msg_em).toLocaleTimeString('pt-BR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                          )}
-                          <CaretDown
-                            size={14}
-                            className={cn(
-                              'text-text-tertiary transition-transform',
-                              isOpen && 'rotate-180',
-                            )}
-                          />
-                        </div>
-                      </button>
-
-                      {isOpen && meuId && (
-                        <InlineChatPanel
-                          conversaId={item.id}
-                          meuId={meuId}
-                          onRead={() => {
-                            setConversas((prev) =>
-                              prev.map((c) => (c.id === item.id ? { ...c, nao_lidas: 0 } : c)),
-                            );
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <ChatList
+                conversas={conversasFiltradas}
+                conversaAtiva={selectedId ?? undefined}
+                onSelect={(item) => setSelectedId(item.id)}
+                emptyLabel={busca ? 'Nenhuma conversa encontrada.' : 'Nenhuma conversa ainda.'}
+              />
             )}
           </div>
+        </div>
+
+        {/* Coluna direita — conversa aberta */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {selecionada && meuId ? (
+            <InlineChatPanel
+              key={selecionada.id}
+              fullHeight
+              conversaId={selecionada.id}
+              meuId={meuId}
+              alunoId={selecionada.alunoId}
+              nomeOutro={selecionada.outro.full_name ?? 'Aluno'}
+              avatarOutro={selecionada.outro.avatar_url}
+              sexoOutro={selecionada.outro.sexo}
+              onRead={() => {
+                setConversas((prev) =>
+                  prev.map((c) => (c.id === selecionada.id ? { ...c, nao_lidas: 0 } : c)),
+                );
+              }}
+            />
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2" style={{ backgroundColor: 'var(--filter-bg, #ebebf0)' }}>
+              <ChatsCircle size={40} className="text-text-disabled" />
+              <p className="text-sm text-text-tertiary">Selecione uma conversa para começar</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -344,8 +300,8 @@ export default function ChatCoachPage() {
           onSent={(conversaId) => {
             setEnviarMensagemOpen(false);
             setTab('todas');
-            setAlunoFiltro('todos');
-            setExpandedId(conversaId);
+            setBusca('');
+            setSelectedId(conversaId);
             void load();
           }}
         />

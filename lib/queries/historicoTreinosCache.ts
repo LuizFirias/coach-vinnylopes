@@ -14,6 +14,7 @@ export type HistoricoTreinoRow = {
   data_conclusao: string;
   dados_sessao: Record<string, unknown> | null;
   exercicio_id: string | null;
+  ficha_id: string | null;
 };
 
 const TTL_MS = 60_000;
@@ -23,7 +24,7 @@ const TTL_MS = 60_000;
 const LOCAL_STORAGE_STALE_MS = 24 * 60 * 60 * 1000;
 const LOCAL_STORAGE_PREFIX = 'auron_historico_treinos_v1_';
 const SELECT =
-  'id, data_conclusao, dados_sessao, exercicio_id';
+  'id, data_conclusao, dados_sessao, exercicio_id, ficha_id';
 
 type CacheEntry = {
   userId: string;
