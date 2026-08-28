@@ -256,7 +256,6 @@ export default function FotosPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={e => handleUpload(e, tipo)}
                   disabled={uploading.has(tipo)}

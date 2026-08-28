@@ -1,7 +1,7 @@
 -- Redefine a view de streak para contabilizar semanas seguidas em vez de dias consecutivos
 -- A ofensiva é mantida se houver pelo menos um treino na semana (Seg-Dom)
 
-CREATE OR REPLACE VIEW public.v_streak_aluno AS
+CREATE OR REPLACE VIEW public.v_streak_aluno WITH (security_invoker) AS
 WITH semanas_treino AS (
   SELECT DISTINCT
     aluno_id,
