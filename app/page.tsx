@@ -15,7 +15,6 @@ import {
 } from "@phosphor-icons/react";
 import PWAInstall from "./components/PWAInstall";
 import DumbbellLoader from "./components/DumbbellLoader";
-import { LoginFloatingCards } from "@/app/components/marketing/LoginFloatingCards";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
@@ -503,45 +502,24 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-surface-0 flex flex-col lg:flex-row antialiased selection:bg-brand/35 selection:text-white">
+    <div className="min-h-[100dvh] bg-surface-0 flex flex-col antialiased selection:bg-brand/35 selection:text-white">
       <PWAInstall />
 
       {/* Glow decorativo - Hidden on mobile to prevent performance lag */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none hidden md:block">
         <div
           className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full blur-[120px]"
-          style={{ background: 'rgba(117, 27, 180,0.08)' }}
+          style={{ background: 'rgba(212, 168, 67, 0.08)' }}
         />
         <div
           className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] rounded-full blur-[120px]"
-          style={{ background: 'rgba(117, 27, 180,0.06)' }}
+          style={{ background: 'rgba(212, 168, 67, 0.06)' }}
         />
       </div>
 
-      {/* Lado Esquerdo — mockups transparentes + cards flutuantes (Desktop) */}
+      {/* Form Panel — centralizado na tela */}
       <div
-        className="hidden lg:flex lg:w-[50%] lg:min-h-dvh items-center justify-center relative select-none border-r border-black/5 z-20"
-        style={{
-          background: 'linear-gradient(160deg, #faf5ff 0%, #f5f5f7 60%, #ffffff 100%)',
-        }}
-      >
-        {/* Clip só no hero — cards podem atravessar a linha divisória */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'radial-gradient(80% 70% at 40% 30%, rgba(212, 168, 67, 0.12), transparent 70%)',
-            }}
-          />
-        </div>
-
-        <LoginFloatingCards className="absolute inset-0 z-10 w-full h-full overflow-visible" />
-      </div>
-
-      {/* Lado Direito - Form Panel */}
-      <div
-        className="flex flex-1 flex-col items-center justify-center w-full max-w-lg lg:max-w-none mx-auto relative z-10 px-6 py-4 sm:py-6 md:px-12 lg:px-16 lg:min-h-dvh"
+        className="flex flex-1 flex-col items-center justify-center w-full max-w-lg mx-auto relative z-10 px-6 py-4 sm:py-6 md:px-12 lg:min-h-dvh"
         style={{
           background: 'linear-gradient(160deg, #faf5ff 0%, #f5f5f7 60%, #ffffff 100%)',
         }}
@@ -608,7 +586,7 @@ function LoginForm() {
               role="tablist"
               aria-label="Tipo de acesso"
               className="relative z-50 mb-5 flex w-full gap-1 rounded-full p-1"
-              style={{ background: "rgba(117, 27, 180,0.08)" }}
+              style={{ background: "rgba(212, 168, 67, 0.10)" }}
             >
               {(["coach", "aluno"] as const).map((tab) => (
                 <button
@@ -692,8 +670,8 @@ function LoginForm() {
                       className={AUTH_PILL_CTA}
                       style={{
                         background:
-                          "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
-                        boxShadow: "0 4px 20px rgba(117, 27, 180,0.40)",
+                          "linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)",
+                        boxShadow: "0 4px 20px rgba(212, 168, 67, 0.45)",
                         fontSize: "13px",
                       }}
                     >
@@ -907,8 +885,8 @@ function LoginForm() {
                   className={AUTH_PILL_CTA}
                   style={{
                     background:
-                      "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
-                    boxShadow: "0 4px 20px rgba(117, 27, 180,0.40)",
+                      "linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)",
+                    boxShadow: "0 4px 20px rgba(212, 168, 67, 0.45)",
                     fontSize: "13px",
                   }}
                 >
@@ -1051,8 +1029,8 @@ function LoginForm() {
                   className={AUTH_PILL_CTA}
                   style={{
                     background:
-                      "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
-                    boxShadow: "0 4px 20px rgba(117, 27, 180,0.40)",
+                      "linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)",
+                    boxShadow: "0 4px 20px rgba(212, 168, 67, 0.45)",
                     fontSize: "13px",
                   }}
                 >

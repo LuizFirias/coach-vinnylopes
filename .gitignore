@@ -54,3 +54,4 @@ diff-*.txt
 
 # Backups locais de banco (dados reais de alunos — nunca commitar)
 /backups/
+supabase/.temp/
