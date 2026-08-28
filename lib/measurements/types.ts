@@ -1,4 +1,9 @@
-export type MeasurementPeriod = '7d' | '30d' | '90d' | '1a';
+export type MeasurementPeriod = '30d' | '90d' | '1a' | 'custom';
+
+export interface MeasurementCustomRange {
+  start: string; // yyyy-mm-dd
+  end: string; // yyyy-mm-dd
+}
 
 export type MeasurementMetricId =
   | 'peso'

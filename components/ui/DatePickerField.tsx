@@ -16,6 +16,8 @@ interface DatePickerFieldProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** `bare` = sem fundo/borda, só o texto+ícone direto no fundo da tela (ex.: campo "Data" solto num card). */
+  variant?: "default" | "bare";
 }
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -162,6 +164,7 @@ export function DatePickerField({
   placeholder = "dd/mm/aaaa",
   disabled,
   className,
+  variant = "default",
 }: DatePickerFieldProps) {
   const isMobile = useBreakpoint("mobile");
   const [open, setOpen] = useState(false);
@@ -230,8 +233,13 @@ export function DatePickerField({
           aria-haspopup="dialog"
           aria-expanded={open}
           className={cn(
-            "flex h-11 w-full items-center gap-2 rounded-[10px] border border-[#e4e4e7] bg-white px-3.5 text-left transition-all",
-            "dark:border-[#2d3748] dark:bg-[#0d1117]",
+            "flex items-center gap-2 text-left transition-all",
+            variant === "bare"
+              ? "h-9 w-auto bg-transparent border-0 px-0"
+              : cn(
+                  "h-11 w-full rounded-[10px] border border-[#e4e4e7] bg-white px-3.5",
+                  "dark:border-[#2d3748] dark:bg-[#0d1117]",
+                ),
             "focus:outline-none focus-visible:border-brand focus-visible:shadow-[0_0_0_3px_rgba(147,51,234,0.15)]",
             disabled && "cursor-not-allowed opacity-50",
           )}

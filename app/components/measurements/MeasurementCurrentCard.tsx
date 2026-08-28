@@ -2,7 +2,8 @@ import { DeltaLine } from '@/app/components/measurements/DeltaLine';
 import { MeasurementLineChart } from '@/app/components/measurements/MeasurementLineChart';
 import { PeriodSelector } from '@/app/components/measurements/PeriodSelector';
 import { MeasurementTabs } from '@/app/components/measurements/MeasurementTabs';
-import type { MeasurementMetricId, MeasurementPeriod } from '@/lib/measurements/types';
+import { DatePickerField } from '@/components/ui/DatePickerField';
+import type { MeasurementCustomRange, MeasurementMetricId, MeasurementPeriod } from '@/lib/measurements/types';
 import { splitValueParts } from '@/lib/measurements/helpers';
 import { cn } from '@/lib/utils/cn';
 
@@ -16,6 +17,8 @@ interface MeasurementCurrentCardProps {
   deltaLabel?: string;
   period: MeasurementPeriod;
   onPeriodChange: (period: MeasurementPeriod) => void;
+  customRange?: MeasurementCustomRange | null;
+  onCustomRangeChange?: (range: MeasurementCustomRange) => void;
   chartData: Array<{ date: string; value: number }>;
   isDesktop?: boolean;
   showChart?: boolean;
@@ -34,6 +37,8 @@ export function MeasurementCurrentCard({
   deltaLabel = 'no período',
   period,
   onPeriodChange,
+  customRange,
+  onCustomRangeChange,
   chartData,
   isDesktop = false,
   showChart = true,
@@ -45,13 +50,31 @@ export function MeasurementCurrentCard({
   return (
     <div className="flex flex-col gap-4">
       {showSelectors && (
-        <div className="flex items-start justify-between gap-3">
-          <MeasurementTabs selected={metricId} onChange={onMetricChange} />
-          <PeriodSelector
-            selected={period}
-            onChange={onPeriodChange}
-            className="mt-0.5"
-          />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <MeasurementTabs selected={metricId} onChange={onMetricChange} />
+            <PeriodSelector
+              selected={period}
+              onChange={onPeriodChange}
+              className="mt-0.5"
+            />
+          </div>
+          {period === 'custom' && onCustomRangeChange && (
+            <div className="flex items-center gap-2">
+              <DatePickerField
+                value={customRange?.start ?? ''}
+                onChange={(v) => onCustomRangeChange({ start: v, end: customRange?.end ?? v })}
+                placeholder="De"
+                className="flex-1"
+              />
+              <DatePickerField
+                value={customRange?.end ?? ''}
+                onChange={(v) => onCustomRangeChange({ start: customRange?.start ?? v, end: v })}
+                placeholder="Até"
+                className="flex-1"
+              />
+            </div>
+          )}
         </div>
       )}
 

@@ -8,7 +8,7 @@ import { getPublicStorageUrl } from '@/lib/storageUrls';
 import Link from "next/link";
 import { ArrowRight, WarningCircle } from '@phosphor-icons/react';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
-import { getTodayBrazil, toBrazilDateString } from '@/lib/dateUtils';
+import { getTodayBrazil, toBrazilDateString, getNowBrazilHHMM } from '@/lib/dateUtils';
 import { CoachCard } from '@/app/components/dashboard/CoachCard';
 import { HeroHeader } from '@/app/components/dashboard/home/HeroHeader';
 import { WorkoutCard } from '@/app/components/dashboard/home/WorkoutCard';
@@ -16,6 +16,7 @@ import { WeekCalendar, type DiaSemana } from '@/app/components/dashboard/home/We
 import { DayConfigPicker } from '@/app/components/dashboard/home/DayConfigPicker';
 import { StreakRow } from '@/app/components/dashboard/home/StreakRow';
 import { NutritionCard } from '@/app/components/dashboard/home/NutritionCard';
+import { loadMealItemsLight } from '@/lib/nutrition/plans';
 import { HydrationCard } from '@/app/components/dashboard/home/HydrationCard';
 import { QuickActions } from '@/app/components/dashboard/home/QuickActions';
 import { updateTreinoStatus } from '@/lib/aluno/updateTreinoStatus';
@@ -171,6 +172,9 @@ export default function AlunoDashboardPage() {
     refeicoesConcluidas: number;
     totalRefeicoes: number;
     proximaRefeicao?: { nome: string; horario: string } | null;
+    /** Já passou do horário e o aluno ainda não marcou como feita — fica colapsado no card, com seta pra abrir. */
+    refeicoesPendentes?: { id: string; nome: string; horario: string }[];
+    planId?: string;
   } | null>(null);
 
   // Água
@@ -423,9 +427,11 @@ export default function AlunoDashboardPage() {
         if (!day) {
           const next = {
             nome: plan.name,
+            planId: plan.id,
             refeicoesConcluidas: 0,
             totalRefeicoes: 0,
             proximaRefeicao: null as null,
+            refeicoesPendentes: [] as { id: string; nome: string; horario: string }[],
           };
           setPlanoNutricao(next);
           patchDashboardAlunoCache(uid, { planoNutricao: next });
@@ -442,8 +448,24 @@ export default function AlunoDashboardPage() {
         const checkedMealIds = new Set(checkins?.map((c) => c.meal_id) || []);
         const nextMeal = mealList.find((m) => !checkedMealIds.has(m.id));
 
+        // Já passou do horário sugerido e o aluno ainda não marcou como feita —
+        // fica colapsada no card em vez de simplesmente sumir da lista.
+        const agoraHHMM = getNowBrazilHHMM();
+        const refeicoesPendentes = mealList
+          .filter((m) => {
+            if (checkedMealIds.has(m.id)) return false;
+            const horario = m.time_suggestion ? String(m.time_suggestion).slice(0, 5) : '';
+            return horario !== '' && horario < agoraHHMM;
+          })
+          .map((m) => ({
+            id: m.id,
+            nome: m.title,
+            horario: m.time_suggestion ? String(m.time_suggestion).slice(0, 5) : '',
+          }));
+
         const next = {
           nome: plan.name,
+          planId: plan.id,
           refeicoesConcluidas: checkedMealIds.size,
           totalRefeicoes: mealList.length,
           proximaRefeicao: nextMeal
@@ -454,6 +476,7 @@ export default function AlunoDashboardPage() {
                   : '',
               }
             : null,
+          refeicoesPendentes,
         };
         setPlanoNutricao(next);
         patchDashboardAlunoCache(uid, { planoNutricao: next });
@@ -712,6 +735,56 @@ export default function AlunoDashboardPage() {
     } catch (err) {
       console.error('[Dashboard] Erro:', err);
       setLoading(false);
+    }
+  };
+
+  /**
+   * Marca uma refeição pendente como feita direto do card do dashboard —
+   * otimista (atualiza a lista/contagem na hora, sem esperar a rede) e some
+   * da lista de pendentes assim que confirmado.
+   */
+  const handleMarcarRefeicaoDashboard = async (mealId: string) => {
+    if (!userId || !planoNutricao?.planId) return;
+    const today = getTodayBrazil();
+    const refeicaoRemovida = planoNutricao.refeicoesPendentes?.find((r) => r.id === mealId);
+
+    setPlanoNutricao((prev) =>
+      prev
+        ? {
+            ...prev,
+            refeicoesConcluidas: prev.refeicoesConcluidas + 1,
+            refeicoesPendentes: (prev.refeicoesPendentes ?? []).filter((r) => r.id !== mealId),
+          }
+        : prev,
+    );
+
+    try {
+      const { error } = await supabaseClient.from('nutrition_meal_checkins').upsert(
+        {
+          student_id: userId,
+          plan_id: planoNutricao.planId,
+          meal_id: mealId,
+          checkin_date: today,
+          status: 'done',
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'student_id,meal_id,checkin_date' },
+      );
+      if (error) throw error;
+    } catch (err) {
+      console.error('[Dashboard] Erro ao marcar refeição:', err);
+      // Desfaz o otimismo — a rede não confirmou.
+      if (refeicaoRemovida) {
+        setPlanoNutricao((prev) =>
+          prev
+            ? {
+                ...prev,
+                refeicoesConcluidas: Math.max(0, prev.refeicoesConcluidas - 1),
+                refeicoesPendentes: [...(prev.refeicoesPendentes ?? []), refeicaoRemovida],
+              }
+            : prev,
+        );
+      }
     }
   };
 
@@ -1012,6 +1085,8 @@ export default function AlunoDashboardPage() {
               refeicoesFeitasHoje={planoNutricao.refeicoesConcluidas}
               totalRefeicoes={planoNutricao.totalRefeicoes}
               proximaRefeicao={planoNutricao.proximaRefeicao}
+              refeicoesPendentes={planoNutricao.refeicoesPendentes}
+              onMarcarRefeicao={handleMarcarRefeicaoDashboard}
               onVerPlano={() => router.push('/aluno/plano-alimentar')}
             />
           )}

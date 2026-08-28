@@ -482,3 +482,25 @@ export async function loadStudentNutritionPageData(
   };
 }
 
+/**
+ * Itens de UMA refeição só — pra abrir/pré-visualizar sem GIF, sem
+ * substituições, sem o plano inteiro (usado no card colapsável do
+ * dashboard, onde só interessa "o que tem nessa refeição" na hora).
+ */
+export async function loadMealItemsLight(
+  mealId: string,
+  client = supabaseClient,
+): Promise<Array<{ id: string; quantity_grams?: number | string; portion_label?: string | null; food?: { name: string; portions?: Array<{ label: string; grams: number }> } }>> {
+  const { data, error } = await client
+    .from('nutrition_meal_items')
+    .select(MEAL_ITEM_SELECT)
+    .eq('meal_id', mealId)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.warn('[loadMealItemsLight]', error.message);
+    return [];
+  }
+  return (data ?? []) as any;
+}
+

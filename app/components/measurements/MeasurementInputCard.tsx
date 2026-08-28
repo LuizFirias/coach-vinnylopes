@@ -1,7 +1,9 @@
 'use client';
 
 import { CircleNotch, Plus, Warning } from '@phosphor-icons/react';
-import { useMemo, useState, type CSSProperties, type FocusEvent } from 'react';
+import { useMemo, useState } from 'react';
+import { Input } from '@/components/ui/Input';
+import { DatePickerField } from '@/components/ui/DatePickerField';
 
 interface MeasurementInputCardProps {
   unit: string;
@@ -14,19 +16,6 @@ interface MeasurementInputCardProps {
   onDateChange: (isoDate: string) => void;
   onSubmit: (value: number) => void;
 }
-
-const SECTION_LABEL: CSSProperties = {
-  fontSize: 10,
-  fontWeight: 500,
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  color: '#aaa',
-  marginBottom: 8,
-  display: 'block',
-};
-
-const INPUT_BG = '#ebebf0';
-const INPUT_BG_FOCUS = '#e4e4ea';
 
 export function MeasurementInputCard({
   unit,
@@ -54,82 +43,45 @@ export function MeasurementInputCard({
     setRaw('');
   };
 
-  const onFocus = (e: FocusEvent<HTMLInputElement>) => {
-    e.target.style.background = INPUT_BG_FOCUS;
-  };
-  const onBlur = (e: FocusEvent<HTMLInputElement>) => {
-    e.target.style.background = INPUT_BG;
-  };
-
   return (
     <div>
-      <span style={SECTION_LABEL}>Novo registro</span>
+      <span className="mb-2 block text-[10px] font-medium uppercase tracking-[0.08em] text-text-tertiary">
+        Novo registro
+      </span>
 
-      <div className="mb-2 flex items-center gap-2">
-        <input
+      <div className="mb-3 flex items-end gap-2">
+        <Input
           type="number"
           step="0.1"
           inputMode="decimal"
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          onFocus={onFocus}
-          onBlur={onBlur}
           placeholder={placeholder}
           disabled={submitting}
-          style={{
-            flex: 1,
-            height: 44,
-            fontSize: 16,
-            fontWeight: 500,
-            color: '#1a1a1a',
-            background: INPUT_BG,
-            border: 'none',
-            borderRadius: 10,
-            padding: '0 12px',
-            outline: 'none',
-            fontVariantNumeric: 'tabular-nums',
-          }}
+          rightElement={<span className="text-[12px] font-medium">{unit}</span>}
+          aria-label={`Novo registro de ${unit}`}
+          className="h-9 flex-1 px-3 text-[14px] tabular-nums lining-nums"
         />
-
-        <span style={{ fontSize: 13, color: '#aaa', fontWeight: 500 }}>
-          {unit}
-        </span>
 
         <button
           type="button"
           onClick={handleSubmit}
           disabled={submitting || !raw}
           aria-label="Adicionar registro"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 10,
-            border: 'none',
-            background:
-              'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
-            boxShadow: '0 3px 10px rgba(117, 27, 180,0.35)',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: submitting || !raw ? 'default' : 'pointer',
-            opacity: submitting || !raw ? 0.4 : 1,
-            touchAction: 'manipulation',
-            transition: 'opacity 0.15s',
-            flexShrink: 0,
-          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border-[1.5px] text-brand transition-colors touch-manipulation disabled:cursor-default disabled:opacity-40"
+          style={{ borderColor: '#751BB4', background: 'transparent' }}
         >
           {submitting ? (
-            <CircleNotch className="h-5 w-5 animate-spin" />
+            <CircleNotch className="h-4 w-4 animate-spin" />
           ) : (
-            <Plus size={18} weight="bold" />
+            <Plus size={16} weight="bold" />
           )}
         </button>
       </div>
 
       {isSameAsLast && lastDateShort && (
-        <p className="mb-2 flex items-center gap-1.5 text-[11px] text-[#f59e0b]">
+        <p className="mb-2 flex items-center gap-1.5 text-[11px] text-warning">
           <Warning size={11} weight="fill" aria-hidden />
           Mesmo valor do último registro ({lastDateShort})
         </p>
@@ -137,23 +89,7 @@ export function MeasurementInputCard({
 
       {error && <p className="mb-2 text-[11px] text-danger">{error}</p>}
 
-      <div className="mt-2 flex items-center gap-2">
-        <span style={{ fontSize: 12, color: '#aaa', fontWeight: 500 }}>Data</span>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => onDateChange(e.target.value)}
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: '#1a1a1a',
-            background: 'transparent',
-            border: 'none',
-            outline: 'none',
-            colorScheme: 'light',
-          }}
-        />
-      </div>
+      <DatePickerField label="Data" value={date} onChange={onDateChange} variant="bare" />
     </div>
   );
 }

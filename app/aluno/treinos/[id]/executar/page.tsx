@@ -229,6 +229,36 @@ function duasLetrasTenica(tecnica?: string): string {
   return tecnica.substring(0, 2).toUpperCase();
 }
 
+/** Série usa Cluster Set — reps prescritas vêm formatadas ("4×4×4×4"), não um número só. */
+function isClusterSetSerie(s: { tecnica?: string; tecnica_extra?: string }): boolean {
+  return s.tecnica === 'Cluster Set' || s.tecnica_extra === 'Cluster Set';
+}
+
+/** "4×4×4×4" (ou "4x4x4x4") → [4,4,4,4] — aluno só digita número, sem "x"/"×". */
+function parseClusterBlocos(valor: number | string | undefined | null): number[] {
+  if (valor == null || valor === '') return [];
+  return String(valor)
+    .split(/[×x]/i)
+    .map((p) => parseInt(p.trim(), 10))
+    .filter((n) => !isNaN(n));
+}
+
+function joinClusterBlocosStr(blocos: string[]): string {
+  return blocos.map((b) => (b.trim() === '' ? '0' : b.trim())).join('×');
+}
+
+/**
+ * Reps prescritas em texto livre (ex.: "12 a 15", "8-10", "AMRAP") — não é
+ * número puro nem Cluster Set. Nunca pode passar por parseFloat/parseInt nem
+ * por <input type="number"> (trunca em "12" ou fica em branco) — precisa de
+ * campo de texto livre editável, igual ao Cluster Set precisa dos blocos.
+ */
+function isFreeTextReps(s: { reps: number | string; tecnica?: string; tecnica_extra?: string }): boolean {
+  if (isClusterSetSerie(s)) return false;
+  if (typeof s.reps !== 'string') return false;
+  return !/^\d+$/.test(s.reps.trim());
+}
+
 /** Retorna as reps a exibir e se está abaixo do prescrito */
 function resolveReps(serie: SerieState): {
   valor: number | string;
@@ -736,6 +766,8 @@ export default function ExecucaoTreinoPage() {
   const [modalCargaStr, setModalCargaStr] = useState('');
   const [modalReps, setModalReps] = useState(0);
   const [modalRepsStr, setModalRepsStr] = useState('');
+  /** Um valor por bloco do Cluster Set da série atual (ex.: ["4","4","3","4"]) — só usado quando a série em foco é Cluster Set. */
+  const [modalClusterBlocosStr, setModalClusterBlocosStr] = useState<string[]>([]);
   const [showSeriesHistory, setShowSeriesHistory] = useState(true);
 
   // Cronômetro (exercícios por tempo / técnica Isometria — substitui o ajuste de carga)
@@ -767,13 +799,6 @@ export default function ExecucaoTreinoPage() {
   const tecnicaPanelRef = useRef<HTMLDivElement>(null);
   const modalTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const ajustarCarga = useCallback((delta: number) => {
-    setModalCarga((prev) => {
-      const next = Math.max(0, Math.round((prev + delta) * 100) / 100);
-      setModalCargaStr(String(next));
-      return next;
-    });
-  }, []);
 
   const ajustarReps = useCallback((delta: number) => {
     setModalReps((prev) => {
@@ -782,6 +807,48 @@ export default function ExecucaoTreinoPage() {
       return next;
     });
   }, []);
+
+  /**
+   * Reps a gravar quando o checkbox da linha conclui a série direto (sem
+   * passar pelo modal). Em foco usa o que está sendo editado agora (junta os
+   * blocos se for Cluster Set); fora de foco usa o que a própria série já
+   * tem (nunca passa por repsEfetivas nesse caso — evita truncar "4×4×4×4").
+   */
+  function repsParaConcluirDireto(s: SerieState, emFoco: boolean): number | string {
+    if (emFoco) {
+      if (isClusterSetSerie(s)) return joinClusterBlocosStr(modalClusterBlocosStr);
+      if (isFreeTextReps(s)) return modalRepsStr;
+      return modalReps;
+    }
+    if (isClusterSetSerie(s) || isFreeTextReps(s)) return s.reps_executadas ?? s.reps;
+    return repsEfetivas(s);
+  }
+
+  /**
+   * Centraliza como o modal "pega" as reps de uma série ao virar a atual —
+   * Cluster Set precisa de um valor por bloco (não um número só, senão
+   * "4×4×4×4" virava só "4"); reps em texto livre ("12 a 15") precisam do
+   * texto cru (nunca repsEfetivas/parseFloat, que trunca em "12"); as demais
+   * técnicas seguem como sempre.
+   */
+  function seedModalRepsState(serie: SerieState | undefined) {
+    if (serie && isFreeTextReps(serie)) {
+      const fonte = serie.reps_executadas ?? serie.reps;
+      setModalReps(0);
+      setModalRepsStr(fonte !== undefined && fonte !== null ? String(fonte) : '');
+      setModalClusterBlocosStr([]);
+      return;
+    }
+    const reps = repsEfetivas(serie);
+    setModalReps(reps);
+    setModalRepsStr(reps > 0 ? String(reps) : '');
+    if (serie && isClusterSetSerie(serie)) {
+      const fonte = serie.reps_executadas ?? serie.reps;
+      setModalClusterBlocosStr(parseClusterBlocos(fonte).map(String));
+    } else {
+      setModalClusterBlocosStr([]);
+    }
+  }
 
   /**
    * Desmarcar uma série (usuário corrigindo um check errado) devolve o foco/placar
@@ -793,9 +860,7 @@ export default function ExecucaoTreinoPage() {
     setBisetFase(fase);
     setModalCarga(serie.peso_atual || 0);
     setModalCargaStr(serie.peso_atual > 0 ? String(serie.peso_atual) : '');
-    const reps = repsEfetivas(serie);
-    setModalReps(reps);
-    setModalRepsStr(reps > 0 ? String(reps) : '');
+    seedModalRepsState(serie);
   }
 
   useEffect(() => {
@@ -1225,14 +1290,12 @@ export default function ExecucaoTreinoPage() {
           ? block.exercicioB
           : block.exercicioA;
     const carga = ex.series[rodadaIdx]?.peso_atual || 0;
-    const reps = repsEfetivas(ex.series[rodadaIdx]);
     setModalBlockIdx(blockIdx);
     setModalRodadaIdx(rodadaIdx);
     setBisetFase(fase);
     setModalCarga(carga);
     setModalCargaStr(carga > 0 ? String(carga) : '');
-    setModalReps(reps);
-    setModalRepsStr(reps > 0 ? String(reps) : '');
+    seedModalRepsState(ex.series[rodadaIdx]);
   }
 
   /** Troca de exercício por swipe lateral — não exige ter concluído o anterior. */
@@ -1272,14 +1335,12 @@ export default function ExecucaoTreinoPage() {
           ? block.exercicioB
           : block.exercicioA;
     const carga = ex.series[pos.rodadaIdx]?.peso_atual || 0;
-    const reps = repsEfetivas(ex.series[pos.rodadaIdx]);
     setModalBlockIdx(pos.blockIdx);
     setModalRodadaIdx(pos.rodadaIdx);
     setBisetFase(pos.fase);
     setModalCarga(carga);
     setModalCargaStr(carga > 0 ? String(carga) : '');
-    setModalReps(reps);
-    setModalRepsStr(reps > 0 ? String(reps) : '');
+    seedModalRepsState(ex.series[pos.rodadaIdx]);
   }
 
   /** Retomar: 1ª incompleta, ou último exercício da ficha se a lista já concluiu tudo. */
@@ -1337,19 +1398,27 @@ export default function ExecucaoTreinoPage() {
   function cascadeReps<
     T extends {
       ordem: number;
+      reps: number | string;
       reps_executadas?: number | string;
       reps_manual?: boolean;
       completado: boolean;
+      tecnica?: string;
+      tecnica_extra?: string;
     }
   >(series: T[], serieOrdem: number, reps: number | string): T[] {
     let cascata = false;
+    // Cluster Set e reps em texto livre ("12 a 15") não participam da cascata
+    // em nenhuma das pontas — o valor não é um número simples pra propagar
+    // pras séries seguintes (nem pra receber de uma série normal).
+    const origem = series.find((s) => s.ordem === serieOrdem);
+    const podeCascatear = !origem || (!isClusterSetSerie(origem) && !isFreeTextReps(origem));
     return series.map((s) => {
       if (s.ordem === serieOrdem) {
         cascata = true;
         return { ...s, reps_executadas: reps, reps_manual: true };
       }
       const vazia = s.reps_executadas === undefined || s.reps_executadas === '';
-      if (cascata && !s.completado && !s.reps_manual && vazia) {
+      if (cascata && podeCascatear && !isClusterSetSerie(s) && !isFreeTextReps(s) && !s.completado && !s.reps_manual && vazia) {
         return { ...s, reps_executadas: reps };
       }
       return s;
@@ -1599,7 +1668,7 @@ export default function ExecucaoTreinoPage() {
   function concluirSerieEm(
     pos: { rodadaIdx: number; fase: 'a' | 'b' | null },
     carga: number,
-    reps: number,
+    reps: number | string,
     extra?: { tempo_executado_seg?: number }
   ) {
     if (modalBlockIdx === null) return;
@@ -1658,12 +1727,10 @@ export default function ExecucaoTreinoPage() {
         // Foco vai pra próxima série na hora — não espera o descanso terminar
         // pra mudar o destaque, o timer só continua contando por cima.
         const nextCarga = exAtualizado.series[prox]?.peso_atual || carga;
-        const nextReps = repsEfetivas(exAtualizado.series[prox]) || reps;
         setModalRodadaIdx(prox);
         setModalCarga(nextCarga);
         setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
-        setModalReps(nextReps);
-        setModalRepsStr(nextReps > 0 ? String(nextReps) : '');
+        seedModalRepsState(exAtualizado.series[prox]);
         iniciarRest(ex.descanso, () => {});
       }
       return;
@@ -1701,7 +1768,6 @@ export default function ExecucaoTreinoPage() {
     if (pos.fase === 'a' && !seriesB[pos.rodadaIdx]?.completado) {
       const bSerie = seriesB[pos.rodadaIdx];
       const nextCarga = bSerie?.peso_atual || 0;
-      const nextReps = repsEfetivas(bSerie);
       setBisetTransitionName(bisetBlock.exercicioB.nome);
       setBisetFase('transicao');
       setTimeout(() => {
@@ -1710,8 +1776,7 @@ export default function ExecucaoTreinoPage() {
         setBisetTransitionName(null);
         setModalCarga(nextCarga);
         setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
-        setModalReps(nextReps);
-        setModalRepsStr(nextReps > 0 ? String(nextReps) : '');
+        seedModalRepsState(bSerie);
       }, 300);
       return;
     }
@@ -1751,13 +1816,11 @@ export default function ExecucaoTreinoPage() {
       // Foco vai pra próxima posição na hora — não espera o descanso terminar.
       const serieAlvo = proxPos.fase === 'a' ? seriesA[proxPos.rodada] : seriesB[proxPos.rodada];
       const carga2 = serieAlvo?.peso_atual || 0;
-      const reps2 = repsEfetivas(serieAlvo);
       setModalRodadaIdx(proxPos.rodada);
       setBisetFase(proxPos.fase);
       setModalCarga(carga2);
       setModalCargaStr(carga2 > 0 ? String(carga2) : '');
-      setModalReps(reps2);
-      setModalRepsStr(reps2 > 0 ? String(reps2) : '');
+      seedModalRepsState(serieAlvo);
       iniciarRest(
         descanso,
         () => {},
@@ -1771,7 +1834,28 @@ export default function ExecucaoTreinoPage() {
 
   function concluirSerieModal(extra?: { tempo_executado_seg?: number }) {
     const fase = bisetFase === 'a' || bisetFase === 'b' ? bisetFase : null;
-    concluirSerieEm({ rodadaIdx: modalRodadaIdx, fase }, modalCarga, modalReps, extra);
+    const reps = modalSerie && isClusterSetSerie(modalSerie)
+      ? joinClusterBlocosStr(modalClusterBlocosStr)
+      : modalSerie && isFreeTextReps(modalSerie)
+        ? modalRepsStr
+        : modalReps;
+    concluirSerieEm({ rodadaIdx: modalRodadaIdx, fase }, modalCarga, reps, extra);
+  }
+
+  /**
+   * Ajusta a carga pelo campo principal do modal E já propaga (cascata) pra
+   * frente — antes só cascateava a carga digitada direto na linha da lista;
+   * o campo principal só "contava" quando a série era concluída. Também
+   * cobre editar o peso DEPOIS de já ter marcado a série como feita — o
+   * cascadePeso sempre atualiza a série de origem, esteja completada ou não.
+   */
+  function ajustarCargaECascatear(delta: number) {
+    const next = Math.max(0, Math.round((modalCarga + delta) * 100) / 100);
+    setModalCarga(next);
+    setModalCargaStr(String(next));
+    if (modalEx && modalSerie) {
+      handlePesoChange(modalEx.id, modalSerie.ordem, next, String(next));
+    }
   }
 
   // ── Finalizar treino ─────────────────────────────────────────────────────────
@@ -2642,7 +2726,7 @@ export default function ExecucaoTreinoPage() {
                           type="button"
                           onPointerDown={(e) => {
                             e.preventDefault();
-                            ajustarCarga(-2.5);
+                            ajustarCargaECascatear(-2.5);
                           }}
                           className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0"
                           aria-label="Diminuir carga"
@@ -2668,6 +2752,9 @@ export default function ExecucaoTreinoPage() {
                                   setModalCargaStr(raw);
                                   const num = parseFloat(raw);
                                   setModalCarga(isNaN(num) ? 0 : num);
+                                  if (modalEx && modalSerie) {
+                                    handlePesoChange(modalEx.id, modalSerie.ordem, isNaN(num) ? 0 : num, raw);
+                                  }
                                 }
                               }}
                               onFocus={(e) => {
@@ -2678,6 +2765,9 @@ export default function ExecucaoTreinoPage() {
                                   const normalized = String(Math.max(0, Math.round(parseFloat(modalCargaStr) * 100) / 100));
                                   setModalCargaStr(normalized);
                                   setModalCarga(parseFloat(normalized));
+                                  if (modalEx && modalSerie) {
+                                    handlePesoChange(modalEx.id, modalSerie.ordem, parseFloat(normalized), normalized);
+                                  }
                                 }
                               }}
                               className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
@@ -2692,7 +2782,7 @@ export default function ExecucaoTreinoPage() {
                           type="button"
                           onPointerDown={(e) => {
                             e.preventDefault();
-                            ajustarCarga(2.5);
+                            ajustarCargaECascatear(2.5);
                           }}
                           className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0"
                           aria-label="Aumentar carga"
@@ -2712,7 +2802,7 @@ export default function ExecucaoTreinoPage() {
                             type="button"
                             onPointerDown={(e) => {
                               e.preventDefault();
-                              ajustarCarga(delta);
+                              ajustarCargaECascatear(delta);
                             }}
                             className="min-w-[52px] h-9 rounded-[10px] bg-surface-2 text-xs font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
                             aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} kg`}
@@ -2726,102 +2816,150 @@ export default function ExecucaoTreinoPage() {
 
                   <div className="flex flex-col items-center gap-1">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
-                      Reps
+                      {modalSerie && isClusterSetSerie(modalSerie) ? 'Reps por bloco' : 'Reps'}
                     </p>
 
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          ajustarReps(-1);
-                        }}
-                        className={cn(
-                          'rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0',
-                          modalShowPeso ? 'w-10 h-10' : 'w-12 h-12',
-                        )}
-                        aria-label="Diminuir reps"
-                      >
-                        <Minus size={modalShowPeso ? 18 : 20} weight="bold" />
-                      </button>
-
-                      <div className={cn('text-center', modalShowPeso ? 'min-w-[76px]' : 'min-w-[100px]')}>
-                        <div className="relative">
-                          <span
-                            className={cn(
-                              'block font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none',
-                              modalShowPeso ? 'text-4xl' : 'text-5xl',
-                            )}
-                            aria-hidden
-                          >
-                            {modalRepsStr === '' ? '—' : modalRepsStr}
-                          </span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={modalRepsStr}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === '' || /^\d*$/.test(raw)) {
-                                setModalRepsStr(raw);
-                                const num = parseInt(raw, 10);
-                                setModalReps(isNaN(num) ? 0 : num);
-                              }
-                            }}
-                            onFocus={(e) => {
-                              e.currentTarget.select();
-                            }}
-                            onBlur={() => {
-                              if (modalRepsStr !== '' && !isNaN(parseInt(modalRepsStr, 10))) {
-                                const normalized = String(Math.max(0, Math.round(parseInt(modalRepsStr, 10))));
-                                setModalRepsStr(normalized);
-                                setModalReps(parseInt(normalized, 10));
-                              }
-                            }}
-                            className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
-                            style={{ fontSize: '16px' }}
-                            aria-label="Editar repetições"
-                          />
-                        </div>
-                        <span className={cn('block font-bold text-brand mt-0.5', modalShowPeso ? 'text-sm' : 'text-base')}>reps</span>
+                    {modalSerie && isClusterSetSerie(modalSerie) ? (
+                      // Cluster Set: um campo numérico por bloco (ex.: 4×4×4×4) — o aluno só
+                      // digita número, sem "×", então não dá pra usar um campo único aqui.
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 mt-1">
+                        {modalClusterBlocosStr.map((val, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            {i > 0 && <span className="text-lg font-black text-brand" aria-hidden>×</span>}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={val}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '' || /^\d*$/.test(raw)) {
+                                  setModalClusterBlocosStr((prev) => prev.map((v, j) => (j === i ? raw : v)));
+                                }
+                              }}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onBlur={() => {
+                                setModalClusterBlocosStr((prev) =>
+                                  prev.map((v, j) =>
+                                    j === i ? String(Math.max(0, Math.round(parseInt(v, 10) || 0))) : v,
+                                  ),
+                                );
+                              }}
+                              className="w-11 h-11 rounded-xl bg-surface-2 text-center text-lg font-black text-text-primary tabular-nums lining-nums focus:outline-none focus:ring-2 focus:ring-brand/50"
+                              style={{ fontSize: 16 }}
+                              aria-label={`Reps do bloco ${i + 1} de ${modalClusterBlocosStr.length}`}
+                            />
+                          </div>
+                        ))}
                       </div>
+                    ) : modalSerie && isFreeTextReps(modalSerie) ? (
+                      // Reps em texto livre ("12 a 15") — não dá pra usar stepper numérico
+                      // nem <input type="number"> (trunca/rejeita), então é texto livre editável.
+                      <input
+                        type="text"
+                        value={modalRepsStr}
+                        onChange={(e) => setModalRepsStr(e.target.value)}
+                        placeholder={String(modalSerie.reps)}
+                        className="mt-1 w-full max-w-[220px] h-12 rounded-xl bg-surface-2 text-center text-2xl font-black text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/50"
+                        style={{ fontSize: 20 }}
+                        aria-label="Editar repetições prescritas em intervalo"
+                      />
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              ajustarReps(-1);
+                            }}
+                            className={cn(
+                              'rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0',
+                              modalShowPeso ? 'w-10 h-10' : 'w-12 h-12',
+                            )}
+                            aria-label="Diminuir reps"
+                          >
+                            <Minus size={modalShowPeso ? 18 : 20} weight="bold" />
+                          </button>
 
-                      <button
-                        type="button"
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          ajustarReps(1);
-                        }}
-                        className={cn(
-                          'rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0',
-                          modalShowPeso ? 'w-10 h-10' : 'w-12 h-12',
-                        )}
-                        aria-label="Aumentar reps"
-                      >
-                        <Plus size={modalShowPeso ? 18 : 20} weight="bold" />
-                      </button>
-                    </div>
+                          <div className={cn('text-center', modalShowPeso ? 'min-w-[76px]' : 'min-w-[100px]')}>
+                            <div className="relative">
+                              <span
+                                className={cn(
+                                  'block font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none',
+                                  modalShowPeso ? 'text-4xl' : 'text-5xl',
+                                )}
+                                aria-hidden
+                              >
+                                {modalRepsStr === '' ? '—' : modalRepsStr}
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={modalRepsStr}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  if (raw === '' || /^\d*$/.test(raw)) {
+                                    setModalRepsStr(raw);
+                                    const num = parseInt(raw, 10);
+                                    setModalReps(isNaN(num) ? 0 : num);
+                                  }
+                                }}
+                                onFocus={(e) => {
+                                  e.currentTarget.select();
+                                }}
+                                onBlur={() => {
+                                  if (modalRepsStr !== '' && !isNaN(parseInt(modalRepsStr, 10))) {
+                                    const normalized = String(Math.max(0, Math.round(parseInt(modalRepsStr, 10))));
+                                    setModalRepsStr(normalized);
+                                    setModalReps(parseInt(normalized, 10));
+                                  }
+                                }}
+                                className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
+                                style={{ fontSize: '16px' }}
+                                aria-label="Editar repetições"
+                              />
+                            </div>
+                            <span className={cn('block font-bold text-brand mt-0.5', modalShowPeso ? 'text-sm' : 'text-base')}>reps</span>
+                          </div>
 
-                    {/* Ajuste rápido de reps */}
-                    <div className="flex gap-2 justify-center mt-1">
-                      {[
-                        { delta: -5, label: '−5' },
-                        { delta: 5, label: '+5' },
-                      ].map(({ delta, label }) => (
-                        <button
-                          key={delta}
-                          type="button"
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            ajustarReps(delta);
-                          }}
-                          className="min-w-[52px] h-9 rounded-[10px] bg-surface-2 text-xs font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
-                          aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} reps`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                          <button
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              ajustarReps(1);
+                            }}
+                            className={cn(
+                              'rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0',
+                              modalShowPeso ? 'w-10 h-10' : 'w-12 h-12',
+                            )}
+                            aria-label="Aumentar reps"
+                          >
+                            <Plus size={modalShowPeso ? 18 : 20} weight="bold" />
+                          </button>
+                        </div>
+
+                        {/* Ajuste rápido de reps */}
+                        <div className="flex gap-2 justify-center mt-1">
+                          {[
+                            { delta: -2, label: '−2' },
+                            { delta: 2, label: '+2' },
+                          ].map(({ delta, label }) => (
+                            <button
+                              key={delta}
+                              type="button"
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                ajustarReps(delta);
+                              }}
+                              className="min-w-[52px] h-9 rounded-[10px] bg-surface-2 text-xs font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
+                              aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} reps`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </>
@@ -2903,7 +3041,7 @@ export default function ExecucaoTreinoPage() {
                                         concluirSerieEm(
                                           { rodadaIdx, fase },
                                           isAtualRow ? modalCarga : s.peso_atual,
-                                          isAtualRow ? modalReps : repsEfetivas(s),
+                                          repsParaConcluirDireto(s, isAtualRow),
                                         );
                                       }
                                     }}
@@ -2987,6 +3125,90 @@ export default function ExecucaoTreinoPage() {
                                           }}
                                           onBlur={(e) => {
                                             e.currentTarget.style.borderBottomColor = 'transparent';
+                                          }}
+                                        />
+                                      );
+                                    }
+                                    if (isClusterSetSerie(s)) {
+                                      // Cluster Set em foco: um campo por bloco (senão "4×4×4×4" virava só "4").
+                                      // Fora de foco continua só leitura do que já foi salvo/prescrito.
+                                      if (!isAtualRow) {
+                                        return (
+                                          <span
+                                            className="min-w-9 w-auto shrink-0 text-center text-xs font-medium tabular-nums lining-nums font-sans"
+                                            style={{ color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)' }}
+                                          >
+                                            {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <div className="flex shrink-0 items-center gap-0.5">
+                                          {modalClusterBlocosStr.map((val, i) => (
+                                            <input
+                                              key={i}
+                                              type="text"
+                                              inputMode="numeric"
+                                              value={val}
+                                              onChange={(e) => {
+                                                const raw = e.target.value;
+                                                if (raw === '' || /^\d*$/.test(raw)) {
+                                                  setModalClusterBlocosStr((prev) => prev.map((v, j) => (j === i ? raw : v)));
+                                                }
+                                              }}
+                                              onFocus={(e) => e.currentTarget.select()}
+                                              onBlur={() => {
+                                                setModalClusterBlocosStr((prev) => {
+                                                  const next = prev.map((v, j) =>
+                                                    j === i ? String(Math.max(0, Math.round(parseInt(v, 10) || 0))) : v,
+                                                  );
+                                                  handleRepsChange(exId, s.ordem, joinClusterBlocosStr(next));
+                                                  return next;
+                                                });
+                                              }}
+                                              aria-label={`Reps do bloco ${i + 1} — ${nome}, rodada ${rodadaIdx + 1}`}
+                                              className="w-5 h-5 shrink-0 rounded bg-surface-2 text-center text-[9px] font-bold text-text-primary tabular-nums lining-nums focus:outline-none"
+                                            />
+                                          ))}
+                                        </div>
+                                      );
+                                    }
+                                    if (isFreeTextReps(s)) {
+                                      // Reps em texto livre ("12 a 15") — nunca <input type="number">
+                                      // (rejeita/trunca). Fora de foco só leitura; em foco, texto livre.
+                                      if (!isAtualRow) {
+                                        return (
+                                          <span
+                                            className="min-w-9 w-auto shrink-0 text-center text-xs font-medium tabular-nums lining-nums font-sans"
+                                            style={{ color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)' }}
+                                          >
+                                            {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <input
+                                          type="text"
+                                          value={modalRepsStr}
+                                          placeholder={String(s.reps)}
+                                          onChange={(e) => setModalRepsStr(e.target.value)}
+                                          onBlur={(e) => {
+                                            e.currentTarget.style.borderBottomColor = 'transparent';
+                                            handleRepsChange(exId, s.ordem, e.target.value);
+                                          }}
+                                          aria-label={`Reps — ${nome}, rodada ${rodadaIdx + 1}. Prescrito: ${s.reps}`}
+                                          className={cn(
+                                            'min-w-9 w-auto shrink-0 bg-transparent text-center text-xs font-medium',
+                                            'tabular-nums lining-nums font-sans focus:outline-none',
+                                            'placeholder:text-text-disabled',
+                                          )}
+                                          style={{
+                                            color: serieTextColor(s.completado, s.reps_manual ?? false),
+                                            borderBottom: '1.5px solid transparent',
+                                          }}
+                                          onFocus={(e) => {
+                                            e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                            e.currentTarget.select();
                                           }}
                                         />
                                       );
@@ -3175,6 +3397,95 @@ export default function ExecucaoTreinoPage() {
                                   />
                                 );
                               }
+                              if (isClusterSetSerie(s)) {
+                                // Cluster Set em foco: um campo por bloco (senão "4×4×4×4" virava só "4").
+                                // Fora de foco continua só leitura do que já foi salvo/prescrito.
+                                if (!isAtual) {
+                                  return (
+                                    <span
+                                      className="w-full mx-auto block text-center tabular-nums lining-nums font-sans"
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                      }}
+                                    >
+                                      {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <div className="flex items-center justify-center gap-0.5">
+                                    {modalClusterBlocosStr.map((val, i) => (
+                                      <input
+                                        key={i}
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={val}
+                                        onChange={(e) => {
+                                          const raw = e.target.value;
+                                          if (raw === '' || /^\d*$/.test(raw)) {
+                                            setModalClusterBlocosStr((prev) => prev.map((v, j) => (j === i ? raw : v)));
+                                          }
+                                        }}
+                                        onFocus={(e) => e.currentTarget.select()}
+                                        onBlur={() => {
+                                          setModalClusterBlocosStr((prev) => {
+                                            const next = prev.map((v, j) =>
+                                              j === i ? String(Math.max(0, Math.round(parseInt(v, 10) || 0))) : v,
+                                            );
+                                            handleRepsChange(modalEx.id, s.ordem, joinClusterBlocosStr(next));
+                                            return next;
+                                          });
+                                        }}
+                                        aria-label={`Reps do bloco ${i + 1} da série ${idx + 1}`}
+                                        className="w-5 h-5 shrink-0 rounded bg-surface-2 text-center text-[9px] font-bold text-text-primary tabular-nums lining-nums focus:outline-none"
+                                      />
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              if (isFreeTextReps(s)) {
+                                // Reps em texto livre ("12 a 15") — nunca <input type="number">
+                                // (rejeita/trunca). Fora de foco só leitura; em foco, texto livre.
+                                if (!isAtual) {
+                                  return (
+                                    <span
+                                      className="w-full mx-auto block text-center tabular-nums lining-nums font-sans"
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                      }}
+                                    >
+                                      {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <input
+                                    type="text"
+                                    value={modalRepsStr}
+                                    placeholder={String(s.reps)}
+                                    onChange={(e) => setModalRepsStr(e.target.value)}
+                                    onBlur={(e) => handleRepsChange(modalEx.id, s.ordem, e.target.value)}
+                                    onFocus={(e) => e.currentTarget.select()}
+                                    aria-label={`Reps da série ${idx + 1}. Prescrito: ${s.reps}`}
+                                    className={cn(
+                                      'w-full mx-auto bg-transparent text-center',
+                                      'tabular-nums lining-nums font-sans focus:outline-none',
+                                      'placeholder:text-text-disabled',
+                                    )}
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 500,
+                                      fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                                      color: serieTextColor(s.completado, s.reps_manual ?? false),
+                                      height: 22,
+                                    }}
+                                  />
+                                );
+                              }
                               return (
                                 <input
                                   type="number"
@@ -3238,7 +3549,7 @@ export default function ExecucaoTreinoPage() {
                                   concluirSerieEm(
                                     { rodadaIdx: idx, fase: null },
                                     isAtual ? modalCarga : s.peso_atual,
-                                    isAtual ? modalReps : repsEfetivas(s),
+                                    repsParaConcluirDireto(s, isAtual),
                                   );
                                 }
                               }}

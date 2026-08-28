@@ -1,5 +1,8 @@
 'use client';
 
+import { useId, useMemo } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
 interface ChartPoint {
   date: string;
   value: number;
@@ -16,19 +19,44 @@ interface MeasurementLineChartProps {
   emptyMessage?: string;
 }
 
+const BRAND = '#751BB4';
+
+function MeasurementTooltip({
+  active,
+  payload,
+  label,
+  formatValue,
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{ value?: unknown }>;
+  label?: string;
+  formatValue?: (value: number) => string;
+}) {
+  if (!active || !payload?.length) return null;
+  const value = Number(payload[0]?.value ?? 0);
+  return (
+    <div
+      className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold shadow-lg"
+      style={{ background: '#1a1a1a', color: '#fff' }}
+    >
+      <p className="mb-0.5 font-normal text-white/60">{label}</p>
+      {formatValue ? formatValue(value) : value}
+    </div>
+  );
+}
+
 export function MeasurementLineChart({
   data,
   height,
   isDesktop = false,
   yDomain,
   labelMode = 'sparse',
+  formatValue,
   emptyMessage = 'Registre pelo menos 2 medidas para ver o gráfico',
 }: MeasurementLineChartProps) {
-  const chartHeight = height ?? (isDesktop ? 240 : 120);
-  const width = 300;
+  const gradientId = `measurementFill-${useId().replace(/:/g, '')}`;
+  const chartHeight = height ?? (isDesktop ? 240 : 140);
   const hasEnough = data.length >= 2;
-  const padding = { top: 6, bottom: 6 };
-  const chartH = chartHeight - padding.top - padding.bottom;
 
   const minVal = yDomain
     ? yDomain[0]
@@ -40,22 +68,21 @@ export function MeasurementLineChart({
     : hasEnough
       ? Math.max(...data.map((d) => d.value))
       : 1;
-  const range = maxVal - minVal || 1;
+  // Respiro acima/abaixo — sem isso a linha às vezes encosta na borda do gráfico.
+  const pad = yDomain ? 0 : Math.max((maxVal - minVal) * 0.15, 0.5);
+  const domain: [number, number] = [minVal - pad, maxVal + pad];
 
-  const toX = (i: number) =>
-    data.length <= 1 ? width / 2 : (i / (data.length - 1)) * width;
-
-  const toY = (v: number) =>
-    padding.top + chartH - ((v - minVal) / range) * chartH;
-
-  const points = data
-    .map((d, i) => `${toX(i).toFixed(1)},${toY(d.value).toFixed(1)}`)
-    .join(' ');
-
-  const firstDate = data[0]?.date ?? '';
-  const midDate = data[Math.floor(data.length / 2)]?.date ?? '';
-  const lastDate = data[data.length - 1]?.date ?? '';
-  const lastPoint = data[data.length - 1];
+  // "all" = todo ponto rotulado (uso do sparkline compacto do kanban, poucos pontos).
+  // "sparse" = ~5 marcações espalhadas — dá pra ver a coluna vertical sem
+  // lotar de rótulo quando o período tem muitos pontos (90 dias, 1 ano...).
+  const sparseTicks = useMemo(() => {
+    if (labelMode === 'all' || data.length === 0) return undefined;
+    const count = Math.min(5, data.length);
+    const indices = new Set(
+      Array.from({ length: count }, (_, i) => Math.round((i * (data.length - 1)) / Math.max(1, count - 1))),
+    );
+    return [...indices].map((i) => data[i]?.date);
+  }, [data, labelMode]);
 
   return (
     <div
@@ -72,65 +99,46 @@ export function MeasurementLineChart({
       }}
     >
       {hasEnough ? (
-        <div>
-          <svg
-            width="100%"
-            height={chartHeight}
-            viewBox={`0 0 ${width} ${chartHeight}`}
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <line
-              x1={0}
-              y1={chartHeight - 2}
-              x2={width}
-              y2={chartHeight - 2}
-              stroke="rgba(0,0,0,0.06)"
-              strokeWidth={1}
+        <ResponsiveContainer width="100%" height={chartHeight}>
+          <AreaChart data={data} margin={{ top: 8, right: 6, left: 6, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={BRAND} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={BRAND} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              vertical
+              horizontal={false}
+              stroke="rgba(0,0,0,0.07)"
+              strokeDasharray="3 4"
             />
-
-            <polyline
-              points={points}
-              fill="none"
-              stroke="#751BB4"
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 8, fill: '#aaa' }}
+              tickLine={false}
+              axisLine={false}
+              interval={sparseTicks ? undefined : 0}
+              ticks={sparseTicks}
+              dy={4}
+            />
+            <YAxis hide domain={domain} />
+            <Tooltip
+              cursor={{ stroke: 'rgba(0,0,0,0.1)', strokeWidth: 1 }}
+              content={<MeasurementTooltip formatValue={formatValue} />}
+            />
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke={BRAND}
               strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              fill={`url(#${gradientId})`}
+              dot={labelMode === 'all' ? false : { r: 2.5, fill: BRAND, strokeWidth: 0 }}
+              activeDot={{ r: 4, fill: BRAND, strokeWidth: 2, stroke: '#fff' }}
+              isAnimationActive={false}
             />
-
-            {lastPoint && (
-              <circle
-                cx={toX(data.length - 1)}
-                cy={toY(lastPoint.value)}
-                r={3}
-                fill="#751BB4"
-              />
-            )}
-          </svg>
-
-          {labelMode === 'all' && (
-            <div className="mt-0.5 flex justify-between gap-0.5">
-              {data.map((d, i) => (
-                <span
-                  key={`${d.date}-${i}`}
-                  className="flex-1 text-center text-[7px] text-text-disabled"
-                >
-                  {d.date}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {labelMode === 'sparse' && (
-            <div className="mt-0.5 flex justify-between">
-              <span className="text-[8px] text-text-disabled">{firstDate}</span>
-              {data.length > 2 && (
-                <span className="text-[8px] text-text-disabled">{midDate}</span>
-              )}
-              <span className="text-[8px] text-text-disabled">{lastDate}</span>
-            </div>
-          )}
-        </div>
+          </AreaChart>
+        </ResponsiveContainer>
       ) : (
         <p style={{ fontSize: 12, color: '#bbb', textAlign: 'center' }}>
           {emptyMessage}

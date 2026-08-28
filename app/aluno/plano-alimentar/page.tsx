@@ -376,15 +376,27 @@ export default function PlanoAlimentarPage() {
     if (!userId || !digitalPlan || togglingMealId) return;
     const dateChanged = checkDateChange();
     if (dateChanged) return;
-    setTogglingMealId(mealId);
     setFeedbackError(null);
 
     const today = getTodayISO();
     const isDone = digitalCheckins[mealId] === 'done';
 
+    // Otimista: marca/desmarca na hora — a requisição roda em segundo plano.
+    // Sem isso, o check só aparecia depois da rede responder, e cada toque
+    // parecia travar por causa da latência (é o que estava sendo relatado).
+    if (isDone) {
+      setDigitalCheckins(prev => {
+        const next = { ...prev };
+        delete next[mealId];
+        return next;
+      });
+    } else {
+      setDigitalCheckins(prev => ({ ...prev, [mealId]: 'done' }));
+    }
+    setTogglingMealId(mealId);
+
     try {
       if (isDone) {
-        // Desmarcar
         const { error } = await supabaseClient
           .from('nutrition_meal_checkins')
           .delete()
@@ -393,14 +405,7 @@ export default function PlanoAlimentarPage() {
           .eq('checkin_date', today);
 
         if (error) throw error;
-
-        setDigitalCheckins(prev => {
-          const next = { ...prev };
-          delete next[mealId];
-          return next;
-        });
       } else {
-        // Marcar feita
         const { error } = await supabaseClient
           .from('nutrition_meal_checkins')
           .upsert({
@@ -415,14 +420,19 @@ export default function PlanoAlimentarPage() {
           });
 
         if (error) throw error;
-
-        setDigitalCheckins(prev => ({
-          ...prev,
-          [mealId]: 'done'
-        }));
       }
     } catch (err: any) {
       console.error('[Digital Checkin] Erro:', err);
+      // Desfaz o otimismo — a rede não confirmou, volta pro estado real.
+      if (isDone) {
+        setDigitalCheckins(prev => ({ ...prev, [mealId]: 'done' }));
+      } else {
+        setDigitalCheckins(prev => {
+          const next = { ...prev };
+          delete next[mealId];
+          return next;
+        });
+      }
       setFeedbackError('Não foi possível registrar agora. Tente novamente.');
       setTimeout(() => setFeedbackError(null), 4000);
     } finally {
@@ -455,34 +465,50 @@ export default function PlanoAlimentarPage() {
     if (!userId || togglingMealId) return;
     const dateChanged = checkDateChange();
     if (dateChanged) return;
-    setTogglingMealId(refeicaoId);
 
     const today = getTodayISO();
     const jaConsumido = legacyConsumidos.has(refeicaoId);
 
+    // Otimista — mesmo motivo do toggle do plano digital: não espera a rede
+    // pra refletir o toque, senão marca refeição parece travado.
+    if (jaConsumido) {
+      setLegacyConsumidos(prev => {
+        const next = new Set(prev);
+        next.delete(refeicaoId);
+        return next;
+      });
+    } else {
+      setLegacyConsumidos(prev => new Set([...prev, refeicaoId]));
+    }
+    setTogglingMealId(refeicaoId);
+
     try {
       if (jaConsumido) {
-        await supabaseClient
+        const { error } = await supabaseClient
           .from('consumos_refeicao')
           .delete()
           .eq('aluno_id', userId)
           .eq('refeicao_id', refeicaoId)
           .eq('data_consumo', today);
-
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseClient
+          .from('consumos_refeicao')
+          .insert({ aluno_id: userId, refeicao_id: refeicaoId, data_consumo: today });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error('[Consumo Legado] Erro:', err);
+      // Desfaz o otimismo.
+      if (jaConsumido) {
+        setLegacyConsumidos(prev => new Set([...prev, refeicaoId]));
+      } else {
         setLegacyConsumidos(prev => {
           const next = new Set(prev);
           next.delete(refeicaoId);
           return next;
         });
-      } else {
-        await supabaseClient
-          .from('consumos_refeicao')
-          .insert({ aluno_id: userId, refeicao_id: refeicaoId, data_consumo: today });
-
-        setLegacyConsumidos(prev => new Set([...prev, refeicaoId]));
       }
-    } catch (err) {
-      console.error('[Consumo Legado] Erro:', err);
     } finally {
       setTogglingMealId(null);
     }
