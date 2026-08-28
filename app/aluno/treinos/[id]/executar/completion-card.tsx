@@ -309,7 +309,7 @@ export default function CompletionCard({
                 }}
               >
                 <div style={{ width: '100%', height: '340px', display: 'inline-block' }}>
-                  <MuscleChart exercicios={exercicios} dualView forExport />
+                  <MuscleChart exercicios={exercicios} />
                 </div>
               </td>
             </tr>

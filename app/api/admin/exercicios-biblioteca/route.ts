@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
+import {
+  assertCoachWriteAccess,
+  coachWriteAccessErrorResponse,
+} from "@/lib/subscriptions/assertCoachWriteAccess";
 
 type CreateExercisePayload = {
   nome?: string;
@@ -14,18 +17,19 @@ type CreateExercisePayload = {
 
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const auth = await getAuthenticatedCoach(req, {
+      allowedRoles: ["coach", "super_admin", "admin"],
+    });
+    if ("error" in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      const missing = [];
-      if (!supabaseUrl) missing.push("NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_URL");
-      if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
-
-      return NextResponse.json(
-        { error: "Configuração do servidor incompleta", missingVariables: missing },
-        { status: 500 }
-      );
+    try {
+      await assertCoachWriteAccess(auth.userId);
+    } catch (err) {
+      const denied = coachWriteAccessErrorResponse(err);
+      if (denied) return denied;
+      throw err;
     }
 
     let body: CreateExercisePayload;
@@ -47,53 +51,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Informe nome e grupo muscular" }, { status: 400 });
     }
 
-    let token = "";
-    try {
-      const cookieStore = await cookies();
-      token = cookieStore.get("sb-access-token")?.value || "";
-    } catch {
-      // ignore
-    }
-
-    if (!token) {
-      const bearer = req.headers.get("authorization") || "";
-      token = bearer.replace("Bearer ", "");
-    }
-
-    if (!token) {
-      return NextResponse.json({ error: "Não autorizado - Sessão não encontrada" }, { status: 401 });
-    }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
-    if (authError || !authData?.user) {
-      return NextResponse.json({ error: "Sessão inválida ou expirada" }, { status: 401 });
-    }
-
-    const userId = authData.user.id;
-
-    const { data: profile, error: roleError } = await adminClient
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single();
-
-    if (roleError) {
-      return NextResponse.json({ error: "Erro ao verificar permissões", details: roleError.message }, { status: 500 });
-    }
-
-    const role = profile?.role;
-    const allowedRoles = new Set(["coach", "super_admin", "admin"]);
-
-    if (!role || !allowedRoles.has(role)) {
-      return NextResponse.json({ error: "Acesso negado - Apenas coaches podem criar exercícios" }, { status: 403 });
-    }
+    const { userId, adminClient } = auth;
 
     const { data, error } = await adminClient
       .from("exercicios_biblioteca")

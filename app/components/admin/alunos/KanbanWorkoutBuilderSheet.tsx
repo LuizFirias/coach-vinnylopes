@@ -1,0 +1,580 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { X, Plus, Barbell } from "@phosphor-icons/react";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { useAuth } from "@/app/components/AuthProvider";
+import { ExerciseList } from "@/app/components/workout-builder/ExerciseList";
+import { WorkoutPrescriptionSummary } from "@/app/components/workout-builder/WorkoutPrescriptionSummary";
+import {
+  ExerciseLibraryModal,
+  type LibraryExercise,
+} from "@/app/components/workout-builder/ExerciseLibraryModal";
+import type { ExercicioFicha, SerieDefinicao } from "@/app/components/workout-builder/types";
+import type { ExercicioFichaItem } from "@/lib/utils/biset";
+import {
+  serializeFichaItems,
+  simpleToBiSetGroup,
+  bisetGroupToSimples,
+  halfFromCatalog,
+  validateBiSetGroup,
+  isBiSetFichaItem,
+} from "@/lib/utils/biset";
+import { Button } from "@/components/ui/Button";
+import { isClusterSet } from "@/lib/constants/workout-techniques";
+import { concluirPasso } from "@/lib/onboarding/concluirPasso";
+
+function criarSeriesPadrao(tipo: string): SerieDefinicao[] {
+  const base = {
+    ordem: 1,
+    tecnica: "",
+    tecnica_extra: "",
+    peso_sugerido: null as number | null,
+  };
+  switch (tipo) {
+    case "Duração":
+    case "Duração e Peso":
+    case "Distância e Duração":
+      return [1, 2, 3].map((o) => ({ ...base, ordem: o, tempo_sugerido: "01:00" }));
+    case "Peso e Distância":
+      return [1, 2, 3].map((o) => ({ ...base, ordem: o, distancia_sugerida: 0 }));
+    default:
+      return [1, 2, 3].map((o) => ({ ...base, ordem: o, reps_sugerido: "12" }));
+  }
+}
+
+function exercicioFromCatalog(ex: LibraryExercise): ExercicioFicha {
+  const tipoEx = ex.tipo_exercicio || "Peso & Repetições";
+  return {
+    instanceId: crypto.randomUUID(),
+    id: ex.id,
+    nome: ex.nome,
+    tipo_exercicio: tipoEx,
+    descanso: "01:30",
+    video_url: ex.video_url || "",
+    observacoes: "",
+    series: criarSeriesPadrao(tipoEx),
+  };
+}
+
+interface KanbanWorkoutBuilderSheetProps {
+  open: boolean;
+  alunoId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+export function KanbanWorkoutBuilderSheet({
+  open,
+  alunoId,
+  onClose,
+  onSaved,
+}: KanbanWorkoutBuilderSheetProps) {
+  const { user } = useAuth();
+  const [nomeRotina, setNomeRotina] = useState("");
+  const [items, setItems] = useState<ExercicioFichaItem[]>([]);
+  const [catalog, setCatalog] = useState<LibraryExercise[]>([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [biSetPickIndex, setBiSetPickIndex] = useState<number | null>(null);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [bisetToast, setBisetToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setNomeRotina("");
+    setItems([]);
+    setError(null);
+    setLibraryOpen(false);
+    setBiSetPickIndex(null);
+    setLoadingCatalog(true);
+    void (async () => {
+      const { data } = await supabaseClient
+        .from("exercicios_biblioteca")
+        .select("id, nome, grupo_muscular, tipo_exercicio, equipamento, video_url")
+        .order("nome", { ascending: true });
+      setCatalog((data as LibraryExercise[]) || []);
+      setLoadingCatalog(false);
+    })();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !libraryOpen) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, libraryOpen, onClose]);
+
+  const showBisetToast = (msg: string) => {
+    setBisetToast(msg);
+    setTimeout(() => setBisetToast(null), 3500);
+  };
+
+  const handleReorder = (next: ExercicioFichaItem[]) => {
+    setItems(next);
+  };
+
+  const addFromLibrary = (selected: LibraryExercise[]) => {
+    if (biSetPickIndex != null && selected[0]) {
+      selecionarParceiroBiSet(biSetPickIndex, selected[0]);
+      setBiSetPickIndex(null);
+      setLibraryOpen(false);
+      return;
+    }
+    setItems((prev) => [...prev, ...selected.map(exercicioFromCatalog)]);
+    setLibraryOpen(false);
+  };
+
+  const startBiSetPartnerPick = (index: number) => {
+    setBiSetPickIndex(index);
+    setLibraryOpen(true);
+  };
+
+  const duplicarExercicio = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const copy: ExercicioFicha = {
+        ...item,
+        instanceId: crypto.randomUUID(),
+        series: item.series.map((s) => ({ ...s })),
+      };
+      const next = [...prev];
+      next.splice(index + 1, 0, copy);
+      return next;
+    });
+  };
+
+  const transformarEmBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = simpleToBiSetGroup(item);
+      return next;
+    });
+    startBiSetPartnerPick(index);
+  };
+
+  const selecionarParceiroBiSet = (index: number, ex: LibraryExercise) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = {
+        ...item,
+        exercicioB: halfFromCatalog(ex, item.exercicioA.series.map((s) => ({ ...s }))),
+      };
+      return next;
+    });
+    setBiSetPickIndex(null);
+    setLibraryOpen(false);
+  };
+
+  const trocarParceiroBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, exercicioB: null };
+      return next;
+    });
+    startBiSetPartnerPick(index);
+  };
+
+  const desfazerBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next.splice(index, 1, ...bisetGroupToSimples(item));
+      return next;
+    });
+    if (biSetPickIndex === index) {
+      setBiSetPickIndex(null);
+      setLibraryOpen(false);
+    }
+  };
+
+  const atualizarBiSetDescanso = (index: number, descanso: string) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, descanso };
+      return next;
+    });
+  };
+
+  const atualizarBiSetHalf = (
+    index: number,
+    half: "a" | "b",
+    patch: { nome?: string; observacoes?: string },
+  ) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const group = { ...item };
+      if (half === "a") group.exercicioA = { ...group.exercicioA, ...patch };
+      else if (group.exercicioB) group.exercicioB = { ...group.exercicioB, ...patch };
+      next[index] = group;
+      return next;
+    });
+  };
+
+  const atualizarBiSetSerie = (
+    index: number,
+    half: "a" | "b",
+    serieIndex: number,
+    campo: string,
+    valor: unknown,
+  ) => {
+    if (campo === "tecnica_extra" && valor === "Bi-Set") return;
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const group = {
+        ...item,
+        exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] },
+      };
+      if (group.exercicioB)
+        group.exercicioB = { ...group.exercicioB, series: [...group.exercicioB.series] };
+      const target = half === "a" ? group.exercicioA : group.exercicioB;
+      if (!target) return prev;
+      target.series[serieIndex] = { ...target.series[serieIndex], [campo]: valor };
+      next[index] = group;
+      return next;
+    });
+  };
+
+  const adicionarSerieBiSet = (index: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item) || !item.exercicioB) return prev;
+      const next = [...prev];
+      const group = {
+        ...item,
+        exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] },
+        exercicioB: { ...item.exercicioB, series: [...item.exercicioB.series] },
+      };
+      const modeloA = group.exercicioA.series[group.exercicioA.series.length - 1];
+      const modeloB = group.exercicioB.series[group.exercicioB.series.length - 1];
+      const ordem = group.exercicioA.series.length + 1;
+      group.exercicioA.series.push({ ...modeloA, ordem });
+      group.exercicioB.series.push({ ...modeloB, ordem });
+      next[index] = group;
+      return next;
+    });
+  };
+
+  const removerSerieBiSet = (index: number, serieIndex: number) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || !isBiSetFichaItem(item) || !item.exercicioB) return prev;
+      const next = [...prev];
+      const group = {
+        ...item,
+        exercicioA: { ...item.exercicioA, series: [...item.exercicioA.series] },
+        exercicioB: { ...item.exercicioB, series: [...item.exercicioB.series] },
+      };
+      group.exercicioA.series = group.exercicioA.series
+        .filter((_, i) => i !== serieIndex)
+        .map((s, i) => ({ ...s, ordem: i + 1 }));
+      group.exercicioB.series = group.exercicioB.series
+        .filter((_, i) => i !== serieIndex)
+        .map((s, i) => ({ ...s, ordem: i + 1 }));
+      next[index] = group;
+      return next;
+    });
+    showBisetToast(
+      "Em Bi-Sets, séries são adicionadas e removidas em par. Ambos os exercícios foram atualizados.",
+    );
+  };
+
+  const removerExercicioSimple = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const atualizarExercicio = (index: number, patch: Partial<ExercicioFicha>) => {
+    setItems((prev) => {
+      const item = prev[index];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[index] = { ...item, ...patch };
+      return next;
+    });
+  };
+
+  const atualizarSerie = (
+    exIndex: number,
+    serieIndex: number,
+    campo: string,
+    valor: unknown,
+  ) => {
+    if (campo === "tecnica_extra" && valor === "Bi-Set") {
+      transformarEmBiSet(exIndex);
+      return;
+    }
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const series = [...item.series];
+      const atual = series[serieIndex];
+      let atualizada = { ...atual, [campo]: valor };
+      // Saiu do Cluster Set — volta pro campo de reps simples (só numeral)
+      if ((campo === "tecnica" || campo === "tecnica_extra") && isClusterSet(atual) && !isClusterSet(atualizada)) {
+        atualizada = {
+          ...atualizada,
+          reps_sugerido: atual.cluster_reps != null ? String(atual.cluster_reps) : "",
+          cluster_qtd: undefined,
+          cluster_reps: undefined,
+          cluster_descanso_seg: undefined,
+        };
+      }
+      series[serieIndex] = atualizada;
+      next[exIndex] = { ...item, series };
+      return next;
+    });
+  };
+
+  const atualizarDescansoClusters = (exIndex: number, segundos: number) => {
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const series = item.series.map((s) =>
+        isClusterSet(s) ? { ...s, cluster_descanso_seg: segundos } : s
+      );
+      next[exIndex] = { ...item, series };
+      return next;
+    });
+  };
+
+  const adicionarSerie = (exIndex: number) => {
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      const series = item.series;
+      const proximaOrdem =
+        series.length > 0 ? Math.max(...series.map((s) => s.ordem)) + 1 : 1;
+      const modelo = series[series.length - 1] || {
+        reps_sugerido: "12",
+        tempo_sugerido: "01:00",
+        tecnica: "",
+        tecnica_extra: "",
+        peso_sugerido: null,
+      };
+      next[exIndex] = {
+        ...item,
+        series: [...series, { ...modelo, ordem: proximaOrdem }],
+      };
+      return next;
+    });
+  };
+
+  const removerSerie = (exIndex: number, serieIndex: number) => {
+    setItems((prev) => {
+      const item = prev[exIndex];
+      if (!item || isBiSetFichaItem(item)) return prev;
+      const next = [...prev];
+      next[exIndex] = {
+        ...item,
+        series: item.series
+          .filter((_, i) => i !== serieIndex)
+          .map((s, i) => ({ ...s, ordem: i + 1 })),
+      };
+      return next;
+    });
+  };
+
+  const handleSave = useCallback(async () => {
+    setError(null);
+    if (!nomeRotina.trim()) {
+      setError("Digite o nome do treino");
+      return;
+    }
+    if (items.length === 0) {
+      setError("Adicione pelo menos um exercício");
+      return;
+    }
+    for (const item of items) {
+      if (isBiSetFichaItem(item)) {
+        const err = validateBiSetGroup(item);
+        if (err) {
+          setError(err);
+          return;
+        }
+      }
+    }
+    if (!user?.id) {
+      setError("Sessão expirada");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error: insertError } = await supabaseClient.from("fichas_treino").insert({
+        aluno_id: alunoId,
+        coach_id: user.id,
+        nome_rotina: nomeRotina.trim(),
+        configuracao: { exercicios: serializeFichaItems(items) },
+        ativo: true,
+      });
+      if (insertError) throw insertError;
+      await concluirPasso(user.id, "montar-ficha");
+      onSaved();
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar treino");
+    } finally {
+      setSaving(false);
+    }
+  }, [alunoId, items, nomeRotina, onClose, onSaved, user?.id]);
+
+  if (!open) return null;
+
+  const canSave = !!nomeRotina.trim() && items.length > 0 && !saving;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm">
+      <div className="flex-1 flex flex-col min-h-0 max-w-[min(960px,96vw)] w-full mx-auto my-3 md:my-6 rounded-xl border-0 bg-surface-1 overflow-hidden">
+        <div className="shrink-0 px-4 py-3 border-b border-divider flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] uppercase tracking-[1px] text-[#7a8aab] mb-1">
+              Novo treino
+            </p>
+            <input
+              type="text"
+              value={nomeRotina}
+              onChange={(e) => setNomeRotina(e.target.value)}
+              placeholder="Ex.: Upper A, Lower, Full Body..."
+              className="w-full bg-transparent text-lg font-bold text-white placeholder:text-[#555555] focus:outline-none"
+              autoFocus
+            />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              loading={saving}
+              disabled={!canSave}
+              onClick={() => void handleSave()}
+            >
+              Salvar
+            </Button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-lg bg-surface-2 text-text-secondary hover:text-text-primary flex items-center justify-center"
+              aria-label="Fechar"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+          {error && (
+            <p className="text-xs text-[#e05555] bg-[#e05555]/10 border border-[#e05555]/30 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+          {bisetToast && (
+            <p className="text-xs text-white bg-brand-subtle border-l-[3px] border-brand rounded-lg px-3 py-2">
+              {bisetToast}
+            </p>
+          )}
+
+          <WorkoutPrescriptionSummary items={items} isMobile={false} />
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white">
+              Exercícios{" "}
+              <span className="text-brand">({items.length})</span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => setLibraryOpen(true)}
+              disabled={loadingCatalog}
+              className="inline-flex items-center gap-1.5 px-3 h-8 border-0 bg-surface-2 text-text-secondary rounded-lg text-xs font-semibold hover:text-brand hover:border-brand/40"
+            >
+              <Plus size={14} weight="bold" /> Adicionar exercício
+            </button>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="rounded-xl p-8 flex flex-col items-center text-center">
+              <Barbell size={28} className="text-[#555555] mb-2" />
+              <p className="text-xs text-[#555555] mb-4">
+                Adicione exercícios e configure séries, técnicas e Bi-Sets aqui.
+              </p>
+              <button
+                type="button"
+                onClick={() => setLibraryOpen(true)}
+                className="px-4 h-9 bg-brand text-text-on-brand rounded-lg text-xs font-semibold"
+              >
+                Abrir biblioteca
+              </button>
+            </div>
+          ) : (
+            <ExerciseList
+              items={items}
+              onReorder={handleReorder}
+              onUpdateSimple={atualizarExercicio}
+              onDeleteSimple={removerExercicioSimple}
+              onDuplicateSimple={duplicarExercicio}
+              onAddSetSimple={adicionarSerie}
+              onUpdateSerieSimple={atualizarSerie}
+              onDeleteSerieSimple={removerSerie}
+              onUpdateClusterDescanso={atualizarDescansoClusters}
+              onUpdateBiSetDescanso={atualizarBiSetDescanso}
+              onUpdateBiSetHalf={atualizarBiSetHalf}
+              onUpdateBiSetSerie={atualizarBiSetSerie}
+              onAddBiSetSerie={adicionarSerieBiSet}
+              onRemoveBiSetSerie={removerSerieBiSet}
+              onSwapBiSetPartner={trocarParceiroBiSet}
+              onRequestBiSetPartnerPick={startBiSetPartnerPick}
+              onUndoBiSet={desfazerBiSet}
+              onDeleteBiSet={removerExercicioSimple}
+              onBiSetSerieToast={() =>
+                showBisetToast("Séries de Bi-Set atualizadas em par.")
+              }
+            />
+          )}
+        </div>
+      </div>
+
+      {libraryOpen && (
+        <ExerciseLibraryModal
+          catalog={catalog}
+          pickMode={biSetPickIndex != null}
+          pickExcludeId={(() => {
+            if (biSetPickIndex == null) return null;
+            const item = items[biSetPickIndex];
+            return item && isBiSetFichaItem(item)
+              ? item.exercicioA.exercicio_id
+              : null;
+          })()}
+          onClose={() => {
+            if (biSetPickIndex != null) {
+              const item = items[biSetPickIndex];
+              if (item && isBiSetFichaItem(item) && !item.exercicioB) {
+                desfazerBiSet(biSetPickIndex);
+              }
+              setBiSetPickIndex(null);
+            }
+            setLibraryOpen(false);
+          }}
+          onAdd={addFromLibrary}
+        />
+      )}
+    </div>
+  );
+}

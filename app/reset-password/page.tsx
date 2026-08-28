@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeSlash, ShieldCheck, WarningCircle, CheckCircle } from "@phosphor-icons/react";
 import DumbbellLoader from "../components/DumbbellLoader";
 import { motion, AnimatePresence } from "framer-motion";
+import { getPostLoginPath } from "@/lib/auth/getPostLoginPath";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -92,10 +93,32 @@ function ResetPasswordForm() {
 
     setLoading(true);
     try {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const user = authData?.user;
+
       const { error: updateError } = await supabaseClient.auth.updateUser({ password });
       if (updateError) throw updateError;
+
+      if (user) {
+        await supabaseClient
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("id", user.id);
+      }
+
+      const { data: profile } = user
+        ? await supabaseClient
+            .from("profiles")
+            .select("role, first_access_completed, must_change_password")
+            .eq("id", user.id)
+            .single()
+        : { data: null };
+
       setSuccess(true);
-      setTimeout(() => router.replace("/login"), 3000);
+      const destination = profile
+        ? getPostLoginPath({ ...profile, must_change_password: false })
+        : "/aluno/dashboard";
+      setTimeout(() => router.replace(destination), 2500);
     } catch (err: any) {
       setError(err.message || "Erro ao atualizar senha. O link pode ter expirado.");
     } finally {
@@ -123,18 +146,18 @@ function ResetPasswordForm() {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="w-20 h-20 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center mb-6 shadow-elev-1"
+            className="w-20 h-20 bg-surface-2 border border-card rounded-2xl flex items-center justify-center mb-6 shadow-elev-1"
           >
             <ShieldCheck className="text-brand w-10 h-10" />
           </motion.div>
-          <h1 className="text-xl font-semibold text-text-primary tracking-tight">Nova senha</h1>
+          <h1 className="text-xl font-semibold text-text-primary tracking-tight">Crie sua senha</h1>
           <p className="text-text-tertiary text-xs mt-2 max-w-[260px] leading-relaxed">
-            Escolha uma senha segura para acessar sua conta.
+            Bem-vindo! Defina sua senha para acessar a plataforma.
           </p>
         </div>
 
         {/* Card */}
-        <div className="w-full bg-surface-1/80 backdrop-blur-xl border border-border-subtle shadow-elev-2 p-8 rounded-[32px] relative overflow-hidden">
+        <div className="w-full bg-surface-1/80 backdrop-blur-xl border border-card shadow-elev-2 p-8 rounded-[32px] relative overflow-hidden">
 
           <AnimatePresence mode="wait">
             {success ? (
@@ -145,8 +168,8 @@ function ResetPasswordForm() {
                 className="flex flex-col items-center gap-4 text-center"
               >
                 <CheckCircle className="text-brand w-12 h-12" />
-                <p className="text-text-primary text-sm font-semibold">Senha atualizada com sucesso!</p>
-                <p className="text-text-tertiary text-xs">Redirecionando para o login…</p>
+                <p className="text-text-primary text-sm font-semibold">Senha criada com sucesso!</p>
+                <p className="text-text-tertiary text-xs">Entrando na plataforma…</p>
               </motion.div>
             ) : hashError ? (
               <motion.div
@@ -201,7 +224,7 @@ function ResetPasswordForm() {
                       onChange={e => { setPassword(e.target.value); setError(null); }}
                       placeholder="Mínimo 8 caracteres"
                       required
-                      className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 pr-14 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                      className="w-full h-14 bg-surface-0 border border-input text-text-primary px-5 pr-14 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
                     />
                     <button
                       type="button"
@@ -224,7 +247,7 @@ function ResetPasswordForm() {
                     onChange={e => { setConfirm(e.target.value); setError(null); }}
                     placeholder="Repita a senha"
                     required
-                    className="w-full h-14 bg-surface-0 border border-border-subtle text-text-primary px-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
+                    className="w-full h-14 bg-surface-0 border border-input text-text-primary px-5 rounded-2xl text-sm placeholder:text-text-disabled focus:outline-none focus:border-brand/40 transition-colors"
                   />
                 </div>
 
@@ -250,7 +273,7 @@ function ResetPasswordForm() {
                   {loading ? (
                     <div className="w-4 h-4 border-2 border-text-on-brand/20 border-t-text-on-brand rounded-full animate-spin" />
                   ) : (
-                    "Salvar nova senha"
+                    "Criar senha e entrar"
                   )}
                 </button>
               </motion.form>

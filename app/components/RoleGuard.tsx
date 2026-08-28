@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
+import DumbbellLoader from './DumbbellLoader';
 
 interface RoleGuardProps {
   children: React.ReactNode;
@@ -54,10 +55,7 @@ export default function RoleGuard({ children, allowedRoles, redirectTo }: RoleGu
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-brand/20 border-t-brand rounded-full animate-spin"></div>
-          <p className="text-zinc-600 text-sm uppercase tracking-widest">Verificando permissões...</p>
-        </div>
+        <DumbbellLoader />
       </div>
     );
   }
@@ -66,10 +64,7 @@ export default function RoleGuard({ children, allowedRoles, redirectTo }: RoleGu
   if (!user || !userRole) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-brand/20 border-t-brand rounded-full animate-spin"></div>
-          <p className="text-zinc-600 text-sm uppercase tracking-widest">Carregando...</p>
-        </div>
+        <DumbbellLoader />
       </div>
     );
   }
@@ -82,10 +77,7 @@ export default function RoleGuard({ children, allowedRoles, redirectTo }: RoleGu
   // Enquanto redireciona, mostrar loading
   return (
     <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-red-500/20 border-t-red-500 rounded-full animate-spin"></div>
-        <p className="text-red-500 text-sm uppercase tracking-widest">Redirecionando...</p>
-      </div>
+      <DumbbellLoader />
     </div>
   );
 }
@@ -98,7 +90,7 @@ function getRoleHomePage(role: string): string {
     case 'aluno':
       return '/aluno/dashboard';
     case 'coach':
-      return '/admin/alunos';
+      return '/admin/dashboard';
     case 'super_admin':
       return '/super-admin';
     default:

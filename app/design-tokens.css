@@ -1,6 +1,6 @@
 /**
  * design-tokens.css
- * ────────────────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────────
  * Tokens de design para Next.js (App Router).
  * Fonte de verdade: DESIGN-SPEC.md §2
  *
@@ -20,7 +20,7 @@
  *
  * As fontes (Inter + JetBrains Mono) são carregadas via next/font no
  * layout.tsx (não usar @import de Google Fonts — pior performance).
- * ────────────────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────────
  */
 
 :root {
@@ -32,6 +32,7 @@
   --surface-2:        #1C1C1C;   /* cards aninhados, hover, elevados */
   --surface-3:        #252525;   /* inputs, divisores ativos */
   --surface-4:        #303030;   /* skeleton loaders, mais elevado */
+  --card-shadow:      none;      /* só o tema light adota a sombra em camadas */
 
   /* ═══════════════════════════════════════════════════════════
      TEXT
@@ -48,6 +49,13 @@
   --border-default:   #2A2A2A;   /* Linha de borda padrão */
   --border-strong:    #3F3F3F;   /* Borda em destaque */
 
+  /* Bordas semânticas — cards sem outline; separação só por surface (trazido do AURON) */
+  --border-card:        transparent;
+  --border-card-hover:  rgba(255, 255, 255, 0.06);
+  --border-input:       transparent;               /* contraste via surface-2 */
+  --border-divider:     #2A2A2A;
+  --border-accent:      rgba(212, 168, 67, 0.40);
+
   /* ═══════════════════════════════════════════════════════════
      BRAND (dourado refinado — uso ≤10% da tela)
      ═══════════════════════════════════════════════════════════ */
@@ -56,9 +64,19 @@
   --brand-pressed:    #9E7720;
   --brand-subtle:     rgba(212, 168, 67, 0.12);
   --brand-border:     rgba(212, 168, 67, 0.32);
+  --surface-card-light: #FFFFFF;
 
   /* Texto sobre dourado: usar este, não branco */
   --text-on-brand:    #0A0A0A;
+
+  /* ═══════════════════════════════════════════════════════════
+     CALENDÁRIO / STATUS DE TREINO
+     ═══════════════════════════════════════════════════════════ */
+  --cal-done:         #39c75a;
+  --cal-missed:       #e05555;
+  --cal-today:        var(--brand-primary);
+  --cal-upcoming:     #7a8aab;
+  --cal-rest:         #444444;
 
   /* ═══════════════════════════════════════════════════════════
      SEMANTIC COLORS (estado, nunca decoração)
@@ -67,15 +85,17 @@
   --success-subtle:   rgba(76, 175, 80, 0.12);
   --success-border:   rgba(76, 175, 80, 0.40);
 
-  --warning:          #FF7043;   /* Laranja sutil para alertas, rest close */
-  --warning-subtle:   rgba(255, 112, 67, 0.12);
+  --warning:          #F59E0B;
+  --warning-subtle:   rgba(245, 158, 11, 0.10);
+  --warning-border:   rgba(245, 158, 11, 0.20);
 
-  --danger:           #EF5350;   /* Vermelho sutil para erro, falha */
-  --danger-subtle:    rgba(239, 83, 80, 0.12);
-  --danger-border:    rgba(239, 83, 80, 0.40);
+  --danger:           #e05555;
+  --danger-subtle:    rgba(224, 85, 85, 0.10);
+  --danger-border:    rgba(224, 85, 85, 0.20);
 
-  --info:             #3B82F6;   /* info, recovery, sync */
-  --info-subtle:      rgba(59, 130, 246, 0.12);
+  --info:             #38BDF8;
+  --info-subtle:      rgba(56, 189, 248, 0.10);
+  --info-border:      rgba(56, 189, 248, 0.20);
 
   /* ═══════════════════════════════════════════════════════════
      SHADOWS & GLOWS (elevação dark mode)
@@ -91,12 +111,49 @@
 
   --focus-ring:       0 0 0 2px rgba(212, 168, 67, 0.50);
 
+  /* Botão primário — gradiente + glow */
+  --btn-primary-bg: linear-gradient(135deg, #9B4DD4 0%, #751BB4 55%, #5E158F 100%);
+  --btn-primary-shadow: 0 4px 20px rgba(117, 27, 180, 0.45);
+  --btn-primary-shadow-hover: 0 6px 28px rgba(117, 27, 180, 0.60);
+
+  /* Card Nível 3 — macros da dieta (dark) */
+  --card-macros-bg:           #111827;
+  --card-macros-border:       rgba(147, 51, 234, 0.30);
+  --card-macros-ring:         rgba(147, 51, 234, 0.08);
+  --card-macros-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 0 0 1px rgba(147, 51, 234, 0.08);
+  --card-macros-glow:
+    radial-gradient(ellipse at 50% -10%, rgba(147, 51, 234, 0.14) 0%, transparent 70%);
+  --card-macros-topline:
+    linear-gradient(90deg, transparent, #9333ea 30%, #a855f7 60%, transparent);
+  --card-macros-divider:      rgba(255, 255, 255, 0.06);
+
+  --mc-protein-bg:     linear-gradient(145deg, rgba(59, 130, 246, 0.15) 0%, #111827 55%);
+  --mc-protein-border: rgba(59, 130, 246, 0.22);
+  --mc-protein-color:  #3b82f6;
+
+  --mc-carbo-bg:       linear-gradient(145deg, rgba(245, 158, 11, 0.15) 0%, #111827 55%);
+  --mc-carbo-border:   rgba(245, 158, 11, 0.22);
+  --mc-carbo-color:    #f59e0b;
+
+  --mc-fat-bg:         linear-gradient(145deg, rgba(16, 185, 129, 0.15) 0%, #111827 55%);
+  --mc-fat-border:     rgba(16, 185, 129, 0.22);
+  --mc-fat-color:      #10b981;
+
+  --mc-shadow:         0 2px 12px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+
   /* ═══════════════════════════════════════════════════════════
      TYPOGRAPHY
      ═══════════════════════════════════════════════════════════ */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
                Roboto, Oxygen, Ubuntu, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  /* Era JetBrains Mono — trocado pra sempre usar a fonte principal do app
+     (mesmo valor de --font-sans, herdando o font-family real do next/font
+     aplicado no html/body: Inter, "Inter Fallback"). Um alias só aqui já
+     troca todo mundo que usa font-mono/var(--font-mono) no app inteiro. */
+  --font-mono: var(--font-sans);
 
   /* Escala (mobile-first, base 16px) */
   --text-2xs:    11px;
@@ -123,10 +180,16 @@
   --leading-relaxed: 1.65;
 
   /* Letter spacing */
-  --tracking-tight:  -0.02em;
-  --tracking-normal: 0;
-  --tracking-wide:   0.02em;
-  --tracking-caps:   0.08em;
+  --tracking-tight:    -0.02em;
+  --tracking-normal:   0;
+  --tracking-wide:     0.02em;
+  --tracking-caps:     0.08em;
+  --tracking-display:  -0.03em;  /* KPIs ≥ 36px */
+  --tracking-headline: -0.02em;  /* títulos 20–28px */
+  --tracking-body:     0;        /* corpo < 18px */
+
+  /* Numerais (dados): tabular + lining */
+  --numeric-features: "tnum" 1, "lnum" 1;
 
   /* ═══════════════════════════════════════════════════════════
      SPACING (8pt grid)
@@ -160,10 +223,10 @@
   /* ═══════════════════════════════════════════════════════════
      REFACTORING DOC ALIASES (--color-* names)
      ═══════════════════════════════════════════════════════════ */
-  --color-gold:           #D4A843;
-  --color-gold-dark:      #B8902F;
+  --color-gold:           var(--brand-primary);
+  --color-gold-dark:      var(--brand-hover);
   --color-gold-light:     #E8B339;
-  --color-gold-muted:     rgba(212, 168, 67, 0.15);
+  --color-gold-muted:     var(--brand-subtle);
 
   --color-bg-primary:     var(--surface-0);
   --color-bg-secondary:   var(--surface-1);
@@ -176,7 +239,7 @@
   --color-text-muted:     var(--text-tertiary);
 
   --color-border-default: var(--border-subtle);
-  --color-border-gold:    rgba(212, 168, 67, 0.3);
+  --color-border-gold:    var(--brand-border);
   --color-border-strong:  var(--border-default);
 
   --color-success:        var(--success);
@@ -188,6 +251,10 @@
   --nav-height:       64px;
   --nav-safe-area:    env(safe-area-inset-bottom, 0px);
   --tap-min:          44px;
+  /* BottomNav — fundo sólido por tema */
+  --nav-bg:           #141414;
+  --nav-border:       rgba(255, 255, 255, 0.08);
+  --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.45);
 
   /* ═══════════════════════════════════════════════════════════
      LEGACY COMPAT (old --bg-* and --gold-* names still used)
@@ -198,7 +265,7 @@
   --bg-elevated:     var(--surface-2);
   --gold-default:    var(--brand-primary);
   --gold-light:      var(--brand-hover);
-  --gold-highlight:  #EDD06B;
+  --gold-highlight:  #38BDF8;
   --gold-bg:         var(--brand-subtle);
 
   /* ═══════════════════════════════════════════════════════════
@@ -207,6 +274,11 @@
   --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-instant: 100ms;
+  --duration-fast:    180ms;
+  --duration-normal:  240ms;
+  --duration-slow:    400ms;
 
   /* ═══════════════════════════════════════════════════════════
      LAYOUT
@@ -254,9 +326,181 @@
   /* Typography additions */
   --font-size-display:    48px;    /* números de destaque: volume, peso, pts (Inter 700 48px) */
   --letter-spacing-label: 0.08em;  /* labels em CAPS: SEQUÊNCIA, VOLUME SEMANAL */
+
+  /* ═══════════════════════════════════════════════════════════
+     FILTROS / BUSCA (inputs, tabs e dropdowns de telas de listagem)
+     Dark: mantém visual atual. Light: cinza neutro sem borda + dourado.
+     Trazido do AURON, recolorido para a marca dourada.
+     ═══════════════════════════════════════════════════════════ */
+  --filter-bg:            var(--surface-2);
+  --filter-bg-focus:      var(--surface-3);
+  --filter-border:        transparent;
+  --filter-border-focus:  var(--brand-primary);
+  --filter-ring:          rgba(212, 168, 67, 0.30);
+  --filter-text:          var(--text-primary);
+  --filter-placeholder:   var(--text-disabled);
+
+  --tab-track-bg:         var(--surface-2);
+  --tab-active-bg:        var(--surface-0);
+  --tab-active-text:      var(--text-primary);
+  --tab-inactive-text:    var(--text-secondary);
+
+  /* Mobile aluno shell (theme-aware) */
+  --mobile-page-bg-solid: #000000;
+  --mobile-page-bg: #000000;
+  --mobile-card-bg: #141414;
+  --mobile-card-border: transparent;
+  --mobile-card-border-soft: transparent;
+  --mobile-card-border-faint: transparent;
+  --mobile-card-border-subtle: transparent;
+  --mobile-card-shadow: none;
+  --mobile-empty-bg: #141414;
+  --mobile-empty-border: transparent;
+  --mobile-secondary-bg: #141414;
+  --theme-color-meta: #000000;
+
+  /* Divisor entre linhas de listas de cards */
+  --list-row-divider: rgba(212, 168, 67, 0.35);
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
+   LIGHT THEME — page / card / input brancos (sem cinza de preenchimento)
+   Separação: borda + sombra. Accent dourado (--brand-primary)
+   ═══════════════════════════════════════════════════════════ */
+html[data-theme="light"] {
+  color-scheme: light;
+  --surface-0:        #EDF3FB;   /* fundo da página — cinza-azulado (padrão Mobills) */
+  --surface-1:        #FFFFFF;   /* cards — sempre branco */
+  --surface-2:        #FFFFFF;   /* inputs/selects — sempre branco */
+  --surface-3:        #F4F4F5;   /* só elevação interna rara (quase branco) */
+  --surface-4:        #E4E4E7;
+
+  --text-primary:     #09090B;
+  --text-secondary:   #52525B;
+  --text-tertiary:    #888888;
+  --text-disabled:    #A1A1AA;
+
+  --nav-bg:           #FFFFFF;
+  --nav-border:       rgba(0, 0, 0, 0.08);
+  --nav-shadow:       0 8px 24px rgba(0, 0, 0, 0.08);
+
+  --border-subtle:    #E4E4E7;
+  --border-default:   #D4D4D8;
+  --border-strong:    #A1A1AA;
+
+  --border-card:        rgba(0, 0, 0, 0.06);
+  --border-card-hover:  rgba(0, 0, 0, 0.1);
+  --border-input:       #E4E4E7;
+  --border-divider:     #E4E4E7;
+  --border-accent:      rgba(212, 168, 67, 0.40);
+
+  --brand-subtle:     rgba(212, 168, 67, 0.08);
+  --brand-border:     rgba(212, 168, 67, 0.20);
+  --surface-card-light: #FFFFFF;
+
+  --success-subtle:   rgba(57, 199, 90, 0.10);
+  --success-border:   rgba(57, 199, 90, 0.22);
+  --warning-subtle:   rgba(245, 158, 11, 0.10);
+  --warning-border:   rgba(245, 158, 11, 0.22);
+  --danger-subtle:    rgba(224, 85, 85, 0.10);
+  --danger-border:    rgba(224, 85, 85, 0.22);
+  --info-subtle:      rgba(56, 189, 248, 0.10);
+  --info-border:      rgba(56, 189, 248, 0.22);
+
+  --elev-1:           0 1px 2px rgba(0, 0, 0, 0.06);
+  --elev-2:           0 4px 12px rgba(0, 0, 0, 0.08);
+  --elev-3:           0 12px 32px rgba(0, 0, 0, 0.12);
+
+  --glow-brand:       0 0 24px rgba(212, 168, 67, 0.16);
+  --glow-success:     0 0 24px rgba(57, 199, 90, 0.18);
+  --pr-glow:          0 0 20px rgba(57, 199, 90, 0.22);
+
+  --focus-ring:       0 0 0 2px rgba(212, 168, 67, 0.40);
+
+  --color-gold-muted: var(--brand-subtle);
+  --color-border-gold: var(--brand-border);
+
+  /* Filtros / busca — branco (nunca cinza de preenchimento) */
+  --filter-bg:            #FFFFFF;
+  --filter-bg-focus:      #FFFFFF;
+  --filter-border:        #E4E4E7;
+  --filter-border-focus:  rgba(212, 168, 67, 0.35);
+  --filter-ring:          transparent;
+  --filter-text:          #444444;
+  --filter-placeholder:   #A1A1AA;
+
+  --tab-track-bg:         transparent;
+  --tab-active-bg:        rgba(212, 168, 67, 0.12);
+  --tab-active-text:      #9E7720;
+  --tab-inactive-text:    #999999;
+
+  --mobile-page-bg-solid: var(--surface-0);
+  --mobile-page-bg: var(--surface-0);
+  --mobile-card-bg: #FFFFFF;
+  --mobile-card-border: rgba(0, 0, 0, 0.06);
+  --mobile-card-shadow: var(--card-shadow);
+  --mobile-empty-bg: #FFFFFF;
+  --mobile-empty-border: rgba(0, 0, 0, 0.06);
+  --mobile-card-border-soft: rgba(0, 0, 0, 0.04);
+  --mobile-card-border-faint: rgba(0, 0, 0, 0.04);
+  --mobile-card-border-subtle: rgba(0, 0, 0, 0.06);
+  --mobile-secondary-bg: #FFFFFF;
+  --theme-color-meta: #FFFFFF;
+
+  --list-row-divider: transparent;
+
+  /* Card Nível 3 — macros da dieta (light) */
+  --card-macros-bg:           #FFFFFF;
+  --card-macros-border:       rgba(212, 168, 67, 0.22);
+  --card-macros-ring:         rgba(212, 168, 67, 0.08);
+  --card-macros-shadow:
+    0 2px 8px rgba(212, 168, 67, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 1px 0 rgba(255, 255, 255, 0.90) inset;
+  --card-macros-glow:
+    radial-gradient(ellipse at 50% -10%, rgba(212, 168, 67, 0.10) 0%, transparent 70%);
+  --card-macros-topline:
+    linear-gradient(90deg, transparent, #9333ea 30%, #a855f7 60%, transparent);
+  --card-macros-divider:      rgba(0, 0, 0, 0.06);
+
+  --mc-protein-bg:     linear-gradient(145deg, rgba(59, 130, 246, 0.14) 0%, #FFFFFF 55%);
+  --mc-protein-border: rgba(59, 130, 246, 0.28);
+  --mc-protein-color:  #2563eb;
+
+  --mc-carbo-bg:       linear-gradient(145deg, rgba(245, 158, 11, 0.16) 0%, #FFFFFF 55%);
+  --mc-carbo-border:   rgba(217, 119, 6, 0.28);
+  --mc-carbo-color:    #d97706;
+
+  --mc-fat-bg:         linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, #FFFFFF 55%);
+  --mc-fat-border:     rgba(5, 150, 105, 0.28);
+  --mc-fat-color:      #059669;
+
+  --mc-shadow:         0 1px 4px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+
+  /* Sombra padrão dos cards (Card.tsx) — mesma receita do Mobills. */
+  --card-shadow:
+    0 2px 1px -1px rgba(0, 0, 0, 0.2),
+    0 1px 1px 0 rgba(0, 0, 0, 0.14),
+    0 1px 3px 0 rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="dark"],
+html.dark {
+  color-scheme: dark;
+  --surface-0: #1C1C1E;   /* padrão Mobills dark */
+  --surface-1: #141414;
+  --surface-2: #222222;
+  --surface-3: #2A2A2A;
+  --surface-4: #333333;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #8A8A8A;
+  --text-disabled: #737373;
+  --theme-color-meta: #000000;
+  --card-shadow: none; /* dark mantém sem sombra própria — só o tema light adota o padrão Mobills */
+}
+
+/* ═══════════════════════════════════════════════════════════
    GLOBAL RESETS — mobile-first
    ═══════════════════════════════════════════════════════════ */
 
@@ -271,6 +515,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background: var(--surface-0);
 }
 
 body {
@@ -297,6 +542,14 @@ select {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Spinners são feedback de status essencial — continuam girando,
+     apenas mais devagar (variante reduzida, não removida). */
+  .auron-loader-spin,
+  .animate-spin {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 
@@ -387,7 +640,8 @@ select {
 
 /* Botão primário */
 .btn-primary {
-  background: var(--brand-primary);
+  background: var(--btn-primary-bg);
+  box-shadow: var(--btn-primary-shadow);
   color: var(--text-on-brand);
   font-weight: var(--weight-semibold);
   font-size: var(--text-base);
@@ -400,12 +654,12 @@ select {
 }
 
 .btn-primary:hover {
-  background: var(--brand-hover);
-  box-shadow: var(--glow-brand);
+  box-shadow: var(--btn-primary-shadow-hover);
+  opacity: 0.9;
 }
 
 .btn-primary:active {
-  background: var(--brand-pressed);
+  opacity: 0.8;
   transform: scale(0.98);
 }
 
@@ -460,8 +714,7 @@ select {
 
 .input:focus {
   outline: none;
-  border-color: var(--brand-primary);
-  box-shadow: var(--focus-ring);
+  box-shadow: none;
 }
 
 .input-error {

@@ -1,30 +1,61 @@
 @import './design-tokens.css';
 @import "tailwindcss";
 
+/* Sem isso, o Tailwind usa o padrão dele pra "dark:" — a preferência de
+   tema do sistema operacional — em vez do tema que o app controla (toggle
+   próprio, classe .dark em <html>). Isso fazia inputs/selects (que usam
+   dark: nativo) ficarem escuros mesmo com o app no tema claro, sempre que
+   o SO estivesse no modo escuro. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --font-display: var(--font-sans);
+}
+
 /* Keep touch-action to eliminate double-tap zoom delay */
 html {
   touch-action: manipulation;
 }
 
-/* Force dark color-scheme on all native select elements so the OS-rendered
-   dropdown popup uses dark system colors (black bg / white text) instead of
-   the default light popup that makes options unreadable on dark backgrounds. */
-select {
+html[data-theme="dark"] select,
+html.dark select {
   color-scheme: dark;
 }
 
-/* Explicitly override option colors — color-scheme alone uses OS gray tones
-   on Windows Chrome which can still be unreadable on dark UIs. */
-select option {
-  background-color: #111111;
-  color: #f2f2f2;
+html[data-theme="light"] select {
+  color-scheme: light;
+}
+
+/* Não depende de .coach-app-typography — cobre também conteúdo em portal
+   (modais renderizados direto no <body>, fora da árvore do layout). */
+html[data-theme="light"] input[type="date"],
+html[data-theme="light"] input[type="time"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] input[type="date"],
+html[data-theme="dark"] input[type="time"],
+html.dark input[type="date"],
+html.dark input[type="time"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] select option,
+html.dark select option {
+  background-color: #222222;
+  color: #ffffff;
+}
+
+html[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #09090b;
 }
 
 select option:hover,
 select option:focus,
 select option:checked {
-  background-color: #1f1a09;
-  color: #d4af37;
+  background-color: rgba(117, 27, 180, 0.12);
+  color: #751bb4;
 }
 
 @theme inline {
@@ -69,6 +100,11 @@ select option:checked {
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border-default);
   --color-border-strong: var(--border-strong);
+  --color-border-card: var(--border-card);
+  --color-border-card-hover: var(--border-card-hover);
+  --color-border-input: var(--border-input);
+  --color-border-divider: var(--border-divider);
+  --color-border-accent: var(--border-accent);
 
   /* Spacing scale (4pt base) */
   --space-1: 4px;
@@ -112,6 +148,30 @@ select option:checked {
   --shadow-elevated:  0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
+/* Anel de foco em botões/links — NÃO em campos de texto (evita contorno interno) */
+*:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+  outline: none !important;
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--brand-primary) !important;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible,
+[contenteditable="true"]:focus,
+[contenteditable="true"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button, a, input, select, textarea {
+  transition: background 120ms ease, color 120ms ease,
+              border-color 120ms ease, opacity 120ms ease;
+}
+
 body {
   background: var(--surface-0);
   color: var(--text-primary);
@@ -119,11 +179,71 @@ body {
   overscroll-behavior: none;
 }
 
+/* Fundo padrão Mobills (chapado, sem gradiente roxo) — antes só no mobile
+   via `body { background: var(--surface-0) }`, agora também no desktop. */
+@media (min-width: 1024px) {
+  html[data-theme="light"] body,
+  [data-theme="light"] body,
+  body.light,
+  html[data-theme="dark"] body,
+  body.dark {
+    background-color: var(--surface-0);
+    background-image: none;
+    background-attachment: fixed;
+  }
+}
+
+@keyframes auron-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auron-loader-spin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: auron-loader-spin 0.9s linear infinite;
+  will-change: transform;
+}
+
+/* Numerais: tabular + lining em dados numéricos */
+.num,
+.tabular,
+[data-numeric] {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: var(--numeric-features);
+}
+
+/* Cards: sem hairline branca — surface faz a separação */
+.border-card,
+.hover\:border-card-hover:hover {
+  border-color: transparent !important;
+}
+
+/* Cores de borda "curtas" (border-subtle, border-divider, border-input...) —
+   o tailwind.config.ts antigo registrava essas cores em colors.border.*, mas
+   o Tailwind v4 (CSS-first, via @theme acima) não lê mais esse arquivo JS sem
+   um @config explícito (não existe aqui). Resultado: essas classes nunca
+   geravam CSS nenhum — o border-color caía no padrão do navegador
+   (currentColor = a cor do texto), o que passava batido no tema escuro mas
+   ficava com contorno forte/preto no tema claro. Usadas em 60+ arquivos, então
+   em vez de reescrever tudo pra `border-border-subtle` (nome "correto" que o
+   Tailwind geraria a partir de --color-border-subtle), registramos aqui as
+   classes do jeito que o app inteiro já espera. */
+.border-subtle  { border-color: var(--border-subtle); }
+.border-default { border-color: var(--border-default); }
+.border-strong  { border-color: var(--border-strong); }
+.border-divider { border-color: var(--border-divider); }
+.border-input   { border-color: var(--border-input); }
+.border-accent  { border-color: var(--border-accent); }
+
 /* Explicit z-index utilities (Tailwind v4 default scale stops at z-50) */
 .z-60  { z-index: 60; }
 .z-70  { z-index: 70; }
 .z-100 { z-index: 100; }
 .z-101 { z-index: 101; }
+.z-300 { z-index: 300; }
 
 /* iOS anti-zoom: font-size mínimo 16px em inputs */
 input[type="email"],
@@ -160,7 +280,7 @@ select {
 }
 
 .card-iron:hover {
-    border-color: var(--gold-default);
+    border-color: var(--brand-primary);
     background: var(--bg-elevated);
 }
 
@@ -172,7 +292,7 @@ select {
 }
 
 .card-gold:hover {
-    border-color: var(--gold-light);
+    border-color: var(--brand-hover);
     background: var(--bg-elevated);
 }
 
@@ -204,8 +324,69 @@ select {
   opacity: 0.6;
 }
 
+/* Card Nível 3 — glow + topline (macros / dados do plano)
+   isolation + ::before -1: glow atrás do conteúdo SEM z-index nos filhos
+   (z-index nos filhos cobre o Select absoluto). z-index: 1 no card
+   deixa a lista vazar por cima do card de macros abaixo. */
+.card-nivel-3 {
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  background: var(--card-macros-bg) !important;
+  border: 0.5px solid var(--card-macros-border) !important;
+  box-shadow: var(--card-macros-shadow);
+  border-radius: 20px;
+}
+
+.card-nivel-3::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--card-macros-glow);
+}
+
+.card-nivel-3::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 20px 20px 0 0;
+  background: var(--card-macros-topline);
+  opacity: 0.9;
+}
+
+/* Botões +refeição (nutrição) — só tokens */
+.meal-type-btn {
+  height: 40px;
+  width: 100%;
+  background: var(--surface-2);
+  border: 0.5px solid var(--brand-border);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--brand-primary);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.meal-type-btn:hover {
+  background: var(--brand-subtle);
+  border-color: var(--border-accent);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans), sans-serif !important;
+}
+
 .heading-h1 {
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(32px, 6vw, 48px);
   font-weight: 700;
   line-height: 1.05;
@@ -213,14 +394,14 @@ select {
 }
 
 .heading-h2 {
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), sans-serif;
   font-size: 22px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .heading-h3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), sans-serif;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
@@ -251,10 +432,11 @@ select {
 }
 
 .metric-value {
-  font-family: var(--font-sans);
+  font-family: var(--font-kpi), 'DM Sans', system-ui, sans-serif;
   font-size: 36px;
   font-weight: 700;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .btn-primary {
@@ -282,7 +464,7 @@ select {
 }
 
 .btn-primary:active {
-  background: var(--color-gold);
+  background: var(--brand-pressed);
   transform: scale(0.97);
 }
 
@@ -308,7 +490,7 @@ select {
 
 .btn-secondary:hover {
   background: var(--surface-3);
-  border-color: var(--color-gold);
+  border-color: var(--brand-primary);
 }
 
 /* ── INPUT FIELD ── */
@@ -326,8 +508,8 @@ select {
 }
 
 .input-field:focus {
-  border-color: var(--gold-default);
   outline: none;
+  box-shadow: none;
   background: var(--bg-card);
 }
 
@@ -341,7 +523,7 @@ select {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-4);
-  border-left: 3px solid var(--gold-default);
+  border-left: 3px solid var(--brand-primary);
 }
 
 .metric-card .label {
@@ -381,9 +563,9 @@ select {
 }
 
 .badge-gold {
-  background: var(--gold-bg);
-  color: var(--gold-light);
-  border: 1px solid rgba(184, 151, 42, 0.4);
+  background: var(--brand-subtle);
+  color: var(--brand-hover);
+  border: 1px solid var(--brand-border);
 }
 
 .badge-success {
@@ -407,8 +589,8 @@ select {
 }
 
 .alert-gold {
-  background: var(--gold-bg);
-  border-color: var(--gold-light);
+  background: var(--brand-subtle);
+  border-color: var(--brand-hover);
   color: var(--text-secondary);
 }
 
@@ -425,13 +607,13 @@ select {
 }
 
 .alert strong {
-  color: var(--gold-light);
+  color: var(--brand-hover);
 }
 
 /* ── ACCENT SEPARATOR ── */
 .accent-divider {
   width: 3px;
-  background: var(--gold-default);
+  background: var(--brand-primary);
   border-radius: 2px;
 }
 
@@ -452,6 +634,51 @@ select {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-down {
+    animation: none;
+  }
+}
+
+@keyframes sheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheetUp 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-backdrop-in {
+  animation: backdropFadeIn 280ms ease-out both;
+}
+
 .animate-slide-up {
   animation: slideUp 600ms ease-out both;
 }
@@ -464,6 +691,59 @@ select {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Scrollbar das abas do perfil do aluno (Visão Geral / Treinos / …) */
+.aluno-tabs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-primary, #9333ea) transparent;
+  padding-bottom: 2px;
+}
+.aluno-tabs-scroll::-webkit-scrollbar {
+  height: 2px !important;
+  width: 2px !important;
+}
+.aluno-tabs-scroll::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.aluno-tabs-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.aluno-tabs-scroll::-webkit-scrollbar-thumb {
+  background: var(--brand-primary, #9333ea) !important;
+  border-radius: 999px;
+  border: none !important;
+  min-height: 0 !important;
+}
+
+/* Scrollbar horizontal fino + roxo (listas internas) */
+.scrollbar-brand-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-primary, #9333ea) transparent;
+}
+.scrollbar-brand-thin::-webkit-scrollbar {
+  height: 2px;
+  width: 2px;
+}
+.scrollbar-brand-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-brand-thin::-webkit-scrollbar-thumb {
+  background: var(--brand-primary, #9333ea);
+  border-radius: 999px;
+}
+
+/* Barra de scroll totalmente invisível (mantém o scroll funcional) */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* Custom scrollbar styling */
@@ -488,3 +768,1763 @@ select {
 .scrollbar-track-transparent::-webkit-scrollbar-track {
   background-color: transparent;
 }
+
+/* ── TOASTS / NOTIFICATIONS ── */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface-3); /* overlay bg */
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  font-size: 13px;
+  color: var(--text-primary);
+  max-width: 320px;
+  z-index: 9999;
+  animation: toast-in 180ms ease forwards;
+}
+
+.toast-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.toast-success .toast-icon { color: var(--success); }
+.toast-danger .toast-icon { color: var(--danger); }
+.toast-warning .toast-icon { color: var(--warning); }
+
+@keyframes toast-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Mobile safe areas + bottom nav ── */
+
+/* Safe areas iOS */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+.pt-safe,
+/* Alias — "pt-safe-top" era usada em algumas telas mas nunca tinha sido
+   definida (nunca gerava CSS nenhum), então o topo delas ficava sem
+   respeitar a área do relógio/bateria do celular. */
+.pt-safe-top { padding-top: env(safe-area-inset-top, 0px); }
+
+/* Bottom nav height — para calcular scroll padding */
+:root { --bottom-nav-height: 64px; }
+
+/* Scroll padding para não esconder conteúdo atrás da bottom nav */
+.scroll-content { padding-bottom: 0; }
+
+/* Mobile aluno shell — backgrounds theme-aware */
+.mobile-page-bg {
+  background: var(--mobile-page-bg);
+}
+
+.mobile-card-surface {
+  background: var(--mobile-card-bg);
+  border-color: var(--mobile-card-border);
+}
+
+.mobile-stat-nav-card {
+  background: radial-gradient(120% 100% at 50% 0%, var(--mobile-secondary-bg) 0%, var(--mobile-card-bg) 68%);
+  border-color: var(--mobile-card-border-soft);
+}
+
+.mobile-icon-btn {
+  background: var(--mobile-card-bg);
+  border-color: var(--mobile-card-border);
+}
+
+.mobile-secondary-surface {
+  background: var(--mobile-secondary-bg);
+}
+
+.mobile-badge-ring {
+  border-color: var(--mobile-page-bg-solid);
+}
+
+.border-mobile-soft { border-color: var(--mobile-card-border-soft); }
+.border-mobile-faint { border-color: var(--mobile-card-border-faint); }
+.border-mobile-subtle { border-color: var(--mobile-card-border-subtle); }
+
+/* Dashboard mobile toolbar — fixo no topo, não acompanha scroll */
+.dashboard-mobile-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--mobile-page-bg);
+}
+
+.dashboard-mobile-toolbar.is-surface {
+  background: var(--surface-0);
+}
+
+html[data-theme="light"] .dashboard-mobile-toolbar.is-surface {
+  background: var(--surface-0);
+}
+
+@media (min-width: 1024px) {
+  .dashboard-mobile-toolbar {
+    position: static;
+    padding-top: 0;
+    background: transparent;
+  }
+}
+
+/* ── Dashboard aluno — tokens theme-aware (surfaces globais) ── */
+.dashboard-aluno {
+  --dash-bg: var(--surface-0);
+  /* Roxo forte (mesmos extremos do gradiente do botão primário --btn-primary-bg)
+     — em teste nos dois temas antes de decidir se fica definitivo. */
+  --dash-hero-from: #9B4DD4;
+  --dash-hero-to: #5E158F;
+  --dash-hero-icon: #FFFFFF;
+  --dash-card: var(--surface-1);
+  --dash-card-border: transparent;
+  --dash-curve: var(--surface-0);
+  --dash-hero-chip: rgba(255, 255, 255, 0.08);
+  --dash-habit-bg: rgba(255, 255, 255, 0.05);
+  --dash-day-card-bg: var(--surface-1);
+  --dash-text: var(--text-primary);
+  --dash-text-muted: var(--text-secondary);
+  --dash-text-subtle: var(--text-tertiary);
+  --dash-progress-track: var(--surface-3);
+  --dash-today-bg: var(--brand-subtle);
+  --dash-selected-day-bg: rgba(117, 27, 180, 0.08);
+  background-color: var(--dash-bg);
+  color: var(--dash-text);
+}
+
+html[data-theme="light"] .dashboard-aluno {
+  --dash-bg: var(--surface-0);
+  /* Roxo forte — igual ao dark, mesmos extremos do --btn-primary-bg (em teste). */
+  --dash-hero-from: #9B4DD4;
+  --dash-hero-to: #5E158F;
+  --dash-hero-icon: #FFFFFF;
+  --dash-card: var(--surface-1);
+  /* Cards do dashboard (Agenda, Sequência, Nutrição...) não têm sombra —
+     sem essa borda ficam "soltos" na tela no tema light, já que
+     surface-0/surface-1 são o mesmo branco. */
+  --dash-card-border: rgba(0, 0, 0, 0.06);
+  --dash-curve: var(--surface-0);
+  --dash-hero-chip: rgba(117, 27, 180, 0.08);
+  --dash-habit-bg: rgba(117, 27, 180, 0.06);
+  --dash-day-card-bg: var(--surface-1);
+  --dash-text: var(--text-primary);
+  --dash-text-muted: var(--text-secondary);
+  --dash-text-subtle: var(--text-tertiary);
+  --dash-progress-track: var(--surface-3);
+  --dash-today-bg: rgba(117, 27, 180, 0.14);
+  --dash-selected-day-bg: rgba(117, 27, 180, 0.08);
+}
+
+.dashboard-card {
+  background-color: var(--dash-card);
+  border-color: transparent;
+  border-width: 0;
+}
+
+.dashboard-hero-chip {
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--dash-hero-icon, var(--brand-hover));
+}
+
+.dashboard-habit-bar {
+  background-color: transparent;
+}
+
+.dashboard-text { color: var(--dash-text); }
+.dashboard-text-muted { color: var(--dash-text-muted); }
+.dashboard-text-subtle { color: var(--dash-text-subtle); }
+.dashboard-progress-track { background-color: var(--dash-progress-track); }
+
+/* Texto sobre o card roxo fixo (hero / WorkoutCard) — NÃO usar --dash-text aqui:
+   esse token muda com o tema (fica quase preto no light) mas o fundo roxo do
+   hero é sempre o mesmo roxo nos dois temas, então o texto precisa ser sempre
+   branco/quase-branco, fixo, igual ao --dash-hero-icon. */
+.dashboard-hero-text { color: var(--dash-hero-icon, #FFFFFF); }
+.dashboard-hero-text-muted { color: rgba(255, 255, 255, 0.78); }
+.dashboard-hero-text-subtle { color: rgba(255, 255, 255, 0.58); }
+
+/* ── Mercado Pago Card Brick (assinatura) ──
+   Herança HTML: classes internas do Brick mudam a cada build.
+   Não usar seletores por classe gerada — só #mp-card-brick + elementos. */
+#mp-card-brick {
+  color-scheme: dark;
+  color: #ffffff;
+}
+
+#mp-card-brick select,
+#mp-card-brick option {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+#mp-card-brick option:checked,
+#mp-card-brick option:hover,
+#mp-card-brick option:focus {
+  background-color: #751bb4 !important;
+  color: #ffffff !important;
+}
+
+/* Listas customizadas do Brick (parcelas / bancos) */
+#mp-card-brick [role="listbox"],
+#mp-card-brick [role="menu"],
+#mp-card-brick ul[role="listbox"],
+#mp-card-brick div[role="listbox"] {
+  background-color: #1e1e1e !important;
+  border: 1px solid #282828 !important;
+  color: #ffffff !important;
+}
+
+#mp-card-brick [role="option"],
+#mp-card-brick [role="menuitem"],
+#mp-card-brick li[role="option"] {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+#mp-card-brick [role="option"]:hover,
+#mp-card-brick [role="option"][aria-selected="true"],
+#mp-card-brick [role="menuitem"]:hover,
+#mp-card-brick li[role="option"]:hover {
+  background-color: rgba(117, 27, 180, 0.22) !important;
+  color: #ffffff !important;
+}
+
+/* Espaço entre o último campo (e-mail) e o botão Pagar */
+#mp-card-brick form > button,
+#mp-card-brick form button[type="submit"],
+#mp-card-brick button[type="submit"] {
+  margin-top: 28px !important;
+}
+
+/* ── Coach dashboard KPI — glass colorido em dark e light; tipografia clara no glass ── */
+html[data-theme="light"] .glass-panel-flat-light {
+  background: var(--surface-1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  border-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-theme="light"] .glass-panel-flat-light .glass-panel-shine,
+html[data-theme="light"] .glass-panel-flat-light .glass-panel-shine-line {
+  display: none;
+}
+
+html[data-theme="light"] .glass-panel-flat-light.coach-kpi-tooltip {
+  background: #ffffff !important;
+  box-shadow: var(--elev-2) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.coach-kpi-label {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Relatórios / cards surface no light: texto escuro */
+html[data-theme="light"] .coach-kpi-label {
+  color: var(--text-tertiary);
+}
+
+.coach-kpi-value {
+  color: #ffffff;
+}
+
+html[data-theme="light"] .coach-kpi-value {
+  color: var(--text-primary);
+}
+
+.coach-kpi-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .coach-kpi-subtitle {
+  color: var(--text-secondary);
+}
+
+.coach-kpi-delta-up {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .coach-kpi-delta-up {
+  color: var(--success);
+}
+
+.coach-kpi-delta-down {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="light"] .coach-kpi-delta-down {
+  color: var(--danger);
+}
+
+.coach-kpi-info-btn {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.coach-kpi-info-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.coach-kpi-info-btn.is-open {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+html[data-theme="light"] .coach-kpi-info-btn {
+  color: var(--text-disabled);
+}
+
+html[data-theme="light"] .coach-kpi-info-btn:hover,
+html[data-theme="light"] .coach-kpi-info-btn.is-open {
+  color: var(--brand-primary);
+  background: var(--brand-subtle);
+}
+
+.coach-kpi-tooltip-title {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.coach-kpi-tooltip-body {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .coach-kpi-tooltip-title {
+  color: var(--text-tertiary);
+}
+
+html[data-theme="light"] .coach-kpi-tooltip-body {
+  color: var(--text-secondary);
+}
+
+.coach-mrr-title {
+  color: var(--text-primary);
+}
+
+html[data-theme="light"] .coach-mrr-title {
+  color: var(--text-primary);
+}
+
+.coach-mrr-subtitle {
+  color: var(--text-secondary);
+}
+
+html[data-theme="light"] .coach-mrr-subtitle {
+  color: var(--text-secondary);
+}
+
+.coach-mrr-value {
+  color: var(--text-primary);
+}
+
+html[data-theme="light"] .coach-mrr-value {
+  color: var(--text-primary);
+}
+
+/* KPIs com glass colorido forte: mantêm tipografia clara também no light */
+html[data-theme="light"] .coach-kpi-card .coach-kpi-label,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-tooltip-title {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-value,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn:hover,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn.is-open {
+  color: #ffffff;
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-subtitle,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-tooltip-body {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-delta-up {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-delta-down {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn:hover,
+html[data-theme="light"] .coach-kpi-card .coach-kpi-info-btn.is-open {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+html[data-theme="light"] .coach-mrr-card .coach-mrr-title,
+html[data-theme="light"] .coach-mrr-card .coach-mrr-value {
+  color: var(--text-primary);
+}
+
+html[data-theme="light"] .coach-mrr-card .coach-mrr-subtitle,
+html[data-theme="light"] .coach-mrr-card .coach-mrr-badge {
+  color: var(--text-tertiary);
+}
+
+html[data-theme="light"] .coach-mrr-card .coach-mrr-empty {
+  color: var(--text-tertiary);
+}
+
+/* Tooltip glass (dashboard / relatórios) — texto claro sobre roxo */
+html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-kpi-tooltip-title {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-theme="light"] .coach-kpi-tooltip:not(.glass-panel-flat-light) .coach-kpi-tooltip-body {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ── Coach app (/admin) typography baseline ───────────────────────────────── */
+.coach-app-typography {
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.coach-app-typography :is(h1, h2, h3, h4, h5, h6, p, span, label, button, input, select, textarea) {
+  font-family: inherit;
+}
+
+/* Números no app do personal seguem o mesmo padrão de KPI (DM Sans + tabular) */
+.coach-app-typography :is(.tabular-nums, [data-numeric], .font-kpi) {
+  font-family: var(--font-kpi), 'DM Sans', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: var(--numeric-features);
+}
+
+/* Inputs / selects / textareas do app do personal */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  min-height: 44px !important;
+  border: none !important;
+  border-radius: 10px !important;
+  background: var(--surface-2) !important;
+  color: var(--text-primary) !important;
+  font-size: 16px !important;
+  font-weight: 500;
+  line-height: 1.2;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: all 150ms ease;
+}
+
+/* Light: inputs/selects sempre brancos + borda (nunca cinza) */
+html[data-theme="light"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  background: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+html[data-theme="light"] .coach-app-typography button[aria-haspopup="listbox"] {
+  background: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+/* Dark: sem preenchimento cinza — fundo mais escuro que o card + borda visível */
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+),
+html.dark .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  background: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .coach-app-typography :is(input, textarea)::placeholder,
+html.dark .coach-app-typography :is(input, textarea)::placeholder {
+  color: #4a5568 !important;
+  opacity: 1;
+}
+
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+html.dark .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible,
+html.dark .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible {
+  border-color: #9333ea !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15) !important;
+  outline: none !important;
+}
+
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"],
+html.dark .coach-app-typography button[aria-haspopup="listbox"] {
+  background: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"]:focus,
+html.dark .coach-app-typography button[aria-haspopup="listbox"]:focus,
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"]:focus-visible,
+html.dark .coach-app-typography button[aria-haspopup="listbox"]:focus-visible,
+html[data-theme="dark"] .coach-app-typography button[aria-haspopup="listbox"][aria-expanded="true"],
+html.dark .coach-app-typography button[aria-haspopup="listbox"][aria-expanded="true"] {
+  border-color: #9333ea !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15) !important;
+  outline: none !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select
+) {
+  padding: 0 14px !important;
+}
+
+/* Precisa da mesma cadeia de :not() do baseline — senão padding 14px ganha e o texto fica sob o ícone */
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-left-icon {
+  padding-left: 36px !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-right-element {
+  padding-right: 40px !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible {
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 1px rgba(117, 27, 180, 0.3) !important;
+  outline: none !important;
+}
+
+.coach-app-typography textarea {
+  min-height: 96px !important;
+  padding: 14px !important;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+/* Textarea/input da dieta — DEPOIS do baseline do coach (senão o padding não aplica) */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input {
+  min-height: 44px !important;
+  background: var(--surface-0) !important;
+  border: 0.5px solid var(--border-default) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input {
+  padding: 0 14px !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input.field-token-compact {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  background: #ffffff !important;
+}
+
+html[data-theme="dark"] .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input.field-token-compact,
+html.dark .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).field-token-input.field-token-compact {
+  background: var(--surface-1) !important;
+}
+
+.coach-app-typography textarea.field-token-input {
+  min-height: 96px !important;
+  /* ← altere o 1º número para descer/subir o placeholder */
+  padding: 16px 14px 12px !important;
+  line-height: 1.6 !important;
+  font-size: 14px !important;
+  font-weight: 400;
+  resize: vertical;
+  /* Branco explícito — o baseline do coach força surface-2 (cinza) */
+  background: #ffffff !important;
+}
+
+html[data-theme="dark"] .coach-app-typography textarea.field-token-input,
+html.dark .coach-app-typography textarea.field-token-input {
+  background: var(--surface-1) !important;
+}
+
+.coach-app-typography textarea.field-token-input::placeholder {
+  color: var(--text-disabled) !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).field-token-input:focus-visible {
+  border-color: var(--brand-primary) !important;
+  box-shadow: var(--focus-ring) !important;
+  outline: none !important;
+}
+
+.coach-app-typography select {
+  padding-right: 32px !important;
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Campos de série (Reps / kg / tempo) — contorno leve + fundo normal
+   (padrão Hevy), pra ficar claro que o campo é editável. */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input {
+  min-height: 0 !important;
+  height: 2rem !important;
+  padding: 0 4px !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 6px !important;
+  background: var(--surface-2) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 14px !important;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-primary) !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input:focus {
+  border-color: var(--brand-primary) !important;
+}
+
+/* A baseline de tema (html[data-theme="light/dark"] .coach-app-typography …,
+   mais abaixo neste arquivo) também mexe em border/background dos inputs —
+   e por começar com um seletor de elemento (html) a mais, empata em
+   especificidade com a regra acima e VENCE mesmo com a mesma quantidade de
+   classes. Repetir o mesmo prefixo aqui garante que esta regra sempre vença,
+   nos dois temas. */
+html[data-theme="light"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input,
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input {
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--surface-2) !important;
+}
+
+/* Underline (login / nova ficha): sem fundo — só linha inferior sutil */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline {
+  min-height: 0 !important;
+  height: 2.75rem !important;
+  padding: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 15px !important;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary) !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline:focus-visible {
+  border: none !important;
+  border-bottom: 1px solid var(--brand-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline::placeholder {
+  color: var(--text-disabled) !important;
+  font-weight: 400 !important;
+  font-size: 15px !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline.input-underline-compact {
+  height: 1.75rem !important;
+  font-size: 12px !important;
+  font-weight: 600;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-underline.input-underline-compact::placeholder {
+  font-size: 12px !important;
+}
+
+/* Sem caixa e sem underline (ex.: horário da refeição) */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-bare {
+  min-height: 0 !important;
+  height: 1.75rem !important;
+  width: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 11px !important;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-secondary) !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-bare:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-bare:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Quantidade em g (refeição) — compacto, sem caixa 44px do baseline */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-qty {
+  min-height: 0 !important;
+  height: 1.75rem !important;
+  width: 100% !important;
+  padding: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-primary) !important;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-qty:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-qty:focus-visible {
+  border: none !important;
+  border-bottom: 1px solid var(--brand-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.coach-app-typography .input-qty::-webkit-outer-spin-button,
+.coach-app-typography .input-qty::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Valor hero de macro (g) — sem caixa, sem setas do number */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 24px !important;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary) !important;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro::-webkit-outer-spin-button,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-macro:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input:focus-visible {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--brand-primary) !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input::placeholder {
+  color: var(--text-disabled) !important;
+  font-weight: 400;
+}
+
+/* Remove setas de number no Chrome/Safari */
+.coach-app-typography input.serie-metric-input[type="number"]::-webkit-outer-spin-button,
+.coach-app-typography input.serie-metric-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.coach-app-typography input.serie-metric-input[type="number"] {
+  /* -moz-appearance: textfield é o único jeito de esconder as setas no
+     Firefox — mas "textfield" não é um valor válido pra propriedade
+     appearance sem prefixo, então o Chrome/Edge ignorava e caía no visual
+     nativo (borda quadrada). appearance: none também remove essa borda. */
+  -moz-appearance: textfield;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none !important;
+}
+
+/* Campo solto sem caixa nenhuma (ex.: pré-configuração SET/REPS) — mesmo
+   truque de especificidade do .serie-metric-input logo acima: precisa do
+   prefixo html[data-theme] pra vencer a baseline de tema nos dois temas. */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare,
+html[data-theme="light"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare,
+html[data-theme="dark"] .coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 12px !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).input-inline-bare::placeholder {
+  color: var(--text-disabled) !important;
+}
+
+/* Formulário agrupado estilo Wellhub — inputs sem caixa própria (tokens do tema) */
+.coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 14px !important;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-primary) !important;
+}
+
+/* Mesmo problema de especificidade do .serie-metric-input (ver comentário
+   lá em cima): a baseline de tema (html[data-theme] .coach-app-typography …)
+   empata e vence por ter um seletor "html" a mais. Repete o prefixo aqui. */
+html[data-theme="light"] .coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+),
+html[data-theme="dark"] .coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  border: none !important;
+  background: transparent !important;
+}
+
+.coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+.coach-app-typography .field-flat-input :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.coach-app-typography .field-flat-input select {
+  padding-right: 0 !important;
+}
+
+.coach-app-typography .field-flat-input :is(input, textarea, select)::placeholder {
+  color: var(--text-disabled) !important;
+  opacity: 1;
+}
+
+.coach-app-typography .field-flat-input input[type="date"] {
+  color-scheme: inherit;
+}
+
+html[data-theme="light"] .coach-app-typography .field-flat-input input[type="date"],
+html:not([data-theme="dark"]):not(.dark) .coach-app-typography .field-flat-input input[type="date"],
+html[data-theme="light"] .coach-app-typography input[type="date"].input-underline,
+html:not([data-theme="dark"]):not(.dark) .coach-app-typography input[type="date"].input-underline {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] .coach-app-typography .field-flat-input input[type="date"],
+html.dark .coach-app-typography .field-flat-input input[type="date"] {
+  color-scheme: dark;
+}
+
+/* Date underline: vazio = cinza fraco; preenchido = texto forte */
+.coach-app-typography input[type="date"].input-underline.date-empty {
+  color: var(--text-disabled) !important;
+  font-weight: 400 !important;
+}
+
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-fields-wrapper,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-text,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-month-field,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-day-field,
+.coach-app-typography input[type="date"].input-underline.date-empty::-webkit-datetime-edit-year-field {
+  color: var(--text-disabled) !important;
+}
+
+.coach-app-typography input[type="date"].input-underline.date-filled {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-fields-wrapper,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-text,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-month-field,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-day-field,
+.coach-app-typography input[type="date"].input-underline.date-filled::-webkit-datetime-edit-year-field {
+  color: var(--text-primary) !important;
+}
+
+/* Listas coach (alunos/treinos): light = branco; dark = corpo roxo + cabeçalho branco */
+html[data-theme="dark"] .alunos-table-shell,
+html.dark .alunos-table-shell,
+html[data-theme="dark"] .coach-data-table-shell,
+html.dark .coach-data-table-shell {
+  background: var(--surface-1) !important;
+}
+
+html[data-theme="dark"] .alunos-table-head,
+html.dark .alunos-table-head,
+html[data-theme="dark"] .coach-data-table-head,
+html.dark .coach-data-table-head {
+  background: #ffffff !important;
+}
+
+html[data-theme="dark"] .alunos-table-head th,
+html.dark .alunos-table-head th,
+html[data-theme="dark"] .coach-data-table-head th,
+html.dark .coach-data-table-head th {
+  color: #6b7280 !important;
+}
+
+/* Divisores da tabela — mais suaves (evita linha clara que destoa) */
+.alunos-table-shell :is(thead tr, tbody tr, tbody td),
+.coach-data-table-shell :is(thead tr, tbody tr, tbody td) {
+  border-color: color-mix(in srgb, var(--border-divider) 35%, transparent) !important;
+}
+
+html[data-theme="dark"] .alunos-table-shell :is(thead tr, tbody tr, tbody td),
+html.dark .alunos-table-shell :is(thead tr, tbody tr, tbody td),
+html[data-theme="dark"] .coach-data-table-shell :is(thead tr, tbody tr, tbody td),
+html.dark .coach-data-table-shell :is(thead tr, tbody tr, tbody td) {
+  border-color: color-mix(in srgb, var(--border-divider) 45%, transparent) !important;
+}
+
+/* Light: linha sutil sob o cabeçalho da lista (thead) */
+html[data-theme="light"] .alunos-table-head,
+html[data-theme="light"] .coach-data-table-head {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Light: linha sutil sob a barra de busca/filtros do card de lista */
+html[data-theme="light"] .coach-list-panel > .field-flat-input,
+html[data-theme="light"] .alunos-list-panel > .field-flat-input,
+html[data-theme="light"] .nutricao-acompanhamento-panel > .field-flat-input {
+  box-shadow: inset 0 -1px 0 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Nutrição: lista de acompanhamento full-width (alinha aos KPIs) */
+.nutricao-acompanhamento-panel {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Nova ficha: herda brand global (#751BB4) */
+
+/* Listas coach: busca + tabela em largura total */
+.alunos-list-panel,
+.coach-list-panel {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .coach-list-panel {
+    --coach-list-kpi-gap: 0.75rem;
+    width: calc((3 * (100% + var(--coach-list-kpi-gap))) / 4);
+    max-width: none;
+    margin-inline: calc((100% - 3 * var(--coach-list-kpi-gap)) / 8);
+  }
+}
+
+/* Sombra do card é só no hover agora (ver hover:shadow-[...] no className da linha) —
+   antes essa regra deixava a sombra fixa, sem depender do mouse. */
+.alunos-result-row {
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .alunos-result-row,
+html.dark .alunos-result-row {
+  box-shadow: none;
+}
+
+/* CTA roxo com gradiente (token) — não depende da classe Tailwind bg-btn-primary */
+.auron-cta-btn {
+  background: var(--btn-primary-bg) !important;
+  box-shadow: var(--btn-primary-shadow) !important;
+  color: var(--text-on-brand) !important;
+  border: none !important;
+  width: auto !important;
+}
+.auron-cta-btn:hover:not(:disabled) {
+  box-shadow: var(--btn-primary-shadow-hover) !important;
+  opacity: 0.95;
+}
+
+/* Cadastro de aluno: inputs seguem tokens light/dark (não fundo preto) */
+.novo-aluno-form :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea
+),
+.novo-aluno-form button[aria-haspopup="listbox"] {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border-input) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .novo-aluno-form :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea
+),
+html[data-theme="dark"] .novo-aluno-form button[aria-haspopup="listbox"] {
+  background: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  color: var(--text-primary) !important;
+  color-scheme: dark;
+}
+
+html[data-theme="light"] .novo-aluno-form :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea
+),
+html[data-theme="light"] .novo-aluno-form button[aria-haspopup="listbox"] {
+  background: #ffffff !important;
+  border: 1px solid var(--border-input) !important;
+  color: var(--text-primary) !important;
+  color-scheme: light;
+}
+
+/* Rotina colapsada (nova-ficha, acordeão) — hover destaca qual vai abrir. */
+.rotina-colapsada-card {
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.16) 0%, rgba(117, 27, 180, 0.10) 100%);
+  transition: background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.rotina-colapsada-card:hover {
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.30) 0%, rgba(117, 27, 180, 0.24) 100%);
+  box-shadow: 0 6px 16px rgba(117, 27, 180, 0.28);
+  transform: translateY(-2px);
+}
+
+/* KPIs da lista: brilho interno sutil (neutro, sem tint) */
+.alunos-kpi-card,
+.coach-list-kpi-card {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 22px rgba(117, 27, 180, 0.05);
+}
+
+html[data-theme="dark"] .alunos-kpi-card,
+html.dark .alunos-kpi-card,
+html[data-theme="dark"] .coach-list-kpi-card,
+html.dark .coach-list-kpi-card {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 28px rgba(117, 27, 180, 0.12);
+}
+
+/* Sidebar: accent brand (≤10%) — ambos os temas */
+.auron-sidebar {
+  background: var(--brand-primary) !important;
+  border-right-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25) !important;
+  color: #ffffff;
+}
+
+@media (min-width: 1024px) {
+  html[data-theme="light"] .auron-sidebar {
+    /* Roxo original chapado (--brand-primary), igual ao sidebar do dark —
+       sem gradiente, sem depender do fundo da página. */
+    background: var(--brand-primary) !important;
+    border: 0 !important;
+    border-right: none !important;
+    box-shadow: none !important;
+    color: #ffffff;
+  }
+
+  /* Ícone/grupo/links/logout do sidebar: sem override de cor no light —
+     o fundo agora é o mesmo roxo sólido do dark, então usa o texto branco
+     das regras base (ver .auron-sidebar .sidebar-* mais abaixo). */
+
+  html[data-theme="light"] .coach-app-typography .coach-chrome-header {
+    /* Não fixo — rola junto com a página, igual ao Nutrium (só o sidebar fica parado). */
+    position: static !important;
+    height: 92px;
+    padding: 16px 24px 0;
+    /* Transparente — agora é conteúdo normal do card (.coach-main-shell), não mais um
+       elemento fixo flutuando por cima da página. Deixa o fundo branco-translúcido do
+       próprio card aparecer, senão o canto arredondado fica sem contraste pra aparecer. */
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    overflow: visible;
+  }
+
+  /* Título da seção some no desktop (já está marcado no sidebar) — a faixa
+     de 92px do header some junto, subindo o conteúdo. Só a dashboard mantém
+     o header (saudação + avatar/notificações). */
+  html[data-theme="light"] .coach-app-typography .coach-chrome-header.coach-chrome-header--compact {
+    display: none !important;
+  }
+
+  html[data-theme="light"] .coach-chrome-header .coach-page-title {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.2;
+    color: #343a46;
+  }
+
+  html[data-theme="light"] .coach-chrome-header .coach-header-icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    background: #ffffff;
+    color: #5e6982;
+    box-shadow: 0 1px 4px rgba(30, 28, 40, 0.08);
+  }
+
+  /* Botão de recolher: pequena "aba de papel" branca, bem sutil, saindo
+     exatamente da linha do card — não uma pílula grande roxa como antes.
+     Só aparece no hover do sidebar (padrão Nutrium). */
+  html[data-theme="light"] .auron-sidebar .sidebar-collapse-tab {
+    right: -9px;
+    width: 13px;
+    height: 20px;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 1px 1px 4px rgba(30, 28, 40, 0.14) !important;
+    border-radius: 0 5px 5px 0 !important;
+    color: #5e6982 !important;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  html[data-theme="light"] .auron-sidebar:hover .sidebar-collapse-tab,
+  html[data-theme="light"] .auron-sidebar .sidebar-collapse-tab:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  html[data-theme="light"] .auron-sidebar .sidebar-collapse-tab:hover {
+    right: -9px;
+    width: 13px;
+    background: #ffffff !important;
+    color: #343a46 !important;
+  }
+
+  html[data-theme="light"] .auron-sidebar .sidebar-collapse-tab:active {
+    background: #ffffff !important;
+    color: #343a46 !important;
+  }
+
+  html[data-theme="light"] .coach-main-shell {
+    /* Topbar não é mais fixo — não precisa de margem compensando ele. */
+    min-height: 100dvh;
+    /* Corta o topbar (1º filho) na curva do canto — senão o quadrado dele cobre a borda. */
+    overflow: hidden;
+    /* Sólido, azul (padrão Mobills) — antes era um branco translúcido pra
+       deixar o gradiente roxo do body vazar; agora o body é roxo só no
+       sidebar/bordas, então o shell fica opaco e contrasta com ele. */
+    background: var(--surface-0);
+    /* Sombra direcionada (baixo/direita) — evita o "borrão" escuro no canto
+       superior-esquerdo arredondado, que agora fica exposto sobre o gradiente. */
+    box-shadow: 6px 8px 24px -6px rgba(30, 28, 40, 0.14);
+    border-radius: 8px 0 0 0;
+  }
+
+  html[data-theme="dark"] .coach-main-shell {
+    margin-top: 92px;
+    min-height: calc(100dvh - 92px);
+    background: rgba(11, 17, 32, 0.85);
+    box-shadow: 6px 8px 24px -6px rgba(30, 28, 40, 0.45);
+    border-radius: 8px 0 0 0;
+  }
+
+  html[data-theme="dark"] .coach-app-typography .coach-chrome-header {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-width, 180px);
+    right: 0;
+    height: 92px;
+    padding: 16px 24px 0;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+  }
+
+  /* Título da seção some no desktop (dark) — mesmo tratamento do light:
+     header some e o shell ocupa a tela toda desde o topo. */
+  html[data-theme="dark"] .coach-app-typography .coach-chrome-header.coach-chrome-header--compact {
+    display: none !important;
+  }
+
+  html[data-theme="dark"] .coach-main-shell:has(.coach-chrome-header--compact) {
+    margin-top: 0;
+    min-height: 100dvh;
+  }
+}
+
+.auron-sidebar .sidebar-group-label {
+  color: rgba(255, 255, 255, 0.48) !important;
+  font-weight: 500 !important;
+}
+
+.auron-sidebar .sidebar-nav-link--idle {
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-weight: 500;
+}
+
+.auron-sidebar .sidebar-nav-link--idle:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.auron-sidebar .sidebar-nav-link--active {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-left-color: #ffffff !important;
+}
+
+/* Aba lateral — continuidade roxa (“ponta de papel”) fora do sidebar */
+.auron-sidebar .sidebar-collapse-tab {
+  position: absolute;
+  /* 1px para dentro = cola na borda e some a linha entre menu e aba */
+  right: -15px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 48px;
+  padding: 0 0 0 1px;
+  border: 0;
+  border-radius: 0 8px 8px 0;
+  background: var(--brand-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 4px 2px 12px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: filter 150ms ease, width 150ms ease, right 150ms ease;
+}
+
+.auron-sidebar .sidebar-collapse-tab:hover {
+  filter: brightness(1.06);
+  width: 18px;
+  right: -17px;
+}
+
+.auron-sidebar .sidebar-collapse-tab:active {
+  filter: brightness(0.96);
+}
+
+.auron-sidebar .sidebar-logout {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.auron-sidebar .sidebar-logout:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ── Perfil — tema claro: cards/inputs brancos · dark: surface navy ─ */
+
+.coach-chrome-header {
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  overflow-x: clip;
+}
+
+.perfil-section-title {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary, #A1A1AA);
+}
+
+html[data-theme="dark"] .perfil-page .perfil-section-title,
+html.dark .perfil-page .perfil-section-title,
+html[data-theme="dark"] .perfil-page label,
+html.dark .perfil-page label {
+  color: #4a5568;
+}
+
+/* Light (Nutrium): página / cards / inputs brancos — sem cinza de preenchimento */
+.perfil-page {
+  background-color: #ffffff;
+}
+
+.perfil-page-heading {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Light: sombra Nutrium +20% (0.066 → 0.079) */
+.perfil-section-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 28px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.095);
+}
+
+.auron-widget-card {
+  border-radius: 16px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.095);
+}
+
+.auron-widget-shadow {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.095);
+}
+
+.perfil-form-card,
+.plan-usage-card {
+  background-color: #ffffff;
+}
+
+.perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+  font-family: var(--font-sans), Inter, sans-serif;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: var(--text-primary) !important;
+}
+
+.perfil-page input.has-left-icon,
+.coach-app-typography .perfil-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-left-icon {
+  padding-left: 44px !important;
+}
+
+.perfil-page button[aria-haspopup="listbox"],
+.perfil-page button[aria-haspopup="listbox"] span {
+  font-family: var(--font-sans), Inter, sans-serif;
+  font-size: 16px;
+  font-weight: 400 !important;
+}
+
+.perfil-page button[aria-haspopup="listbox"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+  color: var(--text-primary);
+}
+
+html[data-theme="light"] .perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html[data-theme="light"] .perfil-page button[aria-haspopup="listbox"],
+html[data-theme="light"] .perfil-page button[aria-haspopup="listbox"] span {
+  font-weight: 400 !important;
+  color: #4a4a4a !important;
+}
+
+.perfil-page button[aria-haspopup="listbox"] span.text-text-disabled {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--text-disabled) !important;
+}
+
+.coach-app-typography .perfil-page :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  font-weight: 400 !important;
+}
+
+/* Dark */
+html[data-theme="dark"] .perfil-page,
+html.dark .perfil-page {
+  background-color: #080c14;
+}
+
+html[data-theme="dark"] .perfil-section-card,
+html.dark .perfil-section-card,
+html[data-theme="dark"] .perfil-form-card,
+html.dark .perfil-form-card,
+html[data-theme="dark"] .plan-usage-card,
+html.dark .plan-usage-card,
+html[data-theme="dark"] .auron-widget-card,
+html.dark .auron-widget-card {
+  background-color: #0c1018;
+  border: none;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="dark"] .auron-widget-shadow,
+html.dark .auron-widget-shadow {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* Dark: inputs/selects — fundo mais escuro que o card + borda visível (sem cinza #1e1e1e) */
+html[data-theme="dark"] .perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html.dark .perfil-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html[data-theme="dark"] .auron-settings-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html.dark .auron-settings-page :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  background-color: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 10px !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .perfil-page :is(input, textarea)::placeholder,
+html.dark .perfil-page :is(input, textarea)::placeholder,
+html[data-theme="dark"] .auron-settings-page :is(input, textarea)::placeholder,
+html.dark .auron-settings-page :is(input, textarea)::placeholder {
+  color: #4a5568 !important;
+}
+
+html[data-theme="dark"] .perfil-page button[aria-haspopup="listbox"],
+html.dark .perfil-page button[aria-haspopup="listbox"],
+html[data-theme="dark"] .auron-settings-page button[aria-haspopup="listbox"],
+html.dark .auron-settings-page button[aria-haspopup="listbox"] {
+  background-color: #0d1117 !important;
+  border: 1px solid #2d3748 !important;
+  border-radius: 10px !important;
+  color: #d8dce6 !important;
+}
+
+html[data-theme="dark"] .perfil-page :is(input, textarea, select):focus,
+html.dark .perfil-page :is(input, textarea, select):focus,
+html[data-theme="dark"] .auron-settings-page :is(input, textarea, select):focus,
+html.dark .auron-settings-page :is(input, textarea, select):focus,
+html[data-theme="dark"] .perfil-page button[aria-haspopup="listbox"]:focus,
+html.dark .perfil-page button[aria-haspopup="listbox"]:focus,
+html[data-theme="dark"] .auron-settings-page button[aria-haspopup="listbox"]:focus,
+html.dark .auron-settings-page button[aria-haspopup="listbox"]:focus,
+html[data-theme="dark"] .perfil-page button[aria-haspopup="listbox"][aria-expanded="true"],
+html.dark .perfil-page button[aria-haspopup="listbox"][aria-expanded="true"],
+html[data-theme="dark"] .auron-settings-page button[aria-haspopup="listbox"][aria-expanded="true"],
+html.dark .auron-settings-page button[aria-haspopup="listbox"][aria-expanded="true"] {
+  border-color: #9333ea !important;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15) !important;
+  outline: none;
+}
+
+html[data-theme="dark"] .perfil-page .perfil-senha-btn,
+html.dark .perfil-page .perfil-senha-btn {
+  border: 1px solid #2d3748;
+  background: transparent;
+  color: #d8dce6;
+}
+
+html[data-theme="dark"] .perfil-page .perfil-senha-btn:hover,
+html.dark .perfil-page .perfil-senha-btn:hover {
+  border-color: #9333ea;
+  background: rgba(147, 51, 234, 0.06);
+}
+
+html[data-theme="dark"] .perfil-page .perfil-camera-btn,
+html.dark .perfil-page .perfil-camera-btn {
+  background: transparent !important;
+  border: 1.5px solid #9333ea;
+  color: #9333ea;
+  box-shadow: 0 0 0 2px rgba(8, 12, 20, 0.55);
+}
+
+html[data-theme="dark"] .perfil-page .perfil-camera-btn:hover,
+html.dark .perfil-page .perfil-camera-btn:hover {
+  background: rgba(147, 51, 234, 0.12) !important;
+  color: #9333ea;
+}
+
+html[data-theme="dark"] .perfil-page .perfil-camera-btn svg,
+html.dark .perfil-page .perfil-camera-btn svg {
+  color: #9333ea;
+}
+
+.perfil-preview-card {
+  background: var(--brand-primary) !important;
+}
+
+.perfil-preview-card .text-text-primary {
+  color: #ffffff !important;
+}
+
+.perfil-preview-card .text-text-secondary,
+.perfil-preview-card .text-text-tertiary {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.perfil-preview-card .text-brand {
+  color: #f5f0e8 !important;
+}
+
+.perfil-preview-card .bg-surface-3 {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.perfil-preview-card .border-surface-1 {
+  border-color: var(--brand-primary) !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+)::placeholder {
+  color: var(--text-disabled) !important;
+  font-weight: 400 !important;
+  font-size: 12px !important;
+}
+
+/* Controles de filtro (busca/selects das telas de listagem) — escapam do
+   baseline acima; o visual vem dos tokens --filter-* (theme-aware).
+   O seletor repete a cadeia de :not() do baseline para vencê-lo em
+   especificidade (ambos usam !important). */
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+).filter-control {
+  background: var(--filter-bg) !important;
+  border: 1px solid var(--filter-border) !important;
+  color: var(--filter-text) !important;
+  font-size: 13px !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea
+).filter-control::placeholder {
+  color: var(--filter-placeholder) !important;
+}
+
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+).filter-control:focus,
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+).filter-control:focus-visible {
+  background: var(--filter-bg-focus) !important;
+  border-color: var(--filter-border-focus) !important;
+  box-shadow: 0 0 0 1px var(--filter-ring) !important;
+}
+
+/* Busca com ícone de lupa à esquerda */
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control-search {
+  padding-left: 38px !important;
+}
+
+/* Linhas compactas da busca de alimentos — só texto + checkbox, sem “caixa” */
+.coach-app-typography button.food-search-row {
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 5px 4px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: 1.25 !important;
+}
+
+.coach-app-typography button.food-search-row p,
+.coach-app-typography button.food-search-row span {
+  margin: 0 !important;
+  line-height: 1.25 !important;
+}
+
+.coach-app-typography button.food-search-row[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--brand-primary) 5%, transparent) !important;
+}
+
+.coach-app-typography button.food-search-row:hover {
+  background: color-mix(in srgb, var(--brand-primary) 4%, #ffffff) !important;
+}
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact {
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+.coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact.filter-control-search {
+  padding-left: 34px !important;
+}
+
+/* iOS dá zoom ao focar inputs < 16px — no mobile a fonte volta a 16px */
+@media (max-width: 767px) {
+  .coach-app-typography :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+    textarea,
+    select
+  ).filter-control {
+    font-size: 16px !important;
+  }
+
+  .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).filter-control.filter-control-compact {
+    min-height: 32px !important;
+    height: 32px !important;
+    font-size: 16px !important;
+  }
+}
+
+.coach-mrr-badge {
+  color: var(--text-tertiary);
+}
+
+html[data-theme="light"] .coach-mrr-card .coach-mrr-empty {
+  color: var(--text-tertiary);
+}
+
+/* Eixos do gráfico MRR — card neutro (não glass roxo) */
+.coach-mrr-card .recharts-cartesian-axis-tick text {
+  fill: var(--text-secondary) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+.coach-mrr-card .recharts-cartesian-grid-horizontal line {
+  stroke: color-mix(in srgb, var(--text-primary) 8%, transparent) !important;
+}
+

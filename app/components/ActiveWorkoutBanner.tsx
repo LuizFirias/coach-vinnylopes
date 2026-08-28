@@ -80,7 +80,12 @@ export default function ActiveWorkoutBanner() {
 
   return (
     <div className={cn(
-      'fixed z-50 left-3 right-3 bottom-[4.75rem]',
+      // Antes era um valor fixo (4.75rem) que não contava a safe-area do
+      // celular (notch/home indicator) — em telas com safe-area maior, a
+      // barra inferior de navegação ficava mais alta que isso e cortava o
+      // card. Agora soma a altura real da nav (3.5rem) + a safe-area + uma
+      // folga por cima dela.
+      'fixed z-50 left-3 right-3 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.75rem)]',
       'lg:left-auto lg:right-6 lg:w-80 lg:bottom-6'
     )}>
       <button
@@ -102,12 +107,12 @@ export default function ActiveWorkoutBanner() {
           <p className="text-[10px] font-semibold text-white/70 uppercase tracking-widest leading-none mb-0.5">
             Treino em andamento
           </p>
-          <p className="text-sm font-bold text-white truncate leading-tight">{active.nomeRotina}</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-white truncate leading-tight">{active.nomeRotina}</p>
         </div>
 
         {/* Time + arrow */}
         <div className="relative flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-sm font-mono font-bold text-white tabular-nums">{formatDuration(elapsed)}</span>
+          <span className="text-sm font-mono font-bold text-white tabular-nums lining-nums">{formatDuration(elapsed)}</span>
           <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
             <CaretRight className="w-4 h-4 text-white" />
           </div>

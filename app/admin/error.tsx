@@ -17,7 +17,7 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-surface-0 flex items-center justify-center p-4 lg:pl-28">
+    <div className="min-h-screen flex items-center justify-center p-4 lg:pl-8">
       <div className="max-w-md w-full bg-surface-1 border border-danger-border rounded-2xl p-8 text-center shadow-elev-2">
         <div className="w-16 h-16 bg-danger-subtle border-2 border-danger-border rounded-full flex items-center justify-center mx-auto mb-6">
           <Warning className="w-8 h-8 text-danger" />

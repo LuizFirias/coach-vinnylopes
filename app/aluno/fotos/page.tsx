@@ -10,7 +10,6 @@ import {
 import Link from 'next/link';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
-import { motion } from 'framer-motion';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -26,14 +25,6 @@ type Sessao = { data: string; fotos: Foto[] };
 type Posicao = 'frente' | 'lado' | 'costas';
 
 const LABEL: Record<Posicao, string> = { frente: 'Frente', lado: 'Lado', costas: 'Costas' };
-
-function parseDateSafe(value: string): Date {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split('-').map(Number);
-    return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
-  }
-  return new Date(value);
-}
 
 // ─── Ícone de pose (substitui glyph quebrado do "Lado") ──────────────────────
 
@@ -166,16 +157,11 @@ export default function FotosPage() {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   function fmtDataKey(d: string): string {
-    return parseDateSafe(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
-  const itemVariants: any = {
-    hidden: { opacity: 0, y: 12 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }
-  };
-
   function fmtDataLabel(d: string): string {
-    return parseDateSafe(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+    return new Date(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
   }
 
   const sessoes: Sessao[] = [];
@@ -188,7 +174,7 @@ export default function FotosPage() {
 
   const sessaoAtiva = sessoes.find(s => s.data === selectedSessao) ?? sessoes[0] ?? null;
   const diasSdeUltima = fotos.length > 0
-    ? Math.floor((Date.now() - parseDateSafe(fotos[0].data_upload).getTime()) / 86400000)
+    ? Math.floor((Date.now() - new Date(fotos[0].data_upload).getTime()) / 86400000)
     : null;
 
   if (loading) {
@@ -200,81 +186,74 @@ export default function FotosPage() {
   }
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0 },
-        visible: {
-          opacity: 1,
-          transition: {
-            staggerChildren: 0.05
-          }
-        }
-      }}
-      className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24"
-    >
+    <div className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24">
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
 
         {/* ── Header ── */}
-        <motion.div variants={itemVariants}>
+        <div>
           <Link href="/aluno/dashboard" className="inline-flex items-center gap-1.5 text-brand text-2xs uppercase tracking-caps mb-4">
             <ArrowLeft className="w-3 h-3" /> Dashboard
           </Link>
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">Fotos</h1>
           <p className="text-xs text-text-tertiary mt-0.5">Acompanhe sua transformação</p>
-        </motion.div>
+        </div>
 
         {error && (
-          <motion.div
-            variants={itemVariants}
-            className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-xl px-4 py-3"
-          >
+          <div className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-xl px-4 py-3">
             {error}
-          </motion.div>
+          </div>
         )}
 
         {/* ── Aviso dias atrasados ── */}
         {diasSdeUltima !== null && diasSdeUltima > 15 && (
-          <motion.div
-            variants={itemVariants}
-            className="flex items-center gap-3 bg-surface-2 border border-border-default rounded-2xl px-4 py-3"
-          >
+          <div className="flex items-center gap-3 bg-surface-2 border border-border-default rounded-2xl px-4 py-3">
             <div className="w-2 h-2 rounded-full bg-brand animate-pulse flex-shrink-0" />
             <p className="text-xs text-text-secondary">
               Faz <span className="font-semibold text-text-primary">{diasSdeUltima} dias</span> desde sua última sessão de fotos. Que tal registrar hoje?
             </p>
-          </motion.div>
+          </div>
         )}
 
         {/* ── Upload das 3 poses ── */}
-        <motion.section variants={itemVariants}>
+        <section>
           <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Nova sessão</p>
           <div className="grid grid-cols-3 gap-3">
             {(['frente', 'lado', 'costas'] as const).map(tipo => (
-              <label key={tipo} className="cursor-pointer">
+              <label key={tipo} className="cursor-pointer group block">
                 <input
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   className="hidden"
                   onChange={e => handleUpload(e, tipo)}
                   disabled={uploading.has(tipo)}
                 />
-                <div
+                <div 
                   className={cn(
-                    'aspect-[3/4] rounded-2xl border border-dashed flex flex-col items-center justify-center gap-2 p-3 text-center transition-all bg-surface-1 select-none',
-                    uploading.has(tipo) ? 'opacity-50 cursor-wait' : 'border-border-default hover:border-brand/40 active:scale-[0.98]'
+                    'aspect-[3/4] rounded-2xl border transition-all duration-120 flex flex-col items-center justify-center gap-2 relative overflow-hidden',
+                    'border-card active:scale-97 hover:scale-[0.99] hover:border-brand/40',
+                    uploading.has(tipo) ? 'bg-brand/5' : ''
                   )}
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.4) 100%)',
+                    boxShadow: '0px 10px 30px rgba(0,0,0,0.35)'
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(0,122,255,0.25)';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.boxShadow = '0px 10px 30px rgba(0,0,0,0.35)';
+                  }}
                 >
                   {uploading.has(tipo) ? (
                     <CircleNotch className="w-5 h-5 text-brand animate-spin" />
                   ) : (
                     <>
-                      <div className="w-10 h-10 rounded-xl bg-brand-subtle flex items-center justify-center text-brand">
+                      <div className="text-text-tertiary group-hover:text-brand group-hover:scale-105 transition-all">
                         <PoseIcon tipo={tipo} />
                       </div>
-                      <span className="text-xs font-semibold text-text-secondary">{LABEL[tipo]}</span>
-                      <div className="w-6 h-6 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center text-text-tertiary">
+                      <span className="text-xs font-semibold text-text-secondary group-hover:text-text-primary transition-colors">{LABEL[tipo]}</span>
+                      <div className="w-6 h-6 rounded-full bg-surface-3 border border-card flex items-center justify-center text-text-tertiary group-hover:bg-brand/10 group-hover:border-brand/30 group-hover:text-brand transition-all">
                         <UploadSimple className="w-3 h-3" />
                       </div>
                     </>
@@ -285,36 +264,33 @@ export default function FotosPage() {
           </div>
 
           {/* Dica educativa */}
-          <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-border-subtle">
+          <div className="mt-3 flex items-start gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-card">
             <span className="text-base leading-none mt-0.5">💡</span>
             <p className="text-xs text-text-tertiary leading-relaxed">
               Mesma roupa, mesma luz, mesmo horário. Manhã em jejum é o ideal para comparações consistentes.
             </p>
           </div>
-        </motion.section>
+        </section>
 
         {/* ── Privacidade ── */}
-        <motion.div
-          variants={itemVariants}
-          className="flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-border-subtle"
-        >
+        <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 rounded-xl border border-card">
           <Lock className="w-3.5 h-3.5 text-text-tertiary flex-shrink-0" />
           <p className="text-xs text-text-tertiary">Suas fotos são privadas e visíveis apenas pelo seu coach.</p>
-        </motion.div>
+        </div>
 
         {/* ── Timeline + galeria ── */}
         {sessoes.length === 0 ? (
-          <motion.div variants={itemVariants} className="flex flex-col items-center py-16 gap-3 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-tertiary">
+          <div className="flex flex-col items-center py-16 gap-3 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-surface-2 border border-card flex items-center justify-center text-text-tertiary">
               <ImageIcon className="w-7 h-7" />
             </div>
             <p className="text-sm font-semibold text-text-primary">Nenhuma foto ainda</p>
             <p className="text-xs text-text-tertiary max-w-xs">
               Envie suas fotos de frente, lado e costas para acompanhar sua transformação ao longo do tempo.
             </p>
-          </motion.div>
+          </div>
         ) : (
-          <motion.section variants={itemVariants}>
+          <section>
             <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">Histórico</p>
 
             {/* Timeline horizontal scrollável */}
@@ -361,38 +337,61 @@ export default function FotosPage() {
                 {(['frente', 'lado', 'costas'] as const).map(tipo => {
                   const foto = sessaoAtiva.fotos.find(f => f.posicao === tipo);
                   return (
-                    <div key={tipo} className="relative">
+                    <div key={tipo} className="relative group">
                       <div
                         className={cn(
-                          'aspect-[3/4] rounded-2xl overflow-hidden border border-border-subtle bg-surface-2',
+                          'aspect-[3/4] rounded-2xl overflow-hidden border border-card relative bg-surface-2 transition-all duration-120 active:scale-97 hover:scale-[0.99]',
                           foto && 'cursor-pointer'
                         )}
+                        style={{
+                          boxShadow: '0px 10px 30px rgba(0,0,0,0.35)'
+                        }}
                         onClick={() => foto && setLightbox(foto)}
                       >
                         {foto ? (
-                          <img src={foto.url_foto} alt={LABEL[tipo]} className="w-full h-full object-cover" />
+                          <>
+                            <img src={foto.url_foto} alt={LABEL[tipo]} className="w-full h-full object-cover" />
+                            {/* Overlay inferior com gradient fade */}
+                            <div 
+                              className="absolute inset-0 pointer-events-none" 
+                              style={{
+                                background: 'linear-gradient(0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 60%)'
+                              }}
+                            />
+                            {/* Texto absoluto sobre a imagem */}
+                            <div className="absolute bottom-3 left-3 right-3 flex flex-col pointer-events-none">
+                              <span className="text-xs font-bold text-white tracking-wide">{LABEL[tipo]}</span>
+                              <span className="text-[10px] text-text-secondary mt-0.5 font-mono">
+                                {new Date(foto.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                              </span>
+                            </div>
+                            
+                            {/* Indicador de progresso (badge canto superior esquerdo) */}
+                            <div className="absolute top-2 left-2 bg-brand/80 backdrop-blur-xs px-2 py-0.5 rounded-full border border-brand/20 shadow-sm pointer-events-none">
+                              <span className="text-[9px] font-bold text-white uppercase tracking-wider">Atualizado</span>
+                            </div>
+                          </>
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-text-tertiary">
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-text-tertiary">
                             <PoseIcon tipo={tipo} />
-                            <span className="text-2xs">{LABEL[tipo]}</span>
+                            <span className="text-2xs font-medium">{LABEL[tipo]}</span>
                           </div>
                         )}
                       </div>
                       {foto && (
                         <button
                           onClick={() => setPhotoToDelete(foto)}
-                          className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-danger hover:bg-danger hover:text-white transition-colors"
+                          className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-xs flex items-center justify-center text-danger hover:bg-danger hover:text-white border border-card transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                         >
                           <Trash className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      <p className="mt-1 text-center text-2xs text-text-tertiary">{LABEL[tipo]}</p>
                     </div>
                   );
                 })}
               </div>
             )}
-          </motion.section>
+          </section>
         )}
       </div>
 
@@ -432,7 +431,7 @@ export default function FotosPage() {
               <button
                 onClick={() => setPhotoToDelete(null)}
                 disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-border-subtle text-sm text-text-secondary"
+                className="flex-1 py-2.5 rounded-xl bg-surface-3 border border-card text-sm text-text-secondary"
               >
                 Cancelar
               </button>
@@ -447,6 +446,6 @@ export default function FotosPage() {
           </div>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

@@ -1,8 +1,25 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedCoach } from "@/lib/auth/getAuthenticatedCoach";
+import {
+  assertCoachWriteAccess,
+  coachWriteAccessErrorResponse,
+} from "@/lib/subscriptions/assertCoachWriteAccess";
 
 export async function DELETE(req: Request) {
   try {
+    const auth = await getAuthenticatedCoach(req);
+    if ("error" in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    try {
+      await assertCoachWriteAccess(auth.userId);
+    } catch (err) {
+      const denied = coachWriteAccessErrorResponse(err);
+      if (denied) return denied;
+      throw err;
+    }
+
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("id");
 
@@ -10,43 +27,10 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "ID do aluno é obrigatório" }, { status: 400 });
     }
 
-    const bearer = req.headers.get("authorization") || "";
-    const token = bearer.replace("Bearer ", "").trim();
-
-    if (!token) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: "Configuração do servidor inválida" }, { status: 500 });
-    }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
-    const coachId = authData?.user?.id;
-
-    if (authError || !coachId) {
-      return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
-    }
-
-    const { data: profile, error: roleError } = await adminClient
-      .from("profiles")
-      .select("role")
-      .eq("id", coachId)
-      .single();
-
-    if (roleError || (profile?.role !== "coach" && profile?.role !== "super_admin")) {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
+    const { userId: coachId, role, adminClient } = auth;
 
     // Verificar que o coach é dono deste aluno (super_admin pode desativar qualquer um)
-    if (profile?.role === "coach") {
+    if (role === "coach") {
       const { data: ownership } = await adminClient
         .from("coach_alunos")
         .select("aluno_id")

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -7,6 +7,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 
 const menuItems = [
   { name: 'TREINOS', href: '/aluno/treinos' },
+  { name: 'CARDIO', href: '/aluno/cardio' },
   { name: 'PLANO ALIMENTAR', href: '/aluno/plano-alimentar' },
   { name: 'MEDIDAS', href: '/aluno/medidas' },
   { name: 'FOTOS', href: '/aluno/fotos' },
@@ -34,7 +35,7 @@ export default function Navigation() {
               <List size={18} className="text-brand-purple" />
             </button>
             <h1 className="text-[10px] tracking-[0.3em] uppercase text-slate-900">
-              VINNY LOPES <span className="text-brand-purple">COACH</span>
+              COACH VINNY
             </h1>
           </div>
 

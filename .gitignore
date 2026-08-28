@@ -36,7 +36,18 @@ yarn-error.log*
 # vercel
 .vercel
 
+# wger self-hosted deploy (clone com .git próprio + segredos em config/prod.env)
+/infra/wger/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# continue IDE (pode conter API keys locais)
+.continue/
+
+# relatorios de scan de segredos
+gitleaks-report.json
+
+diff-*.txt

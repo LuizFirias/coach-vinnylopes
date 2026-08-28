@@ -3,6 +3,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
+import { invalidateAdminGuardCache } from '@/lib/auth/adminGuardCache';
+import { invalidateBootstrapProfile } from '@/lib/auth/bootstrapProfile';
+import { invalidateSubscriptionStatusCache } from '@/lib/subscriptions/statusClientCache';
 
 interface AuthContextType {
   user: User | null;
@@ -20,221 +23,232 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+function readCachedRole(userId?: string | null): string | null {
+  if (typeof window === 'undefined') return null;
+  const cachedId = localStorage.getItem('user_id');
+  const cachedRole = localStorage.getItem('user_role');
+  if (!cachedRole) return null;
+  if (userId && cachedId && cachedId !== userId) return null;
+  if (!userId && !cachedId) return null;
+  return cachedRole;
+}
+
 /**
- * AuthProvider - Gerenciamento centralizado de autenticação e role
- * 
- * Versão otimizada para evitar race conditions e AbortErrors
+ * AuthProvider - autenticação + role com cache e dedupe de fetches.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(() => readCachedRole());
   const [loading, setLoading] = useState(true);
-  const initializingRef = useRef(false);
 
-  const getCachedRole = useCallback((userId: string): string | null => {
+  // Dedup/cache de fetches (estrutura do AURON) — mas a busca em si usa só
+  // `select('role')`, sem depender das colunas de assinatura/bootstrap do
+  // AURON (subscription_active, coach_id etc.) que não existem neste banco.
+  const mountedRef = useRef(true);
+  const roleCacheRef = useRef<{ userId: string; role: string } | null>(null);
+  const roleInflightRef = useRef<{ userId: string; promise: Promise<string | null> } | null>(null);
+  const resolvedUserIdRef = useRef<string | null>(null);
+
+  const applyRole = useCallback((userId: string, role: string) => {
+    roleCacheRef.current = { userId, role };
+    resolvedUserIdRef.current = userId;
     try {
-      const cachedUserId = localStorage.getItem('user_id');
-      const cachedRole = localStorage.getItem('user_role');
-      if (cachedUserId === userId && cachedRole) {
-        return cachedRole;
-      }
+      localStorage.setItem('user_role', role);
+      localStorage.setItem('user_id', userId);
     } catch {
-      // Ignore storage access issues.
+      // ignore
     }
-    return null;
+    if (mountedRef.current) setUserRole(role);
   }, []);
 
-  // Função para buscar role do banco (fonte da verdade)
   const fetchRoleFromDatabase = useCallback(async (userId: string): Promise<string | null> => {
-    console.log('[AuthProvider] 🔍 Buscando role do banco para user:', userId);
-    
-    try {
-      const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('[AuthProvider] ❌ Erro ao buscar role:', error);
-
-        // Fallback para role em cache quando houver falha de rede transitória.
-        const cachedRole = getCachedRole(userId);
-        if (cachedRole) {
-          console.warn('[AuthProvider] ⚠️ Usando role em cache devido falha de rede:', cachedRole);
-          return cachedRole;
-        }
-
-        return null;
-      }
-
-      if (!data?.role) {
-        console.warn('[AuthProvider] ⚠️ Role não encontrado no banco para user:', userId);
-
-        const cachedRole = getCachedRole(userId);
-        if (cachedRole) {
-          console.warn('[AuthProvider] ⚠️ Usando role em cache (role ausente no retorno):', cachedRole);
-          return cachedRole;
-        }
-
-        return null;
-      }
-
-      console.log('[AuthProvider] ✅ Role encontrado no banco:', data.role);
-      return data.role;
-    } catch (err) {
-      console.error('[AuthProvider] ❌ Exceção ao buscar role:', err);
-
-      const cachedRole = getCachedRole(userId);
-      if (cachedRole) {
-        console.warn('[AuthProvider] ⚠️ Usando role em cache após exceção:', cachedRole);
-        return cachedRole;
-      }
-
-      return null;
+    if (roleCacheRef.current?.userId === userId) {
+      return roleCacheRef.current.role;
     }
-  }, [getCachedRole]);
 
-  // Função para atualizar role (com validação cruzada)
+    if (roleInflightRef.current?.userId === userId) {
+      return roleInflightRef.current.promise;
+    }
+
+    const promise = (async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+        if (error || !data?.role) {
+          console.error('[AuthProvider] ❌ Erro ao buscar role:', error);
+
+          const cachedRole = readCachedRole(userId);
+          if (cachedRole) {
+            console.warn('[AuthProvider] ⚠️ Usando role em cache devido falha de rede:', cachedRole);
+            return cachedRole;
+          }
+
+          return null;
+        }
+
+        roleCacheRef.current = { userId, role: data.role };
+        return data.role;
+      } catch (err) {
+        console.error('[AuthProvider] ❌ Exceção ao buscar role:', err);
+
+        const cachedRole = readCachedRole(userId);
+        if (cachedRole) {
+          console.warn('[AuthProvider] ⚠️ Usando role em cache após exceção:', cachedRole);
+          return cachedRole;
+        }
+
+        return null;
+      } finally {
+        if (roleInflightRef.current?.userId === userId) {
+          roleInflightRef.current = null;
+        }
+      }
+    })();
+
+    roleInflightRef.current = { userId, promise };
+    return promise;
+  }, []);
+
   const refreshRole = useCallback(async () => {
-    console.log('[AuthProvider] 🔄 Refresh de role solicitado');
-    
     try {
       const { data: { user: currentUser } } = await supabaseClient.auth.getUser();
-      
+
       if (!currentUser) {
-        console.log('[AuthProvider] ℹ️ Nenhum usuário autenticado');
         setUser(null);
         setUserRole(null);
+        resolvedUserIdRef.current = null;
+        roleCacheRef.current = null;
         localStorage.removeItem('user_role');
         localStorage.removeItem('user_id');
         return;
       }
 
-      console.log('[AuthProvider] 👤 Usuário autenticado:', currentUser.id);
       setUser(currentUser);
-
-      // Buscar role do banco (fonte da verdade)
+      // força revalidação
+      roleCacheRef.current = null;
       const roleFromDb = await fetchRoleFromDatabase(currentUser.id);
-      
-      if (roleFromDb) {
-        setUserRole(roleFromDb);
-        localStorage.setItem('user_role', roleFromDb);
-        localStorage.setItem('user_id', currentUser.id);
-        console.log('[AuthProvider] ✅ Role atualizado:', roleFromDb);
-      }
+      if (roleFromDb) applyRole(currentUser.id, roleFromDb);
     } catch (err) {
-      console.error('[AuthProvider] ❌ Erro no refresh:', err);
+      console.error('[AuthProvider] Erro no refresh:', err);
     }
-  }, [fetchRoleFromDatabase]);
+  }, [applyRole, fetchRoleFromDatabase]);
 
-  // Inicialização: verificar sessão e role UMA VEZ
   useEffect(() => {
-    if (initializingRef.current) return;
-    
-    let mounted = true;
-    initializingRef.current = true;
+    mountedRef.current = true;
+
+    const hydrateFromSession = async (sessionUser: User) => {
+      // Marca cedo para ignorar SIGNED_IN cosmético que chega durante o hydrate
+      resolvedUserIdRef.current = sessionUser.id;
+      setUser(sessionUser);
+
+      const cached = readCachedRole(sessionUser.id);
+      if (cached) {
+        // Paint rápido com cache — mas sempre revalida no DB (role pode ter mudado no Supabase).
+        applyRole(sessionUser.id, cached);
+        if (mountedRef.current) setLoading(false);
+        roleCacheRef.current = null;
+        const roleFromDb = await fetchRoleFromDatabase(sessionUser.id);
+        if (!mountedRef.current) return;
+        if (roleFromDb && roleFromDb !== cached) {
+          applyRole(sessionUser.id, roleFromDb);
+        }
+        return;
+      }
+
+      const roleFromDb = await fetchRoleFromDatabase(sessionUser.id);
+      if (!mountedRef.current) return;
+      if (roleFromDb) applyRole(sessionUser.id, roleFromDb);
+      setLoading(false);
+    };
 
     const initializeAuth = async () => {
-      console.log('[AuthProvider] 🚀 Inicializando autenticação...');
-
       try {
-        // 1. Verificar se há sessão ativa
         const { data: { session } } = await supabaseClient.auth.getSession();
-        
-        if (!mounted) return;
+        if (!mountedRef.current) return;
 
         if (!session?.user) {
-          console.log('[AuthProvider] ℹ️ Nenhuma sessão encontrada');
           setUser(null);
           setUserRole(null);
           setLoading(false);
-          initializingRef.current = false;
           return;
         }
 
-        console.log('[AuthProvider] 👤 Sessão encontrada para:', session.user.id);
-
-        // 2. Buscar role do banco
-        const roleFromDb = await fetchRoleFromDatabase(session.user.id);
-        
-        if (!mounted) return;
-
-        if (roleFromDb) {
-          setUser(session.user);
-          setUserRole(roleFromDb);
-          localStorage.setItem('user_role', roleFromDb);
-          localStorage.setItem('user_id', session.user.id);
-          
-          console.log('[AuthProvider] ✅ Autenticação inicializada:', {
-            userId: session.user.id,
-            role: roleFromDb,
-            email: session.user.email
-          });
-        } else {
-          console.error('[AuthProvider] ❌ Não foi possível obter role do banco');
-          setUserRole(null);
-        }
+        await hydrateFromSession(session.user);
       } catch (err) {
-        console.error('[AuthProvider] ❌ Erro na inicialização:', err);
+        console.error('[AuthProvider] Erro na inicialização:', err);
+        if (mountedRef.current) setLoading(false);
       } finally {
-        if (mounted) {
-          setLoading(false);
-          initializingRef.current = false;
-        }
+        if (mountedRef.current) setLoading(false);
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
 
-    // Listener para mudanças de autenticação
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('[AuthProvider] 🔔 Auth state changed:', event);
-        
-        if (!mounted) return;
+      (event, session) => {
+        if (!mountedRef.current) return;
+
+        // INITIAL_SESSION já é coberto pelo getSession() acima — evita fetch duplicado
+        if (event === 'INITIAL_SESSION') return;
 
         if (event === 'SIGNED_OUT') {
           setUser(null);
           setUserRole(null);
+          resolvedUserIdRef.current = null;
+          roleCacheRef.current = null;
           localStorage.removeItem('user_role');
           localStorage.removeItem('user_id');
-          console.log('[AuthProvider] 👋 Usuário deslogado');
-        } else if (event === 'SIGNED_IN' && session?.user) {
-          // Só atualiza se for um usuário DIFERENTE (evita re-render ao restaurar sessão)
-          setUser(prevUser => {
-            if (prevUser?.id === session.user.id) return prevUser; // mesmo usuário, mantém referência estável
-            return session.user;
-          });
-          // Só busca role se não tiver ainda
-          setUserRole(prevRole => {
-            if (prevRole) return prevRole; // já tem role, não re-busca
-            // Busca em background sem bloquear
-            fetchRoleFromDatabase(session.user.id).then(roleFromDb => {
-              if (mounted && roleFromDb) {
-                setUserRole(roleFromDb);
-                localStorage.setItem('user_role', roleFromDb);
-                localStorage.setItem('user_id', session.user.id);
-              }
-            });
-            return prevRole;
-          });
-        } else if (event === 'TOKEN_REFRESHED') {
-          // TOKEN_REFRESHED: completamente silencioso, não atualiza nenhum estado
-          if (session) {
-            console.log('[AuthProvider] 🔄 Token renovado silenciosamente');
-          } else {
-            console.warn('[AuthProvider] ⚠️ TOKEN_REFRESHED sem sessão (falha transitória)');
-          }
+          invalidateAdminGuardCache();
+          invalidateBootstrapProfile();
+          invalidateSubscriptionStatusCache();
+          setLoading(false);
+          return;
         }
-      }
+
+        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+          const newUserId = session.user.id;
+
+          // Mesmo user já resolvido (ex.: resume de aba / SIGNED_IN cosmético do Supabase)
+          // — não chama setUser para evitar cascade de refetch em telas que dependem de `user`.
+          if (resolvedUserIdRef.current === newUserId) {
+            setLoading(false);
+            return;
+          }
+
+          setUser(session.user);
+
+          const cached = readCachedRole(newUserId);
+          if (cached) {
+            applyRole(newUserId, cached);
+            setLoading(false);
+            void fetchRoleFromDatabase(newUserId).then((roleFromDb) => {
+              if (!mountedRef.current || !roleFromDb) return;
+              if (roleFromDb !== cached) applyRole(newUserId, roleFromDb);
+            });
+            return;
+          }
+
+          void fetchRoleFromDatabase(newUserId).then((roleFromDb) => {
+            if (!mountedRef.current || !roleFromDb) return;
+            applyRole(newUserId, roleFromDb);
+            setLoading(false);
+          });
+          return;
+        }
+
+        // TOKEN_REFRESHED: silencioso
+      },
     );
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       subscription.unsubscribe();
     };
-  }, []); // APENAS executa uma vez
+  }, [applyRole, fetchRoleFromDatabase]);
 
   const value = {
     user,

@@ -11,9 +11,16 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
     pathname.startsWith('/admin') ||
     pathname.startsWith('/super-admin');
 
-  // Add bottom padding on mobile to prevent content from being hidden behind bottom nav
-  // No top padding on mobile since there's no fixed header
-  const className = isInternal ? 'pb-20 lg:pb-0 lg:ml-16 xl:ml-[240px] transition-[margin-left] duration-200 ease-in-out' : 'pt-0';
+  // Padding inferior no mobile pra não esconder conteúdo atrás da bottom nav.
+  const hideCoachChrome =
+    pathname.startsWith('/admin/boas-vindas') ||
+    pathname.startsWith('/admin/preview-aluno') ||
+    pathname.startsWith('/admin/trocar-senha');
+
+  const className =
+    isInternal && !hideCoachChrome
+      ? `${pathname.startsWith("/admin") ? "coach-main-shell " : ""}pb-20 lg:pb-0 min-w-0 max-w-full overflow-x-clip lg:ml-[var(--sidebar-width,155px)] lg:w-[calc(100%-var(--sidebar-width,155px))] transition-[margin-left,width] duration-300`
+      : "min-w-0 w-full max-w-full overflow-x-clip pt-0";
 
   return <main className={className}>{children}</main>;
 }

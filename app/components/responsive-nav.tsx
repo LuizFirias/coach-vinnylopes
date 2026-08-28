@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from"react";
 import { usePathname } from 'next/navigation';
@@ -18,10 +18,13 @@ import { supabaseClient } from"@/lib/supabaseClient";import { getSafeSession } f
   User,
   ShieldCheck,
   AppleLogo,
+  SquaresFour,
+  HeartStraight,
 } from "@phosphor-icons/react";
 
 const menuItems = [
   { name:"TREINOS", href:"/aluno/treinos", icon: Barbell },
+  { name:"CARDIO", href:"/aluno/cardio", icon: HeartStraight },
   { name:"PLANO ALIMENTAR", href:"/aluno/plano-alimentar", icon: ForkKnife },
   { name:"MEDIDAS", href:"/aluno/medidas", icon: TrendUp },
   { name:"FOTOS", href:"/aluno/fotos", icon: Camera },
@@ -31,6 +34,7 @@ const menuItems = [
 ];
 
 const coachMenuItems = [
+  { name:"DASHBOARD", href:"/admin/dashboard", icon: SquaresFour },
   { name:"ALUNOS", href:"/admin/alunos", icon: Users },
   { name:"TREINOS", href:"/admin/treinos", icon: Barbell },
   { name:"NUTRIÇÃO", href:"/admin/nutricao", icon: AppleLogo },
@@ -42,6 +46,7 @@ const coachMenuItems = [
 
 const superAdminMenuItems = [
   { name:"GERENCIAR ACESSOS", href:"/super-admin", icon: ShieldCheck },
+  { name:"CONVITES", href:"/super-admin/convites", icon: Handshake },
   { name:"PERFIL", href:"/super-admin/perfil", icon: User },
 ];
 
@@ -82,25 +87,31 @@ export default function ResponsiveNav() {
     userRole === 'coach' ? coachMenuItems : 
     menuItems;
 
-  // Hide the nav entirely on the login page
-  if (pathname === '/login') return null;
+  // Hide the nav entirely on login, landing, or signup pages
+  if (
+    pathname === '/login' || 
+    pathname === '/' || 
+    pathname?.startsWith('/signup')
+  ) {
+    return null;
+  }
 
   return (
     <>
       {/* Mobile Header (hidden on desktop) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-surface-0/80 backdrop-blur-xl border-b border-white/[0.03] px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 z-50 bg-surface-0/80 backdrop-blur-xl border-b border-card px-4">
         <div className="flex items-center justify-between h-full">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.03] border border-white/[0.05] active:scale-95 transition-all"
+            className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/[0.03] border border-card active:scale-95 transition-all"
           >
             <List size={20} className="text-zinc-400" />
           </button>
           <div className="flex-1 flex justify-center items-center">
             {!logoFailed ? (
                 <Image
-                  src="/logo.png"
-                  alt="Coach Logo"
+                  src="/images/logo.webp"
+                  alt="Coach Vinny"
                   width={120}
                   height={35}
                   priority
@@ -110,7 +121,7 @@ export default function ResponsiveNav() {
                 />
             ) : (
               <h1 className="text-[11px] tracking-widest text-white text-center">
-                VINNY LOPES <span className="text-brand">COACH</span>
+                COACH VINNY
               </h1>
             )}
           </div>
@@ -123,7 +134,7 @@ export default function ResponsiveNav() {
         {/* Sidebar Header */}
         <div className="py-10 flex flex-col items-center">
           <div className="w-10 h-10 bg-brand rounded-lg flex items-center justify-center shadow-lg shadow-brand/5 group cursor-pointer">
-            <span className="text-black text-xs">CV</span>
+            <span className="text-black text-xs">AF</span>
           </div>
         </div>
 
@@ -131,7 +142,12 @@ export default function ResponsiveNav() {
         <nav className="flex-1 w-full px-3 py-4 flex flex-col gap-4">
           {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href === '/aluno/perfil' && (
+              pathname.startsWith('/aluno/estatisticas') ||
+              pathname.startsWith('/aluno/medidas') ||
+              pathname.startsWith('/aluno/fotos') ||
+              pathname.startsWith('/aluno/ranking')
+            ));
             return (
               <Link
                 key={item.href}
@@ -208,7 +224,12 @@ export default function ResponsiveNav() {
         <nav className="flex-1 px-4 py-6 flex flex-col gap-1 overflow-y-auto">
           {effectiveMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href === '/aluno/perfil' && (
+              pathname.startsWith('/aluno/estatisticas') ||
+              pathname.startsWith('/aluno/medidas') ||
+              pathname.startsWith('/aluno/fotos') ||
+              pathname.startsWith('/aluno/ranking')
+            ));
             return (
               <Link
                 key={item.href}

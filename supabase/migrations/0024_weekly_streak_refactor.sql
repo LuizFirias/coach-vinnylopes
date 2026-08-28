@@ -1,5 +1,10 @@
 -- Redefine a view de streak para contabilizar semanas seguidas em vez de dias consecutivos
 -- A ofensiva é mantida se houver pelo menos um treino na semana (Seg-Dom)
+--
+-- Correção (equivalente à 0094 do AURON): o truque "gaps and islands" com
+-- ORDER BY semana DESC exige SOMAR (semana + intervalo * row_number) pra
+-- semanas consecutivas caírem no mesmo grupo — com "-" toda semana virava
+-- uma "ilha" isolada e o streak nunca passava de 1.
 
 CREATE OR REPLACE VIEW public.v_streak_aluno WITH (security_invoker) AS
 WITH semanas_treino AS (
@@ -12,7 +17,7 @@ gaps AS (
   SELECT
     aluno_id,
     semana,
-    semana - (INTERVAL '1 week' * ROW_NUMBER() OVER (
+    semana + (INTERVAL '1 week' * ROW_NUMBER() OVER (
       PARTITION BY aluno_id ORDER BY semana DESC
     ))::INTERVAL AS grupo
   FROM semanas_treino

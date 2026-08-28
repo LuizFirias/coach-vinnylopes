@@ -9,6 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getBootstrapProfile } from '@/lib/auth/bootstrapProfile';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
 
@@ -31,17 +32,10 @@ export default function ParceirosPage() {
   useEffect(() => {
     const fetchParceiros = async () => {
       try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (!user) { setError('Usuário não autenticado'); setLoading(false); return; }
+        const profile = await getBootstrapProfile();
+        if (!profile) { setError('Usuário não autenticado'); setLoading(false); return; }
 
-        const { data: profileData } = await supabaseClient
-          .from('profiles')
-          .select('coach_id')
-          .eq('id', user.id)
-          .single();
-
-        const coachId = profileData?.coach_id;
+        const coachId = profile.coach_id;
         if (!coachId) { setParceiros([]); setLoading(false); return; }
 
         const { data, error: fetchError } = await supabaseClient
@@ -124,7 +118,7 @@ export default function ParceirosPage() {
             return (
               <div
                 key={parceiro.id}
-                className="bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-2xl overflow-hidden transition-all"
+                className="bg-surface-1 border border-card shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 rounded-2xl overflow-hidden transition-all"
               >
                 {/* Image carousel */}
                 {images.length > 0 && (
@@ -150,7 +144,7 @@ export default function ParceirosPage() {
 
                     {/* Premium badge */}
                     <div className="absolute top-5 left-5 z-10">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-0/80 backdrop-blur-sm border border-border-subtle rounded-xl">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-0/80 backdrop-blur-sm border border-card rounded-xl">
                         <ShieldCheck className="w-3 h-3 text-brand" />
                         <span className="text-2xs font-semibold uppercase tracking-caps text-text-secondary">Verificado</span>
                       </div>
@@ -161,13 +155,13 @@ export default function ParceirosPage() {
                       <div className="absolute bottom-4 left-0 right-0 flex justify-center items-center gap-3 z-10">
                         <button
                           onClick={() => handleScroll(`carousel-${parceiro.id}`, -1)}
-                          className="w-8 h-8 bg-surface-1/90 backdrop-blur border border-border-subtle rounded-full flex items-center justify-center text-text-secondary shadow-sm hover:border-brand/30 transition-colors"
+                          className="w-8 h-8 bg-surface-1/90 backdrop-blur border border-card rounded-full flex items-center justify-center text-text-secondary shadow-sm hover:border-brand/30 transition-colors"
                         >
                           <CaretLeft className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleScroll(`carousel-${parceiro.id}`, 1)}
-                          className="w-8 h-8 bg-surface-1/90 backdrop-blur border border-border-subtle rounded-full flex items-center justify-center text-text-secondary shadow-sm hover:border-brand/30 transition-colors"
+                          className="w-8 h-8 bg-surface-1/90 backdrop-blur border border-card rounded-full flex items-center justify-center text-text-secondary shadow-sm hover:border-brand/30 transition-colors"
                         >
                           <CaretRight className="w-4 h-4" />
                         </button>
@@ -186,7 +180,7 @@ export default function ParceirosPage() {
                         <span className="text-2xs text-text-tertiary uppercase tracking-caps">Verificado pelo Coach</span>
                       </div>
                     </div>
-                    <div className="w-10 h-10 bg-surface-2 border border-border-subtle rounded-xl flex items-center justify-center text-text-tertiary flex-shrink-0">
+                    <div className="w-10 h-10 bg-surface-2 border border-card rounded-xl flex items-center justify-center text-text-tertiary flex-shrink-0">
                       <ShoppingBag className="w-4 h-4" />
                     </div>
                   </div>
@@ -194,7 +188,7 @@ export default function ParceirosPage() {
                   <p className="text-sm text-text-secondary leading-relaxed">{parceiro.descricao}</p>
 
                   {/* Coupon */}
-                  <div className="flex items-center justify-between bg-surface-2 border border-border-subtle px-4 py-3 rounded-xl">
+                  <div className="flex items-center justify-between bg-surface-2 border border-card px-4 py-3 rounded-xl">
                     <div>
                       <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-0.5 flex items-center gap-1.5">
                         <Tag className="w-3 h-3 text-brand" />
@@ -208,7 +202,7 @@ export default function ParceirosPage() {
                         'flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-semibold uppercase tracking-caps transition-all',
                         copiedCupom === parceiro.cupom
                           ? 'bg-success text-white'
-                          : 'bg-surface-3 border border-border-subtle text-text-secondary hover:text-brand hover:border-brand/20'
+                          : 'bg-surface-3 border border-card text-text-secondary hover:text-brand hover:border-brand/20'
                       )}
                     >
                       {copiedCupom === parceiro.cupom ? (
@@ -233,15 +227,15 @@ export default function ParceirosPage() {
           })}
 
           {parceiros.length === 0 && !error && (
-            <div className="col-span-full bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-16 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center text-text-disabled mb-6">
+            <div className="col-span-full bg-surface-1 border border-card shadow-elev-1 rounded-2xl p-16 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-surface-2 border border-card rounded-2xl flex items-center justify-center text-text-disabled mb-6">
                 <ShieldCheck className="w-8 h-8" />
               </div>
               <h3 className="text-base font-bold text-text-primary mb-1 uppercase tracking-tight">Clube em Formação</h3>
               <p className="text-sm text-text-tertiary max-w-xs mb-4">
                 Estamos finalizando parcerias com as melhores marcas para trazer benefícios únicos para você.
               </p>
-              <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 border border-border-subtle rounded-xl opacity-60">
+              <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 border border-card rounded-xl opacity-60">
                 <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
                 <span className="text-2xs text-text-tertiary uppercase tracking-caps">Em negociação estratégica</span>
               </div>

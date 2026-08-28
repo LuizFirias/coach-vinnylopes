@@ -1,132 +1,272 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { FileArrowUp, CircleNotch, Trash, Barbell, CaretRight, Plus } from '@phosphor-icons/react';
+import { getSafeSession } from '@/lib/authErrorHandler';
+import {
+  FileArrowUp,
+  Trash,
+  PlusCircle,
+  Barbell,
+  BookOpen,
+  WarningCircle,
+  MagnifyingGlass,
+  CheckCircle,
+  ArrowCounterClockwise,
+  X
+} from '@phosphor-icons/react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
-import PageHeader from '@/app/components/PageHeader';
-import DataTable from '@/app/components/DataTable';
+import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 import { cn } from '@/lib/utils/cn';
+import { textIncludes } from '@/lib/utils/textNormalize';
+import { alunoTreinosReturnUrl, withReturnUrl } from '@/lib/utils/adminNav';
+import type { WorkoutPlan, AlunoSemFicha } from '@/app/components/admin/workouts/types';
+import { WorkoutsTable, WorkoutsEmptyState } from '@/app/components/admin/workouts/WorkoutsTable';
+import { WorkoutsMobileList } from '@/app/components/admin/workouts/WorkoutsMobileList';
+import { StudentsWithoutWorkoutAlert } from '@/app/components/admin/workouts/StudentsWithoutWorkoutAlert';
+import { DeleteWorkoutModal } from '@/app/components/admin/workouts/DeleteWorkoutModal';
+import { extractExerciseNames } from '@/app/components/admin/workouts/workoutFormat';
 
 interface Aluno {
   id: string;
   coaching_reference: string | null;
+  full_name: string | null;
   email: string | null;
-}
-
-interface FichaRecente {
-  id: string;
-  nome_rotina: string;
-  criado_em: string;
-  ativo: boolean;
-  aluno_id: string;
+  avatar_url?: string | null;
+  sexo?: string | null;
 }
 
 export default function TreinosPage() {
   const router = useRouter();
+  const isMobile = useBreakpoint('mobile');
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [selectedAlunoId, setSelectedAlunoId] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fetchingAlunos, setFetchingAlunos] = useState(true);
+  const [fetchingData, setFetchingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPdfUpload, setShowPdfUpload] = useState(false);
+  const [selectedRoutineForPreview, setSelectedRoutineForPreview] = useState<WorkoutPlan | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<WorkoutPlan | null>(null);
 
-  // Fichas recentes & KPIs
-  const [fichasRecentes, setFichasRecentes] = useState<FichaRecente[]>([]);
-  const [totalActiveFichas, setTotalActiveFichas] = useState(0);
+  const [fichas, setFichas] = useState<WorkoutPlan[]>([]);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
+  const [alunosSemFicha, setAlunosSemFicha] = useState<AlunoSemFicha[]>([]);
+
+  // Stats
+  const [fichasAtivas, setFichasAtivas] = useState(0);
   const [fichasCriadasMes, setFichasCriadasMes] = useState(0);
-  const [taxaConclusao, setTaxaConclusao] = useState(85);
+  const [alunosAtendidos, setAlunosAtendidos] = useState(0);
+  const [treinosExecutados, setTreinosExecutados] = useState(0);
 
-  const fetchFichasAndKPIs = async (coachId: string, alunosList: Aluno[]) => {
+  const loadData = useCallback(async () => {
+    setFetchingData(true);
+    setError(null);
     try {
-      const ids = alunosList.map(a => a.id);
-      if (ids.length === 0) return;
+      const session = await getSafeSession();
+      const coachId = session?.user?.id;
+      if (!coachId) { setError('Sessão inválida'); setFetchingData(false); return; }
 
-      // 1. Fetch recent sheets
-      const { data, error: fichasError } = await supabaseClient
-        .from('fichas_treino')
-        .select('id, nome_rotina, criado_em, ativo, aluno_id')
-        .in('aluno_id', ids)
-        .order('criado_em', { ascending: false })
-        .limit(20);
+      const trintaDiasAtras = new Date();
+      trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+      const trintaDiasIso = trintaDiasAtras.toISOString();
 
-      if (fichasError) throw fichasError;
-      setFichasRecentes((data as FichaRecente[]) || []);
+      // Cada .from() do supabase-js é um HTTP request independente ao PostgREST
+      // (JWT por request). Promise.all paraleliza round-trips reais; não compartilham
+      // a mesma sessão Postgres — o pool (Supavisor) atende em paralelo.
+      const listSelectWithCount =
+        'id, aluno_id, nome_rotina, ativo, criado_em, exercicios_count, configuracao';
+      const listSelectLegacy =
+        'id, aluno_id, nome_rotina, ativo, criado_em, configuracao';
 
-      // 2. Count active sheets
-      const { count: activeCount } = await supabaseClient
-        .from('fichas_treino')
-        .select('*', { count: 'exact', head: true })
-        .in('aluno_id', ids)
-        .eq('ativo', true);
-      setTotalActiveFichas(activeCount || 0);
+      // Vínculos+perfis (embed) e listas por coach_id — tudo em paralelo
+      const [linksResult, digitalPrimary, pdfResult] = await Promise.all([
+        supabaseClient
+          .from('coach_alunos')
+          .select('aluno:profiles!aluno_id(id, coaching_reference, full_name, email, avatar_url, sexo, arquivado)')
+          .eq('coach_id', coachId),
+        supabaseClient
+          .from('fichas_treino')
+          .select(listSelectWithCount)
+          .eq('coach_id', coachId)
+          .order('criado_em', { ascending: false }),
+        supabaseClient
+          .from('treinos_alunos')
+          .select('id, aluno_id, nome_arquivo, url_pdf, data_upload')
+          .eq('coach_id', coachId)
+          .order('data_upload', { ascending: false }),
+      ]);
 
-      // 3. Count created this month
-      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-      const { count: monthCount } = await supabaseClient
-        .from('fichas_treino')
-        .select('*', { count: 'exact', head: true })
-        .in('aluno_id', ids)
-        .gte('criado_em', startOfMonth);
-      setFichasCriadasMes(monthCount || 0);
+      if (linksResult.error) throw linksResult.error;
+      if (pdfResult.error) throw pdfResult.error;
 
-      // 4. Calculate approximate completion rate (historico_treinos logged last 30d)
-      const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: histData } = await supabaseClient
-        .from('historico_treinos')
-        .select('id')
-        .in('aluno_id', ids)
-        .gte('data_conclusao', trintaDiasAtras);
-      
-      const totalExpected = ids.length * 12; // baseline: 12 workouts expected monthly per student
-      const completionRate = totalExpected > 0 ? Math.min(100, Math.round(((histData?.length || 0) / totalExpected) * 100)) : 85;
-      setTaxaConclusao(completionRate || 85);
+      const linkedProfiles = ((linksResult.data ?? []) as unknown as Array<{ aluno: (Aluno & { arquivado?: boolean | null }) | null }>)
+        .map((r) => r.aluno)
+        .filter((p): p is Aluno & { arquivado?: boolean | null } => Boolean(p));
+      const ids = linkedProfiles.map((p) => p.id);
 
-    } catch (err) {
-      console.error('Erro ao buscar métricas de fichas:', err);
-    }
-  };
+      if (ids.length === 0) {
+        setAlunos([]);
+        setFichas([]);
+        setAlunosSemFicha([]);
+        setFichasAtivas(0);
+        setFichasCriadasMes(0);
+        setAlunosAtendidos(0);
+        setTreinosExecutados(0);
+        setFetchingData(false);
+        return;
+      }
 
-  const loadData = async () => {
-    setFetchingAlunos(true);
-    try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
-      if (!coachId) { setError('Sessão inválida'); setFetchingAlunos(false); return; }
+      // Fallback se a migration 0043 (coluna exercicios_count) ainda não foi aplicada
+      let digitalData: Array<{
+        id: string;
+        aluno_id: string;
+        nome_rotina: string;
+        ativo: boolean;
+        criado_em: string;
+        exercicios_count?: number | null;
+        configuracao?: { exercicios?: unknown[] } | null;
+      }> = digitalPrimary.data || [];
 
-      const { data: alunoLinks, error: linkError } = await supabaseClient
-        .from('coach_alunos').select('aluno_id').eq('coach_id', coachId);
+      if (digitalPrimary.error) {
+        const digitalFallback = await supabaseClient
+          .from('fichas_treino')
+          .select(listSelectLegacy)
+          .eq('coach_id', coachId)
+          .order('criado_em', { ascending: false });
+        if (digitalFallback.error) throw digitalFallback.error;
+        digitalData = digitalFallback.data || [];
+      }
 
-      if (linkError) { setError('Erro ao carregar alunos: ' + linkError.message); setFetchingAlunos(false); return; }
+      const profilesList = linkedProfiles
+        .filter((p) => !p.arquivado)
+        .sort((a, b) => (a.coaching_reference || '').localeCompare(b.coaching_reference || '')) as Aluno[];
+      setAlunos(profilesList);
 
-      const ids = alunoLinks?.map(link => link.aluno_id) || [];
-      if (ids.length === 0) { setAlunos([]); setFetchingAlunos(false); return; }
+      const pdfData = pdfResult.data || [];
+      const digitalIds = digitalData.map((f) => f.id);
 
-      const { data, error: fetchError } = await supabaseClient
-        .from('profiles').select('id, coaching_reference, email')
-        .in('id', ids).eq('arquivado', false).order('coaching_reference', { ascending: true });
+      // Contagem de execuções (30d) + última execução por ficha em paralelo
+      const [executionsResult, execListResult] = await Promise.all([
+        supabaseClient
+          .from('historico_treinos')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', ids)
+          .gte('data_conclusao', trintaDiasIso),
+        digitalIds.length > 0
+          ? supabaseClient
+              .from('historico_treinos')
+              .select('ficha_id, data_conclusao')
+              .in('ficha_id', digitalIds)
+              .order('data_conclusao', { ascending: false })
+              .limit(2000)
+          : Promise.resolve({ data: null as null }),
+      ]);
 
-      if (fetchError) { setError('Erro ao carregar alunos: ' + fetchError.message); setFetchingAlunos(false); return; }
+      const lastExecByFicha = new Map<string, string>();
+      (execListResult.data || []).forEach((row: { ficha_id: string | null; data_conclusao: string }) => {
+        if (row.ficha_id && !lastExecByFicha.has(row.ficha_id)) {
+          lastExecByFicha.set(row.ficha_id, row.data_conclusao);
+        }
+      });
 
-      const loadedAlunos = data || [];
-      setAlunos(loadedAlunos);
-      await fetchFichasAndKPIs(coachId, loadedAlunos);
-    } catch {
-      setError('Erro ao conectar com o banco de dados');
+      const combinedRoutines: WorkoutPlan[] = [];
+      let activeCount = 0;
+      let monthCreatedCount = 0;
+      const uniqueStudentsActive = new Set<string>();
+      const profilesById = new Map(profilesList.map((p) => [p.id, p]));
+
+      digitalData.forEach((f) => {
+        const student = profilesById.get(f.aluno_id);
+        const exercicioNomes = extractExerciseNames(f.configuracao);
+        const exCount =
+          typeof f.exercicios_count === 'number'
+            ? f.exercicios_count
+            : exercicioNomes.length || f.configuracao?.exercicios?.length || 0;
+
+        if (f.ativo) {
+          activeCount++;
+          uniqueStudentsActive.add(f.aluno_id);
+        }
+
+        const createdDate = new Date(f.criado_em);
+        if (createdDate >= trintaDiasAtras) {
+          monthCreatedCount++;
+        }
+
+        combinedRoutines.push({
+          id: f.id,
+          aluno_id: f.aluno_id,
+          aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
+          aluno_email: student?.email ?? null,
+          aluno_avatar_url: student?.avatar_url ?? null,
+          aluno_sexo: student?.sexo ?? null,
+          nome_rotina: f.nome_rotina,
+          ativo: f.ativo,
+          criado_em: f.criado_em,
+          tipo: 'digital',
+          exercicios_count: exCount,
+          exercicio_nomes: exercicioNomes,
+          ultima_execucao: lastExecByFicha.get(f.id) ?? null,
+          configuracao: null,
+        });
+      });
+
+      pdfData.forEach((p) => {
+        const student = profilesById.get(p.aluno_id);
+        const createdDate = new Date(p.data_upload);
+        if (createdDate >= trintaDiasAtras) {
+          monthCreatedCount++;
+        }
+
+        uniqueStudentsActive.add(p.aluno_id);
+
+        combinedRoutines.push({
+          id: p.id,
+          aluno_id: p.aluno_id,
+          aluno_nome: student?.coaching_reference || student?.full_name || student?.email || 'Atleta',
+          aluno_email: student?.email ?? null,
+          aluno_avatar_url: student?.avatar_url ?? null,
+          aluno_sexo: student?.sexo ?? null,
+          nome_rotina: p.nome_arquivo || 'Plano de Treino PDF',
+          ativo: true,
+          criado_em: p.data_upload,
+          tipo: 'pdf',
+          exercicios_count: 0,
+          pdf_url: p.url_pdf,
+          ultima_execucao: null,
+        });
+      });
+
+      combinedRoutines.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
+      setFichas(combinedRoutines);
+
+      setFichasAtivas(activeCount);
+      setFichasCriadasMes(monthCreatedCount);
+      setAlunosAtendidos(uniqueStudentsActive.size);
+      setTreinosExecutados(executionsResult.count || 0);
+
+      setAlunosSemFicha(profilesList.filter((p) => !uniqueStudentsActive.has(p.id)));
+
+    } catch (err: any) {
+      console.error(err);
+      setError('Erro ao carregar dados do módulo de treinos');
     } finally {
-      setFetchingAlunos(false);
+      setFetchingData(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -147,8 +287,7 @@ export default function TreinosPage() {
 
     setLoading(true);
     try {
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = (await getSafeSession())?.user?.id;
       if (!coachId) throw new Error('Sessão inválida');
 
       const fileName = `${selectedAlunoId}/${Date.now()}_${selectedFile.name}`;
@@ -180,188 +319,245 @@ export default function TreinosPage() {
     }
   };
 
-  // Maps student details in memory
-  const studentMap = new Map(alunos.map(a => [a.id, a]));
+  const handleDeleteRoutine = async (item: WorkoutPlan) => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Sessão inválida');
 
-  const columns = [
-    {
-      key: 'aluno_id',
-      label: 'Atleta',
-      sortable: true,
-      render: (row: FichaRecente) => {
-        const student = studentMap.get(row.aluno_id);
-        const name = student?.coaching_reference || student?.email || 'Atleta';
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-brand-subtle flex items-center justify-center font-bold text-[9px] text-brand border border-brand-border shrink-0">
-              {name[0].toUpperCase()}
-            </div>
-            <span className="text-xs font-semibold text-text-primary truncate">{name}</span>
-          </div>
-        );
+      const res = await fetch('/api/admin/treinos/plan', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: item.id,
+          tipo: item.tipo,
+          pdf_url: item.pdf_url ?? null,
+        }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.error || 'Erro ao remover planejamento');
       }
-    },
-    {
-      key: 'nome_rotina',
-      label: 'Nome da Rotina',
-      sortable: true,
-      render: (row: FichaRecente) => (
-        <span className="text-xs text-text-secondary truncate block max-w-[200px]" title={row.nome_rotina}>
-          {row.nome_rotina}
-        </span>
-      )
-    },
-    {
-      key: 'criado_em',
-      label: 'Criada em',
-      sortable: true,
-      render: (row: FichaRecente) => (
-        <span className="text-xs text-text-tertiary">
-          {new Date(row.criado_em).toLocaleDateString('pt-BR')}
-        </span>
-      )
-    },
-    {
-      key: 'ativo',
-      label: 'Status',
-      sortable: true,
-      render: (row: FichaRecente) => (
-        <span className={cn(
-          "badge uppercase font-bold text-[9px] px-1.5 py-0.5 rounded-[4px]",
-          row.ativo ? "badge-success" : "badge-danger"
-        )}>
-          {row.ativo ? 'Ativa' : 'Inativa'}
-        </span>
-      )
+
+      await loadData();
+      setSuccess('Planejamento removido com sucesso.');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError('Erro ao remover: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setLoading(false);
+      setDeleteTarget(null);
     }
-  ];
+  };
+
+  const handleResetFilters = () => {
+    setQuery('');
+    setStatusFilter('todas');
+  };
+
+  const handleViewWorkout = async (plan: WorkoutPlan) => {
+    if (plan.tipo !== 'digital') {
+      setSelectedRoutineForPreview(plan);
+      return;
+    }
+
+    setSelectedRoutineForPreview(plan);
+    setPreviewLoading(true);
+    try {
+      const { data, error } = await supabaseClient
+        .from('fichas_treino')
+        .select('configuracao')
+        .eq('id', plan.id)
+        .single();
+      if (error) throw error;
+      setSelectedRoutineForPreview({
+        ...plan,
+        configuracao: data?.configuracao ?? null,
+      });
+    } catch (err) {
+      console.error(err);
+      setError('Erro ao carregar preview da ficha');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+  const handleEditWorkout = (plan: WorkoutPlan) =>
+    router.push(
+      withReturnUrl(
+        `/admin/aluno/${plan.aluno_id}/ficha/${plan.id}`,
+        "/admin/treinos",
+      ),
+    );
+
+  // Filter in-memory routines
+  const processedRoutines = fichas.filter(f => {
+    const matchesSearch =
+      textIncludes(f.aluno_nome, query) ||
+      textIncludes(f.nome_rotina, query);
+    if (!matchesSearch) return false;
+
+    if (statusFilter === 'ativas') return f.ativo;
+    if (statusFilter === 'inativas') return !f.ativo;
+    return true; // 'todas'
+  });
+
+  if (fetchingData) {
+    return (
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-8">
+        <DumbbellLoader text="Sincronizando gestão de treinos..." />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-16 xl:pl-[240px]">
-      <div className="max-w-[1440px] px-6 md:px-10 py-8 mx-auto w-full flex flex-col gap-6 animate-fade-in">
-        
-        <PageHeader
-          title="Gestão de Treinos"
-          subtitle="Expedição de treinos técnicos para atletas"
-        />
+    <div className="min-h-screen p-4 md:p-8 lg:p-10 lg:pl-8 pb-24 text-text-primary font-sans">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto flex flex-col gap-8">
 
+        {/* ── Page Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 py-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
+            <button
+              onClick={() =>
+                router.push(withReturnUrl('/admin/treinos/nova-ficha', '/admin/treinos'))
+              }
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-brand hover:bg-brand/90 text-text-on-brand text-xs font-semibold rounded-lg transition-all active:scale-95 shadow-sm"
+            >
+              <PlusCircle size={14} weight="bold" /> Nova Ficha Digital
+            </button>
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5">
+              <button
+                onClick={() => setShowPdfUpload(!showPdfUpload)}
+                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all active:scale-95"
+              >
+                <FileArrowUp size={14} /> Upload de PDF
+              </button>
+              <Link
+                href="/admin/biblioteca-exercicios"
+                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 h-9 bg-surface-2 border-0 hover:bg-surface-3 text-text-primary text-xs font-semibold rounded-lg transition-all"
+              >
+                <BookOpen size={14} /> Biblioteca
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Alerts ── */}
         {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-[6px] bg-danger-subtle border border-danger-border text-danger text-sm">
-            <div className="w-2 h-2 rounded-full bg-danger flex-shrink-0 animate-pulse" />
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-danger-subtle border border-danger-border text-danger text-xs font-semibold">
+            <WarningCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
         {success && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-[6px] bg-success-subtle border border-success-border text-success text-sm">
-            <div className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-success-subtle border border-success-border text-success text-xs font-semibold">
+            <CheckCircle className="w-4 h-4 flex-shrink-0" />
             {success}
           </div>
         )}
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          
-          {/* Coluna Esquerda: Atalhos e Formulários */}
-          <div className="xl:col-span-4 flex flex-col gap-4">
-            
-            {/* Nova Ficha Digital Card */}
+        {alunos.length === 0 ? (
+          /* Empty State - No students registered yet */
+          <div className="bg-surface-1 border-0 rounded-xl p-12 text-center max-w-lg mx-auto shadow-sm">
+            <Barbell size={44} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno vinculado ainda</h3>
+            <p className="text-text-secondary text-xs mb-6">
+              Você precisa possuir alunos vinculados para começar a prescrever e gerenciar treinos digitais e PDFs.
+            </p>
             <button
-              onClick={() => router.push('/admin/treinos/nova-ficha')}
-              className="w-full text-left rounded-[8px] p-5 transition-all active:scale-[0.99] relative overflow-hidden group shadow-md"
-              style={{ background: 'var(--gradient-gold)' }}
+              onClick={() =>
+                router.push(withReturnUrl('/admin/alunos/novo', '/admin/treinos'))
+              }
+              className="btn-primary inline-flex items-center gap-2 max-w-xs mx-auto text-xs py-2 rounded-lg"
             >
-              <div className="absolute inset-0 pointer-events-none opacity-10 bg-radial-gradient" />
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-[6px] bg-black/20 flex items-center justify-center shrink-0">
-                    <Barbell size={22} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-black">Nova Ficha Digital</p>
-                    <p className="text-[11px] text-black/70 mt-0.5">Séries, cargas e técnicas em tempo real</p>
-                  </div>
-                </div>
-                <div className="w-8 h-8 rounded-[6px] bg-black/20 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform">
-                  <CaretRight size={16} weight="bold" className="text-black/85" />
-                </div>
-              </div>
+              Cadastrar Aluno
             </button>
+          </div>
+        ) : (
+          /* Training Hub Content */
+          <div className="flex flex-col gap-6">
 
-            {/* Upload PDF Card */}
-            {!showPdfUpload ? (
-              <button
-                onClick={() => setShowPdfUpload(true)}
-                className="w-full text-left bg-surface-1 border border-border-subtle hover:border-border-default shadow-sm rounded-[8px] p-5 transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-[6px] bg-surface-2 border border-border-subtle flex items-center justify-center text-text-tertiary group-hover:text-brand group-hover:border-brand/20 group-hover:bg-brand/5 transition-all flex-shrink-0">
-                      <FileArrowUp size={18} />
+            {/* ── Metrics Cards Row ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                { label: "Fichas Digitais Ativas", value: fichasAtivas, dotColor: "bg-brand" },
+                { label: "Prescrições (Mês)", value: fichasCriadasMes, dotColor: "bg-brand" },
+                { label: "Alunos Atendidos", value: alunosAtendidos, dotColor: "bg-success" },
+                { label: "Execuções (30d)", value: treinosExecutados, dotColor: "bg-warning" },
+              ].map(({ label, value, dotColor }) => (
+                <div
+                  key={label}
+                  className="coach-list-kpi-card relative overflow-hidden rounded-xl p-4 border border-border-subtle bg-surface-1 flex flex-col justify-center h-20"
+                >
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.03)_42%,transparent_68%)]"
+                  />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/20"
+                  />
+                  <div className="relative z-10 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 leading-none">
+                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
+                      <span className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">{label}</span>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-text-primary">Upload de PDF</p>
-                      <p className="text-[11px] text-text-tertiary mt-0.5">Enviar ficha em PDF para o acervo do atleta</p>
-                    </div>
+                    <span className="text-xl font-bold tracking-tight text-text-primary mt-1.5 font-mono tabular-nums lining-nums leading-none">{value}</span>
                   </div>
-                  <CaretRight size={16} className="text-text-disabled group-hover:text-brand group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </div>
-              </button>
-            ) : (
-              <Card className="rounded-[10px] shadow-sm">
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-border-subtle">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-[6px] bg-brand-subtle border border-brand-border flex items-center justify-center text-brand">
-                      <FileArrowUp size={16} />
-                    </div>
-                    <div>
-                      <p className="font-bold text-text-primary text-sm">Upload de PDF</p>
-                      <p className="text-[10px] text-text-tertiary">Sincronização imediata</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setShowPdfUpload(false); setSelectedFile(null); setError(null); }}
-                    className="text-xs text-text-tertiary hover:text-text-primary transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
+              ))}
+            </div>
 
-                {fetchingAlunos ? (
-                  <div className="flex items-center justify-center py-6">
-                    <DumbbellLoader text="Carregando atletas..." />
-                  </div>
-                ) : (
-                  <form onSubmit={handleUpload} className="flex flex-col gap-4">
-                    <Select
-                      label="Selecione o Atleta"
-                      value={selectedAlunoId}
-                      onChange={setSelectedAlunoId}
-                      placeholder="Escolher atleta..."
-                      disabled={loading}
-                      options={alunos.map((a) => ({
-                        value: a.id,
-                        label: a.coaching_reference || a.email || a.id,
-                      }))}
-                    />
+            {/* ── Main Workspace — full width ── */}
+            <div className="flex flex-col gap-6">
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary ml-1">Arquivo PDF</label>
+              {/* Inline PDF Upload Form */}
+              {showPdfUpload && (
+                <Card className="rounded-xl border-0 p-4 bg-surface-1 shadow-sm flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-divider">
+                    <div className="flex items-center gap-2">
+                      <FileArrowUp size={16} className="text-brand" />
+                    </div>
+                    <button onClick={() => { setShowPdfUpload(false); setSelectedFile(null); }} className="text-[10px] text-text-tertiary hover:text-text-primary font-bold uppercase">
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleUpload} className="flex flex-col sm:flex-row sm:items-end gap-4">
+                    <div className="flex-1 min-w-0">
+                      <Select
+                        label="Selecione o Atleta"
+                        value={selectedAlunoId}
+                        onChange={setSelectedAlunoId}
+                        placeholder="Escolher atleta..."
+                        disabled={loading}
+                        options={alunos.map((a) => ({
+                          value: a.id,
+                          label: a.coaching_reference || a.full_name || a.email || a.id,
+                        }))}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary ml-0.5">Arquivo PDF</label>
                       {!selectedFile ? (
-                        <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-border-default rounded-[6px] bg-surface-2 hover:bg-brand-subtle hover:border-brand-border transition-all cursor-pointer group">
+                        <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-border-default rounded-lg bg-surface-2 hover:bg-brand/5 hover:border-brand/35 transition-all cursor-pointer group">
                           <input type="file" accept=".pdf" onChange={handleFileChange} disabled={loading} className="hidden" />
-                          <FileArrowUp size={20} className="text-text-disabled group-hover:text-brand transition-colors mb-1.5" />
-                          <p className="text-[11px] text-text-tertiary">Selecionar documento</p>
+                          <FileArrowUp size={18} className="text-text-disabled group-hover:text-brand transition-colors mb-1" />
+                          <p className="text-xs text-text-tertiary">Clique para escolher PDF</p>
                         </label>
                       ) : (
-                        <div className="flex items-center gap-3 p-3 bg-brand-subtle border border-brand-border rounded-[6px]">
-                          <div className="w-8 h-8 rounded-[6px] bg-surface-3 border border-brand-border flex items-center justify-center text-brand shrink-0">
-                            <FileArrowUp size={16} />
+                        <div className="flex items-center justify-between p-2 bg-brand-subtle border border-brand-border rounded-lg">
+                          <div className="min-w-0">
+                            <p className="text-xs text-text-primary font-bold truncate max-w-[200px]">{selectedFile.name}</p>
+                            <p className="text-[9px] text-brand">PDF pronto para envio</p>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-text-primary font-medium truncate">{selectedFile.name}</p>
-                            <p className="text-[10px] text-brand">Válido</p>
-                          </div>
-                          <button type="button" onClick={() => setSelectedFile(null)} className="p-1.5 text-text-tertiary hover:text-danger transition-colors">
-                            <Trash size={15} />
+                          <button type="button" onClick={() => setSelectedFile(null)} className="text-text-disabled hover:text-danger p-1">
+                            <Trash size={14} />
                           </button>
                         </div>
                       )}
@@ -369,70 +565,201 @@ export default function TreinosPage() {
 
                     <Button
                       type="submit"
-                      variant="primary"
                       loading={loading}
                       disabled={loading || !selectedAlunoId || !selectedFile}
-                      fullWidth
+                      size="sm"
+                      className="h-10 rounded-lg text-xs shrink-0 w-full sm:w-auto"
                     >
-                      Protocolar Treino Agora
+                      Enviar PDF
                     </Button>
                   </form>
-                )}
-              </Card>
-            )}
+                </Card>
+              )}
 
-          </div>
+              {/* Busca + tabela — metade da largura, centralizado */}
+              <div className="coach-list-panel flex flex-col gap-5">
+                {/* Search & Filters — padrão flat */}
+                <div className="field-flat-input bg-surface-1 border-0 rounded-xl shadow-sm overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3">
+                    <div className="relative flex h-9 w-full items-center sm:flex-1 sm:max-w-sm pl-6">
+                      <MagnifyingGlass
+                        size={14}
+                        className="pointer-events-none absolute left-0 top-1/2 z-10 -translate-y-1/2 text-text-disabled"
+                      />
+                      <input
+                        type="search"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Buscar por rotina ou aluno..."
+                        aria-label="Buscar treinos"
+                        style={{ touchAction: "manipulation" }}
+                        className="h-full w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled"
+                      />
+                    </div>
 
-          {/* Coluna Direita: KPIs e Lista de Fichas */}
-          <div className="xl:col-span-8 flex flex-col gap-6">
-            
-            {/* KPIs Row */}
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: 'Fichas ativas', value: totalActiveFichas },
-                { label: 'Criadas no mês', value: fichasCriadasMes },
-                { label: 'Adesão média', value: `${taxaConclusao}%` },
-              ].map((kpi, idx) => (
-                <div key={idx} className="bg-surface-1 border border-border-subtle shadow-sm rounded-[10px] p-4 flex flex-col items-center text-center">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary mb-1">{kpi.label}</span>
-                  <span className="text-xl md:text-2xl font-bold text-text-primary">{kpi.value}</span>
+                    <div className="hidden sm:block w-px h-7 bg-border-divider/40 shrink-0" />
+
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto sm:ml-auto sm:justify-end">
+                      <div className="grid grid-cols-3 sm:flex sm:items-center gap-1 rounded-lg p-1 h-9 bg-brand-subtle/60 flex-1 sm:flex-initial">
+                        {(['todas', 'ativas', 'inativas'] as const).map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            style={{ touchAction: "manipulation" }}
+                            aria-pressed={statusFilter === status}
+                            className={cn(
+                              "w-full sm:w-auto px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-7 flex items-center justify-center border-0 cursor-pointer",
+                              statusFilter === status
+                                ? "bg-brand/20 text-brand shadow-sm"
+                                : "bg-transparent text-text-tertiary hover:text-text-primary"
+                            )}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={handleResetFilters}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-subtle bg-transparent text-text-secondary hover:text-brand hover:bg-brand/5 transition-colors cursor-pointer"
+                        title="Resetar busca"
+                      >
+                        <ArrowCounterClockwise size={13} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
 
-            {/* Tabela de Fichas Recentes */}
-            <Card className="rounded-[10px] shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-sm font-bold text-text-primary">Fichas de Treino Recentes</h3>
-                <p className="text-xs text-text-tertiary">Últimas fichas digitais prescritas para seus atletas</p>
+                {/* Table / Mobile cards */}
+                <div className="coach-data-table-shell border border-border-subtle rounded-2xl overflow-hidden bg-surface-2">
+                  {processedRoutines.length === 0 ? (
+                    <WorkoutsEmptyState />
+                  ) : isMobile ? (
+                    <WorkoutsMobileList
+                      plans={processedRoutines}
+                      onView={handleViewWorkout}
+                      onEdit={handleEditWorkout}
+                      onDelete={setDeleteTarget}
+                    />
+                  ) : (
+                    <WorkoutsTable
+                      plans={processedRoutines}
+                      onView={handleViewWorkout}
+                      onEdit={handleEditWorkout}
+                      onDelete={setDeleteTarget}
+                    />
+                  )}
+                </div>
               </div>
 
-              {fetchingAlunos ? (
-                <div className="flex items-center justify-center py-16">
-                  <DumbbellLoader text="Carregando treinos..." />
-                </div>
-              ) : (
-                <DataTable
-                  columns={columns}
-                  data={fichasRecentes}
-                  onRowClick={(row) => router.push(`/admin/aluno/${row.aluno_id}?tab=treinos`)}
-                  searchable
-                  searchPlaceholder="Buscar por nome da rotina..."
-                  emptyState={
-                    <div className="text-center py-12 flex flex-col items-center justify-center gap-2">
-                      <Barbell size={28} className="text-text-disabled" />
-                      <p className="text-xs text-text-tertiary">Nenhuma ficha digital prescrita recentemente</p>
-                    </div>
-                  }
-                />
-              )}
-            </Card>
+              <StudentsWithoutWorkoutAlert
+                students={alunosSemFicha}
+                onAssignWorkout={(alunoId) =>
+                  router.push(
+                    withReturnUrl(
+                      `/admin/treinos/nova-ficha?alunoId=${alunoId}`,
+                      "/admin/treinos",
+                    ),
+                  )
+                }
+              />
+
+            </div>
 
           </div>
-
-        </div>
+        )}
 
       </div>
+
+      {deleteTarget && (
+        <DeleteWorkoutModal
+          plan={deleteTarget}
+          loading={loading}
+          onConfirm={() => handleDeleteRoutine(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {/* Simplified Routine Preview Modal */}
+      {selectedRoutineForPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4">
+          <div className="bg-surface-1 border-0 rounded-3xl w-full max-w-lg overflow-hidden shadow-elev-3 flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-divider flex justify-between items-center bg-surface-2/40">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/10 px-2 py-0.5 rounded border border-brand/20">Ficha Digital</span>
+                <h3 className="text-sm font-bold text-text-primary mt-2 uppercase">{selectedRoutineForPreview.nome_rotina}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedRoutineForPreview(null)}
+                className="w-8 h-8 rounded-full hover:bg-surface-3 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {previewLoading ? (
+                <div className="flex justify-center py-8">
+                  <DumbbellLoader text="Carregando exercícios..." variant="inline" />
+                </div>
+              ) : (() => {
+                const exercises = selectedRoutineForPreview.configuracao?.exercicios || [];
+                if (exercises.length === 0) {
+                  return <p className="text-xs text-text-tertiary text-center py-4">Nenhum exercício cadastrado nesta ficha.</p>;
+                }
+                return exercises.map((ex: any, idx: number) => (
+                  <div key={idx} className="p-4 bg-surface-1 border-0 rounded-xl space-y-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <h4 className="text-xs font-bold text-text-primary">{idx + 1}. {ex.nome}</h4>
+                      {ex.descanso && (
+                        <span className="text-[10px] text-text-tertiary font-mono bg-surface-3 px-1.5 py-0.5 rounded">
+                          Descanso: {ex.descanso}
+                        </span>
+                      )}
+                    </div>
+                    {ex.observacoes && (
+                      <p className="text-[11px] text-text-secondary italic">Obs: {ex.observacoes}</p>
+                    )}
+                    
+                    {/* Series List */}
+                    <div className="pt-2 border-t border-divider/40 space-y-1.5">
+                      {ex.series?.map((s: any, sIdx: number) => (
+                        <div key={sIdx} className="flex items-center gap-3 text-[11px] text-text-secondary font-medium">
+                          <span className="w-5 h-5 rounded bg-brand/10 text-brand text-[9px] font-bold flex items-center justify-center">
+                            {s.ordem || (sIdx + 1)}
+                          </span>
+                          <span>
+                            {s.reps_sugerido ? `${s.reps_sugerido} reps` : ""}
+                            {s.tempo_sugerido ? `${s.tempo_sugerido} tempo` : ""}
+                            {s.distancia_sugerida ? ` • ${s.distancia_sugerida}m` : ""}
+                          </span>
+                          {(s.tecnica || s.tecnica_extra) && (
+                            <span className="text-[9px] uppercase font-bold text-brand tracking-wider bg-brand/5 px-1 rounded">
+                              {[s.tecnica, s.tecnica_extra].filter(Boolean).join(" + ")}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-divider bg-surface-2/40 flex justify-end">
+              <button
+                onClick={() => setSelectedRoutineForPreview(null)}
+                className="px-4 py-2 bg-surface-3 hover:bg-surface-4 text-text-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

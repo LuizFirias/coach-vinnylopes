@@ -1,91 +1,123 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import {
-  House, Barbell, ForkKnife, User,
-  Users, Chat, Plus, BookOpen, X, Handshake, ChartBar,
-} from '@phosphor-icons/react';
+import { usePathname } from 'next/navigation';
+import { Barbell, ForkKnife, SquaresFour, User, HeartStraight } from '@phosphor-icons/react';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
-import { useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 
-// ── Student nav (4 tabs — Progresso e Ranking acessados via Início e Perfil) ─
+// ── Student nav — Início no centro ────────────────────────────────────────────
 const STUDENT_ITEMS = [
-  { href: '/aluno/dashboard',       label: 'Início',   icon: House    },
-  { href: '/aluno/treinos',         label: 'Treinos',  icon: Barbell  },
-  { href: '/aluno/plano-alimentar', label: 'Nutrição', icon: ForkKnife },
-  { href: '/aluno/perfil',          label: 'Perfil',   icon: User     },
+  { href: '/aluno/treinos',         label: 'Treinos',  icon: Barbell       },
+  { href: '/aluno/cardio',          label: 'Cardio',   icon: HeartStraight },
+  { href: '/aluno/dashboard',       label: 'Início',   icon: SquaresFour   },
+  { href: '/aluno/plano-alimentar', label: 'Nutrição', icon: ForkKnife     },
+  { href: '/aluno/perfil',          label: 'Perfil',   icon: User          },
 ] as const;
 
-// ── Coach nav (4 items + FAB) ─────────────────────────────────────────────────
-const COACH_LEFT = [
-  { href: '/admin/alunos',    label: 'Alunos',  icon: Users   },
-  { href: '/admin/treinos',   label: 'Treinos', icon: Barbell },
-];
-const COACH_RIGHT = [
-  { href: '/admin/feedbacks', label: 'Feedbacks', icon: Chat },
-  { href: '/admin/perfil',    label: 'Perfil',    icon: User       },
-];
+/**
+ * Barra fixa full-bleed — padrão flat (Wellhub), sem notch/curva.
+ * O fundo/sombra ficam no shell (não só na barra interna) para que a
+ * faixa de safe-area (env(safe-area-inset-bottom)) — que varia por
+ * aparelho — seja preenchida com a mesma cor da nav. Sem isso, em
+ * dispositivos com inset > 0 (notch/gesto) essa faixa fica transparente
+ * e revela o fundo da página, dando a impressão de barra "flutuando"
+ * com espaço embaixo.
+ */
+const NAV_SHELL: CSSProperties = {
+  position: 'fixed',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: 50,
+  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+  background: 'var(--nav-bg)',
+  boxShadow: '0 -1px 0 0 var(--border-subtle), 0 -8px 24px rgba(0,0,0,0.06)',
+};
 
-const QUICK_ACTIONS = [
-  { label: 'Nova Ficha Digital',  href: '/admin/treinos/nova-ficha',           icon: Barbell   },
-  { label: 'Plano Alimentar',     href: '/admin/nutricao',                     icon: ForkKnife },
-  { label: 'Biblioteca',          href: '/admin/biblioteca-exercicios',        icon: BookOpen  },
-  { label: 'Parceiros',           href: '/admin/parceiros',                    icon: Handshake },
-  { label: 'Relatórios',          href: '/admin/relatorios',                   icon: ChartBar  },
-];
+const NAV_BAR: CSSProperties = {};
 
+/** Navegação inferior — só do aluno. O coach usa o sidebar (drawer no mobile,
+ *  fixo no desktop) em vez de barra inferior — ver Sidebar.tsx. */
 export default function BottomNav() {
   const pathname  = usePathname();
-  const router    = useRouter();
   const { userRole, loading } = useAuth();
-  const [fabOpen, setFabOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (pathname === '/login' || pathname === '/' || loading || pathname.endsWith('/executar')) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isWorkoutBuilder =
+    pathname?.startsWith('/admin/treinos/nova-ficha') ||
+    !!pathname?.match(/\/admin\/aluno\/[^/]+\/ficha\//);
+
+  if (
+    pathname === '/login' ||
+    pathname === '/' ||
+    pathname?.startsWith('/signup') ||
+    pathname?.startsWith('/auth/') ||
+    pathname === '/termos' ||
+    pathname === '/privacidade' ||
+    pathname === '/aluno/trocar-senha' ||
+    pathname === '/admin/trocar-senha' ||
+    pathname === '/aluno/onboarding' ||
+    pathname === '/admin/boas-vindas' ||
+    pathname?.startsWith('/admin/preview-aluno') ||
+    loading ||
+    pathname.endsWith('/executar') ||
+    !!pathname?.match(/^\/aluno\/chat\/[^/]+$/) ||
+    !!pathname?.match(/^\/admin\/chat\/[^/]+$/) ||
+    isWorkoutBuilder
+  ) {
     return null;
   }
 
   const isCoach = userRole === 'coach' || userRole === 'super_admin';
+  if (isCoach) return null;
 
-  // ── Student ─────────────────────────────────────────────────────────────────
-  if (!isCoach) {
-    return (
-      <nav
-        className={cn(
-          'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
-          'border-t border-border-subtle',
-          'pb-[env(safe-area-inset-bottom)]',
-        )}
-        style={{ background: 'rgba(13,13,16,0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
-        aria-label="Navegação principal"
-      >
-        <ul className="flex items-stretch justify-around h-16 max-w-mobile mx-auto">
+  const studentNav = (
+    <nav style={NAV_SHELL} aria-label="Navegação principal" className="lg:hidden">
+      <div className="pointer-events-auto" style={NAV_BAR}>
+        <ul className="relative flex items-center justify-around h-14 px-1">
           {STUDENT_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href);
+            const isActive = pathname.startsWith(href) ||
+              (href === '/aluno/perfil' && (
+                pathname.startsWith('/aluno/estatisticas') ||
+                pathname.startsWith('/aluno/medidas') ||
+                pathname.startsWith('/aluno/fotos') ||
+                pathname.startsWith('/aluno/ranking')
+              ));
+            const isHome = href === '/aluno/dashboard';
+
             return (
-              <li key={href} className="flex-1">
+              <li key={href} className="flex flex-1 items-center justify-center">
                 <Link
                   href={href}
                   className={cn(
-                    'relative flex flex-col items-center justify-center gap-1 h-full transition-colors duration-fast',
+                    'flex w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-fast',
                     isActive ? 'text-brand' : 'text-text-tertiary',
                   )}
                   aria-current={isActive ? 'page' : undefined}
+                  aria-label={isHome ? 'Início' : label}
                 >
-                  {isActive && (
-                    <span
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                      style={{ background: 'var(--gradient-gold)', boxShadow: '0 0 8px rgba(232,179,57,0.6)' }}
-                    />
-                  )}
-                  <div className={cn(
-                    'flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-fast',
-                    isActive && 'bg-brand/10'
-                  )}>
-                    <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                  </div>
-                  <span className={cn('text-2xs leading-none', isActive ? 'font-semibold' : 'font-medium')}>
+                  <Icon
+                    className={cn(
+                      'transition-transform duration-fast block leading-none',
+                      isHome ? 'w-6 h-6' : href === '/aluno/treinos' ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]',
+                      isActive && 'scale-105',
+                    )}
+                    size={isHome ? 24 : undefined}
+                    weight={isActive ? 'fill' : 'regular'}
+                  />
+                  <span
+                    className={cn(
+                      'text-[9px] leading-none',
+                      isActive ? 'font-semibold text-brand' : 'font-medium',
+                    )}
+                  >
                     {label}
                   </span>
                 </Link>
@@ -93,136 +125,10 @@ export default function BottomNav() {
             );
           })}
         </ul>
-      </nav>
-    );
-  }
-
-  // ── Coach ────────────────────────────────────────────────────────────────────
-  return (
-    <>
-      {/* Quick-action overlay */}
-      {fabOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end bg-black/65 backdrop-blur-sm"
-          onClick={() => setFabOpen(false)}
-        >
-          <div
-            className="w-full px-4 pb-[calc(env(safe-area-inset-bottom)+76px)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-surface-2 border border-border-default rounded-3xl overflow-hidden shadow-elev-3">
-              {QUICK_ACTIONS.map(({ label, href, icon: Icon }, i) => (
-                <button
-                  key={href}
-                  onClick={() => { setFabOpen(false); router.push(href); }}
-                  className={cn(
-                    'w-full flex items-center gap-4 px-5 py-4 text-left transition-colors active:bg-surface-3',
-                    i < QUICK_ACTIONS.length - 1 && 'border-b border-border-subtle',
-                  )}
-                >
-                  <div className="w-9 h-9 rounded-xl bg-brand-subtle border border-brand-border flex items-center justify-center text-brand shrink-0">
-                    <Icon size={18} />
-                  </div>
-                  <span className="text-sm font-medium text-text-primary">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom bar */}
-      <nav
-        className={cn(
-          'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
-          'border-t border-border-subtle',
-          'pb-[env(safe-area-inset-bottom)]',
-        )}
-        style={{ background: 'rgba(13,13,16,0.92)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
-        aria-label="Navegação coach"
-      >
-        <div className="flex items-center justify-around h-16 max-w-mobile mx-auto px-2">
-
-          {/* Left 2 items */}
-          {COACH_LEFT.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors duration-fast',
-                  isActive ? 'text-brand' : 'text-text-tertiary',
-                )}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {isActive && (
-                  <span
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                    style={{ background: 'var(--gradient-gold)', boxShadow: '0 0 8px rgba(232,179,57,0.6)' }}
-                  />
-                )}
-                <div className={cn(
-                  'flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-fast',
-                  isActive && 'bg-brand/10'
-                )}>
-                  <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                </div>
-                <span className={cn('text-2xs leading-none', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
-              </Link>
-            );
-          })}
-
-          {/* FAB */}
-          <div className="flex items-center justify-center shrink-0 px-3">
-            <button
-              onClick={() => setFabOpen(v => !v)}
-              className={cn(
-                'w-12 h-12 rounded-2xl bg-brand shadow-glow-brand flex items-center justify-center text-text-on-brand',
-                'transition-all duration-fast active:scale-90',
-                fabOpen && 'rotate-45',
-              )}
-              aria-label={fabOpen ? 'Fechar menu' : 'Ações rápidas'}
-            >
-              {fabOpen
-                ? <X size={22} weight="bold" />
-                : <Plus size={22} weight="bold" />
-              }
-            </button>
-          </div>
-
-          {/* Right 2 items */}
-          {COACH_RIGHT.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors duration-fast',
-                  isActive ? 'text-brand' : 'text-text-tertiary',
-                )}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {isActive && (
-                  <span
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                    style={{ background: 'var(--gradient-gold)', boxShadow: '0 0 8px rgba(232,179,57,0.6)' }}
-                  />
-                )}
-                <div className={cn(
-                  'flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-fast',
-                  isActive && 'bg-brand/10'
-                )}>
-                  <Icon className={cn('w-5 h-5 transition-transform duration-fast', isActive && 'scale-110')} weight={isActive ? 'fill' : 'regular'} />
-                </div>
-                <span className={cn('text-2xs leading-none', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
-              </Link>
-            );
-          })}
-
-        </div>
-      </nav>
-    </>
+      </div>
+    </nav>
   );
+
+  if (!mounted) return null;
+  return createPortal(studentNav, document.body);
 }

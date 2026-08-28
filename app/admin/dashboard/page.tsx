@@ -1,524 +1,839 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
-import { supabaseClient } from '@/lib/supabaseClient';
-import { useAuth } from '@/app/components/AuthProvider';
-import { useRouter } from 'next/navigation';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip,
-  Cell
-} from 'recharts';
-import {
-  Coins,
-  Users,
-  Barbell,
-  ChatCircle,
-  Warning,
-  TrendUp,
-  ArrowUpRight,
-  User,
-  CheckCircle
-} from '@phosphor-icons/react';
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabaseClient } from "@/lib/supabaseClient";
+import { useAuth } from "@/app/components/AuthProvider";
+import { Users, WarningCircle, Plus } from "@phosphor-icons/react";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
-import PageHeader from "@/app/components/PageHeader";
-import { getPublicStorageUrl } from '@/lib/storageUrls';
-import { cn } from '@/lib/utils/cn';
+import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
+import {
+  groupActivities,
+  type RawActivity,
+  type GroupedActivity,
+} from "@/lib/utils/activityGrouping";
+import { DashboardHeader } from "@/app/components/dashboard/coach/DashboardHeader";
+import { DashboardKpiRow } from "@/app/components/dashboard/coach/DashboardKpiRow";
+import { MrrChartCard } from "@/app/components/dashboard/coach/MrrChartCard";
+import { PlanDistributionCard } from "@/app/components/dashboard/coach/PlanDistributionCard";
+import { PriorityActionsCard, type PriorityAction } from "@/app/components/dashboard/coach/PriorityActionsCard";
+import { RecentActivityFeed } from "@/app/components/dashboard/coach/RecentActivityFeed";
+import { AtalhosRapidos } from "@/app/components/dashboard/coach/AtalhosRapidos";
+import { ProximaAulaCard } from "@/app/components/dashboard/coach/ProximaAulaCard";
+import { fetchProximaAula, type AulaAgenda } from "@/lib/agenda/queries";
+import { fetchSubscriptionStatusCached } from "@/lib/subscriptions/statusClientCache";
+import {
+  fetchCoachCustomPlans,
+  mergedPlans,
+  buildPlanDurationMap,
+  type CoachPlan,
+} from "@/lib/coachPlans";
+import {
+  concluirPasso,
+  concluirPassos,
+  sincronizarProgressoOnboarding,
+  type PassoProgresso,
+} from "@/lib/onboarding/concluirPasso";
+import { GuiaConfiguracaoCard } from "@/app/components/onboarding/GuiaConfiguracaoCard";
+import { PASSOS_ONBOARDING } from "@/lib/onboarding/passos";
+import { withReturnUrl } from "@/lib/utils/adminNav";
 
-interface ActivityItem {
+const FROM_DASHBOARD = "/admin/dashboard";
+const fromDashboard = (href: string) => withReturnUrl(href, FROM_DASHBOARD);
+
+// Interfaces
+interface ProfileRow {
   id: string;
-  type: 'payment' | 'workout' | 'feedback';
-  title: string;
-  subtitle: string;
-  time: Date;
+  coaching_reference?: string | null;
+  full_name?: string | null;
+  email?: string | null;
+  status_pagamento?: string | null;
+  tipo_plano?: string | null;
+  ultimo_checkin?: string | null;
+  avatar_url?: string | null;
+  sexo?: string | null;
+  data_expiracao?: string | null;
+  data_inicio?: string | null;
+  created_at?: string | null;
+  valor_plano?: number | null;
+  arquivado?: boolean | null;
+}
+
+/** Deriva o início do ciclo vigente do plano com fallback progressivo.
+ *  `duracaoMeses`: mapa slug → meses (planos padrão + personalizados do coach). */
+function inicioDoCiclo(
+  r: { data_inicio?: string | null; data_expiracao?: string | null; created_at?: string | null; tipo_plano?: string | null },
+  duracaoMeses: Record<string, number>
+): Date | null {
+  if (r.data_inicio) return new Date(r.data_inicio);
+  if (r.data_expiracao) {
+    const dur = duracaoMeses[r.tipo_plano || 'mensal'] || 1;
+    const d = new Date(r.data_expiracao);
+    d.setMonth(d.getMonth() - dur);
+    return d;
+  }
+  if (r.created_at) return new Date(r.created_at);
+  return null;
 }
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user, userRole, loading: authLoading } = useAuth();
-  
+  const { user, loading: authLoading } = useAuth();
+  const isMobile = useBreakpoint("mobile");
+  const hasDataRef = useRef(false);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Metrics state
-  const [receitaMes, setReceitaMes] = useState(0);
+
+  // Financial Metrics States
   const [mrr, setMrr] = useState(0);
-  const [valorPendente, setValorPendente] = useState(0);
-  const [alunosPendentesCount, setAlunosPendentesCount] = useState(0);
-  
+
+  // Operational Metrics States
   const [alunosAtivos, setAlunosAtivos] = useState(0);
-  const [taxaAdesao, setTaxaAdesao] = useState(0);
-  const [alunosInativos7d, setAlunosInativos7d] = useState(0);
-  
-  const [receitaPorMes, setReceitaPorMes] = useState<any[]>([]);
-  const [atividades, setAtividades] = useState<ActivityItem[]>([]);
+  const [totalAlunos, setTotalAlunos] = useState(0);
+  const [alunosEmRisco, setAlunosEmRisco] = useState(0);
+  const [checkinsPendentes, setCheckinsPendentes] = useState(0);
+
+  // Lists & Panel States
+  const [prioridades, setPrioridades] = useState<PriorityAction[]>([]);
+  const [groupedAtividades, setGroupedAtividades] = useState<GroupedActivity[]>([]);
+  const [chartData, setChartData] = useState<{ mes: string; receita: number; futuro: boolean }[]>([]);
+  const [alunosPorPlano, setAlunosPorPlano] = useState<{ name: string; count: number }[]>([]);
+  const [coachAccountType, setCoachAccountType] = useState<string>("padrao");
+  const [coachStudentLimit, setCoachStudentLimit] = useState<number | null>(null);
+  const [linkedStudentCount, setLinkedStudentCount] = useState(0);
+  const [coachName, setCoachName] = useState("");
+  const [onboardingPassos, setOnboardingPassos] = useState<PassoProgresso[]>([]);
+  const [guiaPronto, setGuiaPronto] = useState(false);
+  const [proximaAula, setProximaAula] = useState<AulaAgenda | null>(null);
+
+  const activeStudentsSubtitle = useMemo(() => {
+    if (coachStudentLimit !== null) {
+      return `${linkedStudentCount}/${coachStudentLimit} vinculados`;
+    }
+    if (coachAccountType === "parceiro") {
+      return "Ilimitados na conta parceiro";
+    }
+    return "Perfis pagantes vigentes";
+  }, [coachStudentLimit, linkedStudentCount, coachAccountType]);
+
+  const loadDashboardData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const coachId = session?.user?.id ?? user?.id;
+      if (!coachId) {
+        // Race de hidratação — não tratar como erro definitivo
+        if (!opts?.silent) setLoading(false);
+        return;
+      }
+
+      const accessToken = session?.access_token;
+      const [statusResult, coachAlunosResult, coachProfileResult, customPlans, passos, proximaAulaResult] =
+        await Promise.all([
+        accessToken
+          ? fetchSubscriptionStatusCached(accessToken)
+          : Promise.resolve(null),
+        supabaseClient
+          .from('coach_alunos')
+          .select('aluno_id')
+          .eq('coach_id', coachId),
+        supabaseClient
+          .from('profiles')
+          .select('full_name, onboarding_visto')
+          .eq('id', coachId)
+          .maybeSingle(),
+        fetchCoachCustomPlans(coachId).catch(() => [] as CoachPlan[]),
+        sincronizarProgressoOnboarding(coachId),
+        fetchProximaAula(coachId).catch(() => null),
+      ]);
+
+      setOnboardingPassos(passos);
+      setGuiaPronto(true);
+      setProximaAula(proximaAulaResult);
+
+      if (coachProfileResult.data?.onboarding_visto === false) {
+        router.replace("/admin/boas-vindas");
+        return;
+      }
+
+      const duracaoMap = buildPlanDurationMap(customPlans);
+
+      if (statusResult) {
+        setCoachAccountType(statusResult.accountType ?? "padrao");
+        setCoachStudentLimit(statusResult.studentLimit ?? null);
+        setLinkedStudentCount(statusResult.activeStudentCount ?? 0);
+      }
+
+      // Mesmo campo "Nome de exibição" de /admin/perfil (profiles.full_name)
+      setCoachName(coachProfileResult.data?.full_name?.trim() || "");
+
+      if (coachAlunosResult.error) throw coachAlunosResult.error;
+      
+      const alunosIds = (coachAlunosResult.data || []).map(ca => ca.aluno_id);
+      
+      if (alunosIds.length === 0) {
+        setTotalAlunos(0);
+        setAlunosAtivos(0);
+        setLoading(false);
+        return;
+      }
+
+      // Dates
+      const today = new Date();
+      const seteDiasAtras = new Date();
+      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+      const seteDiasAtrasIso = seteDiasAtras.toISOString();
+      // Card "Atividades recentes" — janela própria, maior que a de check-ins pendentes (7 dias)
+      const dezDiasAtras = new Date();
+      dezDiasAtras.setDate(dezDiasAtras.getDate() - 10);
+      const dezDiasAtrasIso = dezDiasAtras.toISOString();
+
+      // Profiles + planos de nutrição + check-ins em paralelo
+      // (check-ins por student_id em vez de plan_id — filtramos por plano ativo depois)
+      const [{ data: profiles, error: profilesError }, { data: activePlans }, { data: checkinsRaw }] = await Promise.all([
+        supabaseClient
+          .from('profiles')
+          .select('id, full_name, coaching_reference, email, status_pagamento, tipo_plano, ultimo_checkin, avatar_url, sexo, data_expiracao, data_inicio, created_at, valor_plano, arquivado')
+          .in('id', alunosIds)
+          .eq('arquivado', false),
+        supabaseClient
+          .from('nutrition_plans')
+          .select(`
+            id,
+            student_id,
+            name,
+            days:nutrition_plan_days (
+              id,
+              meals:nutrition_meals (
+                id
+              )
+            )
+          `)
+          .in('student_id', alunosIds)
+          .eq('status', 'active'),
+        supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('plan_id, meal_id, status, checkin_date, student_id')
+          .in('student_id', alunosIds)
+          .gte('checkin_date', seteDiasAtrasIso.slice(0, 10)),
+      ]);
+
+      if (profilesError) throw profilesError;
+
+      const rows = (profiles as ProfileRow[]) || [];
+      setTotalAlunos(rows.length);
+
+      const activePlanIds = new Set(activePlans?.map(p => p.id) || []);
+      const checkins7d = (checkinsRaw || []).filter(c => activePlanIds.has(c.plan_id));
+
+      // 3. Compute Financial and Operation Base Metrics
+      let tempReceitaMes = 0; // Faturamento do mÃªs = regime de CAIXA (entrou neste mÃªs civil)
+      let tempMrr = 0;
+      let tempPendencias = 0;
+      let tempActiveCount = 0;
+      let tempRiscoCount = 0;
+
+      const inicioDoMes = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      const tempPrioridades: PriorityAction[] = [];
+
+      const plansMap = new Map(activePlans?.map(p => [p.student_id, p]));
+
+      rows.forEach((r) => {
+        const valor = r.valor_plano || 0;
+        const isPaid = r.status_pagamento === 'pago';
+        const expiration = r.data_expiracao ? new Date(r.data_expiracao) : null;
+        const isExpired = expiration && expiration < today;
+        const isActive = isPaid && (!expiration || expiration >= today);
+
+        // Operational calculations
+        if (isActive) {
+          tempActiveCount++;
+
+          // Faturamento do mÃªs (CAIXA): conta o valor cheio do plano se o ciclo
+          // vigente iniciou dentro do mÃªs corrente (venda/renovaÃ§Ã£o neste mÃªs).
+          const cicloInicio = inicioDoCiclo(r, duracaoMap);
+          if (cicloInicio && cicloInicio >= inicioDoMes && cicloInicio <= today) {
+            tempReceitaMes += valor;
+          }
+
+          // MRR normalizado pela duração do plano (padrão ou personalizado)
+          tempMrr += valor / (duracaoMap[r.tipo_plano || 'mensal'] || 1);
+
+          // Check if active student is expiring within 7 days
+          if (expiration) {
+            const diffTime = expiration.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays >= 0 && diffDays <= 7) {
+              tempPrioridades.push({
+                id: `expiring-${r.id}`,
+                aluno_id: r.id,
+                nome: r.coaching_reference || r.full_name || "Atleta",
+                avatar_url: r.avatar_url,
+                sexo: r.sexo,
+                tipo: 'warning',
+                descricao: `Plano vence em ${diffDays} dias`,
+                acao: 'Renovar',
+                link: fromDashboard(`/admin/aluno/${r.id}`)
+              });
+            }
+          }
+        } else {
+          // Unpaid or Expired
+          tempPendencias += valor;
+          
+          tempPrioridades.push({
+            id: `expired-${r.id}`,
+            aluno_id: r.id,
+            nome: r.coaching_reference || r.full_name || "Atleta",
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
+            tipo: 'danger',
+            descricao: isExpired ? 'Plano Expirado' : 'Pagamento Pendente',
+            acao: 'Cobrar',
+            link: fromDashboard(`/admin/aluno/${r.id}`)
+          });
+        }
+
+        // Student Inactivity (No workouts for 7+ days)
+        if (r.ultimo_checkin) {
+          const checkinTime = new Date(r.ultimo_checkin).getTime();
+          const diffDays = Math.floor((today.getTime() - checkinTime) / (1000 * 60 * 60 * 24));
+          if (diffDays > 7) {
+            tempRiscoCount++;
+            tempPrioridades.push({
+              id: `inactive-${r.id}`,
+              aluno_id: r.id,
+              nome: r.coaching_reference || r.full_name || "Atleta",
+              avatar_url: r.avatar_url,
+              sexo: r.sexo,
+              tipo: 'danger',
+              descricao: `Sem treinar há ${diffDays} dias`,
+              acao: 'Enviar Mensagem',
+              link: fromDashboard(`/admin/aluno/${r.id}`)
+            });
+          }
+        } else if (isActive) {
+          // Active student with no workout at all
+          tempPrioridades.push({
+            id: `nocheckin-${r.id}`,
+            aluno_id: r.id,
+            nome: r.coaching_reference || r.full_name || "Atleta",
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
+            tipo: 'info',
+            descricao: 'Nenhum treino realizado ainda',
+            acao: 'Prescrever',
+            link: fromDashboard(`/admin/aluno/${r.id}`)
+          });
+        }
+
+        // Digital Nutrition adherence metrics calculations per student
+        const studentPlan: any = plansMap.get(r.id);
+        if (studentPlan) {
+          const mealsCount = studentPlan.days?.[0]?.meals?.length || 0;
+          if (mealsCount > 0) {
+            const expectedMeals = mealsCount * 7;
+
+            const studentCheckins = (checkins7d || []).filter(c => c.student_id === r.id);
+            let weightSum = 0;
+            studentCheckins.forEach(c => {
+              if (c.status === 'done' || c.status === 'substituted') weightSum += 1.0;
+              else if (c.status === 'partial') weightSum += 0.5;
+            });
+
+            const studentAdherence = Math.min(100, Math.round((weightSum / expectedMeals) * 100));
+
+            // Alerts based on adherence
+            if (studentAdherence < 60) {
+              tempPrioridades.push({
+                id: `low-adherence-${r.id}`,
+                aluno_id: r.id,
+                nome: r.coaching_reference || r.full_name || "Atleta",
+                avatar_url: r.avatar_url,
+                sexo: r.sexo,
+                tipo: 'warning',
+                descricao: `Adesão à dieta baixa: ${studentAdherence}%`,
+                acao: 'Ver Plano',
+                link: fromDashboard(`/admin/nutricao/planos/${studentPlan.id}`)
+              });
+            }
+
+            // Sem marcar refeições há 3 dias check
+            if (studentCheckins.length > 0) {
+              const dates = studentCheckins.map(c => new Date(c.checkin_date).getTime());
+              const lastCheckinTime = Math.max(...dates);
+              const diffDays = Math.floor((today.getTime() - lastCheckinTime) / (1000 * 60 * 60 * 24));
+              if (diffDays >= 3) {
+                tempPrioridades.push({
+                  id: `no-diet-checkin-${r.id}`,
+                  aluno_id: r.id,
+                  nome: r.coaching_reference || r.full_name || "Atleta",
+                  avatar_url: r.avatar_url,
+                  sexo: r.sexo,
+                  tipo: 'danger',
+                  descricao: `Sem registrar dieta há ${diffDays} dias`,
+                  acao: 'Cobrar Check-in',
+                  link: fromDashboard(`/admin/aluno/${r.id}`),
+                  kind: 'cobrar_checkin',
+                });
+              }
+            } else {
+              // No nutrition check-in at all in 7 days
+              tempPrioridades.push({
+                id: `no-diet-checkin-at-all-${r.id}`,
+                aluno_id: r.id,
+                nome: r.coaching_reference || r.full_name || "Atleta",
+                avatar_url: r.avatar_url,
+                sexo: r.sexo,
+                tipo: 'warning',
+                descricao: `Sem check-in de dieta na semana`,
+                acao: 'Cobrar Check-in',
+                link: fromDashboard(`/admin/aluno/${r.id}`),
+                kind: 'cobrar_checkin',
+              });
+            }
+          }
+        } else if (isActive) {
+          // Student is active but has no digital plan
+          tempPrioridades.push({
+            id: `nodigitalplan-${r.id}`,
+            aluno_id: r.id,
+            nome: r.coaching_reference || r.full_name || "Atleta",
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
+            tipo: 'info',
+            descricao: `Sem plano de nutrição digital`,
+            acao: 'Criar Plano',
+            link: fromDashboard(`/admin/nutricao/novo-plano`)
+          });
+        }
+      });
+
+      setMrr(tempMrr);
+      setAlunosAtivos(tempActiveCount);
+      setAlunosEmRisco(tempRiscoCount);
+
+      // Plan counts distribution — padrão + personalizados; slugs desconhecidos
+      // caem em "Outros". A lista vai completa (com zeros) para o donut manter
+      // a cor atrelada ao plano, não à posição após filtrar.
+      const counts = rows.reduce<Record<string, number>>((acc, r) => {
+        const plano = r.tipo_plano || 'sem_plano';
+        acc[plano] = (acc[plano] || 0) + 1;
+        return acc;
+      }, {});
+      const planosDoCoach = mergedPlans(customPlans);
+      const conhecidos = new Set(planosDoCoach.map(p => p.slug));
+      const outrosCount = Object.entries(counts)
+        .filter(([slug]) => !conhecidos.has(slug))
+        .reduce((acc, [, n]) => acc + n, 0);
+      setAlunosPorPlano([
+        ...planosDoCoach.map(p => ({ name: p.nome, count: counts[p.slug] || 0 })),
+        { name: 'Outros', count: outrosCount },
+      ]);
+
+      // 5. Counts + feeds recentes em paralelo
+      // Feed de atividades: treinos, cardios, refeições, medidas, fotos
+      const [
+        { count: photosCount },
+        { count: medidasCount },
+        { data: recentWorkouts },
+        { data: recentCardios },
+        { data: recentMeals },
+        { data: recentMedidas },
+        { data: recentFotosFeed },
+        { data: fotosRecentes },
+      ] = await Promise.all([
+        supabaseClient
+          .from('fotos_evolucao')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', alunosIds)
+          .gte('data_upload', seteDiasAtrasIso),
+        supabaseClient
+          .from('medidas_aluno')
+          .select('id', { count: 'exact', head: true })
+          .in('aluno_id', alunosIds)
+          .gte('data_medicao', seteDiasAtrasIso),
+        supabaseClient
+          .from('historico_treinos')
+          .select('id, aluno_id, ficha_id, data_conclusao, ficha:fichas_treino(nome_rotina)')
+          .in('aluno_id', alunosIds)
+          .not('data_conclusao', 'is', null)
+          .gte('data_conclusao', dezDiasAtrasIso)
+          .order('data_conclusao', { ascending: false })
+          .limit(120),
+        supabaseClient
+          .from('cardio_sessoes')
+          .select('id, aluno_id, modalidade, data, created_at')
+          .in('aluno_id', alunosIds)
+          .gte('created_at', dezDiasAtrasIso)
+          .order('created_at', { ascending: false })
+          .limit(40),
+        supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('id, student_id, checkin_date, status, created_at')
+          .in('student_id', alunosIds)
+          .in('status', ['done', 'substituted'])
+          .gte('checkin_date', dezDiasAtrasIso.slice(0, 10))
+          .order('created_at', { ascending: false })
+          .limit(60),
+        supabaseClient
+          .from('medidas_aluno')
+          .select('id, aluno_id, data_medicao')
+          .in('aluno_id', alunosIds)
+          .gte('data_medicao', dezDiasAtrasIso)
+          .order('data_medicao', { ascending: false })
+          .limit(40),
+        supabaseClient
+          .from('fotos_evolucao')
+          .select('id, aluno_id, data_upload')
+          .in('aluno_id', alunosIds)
+          .gte('data_upload', dezDiasAtrasIso)
+          .order('data_upload', { ascending: false })
+          .limit(40),
+        supabaseClient
+          .from('fotos_evolucao')
+          .select('aluno_id, data_upload')
+          .in('aluno_id', alunosIds)
+          .order('data_upload', { ascending: false })
+          .limit(500),
+      ]);
+
+      const lastPhotoByAluno = new Map<string, string>();
+      for (const f of fotosRecentes || []) {
+        if (f.aluno_id && !lastPhotoByAluno.has(f.aluno_id)) {
+          lastPhotoByAluno.set(f.aluno_id, f.data_upload);
+        }
+      }
+
+      for (const r of rows) {
+        const isPaid = r.status_pagamento === 'pago';
+        const expiration = r.data_expiracao ? new Date(r.data_expiracao) : null;
+        const isActive = isPaid && (!expiration || expiration >= today);
+        if (!isActive) continue;
+
+        const nome = r.coaching_reference || r.full_name || 'Atleta';
+        const lastPhoto = lastPhotoByAluno.get(r.id);
+        if (!lastPhoto) {
+          tempPrioridades.push({
+            id: `no-photos-${r.id}`,
+            aluno_id: r.id,
+            nome,
+            avatar_url: r.avatar_url,
+            sexo: r.sexo,
+            tipo: 'warning',
+            descricao: 'Nenhuma foto de evolução cadastrada',
+            acao: 'Solicitar Fotos',
+            link: fromDashboard(`/admin/aluno/${r.id}?tab=fotos`),
+            kind: 'solicitar_fotos',
+          });
+        } else {
+          const diffDays = Math.ceil(
+            (today.getTime() - new Date(lastPhoto).getTime()) / (1000 * 60 * 60 * 24),
+          );
+          if (diffDays > 15) {
+            tempPrioridades.push({
+              id: `photos-old-${r.id}`,
+              aluno_id: r.id,
+              nome,
+              avatar_url: r.avatar_url,
+              sexo: r.sexo,
+              tipo: 'warning',
+              descricao: `Fotos desatualizadas (há ${diffDays} dias)`,
+              acao: 'Solicitar Renovação',
+              link: fromDashboard(`/admin/aluno/${r.id}?tab=fotos`),
+              kind: 'solicitar_fotos',
+            });
+          }
+        }
+      }
+
+      setCheckinsPendentes((photosCount || 0) + (medidasCount || 0));
+
+      const rawActivities: RawActivity[] = [];
+      const studentLabel = (alunoId: string) => {
+        const student = rows.find((r) => r.id === alunoId);
+        return student?.coaching_reference || student?.full_name || "Atleta";
+      };
+      const studentAvatar = (alunoId: string) => {
+        const student = rows.find((r) => r.id === alunoId);
+        return { avatarUrl: student?.avatar_url ?? null, sexo: student?.sexo ?? null };
+      };
+
+      // historico_treinos grava 1 linha por exercício na conclusão —
+      // deduplicar por sessão (aluno + ficha + minuto da data_conclusao).
+      const seenWorkoutSessions = new Set<string>();
+      (recentWorkouts || []).forEach((w) => {
+        const concluidoAt = w.data_conclusao ? new Date(w.data_conclusao) : null;
+        if (!concluidoAt || Number.isNaN(concluidoAt.getTime())) return;
+
+        const sessionKey = [
+          w.aluno_id,
+          w.ficha_id || "sem-ficha",
+          concluidoAt.toISOString().slice(0, 16),
+        ].join("|");
+        if (seenWorkoutSessions.has(sessionKey)) return;
+        seenWorkoutSessions.add(sessionKey);
+
+        const routine = (w as any).ficha as { nome_rotina?: string } | null;
+        rawActivities.push({
+          id: w.id,
+          studentId: w.aluno_id,
+          studentName: studentLabel(w.aluno_id),
+          ...studentAvatar(w.aluno_id),
+          type: "workout_completed",
+          workoutName: routine?.nome_rotina || "Treino Digital",
+          timestamp: concluidoAt,
+          link: fromDashboard(`/admin/aluno/${w.aluno_id}?tab=treinos`),
+        });
+      });
+
+      (recentCardios || []).forEach((c) => {
+        const at = new Date(c.created_at || c.data);
+        if (Number.isNaN(at.getTime())) return;
+        rawActivities.push({
+          id: c.id,
+          studentId: c.aluno_id,
+          studentName: studentLabel(c.aluno_id),
+          ...studentAvatar(c.aluno_id),
+          type: "cardio_completed",
+          description: c.modalidade || undefined,
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${c.aluno_id}?tab=cardio`),
+        });
+      });
+
+      (recentMeals || []).forEach((m) => {
+        const at = new Date(m.created_at || `${m.checkin_date}T12:00:00`);
+        if (Number.isNaN(at.getTime())) return;
+        rawActivities.push({
+          id: m.id,
+          studentId: m.student_id,
+          studentName: studentLabel(m.student_id),
+          ...studentAvatar(m.student_id),
+          type: "meal_done",
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${m.student_id}?tab=nutricao`),
+        });
+      });
+
+      (recentMedidas || []).forEach((m) => {
+        const at = new Date(m.data_medicao);
+        if (Number.isNaN(at.getTime())) return;
+        rawActivities.push({
+          id: m.id,
+          studentId: m.aluno_id,
+          studentName: studentLabel(m.aluno_id),
+          ...studentAvatar(m.aluno_id),
+          type: "measurement_added",
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${m.aluno_id}?tab=evolucao`),
+        });
+      });
+
+      (recentFotosFeed || []).forEach((f) => {
+        const at = new Date(f.data_upload);
+        if (Number.isNaN(at.getTime())) return;
+        rawActivities.push({
+          id: f.id,
+          studentId: f.aluno_id,
+          studentName: studentLabel(f.aluno_id),
+          ...studentAvatar(f.aluno_id),
+          type: "photo_sent",
+          timestamp: at,
+          link: fromDashboard(`/admin/aluno/${f.aluno_id}?tab=fotos`),
+        });
+      });
+
+      setGroupedAtividades(groupActivities(rawActivities));
+
+      setPrioridades(tempPrioridades);
+
+      // 7. Faturamento mensal â€” sÃ©rie NORMALIZADA (valor rateado pela duraÃ§Ã£o do plano).
+      // Eixo X: inÃ­cio fixo em Jan/2026 (inÃ­cio da operaÃ§Ã£o) atÃ© mÃªs atual + 6 (projeÃ§Ã£o).
+      const rangeStart = new Date(2026, 0, 1);
+      const rangeEnd = new Date(today.getFullYear(), today.getMonth() + 6, 1);
+      const mesMap: Record<string, number> = {};
+      const mesKeys: string[] = [];
+      for (let d = new Date(rangeStart); d <= rangeEnd; d.setMonth(d.getMonth() + 1)) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        mesMap[key] = 0;
+        mesKeys.push(key);
+      }
+      const mesAtualKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+      // Reutiliza os perfis jÃ¡ carregados (rows) â€” derivando o inÃ­cio do ciclo com fallback.
+      for (const r of rows) {
+        const valor = r.valor_plano ?? 0;
+        if (valor <= 0) continue;
+        const meses = duracaoMap[r.tipo_plano || 'mensal'] || 1;
+        const valorPorMes = valor / meses;
+        const inicio = inicioDoCiclo(r, duracaoMap);
+        if (!inicio) continue;
+        for (let m = 0; m < meses; m++) {
+          const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          if (key in mesMap) mesMap[key] += valorPorMes;
+        }
+      }
+
+      const mesList = mesKeys.map((mes) => {
+        const [ano, m] = mes.split('-');
+        const label = new Date(Number(ano), Number(m) - 1, 1)
+          .toLocaleDateString('pt-BR', { month: 'short' });
+        return { mes: label, receita: Math.round(mesMap[mes]), futuro: mes > mesAtualKey };
+      });
+      setChartData(mesList);
+
+    } catch (e: any) {
+      setError(e?.message ?? "Erro ao carregar dados da dashboard");
+    } finally {
+      hasDataRef.current = true;
+      setLoading(false);
+    }
+  }, [router, user?.id]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || userRole !== 'coach') {
-      router.replace('/login');
+    if (!user?.id) {
+      router.replace("/login");
       return;
     }
+    void loadDashboardData({ silent: hasDataRef.current });
+    // Depende só do id — evita refetch quando AuthProvider troca a referência do user
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading]);
 
-    const loadDashboardData = async () => {
-      setLoading(true);
-      try {
-        const coachId = user.id;
-
-        // 1. Fetch coach students mapping
-        const { data: coachAlunosData, error: coachAlunosError } = await supabaseClient
-          .from('coach_alunos')
-          .select('aluno_id')
-          .eq('coach_id', coachId);
-
-        if (coachAlunosError) throw coachAlunosError;
-        const alunoIds = (coachAlunosData || []).map(ca => ca.aluno_id);
-
-        if (alunoIds.length === 0) {
-          setLoading(false);
-          return;
-        }
-
-        // 2. Fetch profiles for these student ids (not archived)
-        const { data: profilesData, error: profilesError } = await supabaseClient
-          .from('profiles')
-          .select('id, full_name, email, status_pagamento, data_expiracao, valor_plano, tipo_plano, data_inicio, avatar_url')
-          .in('id', alunoIds)
-          .eq('role', 'aluno')
-          .neq('arquivado', true);
-
-        if (profilesError) throw profilesError;
-        const profiles = profilesData || [];
-
-        // 3. Calculate Financial Metrics
-        const now = new Date();
-        const activeStudents = profiles.filter(
-          p => p.status_pagamento === 'pago' && p.data_expiracao && new Date(p.data_expiracao) >= now
-        );
-        const pendingStudents = profiles.filter(
-          p => p.status_pagamento !== 'pago' || !p.data_expiracao || new Date(p.data_expiracao) < now
-        );
-
-        setAlunosAtivos(activeStudents.length);
-        setAlunosPendentesCount(pendingStudents.length);
-
-        // Sum pending values in R$
-        const sumPending = pendingStudents.reduce((acc, p) => acc + (p.valor_plano ?? 0), 0);
-        setValorPendente(sumPending);
-
-        // MRR
-        const computedMrr = activeStudents.reduce((acc, p) => {
-          const divisor = p.tipo_plano === 'trimestral' ? 3 : p.tipo_plano === 'semestral' ? 6 : p.tipo_plano === 'anual' ? 12 : 1;
-          return acc + ((p.valor_plano ?? 0) / divisor);
-        }, 0);
-        setMrr(computedMrr);
-
-        // Receita por mês (Current Month, past 12, future 6)
-        const mesMap: Record<string, number> = {};
-        const mesAtualKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        for (let i = 11; i >= -6; i--) {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-          mesMap[key] = 0;
-        }
-
-        // Fetch historically active records for monthly revenue calculation
-        const vinteQuatroAtras = new Date();
-        vinteQuatroAtras.setMonth(vinteQuatroAtras.getMonth() - 23);
-        vinteQuatroAtras.setDate(1);
-        vinteQuatroAtras.setHours(0, 0, 0, 0);
-
-        const { data: historicoData } = await supabaseClient
-          .from('profiles')
-          .select('valor_plano, data_inicio, tipo_plano')
-          .eq('role', 'aluno')
-          .neq('arquivado', true)
-          .not('data_inicio', 'is', null)
-          .not('valor_plano', 'is', null)
-          .gte('data_inicio', vinteQuatroAtras.toISOString().slice(0, 10))
-          .in('id', alunoIds);
-
-        const duracaoPlano: Record<string, number> = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 };
-        for (const row of (historicoData || []) as any[]) {
-          const meses = duracaoPlano[row.tipo_plano || 'mensal'] || 1;
-          const valorPorMes = (row.valor_plano ?? 0) / meses;
-          
-          let dateParts = row.data_inicio.split('-');
-          const inicio = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]) || 1);
-          
-          for (let m = 0; m < meses; m++) {
-            const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            if (key in mesMap) {
-              mesMap[key] += valorPorMes;
-            }
-          }
-        }
-
-        // Current Month Revenue
-        setReceitaMes(mesMap[mesAtualKey] || 0);
-
-        const mesList = Object.entries(mesMap).map(([mes, receita]) => {
-          const [ano, m] = mes.split('-');
-          const label = new Date(Number(ano), Number(m) - 1, 1)
-            .toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-          return { mes: label, receita, futuro: mes > mesAtualKey };
-        });
-        setReceitaPorMes(mesList);
-
-        // 4. Query Training compliance in last 30 days
-        const trintaDiasAtras = new Date();
-        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-        
-        const { data: treinosData } = await supabaseClient
-          .from('historico_treinos')
-          .select('aluno_id, data_conclusao')
-          .in('aluno_id', alunoIds)
-          .gte('data_conclusao', trintaDiasAtras.toISOString());
-
-        // Adherence: Unique session entries (same day, same student)
-        const uniqueSessions = new Set();
-        (treinosData || []).forEach(t => {
-          const dayKey = `${t.aluno_id}_${t.data_conclusao.slice(0, 10)}`;
-          uniqueSessions.add(dayKey);
-        });
-
-        // 12 workouts per active student monthly baseline
-        const totalExpectedSessions = activeStudents.length * 12;
-        const calculatedAdherence = totalExpectedSessions > 0 
-          ? Math.min(100, Math.round((uniqueSessions.size / totalExpectedSessions) * 100))
-          : 0;
-        setTaxaAdesao(calculatedAdherence);
-
-        // Churn risk (active students with no workouts in last 7 days)
-        const seteDiasAtras = new Date();
-        seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-
-        const inactiveCount = activeStudents.filter(student => {
-          const studentWorkouts = (treinosData || []).filter(
-            t => t.aluno_id === student.id && new Date(t.data_conclusao) >= seteDiasAtras
-          );
-          return studentWorkouts.length === 0;
-        }).length;
-        setAlunosInativos7d(inactiveCount);
-
-        // 5. Build Recent Activity Feed
-        const feedItems: ActivityItem[] = [];
-
-        // A. Recent paid signups / updates
-        const recentSignups = activeStudents
-          .filter(s => s.data_inicio)
-          .sort((a, b) => new Date(b.data_inicio!).getTime() - new Date(a.data_inicio!).getTime())
-          .slice(0, 3);
-        
-        recentSignups.forEach(s => {
-          feedItems.push({
-            id: `signup_${s.id}`,
-            type: 'payment',
-            title: `Assinatura Ativa: ${s.full_name}`,
-            subtitle: `Plano ${s.tipo_plano || 'Sem plano'} · ${s.valor_plano ? `R$ ${s.valor_plano}` : 'Sem valor definido'}`,
-            time: new Date(s.data_inicio!)
-          });
-        });
-
-        // B. Recent workouts completed
-        const recentWorkouts = [...(treinosData || [])]
-          .sort((a, b) => new Date(b.data_conclusao).getTime() - new Date(a.data_conclusao).getTime())
-          .slice(0, 3);
-        
-        recentWorkouts.forEach((w, wIdx) => {
-          const studentName = profiles.find(p => p.id === w.aluno_id)?.full_name || 'Atleta';
-          feedItems.push({
-            id: `workout_${w.aluno_id}_${wIdx}`,
-            type: 'workout',
-            title: `${studentName} concluiu um treino`,
-            subtitle: `Sessão registrada no histórico`,
-            time: new Date(w.data_conclusao)
-          });
-        });
-
-        // C. Recent feedbacks
-        const { data: feedbacksData } = await supabaseClient
-          .from('feedbacks_treinos')
-          .select('id, aluno_id, feedback, created_at')
-          .eq('coach_id', coachId)
-          .order('created_at', { ascending: false })
-          .limit(3);
-
-        (feedbacksData || []).forEach(f => {
-          const studentName = profiles.find(p => p.id === f.aluno_id)?.full_name || 'Atleta';
-          feedItems.push({
-            id: `fb_${f.id}`,
-            type: 'feedback',
-            title: `Feedback de ${studentName}`,
-            subtitle: `"${f.feedback.length > 60 ? f.feedback.slice(0, 60) + '...' : f.feedback}"`,
-            time: new Date(f.created_at)
-          });
-        });
-
-        // Sort items by time desc
-        feedItems.sort((a, b) => b.time.getTime() - a.time.getTime());
-        setAtividades(feedItems.slice(0, 6));
-
-      } catch (err: any) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err.message || 'Erro ao carregar dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, [user, userRole, authLoading, router]);
-
-  const fmtCurrency = (val: number) => {
-    return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
-
-  const fmtTime = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-  };
-
-  const tooltipStyle = {
-    backgroundColor: '#131313',
-    border: '1px solid rgba(212,168,67,0.2)',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-    padding: '8px 12px',
-  };
-
-  if (loading || authLoading) {
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <DumbbellLoader text="Preparando painel..." />
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center lg:pl-8">
+        <DumbbellLoader text="Carregando central de comando..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center lg:pl-8 p-6 text-center">
+        <WarningCircle size={48} className="text-danger mb-4" />
+        <h2 className="text-lg font-bold text-text-primary mb-2">Ops! Ocorreu um erro</h2>
+        <p className="text-text-secondary text-sm max-w-sm mb-6">{error}</p>
+        <button onClick={() => void loadDashboardData()} className="btn-primary max-w-xs">
+          Tentar Novamente
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1440px] px-6 md:px-10 py-8 mx-auto w-full flex flex-col gap-6 animate-fade-in">
-      <PageHeader title="Dashboard" subtitle="Visão geral e saúde do negócio" />
+    <div className="min-h-screen px-4 pb-24 pt-3 text-text-primary font-sans md:px-8 md:pt-4 lg:px-10 lg:pl-8 lg:pt-4">
+      <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
+        <DashboardHeader
+          isMobile={isMobile}
+          userName={coachName}
+          coachStudentLimit={coachStudentLimit}
+          linkedStudentCount={linkedStudentCount}
+          coachAccountType={coachAccountType}
+        />
 
-      {error && (
-        <div className="p-4 bg-danger/10 border border-danger/20 rounded-lg text-danger text-xs flex items-center gap-2">
-          <Warning className="w-4 h-4" />
-          <span>{error}</span>
-        </div>
-      )}
+        {guiaPronto && (
+          <GuiaConfiguracaoCard
+            passos={onboardingPassos}
+            onConcluirPasso={async (passoId) => {
+              const { data: { session } } = await supabaseClient.auth.getSession();
+              const coachId = session?.user?.id ?? user?.id;
+              if (!coachId) return;
+              await concluirPasso(coachId, passoId);
+              setOnboardingPassos((prev) =>
+                prev.map((p) =>
+                  p.id === passoId ? { ...p, concluido: true } : p,
+                ),
+              );
+            }}
+            onConcluirRestantes={async () => {
+              const { data: { session } } = await supabaseClient.auth.getSession();
+              const coachId = session?.user?.id ?? user?.id;
+              if (!coachId) return;
+              const pendentes = onboardingPassos
+                .filter((p) => !p.concluido)
+                .map((p) => p.id);
+              const ids =
+                pendentes.length > 0
+                  ? pendentes
+                  : PASSOS_ONBOARDING.map((p) => p.id);
+              await concluirPassos(coachId, ids);
+              setOnboardingPassos(
+                PASSOS_ONBOARDING.map((p) => ({ id: p.id, concluido: true })),
+              );
+            }}
+          />
+        )}
 
-      {/* Linha 1 — Receita, prioridade máxima */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-surface-1 border border-border-subtle rounded-lg p-5 flex flex-col justify-between shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
-          <div>
-            <div className="flex items-center gap-1.5 text-text-tertiary mb-2">
-              <Coins className="w-4 h-4 text-brand" />
-              <span className="text-[10px] font-bold uppercase tracking-caps">Receita do Mês</span>
-            </div>
-            <p className="text-3xl font-black text-brand tracking-tighter tabular-nums font-mono leading-none">
-              {fmtCurrency(receitaMes)}
+        {totalAlunos === 0 ? (
+          <div className="bg-surface-1 border-0 rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">
+            <Users size={44} className="text-brand/40 mx-auto mb-4" />
+            <h3 className="text-base font-bold text-text-primary mb-2">Nenhum aluno cadastrado ainda</h3>
+            <p className="text-text-secondary text-xs mb-6">
+              Adicione seu primeiro aluno para começar a prescrever treinos, acompanhar adesão e gerenciar cobranças.
             </p>
+            <Link href={fromDashboard("/admin/alunos/novo")} className="btn-primary inline-flex items-center gap-2 justify-center max-w-xs mx-auto text-xs py-2 rounded-lg">
+              <Plus size={14} weight="bold" /> Cadastrar Aluno
+            </Link>
           </div>
-          <div className="mt-4 flex items-center gap-1 text-[10px] font-semibold text-success bg-success/10 border border-success/20 rounded px-1.5 py-0.5 w-fit">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>MRR Estimado: {fmtCurrency(mrr)}</span>
+        ) : isMobile ? (
+          <div className="flex flex-col gap-6">
+            <PriorityActionsCard actions={prioridades} />
+            <DashboardKpiRow
+              activeStudents={alunosAtivos}
+              mrr={mrr}
+              studentsAtRisk={alunosEmRisco}
+              pendingCheckIns={checkinsPendentes}
+              activeStudentsSubtitle={activeStudentsSubtitle}
+              compact
+            />
+            <MrrChartCard currentMrr={mrr} chartData={chartData} />
+            <PlanDistributionCard
+              plans={alunosPorPlano}
+              totalStudents={totalAlunos}
+              collapsed
+            />
+            <RecentActivityFeed
+              activities={groupedAtividades}
+              limit={3}
+              showViewAll
+            />
           </div>
-        </div>
-
-        <div className="bg-surface-1 border border-border-subtle rounded-lg p-5 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="flex items-center gap-1.5 text-text-tertiary mb-2">
-              <TrendUp className="w-4 h-4 text-brand" />
-              <span className="text-[10px] font-bold uppercase tracking-caps">MRR Ativo</span>
-            </div>
-            <p className="text-3xl font-black text-text-primary tracking-tighter tabular-nums font-mono leading-none">
-              {fmtCurrency(mrr)}
-            </p>
-          </div>
-          <p className="mt-4 text-2xs text-text-secondary leading-none uppercase tracking-wide">
-            Receita Recorrente Mensal Vigente
-          </p>
-        </div>
-
-        <div className="bg-surface-1 border border-border-subtle rounded-lg p-5 flex flex-col justify-between shadow-sm relative">
-          <div>
-            <div className="flex items-center gap-1.5 text-text-tertiary mb-2">
-              <Warning className="w-4 h-4 text-warning" />
-              <span className="text-[10px] font-bold uppercase tracking-caps">Pendências em Risco</span>
-            </div>
-            <p className="text-3xl font-black text-warning tracking-tighter tabular-nums font-mono leading-none">
-              {fmtCurrency(valorPendente)}
-            </p>
-          </div>
-          <div className="mt-4 flex items-center gap-1 text-[10px] font-semibold text-warning bg-warning/10 border border-warning/20 rounded px-1.5 py-0.5 w-fit">
-            <span>{alunosPendentesCount} aluno(s) pendente(s)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Linha 2 — Operação */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-surface-1 border border-border-subtle rounded-lg p-5 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="flex items-center gap-1.5 text-text-tertiary mb-2">
-              <Users className="w-4 h-4 text-brand" />
-              <span className="text-[10px] font-bold uppercase tracking-caps">Alunos Ativos</span>
-            </div>
-            <p className="text-3xl font-black text-text-primary tracking-tighter font-mono leading-none">
-              {alunosAtivos}
-            </p>
-          </div>
-          <p className="mt-4 text-2xs text-text-secondary uppercase tracking-wide">
-            Clientes pagantes e vigentes
-          </p>
-        </div>
-
-        <div className="bg-surface-1 border border-border-subtle rounded-lg p-5 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="flex items-center gap-1.5 text-text-tertiary mb-2">
-              <Barbell className="w-4 h-4 text-brand" />
-              <span className="text-[10px] font-bold uppercase tracking-caps">Adesão aos Treinos</span>
-            </div>
-            <p className="text-3xl font-black text-text-primary tracking-tighter font-mono leading-none">
-              {taxaAdesao}%
-            </p>
-          </div>
-          <div className="w-full bg-surface-3 rounded-full h-1.5 mt-4 overflow-hidden">
-            <div className="bg-brand h-full rounded-full transition-all duration-500" style={{ width: `${taxaAdesao}%` }} />
-          </div>
-        </div>
-
-        <div className="bg-surface-1 border border-border-subtle rounded-lg p-5 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="flex items-center gap-1.5 text-text-tertiary mb-2">
-              <Warning className="w-4 h-4 text-danger" />
-              <span className="text-[10px] font-bold uppercase tracking-caps">Risco de Churn</span>
-            </div>
-            <p className="text-3xl font-black text-danger tracking-tighter font-mono leading-none">
-              {alunosInativos7d}
-            </p>
-          </div>
-          <p className="mt-4 text-2xs text-text-secondary uppercase tracking-wide">
-            Inativos há mais de 7 dias
-          </p>
-        </div>
-      </div>
-
-      {/* Linha 3 — Gráfico de receita (largura total) */}
-      <div className="bg-surface-1 border border-border-subtle rounded-lg p-6 flex flex-col shadow-sm">
-        <div className="flex items-start justify-between mb-4 gap-4">
-          <div>
-            <h2 className="text-sm font-bold text-text-primary">Evolução do Faturamento</h2>
-            <p className="text-[10px] text-text-secondary mt-0.5">Histórico proporcional 12 meses + projeção 6 meses</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-2xs text-text-secondary uppercase tracking-caps font-bold">
-              <span className="w-2.5 h-2.5 rounded bg-brand inline-block" />
-              Realizado
-            </span>
-            <span className="flex items-center gap-1.5 text-2xs text-text-secondary uppercase tracking-caps font-bold">
-              <span className="w-2.5 h-2.5 rounded bg-brand/35 border border-brand/50 inline-block" />
-              Projeção
-            </span>
-          </div>
-        </div>
-
-        <div className="w-full overflow-x-auto pb-2 scrollable-area">
-          <div style={{ minWidth: '700px', width: '100%', height: '260px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={receitaPorMes} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                <XAxis dataKey="mes" stroke="#555555" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
-                <YAxis stroke="#555555" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} width={54} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(212,168,67,0.02)' }}
-                  contentStyle={tooltipStyle}
-                  itemStyle={{ color: '#F5F5F5', fontWeight: 'bold' }}
-                  labelStyle={{ color: '#8A8A8A', fontSize: 10, fontWeight: 'bold', marginBottom: 4 }}
-                  formatter={(value: number, _name: string, props: any) => [
-                    fmtCurrency(value),
-                    props.payload.futuro ? 'Projeção' : 'Realizado',
-                  ]}
+        ) : (
+          <div className="flex flex-col gap-6">
+            {/* Layout Nutrium: esquerda = próxima aula + ações + atividade,
+                direita = "Meu Negócio" (KPIs 2x2 + gráfico + distribuição). */}
+            <div className="grid grid-cols-2 items-start gap-6">
+              <div className="flex min-w-0 flex-col gap-6">
+                <ProximaAulaCard aula={proximaAula} />
+                <PriorityActionsCard actions={prioridades} />
+                <RecentActivityFeed activities={groupedAtividades} />
+                <AtalhosRapidos compact />
+              </div>
+              <div className="flex min-w-0 flex-col gap-6">
+                <DashboardKpiRow
+                  title="Meu Negócio"
+                  activeStudents={alunosAtivos}
+                  mrr={mrr}
+                  studentsAtRisk={alunosEmRisco}
+                  pendingCheckIns={checkinsPendentes}
+                  activeStudentsSubtitle={activeStudentsSubtitle}
+                  compact
                 />
-                <Bar dataKey="receita" radius={[4, 4, 0, 0]} barSize={24}>
-                  {receitaPorMes.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.futuro ? 'rgba(212, 168, 67, 0.3)' : '#D4A843'}
-                      stroke={entry.futuro ? 'rgba(212, 168, 67, 0.6)' : 'none'}
-                      strokeWidth={entry.futuro ? 1 : 0}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                <MrrChartCard currentMrr={mrr} chartData={chartData} />
+                {/* Solto no fundo — sem card branco, sem sombra (pedido explícito). */}
+                <PlanDistributionCard plans={alunosPorPlano} totalStudents={totalAlunos} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Linha 4 — Atividade recente */}
-      <div className="bg-surface-1 border border-border-subtle rounded-lg p-6 shadow-sm flex flex-col gap-4">
-        <div>
-          <h2 className="text-sm font-bold text-text-primary">Monitoramento em Tempo Real</h2>
-          <p className="text-[10px] text-text-secondary mt-0.5">Últimos eventos do painel nas seções de alunos, feedbacks e treinos</p>
-        </div>
-
-        <div className="overflow-x-auto w-full scrollable-area">
-          <table className="min-w-full divide-y divide-border-subtle/50 text-left text-xs">
-            <thead className="bg-surface-2 text-[10px] font-bold uppercase tracking-caps text-text-secondary">
-              <tr>
-                <th scope="col" className="px-5 py-3">Tipo</th>
-                <th scope="col" className="px-5 py-3">Evento</th>
-                <th scope="col" className="px-5 py-3">Descrição</th>
-                <th scope="col" className="px-5 py-3">Data</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle/30 bg-surface-1 text-text-secondary">
-              {atividades.length > 0 ? (
-                atividades.map((act) => (
-                  <tr key={act.id} className="hover:bg-brand/5 transition-colors">
-                    <td className="px-5 py-3.5 align-middle">
-                      {act.type === 'payment' && (
-                        <span className="inline-flex px-1.5 py-0.5 bg-success-subtle text-success text-[9px] font-bold uppercase tracking-caps rounded">
-                          Faturamento
-                        </span>
-                      )}
-                      {act.type === 'workout' && (
-                        <span className="inline-flex px-1.5 py-0.5 bg-brand-subtle text-brand text-[9px] font-bold uppercase tracking-caps rounded">
-                          Treino
-                        </span>
-                      )}
-                      {act.type === 'feedback' && (
-                        <span className="inline-flex px-1.5 py-0.5 bg-surface-3 border border-border-default text-text-primary text-[9px] font-bold uppercase tracking-caps rounded">
-                          Feedback
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 align-middle font-semibold text-text-primary">
-                      {act.title}
-                    </td>
-                    <td className="px-5 py-3.5 align-middle truncate max-w-xs font-mono text-[11px]">
-                      {act.subtitle}
-                    </td>
-                    <td className="px-5 py-3.5 align-middle text-text-tertiary whitespace-nowrap">
-                      {fmtTime(act.time)}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-text-tertiary text-xs">
-                    Nenhuma atividade recente registrada.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        )}
       </div>
     </div>
   );

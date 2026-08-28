@@ -16,8 +16,14 @@ export default function SessionManager() {
   const lastRefreshAttempt = useRef<number>(0);
 
   useEffect(() => {
-    // Não executar em rotas públicas ou de reset de senha
-    if (pathname === '/login' || pathname === '/' || pathname === '/reset-password') return;
+    // Não executar em rotas públicas, de cadastro ou de reset de senha
+    if (
+      pathname === '/login' || 
+      pathname === '/' || 
+      pathname === '/reset-password' || 
+      pathname?.startsWith('/signup') ||
+      pathname?.startsWith('/auth/')
+    ) return;
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') return;
