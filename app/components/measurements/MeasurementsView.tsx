@@ -8,6 +8,7 @@ import { MeasurementHistoryList } from '@/app/components/measurements/Measuremen
 import { MeasurementInputCard } from '@/app/components/measurements/MeasurementInputCard';
 import { MeasurementTabs } from '@/app/components/measurements/MeasurementTabs';
 import { PeriodSelector } from '@/app/components/measurements/PeriodSelector';
+import { DatePickerField } from '@/components/ui/DatePickerField';
 import {
   buildChartData,
   buildHistoryEntries,
@@ -15,7 +16,7 @@ import {
   formatMeasurementDate,
   getMetricValues,
 } from '@/lib/measurements/helpers';
-import type { MeasurementMetricId, MeasurementPeriod, MedicaoRecord } from '@/lib/measurements/types';
+import type { MeasurementCustomRange, MeasurementMetricId, MeasurementPeriod, MedicaoRecord } from '@/lib/measurements/types';
 import { MEASUREMENT_COLORS, MEASUREMENT_METRICS } from '@/lib/measurements/types';
 import { cn } from '@/lib/utils/cn';
 
@@ -56,6 +57,7 @@ export function MeasurementsView({
 }: MeasurementsViewProps) {
   const [metricId, setMetricId] = useState<MeasurementMetricId>('peso');
   const [period, setPeriod] = useState<MeasurementPeriod>('30d');
+  const [customRange, setCustomRange] = useState<MeasurementCustomRange | null>(null);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -70,8 +72,8 @@ export function MeasurementsView({
   const metric = MEASUREMENT_METRICS.find((m) => m.id === metricId) ?? MEASUREMENT_METRICS[0];
 
   const chartData = useMemo(
-    () => buildChartData(medicoes, metricId, period),
-    [medicoes, metricId, period],
+    () => buildChartData(medicoes, metricId, period, customRange),
+    [medicoes, metricId, period, customRange],
   );
 
   const allValues = useMemo(() => getMetricValues(medicoes, metricId), [medicoes, metricId]);
@@ -85,8 +87,8 @@ export function MeasurementsView({
     : null;
 
   const periodDelta = useMemo(
-    () => computePeriodDelta(allValues, period),
-    [allValues, period],
+    () => computePeriodDelta(allValues, period, customRange),
+    [allValues, period, customRange],
   );
 
   const historyEntries = useMemo(
@@ -112,12 +114,30 @@ export function MeasurementsView({
   const content = (
     <>
       {variant === 'embedded' && (
-        <div className="mb-1 flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <MeasurementTabs selected={metricId} onChange={setMetricId} />
-            <PeriodSelector selected={period} onChange={setPeriod} />
+        <div className="mb-1 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <MeasurementTabs selected={metricId} onChange={setMetricId} />
+              <PeriodSelector selected={period} onChange={setPeriod} />
+            </div>
+            {headerAction && <div className="shrink-0 ml-auto">{headerAction}</div>}
           </div>
-          {headerAction && <div className="shrink-0 ml-auto">{headerAction}</div>}
+          {period === 'custom' && (
+            <div className="flex max-w-xs items-center gap-2">
+              <DatePickerField
+                value={customRange?.start ?? ''}
+                onChange={(v) => setCustomRange({ start: v, end: customRange?.end ?? v })}
+                placeholder="De"
+                className="flex-1"
+              />
+              <DatePickerField
+                value={customRange?.end ?? ''}
+                onChange={(v) => setCustomRange({ start: customRange?.start ?? v, end: v })}
+                placeholder="Até"
+                className="flex-1"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -151,6 +171,8 @@ export function MeasurementsView({
             deltaLabel="no período"
             period={period}
             onPeriodChange={setPeriod}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
             chartData={chartPoints}
             isDesktop={isDesktop}
             showChart={!isDesktop}

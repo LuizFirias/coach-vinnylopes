@@ -274,9 +274,9 @@ export function isClusterSet(serie: { tecnica?: string | null; tecnica_extra?: s
   return serie.tecnica === "Cluster Set" || serie.tecnica_extra === "Cluster Set";
 }
 
-/** Formata a notação de cluster para exibição/retrocompat: 4 × 5 → "4×5" */
-export function formatClusterReps(qtd: number, reps: number): string {
-  return `${qtd}×${reps}`;
+/** Formata a lista de blocos do cluster pra exibição/retrocompat: [6,4,2] → "6×4×2" */
+export function formatClusterReps(blocos: number[]): string {
+  return blocos.map((n) => n || 0).join("×");
 }
 
 /**
@@ -285,4 +285,34 @@ export function formatClusterReps(qtd: number, reps: number): string {
  */
 export function isIsometria(serie: { tecnica?: string | null; tecnica_extra?: string | null }): boolean {
   return serie.tecnica === "Isometria" || serie.tecnica_extra === "Isometria";
+}
+
+/** A série usa Myo Reps (em qualquer um dos dois campos de técnica)? */
+export function isMyoReps(serie: { tecnica?: string | null; tecnica_extra?: string | null }): boolean {
+  return serie.tecnica === "Myo Reps" || serie.tecnica_extra === "Myo Reps";
+}
+
+/** Formata ativação + mini-séries pra exibição/retrocompat: 15, [5,5,4] → "15→5×5×4" */
+export function formatMyoReps(ativacao: number, miniSeries: number[]): string {
+  return `${ativacao || 0}→${miniSeries.map((n) => n || 0).join("×")}`;
+}
+
+/** Quantos "blocos" de reps uma série precisa mostrar lado a lado (Cluster Set
+ *  e Myo Reps têm largura variável; o resto é sempre 1 campo único) — usado
+ *  pra larguear a coluna de reps o bastante pra caber em todas as linhas. */
+export function contarBlocosReps(serie: {
+  tecnica?: string | null;
+  tecnica_extra?: string | null;
+  cluster_reps_list?: number[] | null;
+  cluster_qtd?: number | null;
+  myo_reps_list?: number[] | null;
+}): number {
+  if (isClusterSet(serie)) {
+    return serie.cluster_reps_list?.length ?? Math.max(2, serie.cluster_qtd ?? 2);
+  }
+  if (isMyoReps(serie)) {
+    // +1 pro bloco de ativação, que sempre aparece junto dos mini-blocos.
+    return 1 + (serie.myo_reps_list?.length ?? 4);
+  }
+  return 1;
 }

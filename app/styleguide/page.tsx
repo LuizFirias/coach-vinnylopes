@@ -333,7 +333,7 @@ export default function StyleguidePage() {
           <section>
             <SectionTitle id="typography">Tipografia</SectionTitle>
             <p className="text-sm text-text-secondary mb-6">
-              Inter (UI) · JetBrains Mono (pesos, cargas, KPIs, código) · pesos 400–900.
+              Inter (UI, pesos, cargas, KPIs, código) · pesos 400–900.
               Variável CSS: <code className="text-xs text-brand font-mono">--font-mono</code>
             </p>
             <div className="rounded-xl border border-border-subtle bg-surface-1 divide-y divide-border-subtle">

@@ -13,6 +13,18 @@ export interface SeriePrescricao {
   tecnica?: string | null;
   tecnica_extra?: string | null;
   tecnica2?: string | null;
+  /** Cluster Set — reps de cada bloco, na ordem (ex.: [6,4,2]). */
+  cluster_reps_list?: number[] | null;
+  /** @deprecated mantido só por retrocompat de leitura */
+  cluster_qtd?: number | null;
+  /** @deprecated mantido só por retrocompat de leitura */
+  cluster_reps?: number | null;
+  cluster_descanso_seg?: number | null;
+  /** Myo Reps — reps da série de ativação. */
+  myo_ativacao_reps?: number | null;
+  /** Myo Reps — reps de cada mini-série, na ordem. */
+  myo_reps_list?: number[] | null;
+  myo_descanso_seg?: number | null;
 }
 
 export interface BiSetHalfPrescricao {

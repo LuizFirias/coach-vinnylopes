@@ -13,6 +13,7 @@ import {
 import { RestBadge } from "./RestBadge";
 import { SetRow, SetsTableHeader } from "./SetRow";
 import { getColunasPorTipo, showPesoColumn } from "./exerciseColumns";
+import { contarBlocosReps } from "@/lib/constants/workout-techniques";
 import { BodyPortal, useLockBodyScroll } from "@/app/components/ui/BodyPortal";
 import type { BiSetGroupFicha } from "@/lib/utils/biset";
 import { useBreakpoint } from "@/lib/hooks/useBreakpoint";
@@ -66,10 +67,11 @@ export function BiSetGroupCard({
     const data = half === "a" ? halfA : halfB!;
     const colunas = getColunasPorTipo(data.tipo_exercicio);
     const showPeso = showPesoColumn(data.tipo_exercicio);
+    const maxClusterBlocos = data.series.reduce((max, s) => Math.max(max, contarBlocosReps(s)), 1);
 
     return (
       <>
-        <SetsTableHeader colunas={colunas} showPeso={showPeso} showExtra={false} />
+        <SetsTableHeader colunas={colunas} showPeso={showPeso} showExtra={false} maxClusterBlocos={maxClusterBlocos} />
         {data.series.map((serie, sIndex) => (
           <SetRow
             key={`${half}-${sIndex}`}
@@ -78,6 +80,7 @@ export function BiSetGroupCard({
             colunas={colunas}
             showPeso={showPeso}
             showExtra={false}
+            maxClusterBlocos={maxClusterBlocos}
             onChange={(field, value) => onUpdateSerie(half, sIndex, field, value)}
             onDelete={() => onRemoveSerie(sIndex)}
           />
@@ -209,7 +212,10 @@ export function BiSetGroupCard({
             </button>
           </div>
         ) : (
-          <div className="mx-3.5 mb-3.5 mt-1 rounded-[10px] bg-surface-2/60 border-0 p-3">
+          // Mesma largura útil do exercício A (px-3.5, sem mx extra) — senão a
+          // tabela de B fica mais estreita e as colunas (Set/Reps/kg) saem
+          // da posição/proporção que teriam como exercício avulso.
+          <div className="mb-3.5 mt-1 rounded-[10px] bg-surface-2/60 border-0 px-3.5 py-3">
             <div className="flex items-center justify-between gap-1.5 mb-2">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <ArrowDown size={14} className="text-brand shrink-0" />

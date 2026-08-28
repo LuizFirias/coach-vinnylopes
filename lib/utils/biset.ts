@@ -126,6 +126,15 @@ function mapSerieToDb(s: SerieDefinicao) {
     distancia_sugerida: s.distancia_sugerida ?? null,
     tecnica: s.tecnica || null,
     tecnica_extra: s.tecnica_extra || null,
+    // Cluster Set — sem isso, ao reabrir a ficha os blocos extras (3º, 4º...)
+    // e o descanso entre clusters se perdiam, voltando pro mínimo de 2 blocos.
+    cluster_reps_list: s.cluster_reps_list ?? null,
+    cluster_qtd: s.cluster_qtd ?? null,
+    cluster_reps: s.cluster_reps ?? null,
+    cluster_descanso_seg: s.cluster_descanso_seg ?? null,
+    myo_ativacao_reps: s.myo_ativacao_reps ?? null,
+    myo_reps_list: s.myo_reps_list ?? null,
+    myo_descanso_seg: s.myo_descanso_seg ?? null,
   };
 }
 
@@ -180,6 +189,13 @@ function serieFromRaw(s: SeriePrescricao, idx: number): SerieDefinicao {
     peso_sugerido: s.peso_sugerido ?? s.peso ?? null,
     tecnica: s.tecnica || "",
     tecnica_extra: s.tecnica_extra || s.tecnica2 || "",
+    cluster_reps_list: s.cluster_reps_list ?? undefined,
+    cluster_qtd: s.cluster_qtd ?? undefined,
+    cluster_reps: s.cluster_reps ?? undefined,
+    cluster_descanso_seg: s.cluster_descanso_seg ?? undefined,
+    myo_ativacao_reps: s.myo_ativacao_reps ?? undefined,
+    myo_reps_list: s.myo_reps_list ?? undefined,
+    myo_descanso_seg: s.myo_descanso_seg ?? undefined,
   };
 }
 
@@ -195,7 +211,7 @@ function halfFromRaw(half: BiSetHalfPrescricao): BiSetHalfFicha {
 }
 
 function simpleFromRaw(ex: ExercicioSimplesPrescricao): ExercicioFicha {
-  const descanso = ex.descanso || (ex.descanso_segundos != null ? secondsToDescanso(ex.descanso_segundos) : "01:00");
+  const descanso = ex.descanso || (ex.descanso_segundos != null ? secondsToDescanso(ex.descanso_segundos) : "01:30");
   return {
     instanceId: crypto.randomUUID(),
     id: ex.id,
@@ -426,8 +442,10 @@ function buildSerieExecucao(
     // real do histórico, não deve ser sobrescrita pelo que o aluno digitar numa série anterior.
     peso_historico: temHistorico,
     reps: isTempo ? (s.tempo_sugerido ?? s.tempo ?? "00:30") : (s.reps_sugerido ?? s.reps ?? "12"),
-    // Séries por tempo continuam usando tempo_executado_seg — sem pré-preenchimento aqui.
-    reps_executadas: !isTempo && temHistorico ? prevReps : undefined,
+    // Reps NUNCA vem pré-preenchida do histórico — sempre a prescrita pelo coach
+    // (a coluna "anterior" já mostra a última reps real; só o peso pré-preenche
+    // com a última carga usada, reps o aluno digita se for diferente do prescrito).
+    reps_executadas: undefined,
     tecnica: s.tecnica ?? undefined,
     tecnica_extra: s.tecnica_extra ?? undefined,
     completado: false,
@@ -470,7 +488,7 @@ function buildSimpleExecucao(ex: ExercicioSimplesPrescricao, meta: BibMeta): Exe
   const eid = ex.id;
   const ultimo = meta.ultimoPorExercicio[eid];
   const prevSeries = (ultimo?.dados_sessao?.series || []) as PrevSerieSessao[];
-  const descanso = ex.descanso_segundos ?? descansoToSeconds(ex.descanso || "01:00");
+  const descanso = ex.descanso_segundos ?? descansoToSeconds(ex.descanso || "01:30");
   return {
     id: eid,
     nome: ex.nome,

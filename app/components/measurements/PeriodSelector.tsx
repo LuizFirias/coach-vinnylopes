@@ -5,10 +5,10 @@ import type { MeasurementPeriod } from '@/lib/measurements/types';
 import { cn } from '@/lib/utils/cn';
 
 const MEASUREMENT_PERIOD_OPTIONS: { value: MeasurementPeriod; label: string }[] = [
-  { value: '7d', label: 'Últimos 7 dias' },
   { value: '30d', label: 'Últimos 30 dias' },
   { value: '90d', label: 'Últimos 90 dias' },
   { value: '1a', label: 'Último ano' },
+  { value: 'custom', label: 'Personalizado' },
 ];
 
 interface PeriodSelectorProps {

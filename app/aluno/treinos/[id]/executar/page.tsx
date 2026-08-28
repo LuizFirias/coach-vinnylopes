@@ -107,7 +107,7 @@ interface SerieState {
   peso_input_str?: string;
   /** true assim que o aluno edita o peso desta série — trava o preenchimento em cascata das séries seguintes. */
   peso_manual?: boolean;
-  /** true = peso_atual veio pré-preenchido do histórico (última execução) — também trava a cascata. */
+  /** true = peso_atual veio pré-preenchido do histórico (última execução). */
   peso_historico?: boolean;
   reps: number | string;
   reps_executadas?: number | string;
@@ -229,6 +229,36 @@ function duasLetrasTenica(tecnica?: string): string {
   return tecnica.substring(0, 2).toUpperCase();
 }
 
+/** Série usa Cluster Set — reps prescritas vêm formatadas ("4×4×4×4"), não um número só. */
+function isClusterSetSerie(s: { tecnica?: string; tecnica_extra?: string }): boolean {
+  return s.tecnica === 'Cluster Set' || s.tecnica_extra === 'Cluster Set';
+}
+
+/** "4×4×4×4" (ou "4x4x4x4") → [4,4,4,4] — aluno só digita número, sem "x"/"×". */
+function parseClusterBlocos(valor: number | string | undefined | null): number[] {
+  if (valor == null || valor === '') return [];
+  return String(valor)
+    .split(/[×x]/i)
+    .map((p) => parseInt(p.trim(), 10))
+    .filter((n) => !isNaN(n));
+}
+
+function joinClusterBlocosStr(blocos: string[]): string {
+  return blocos.map((b) => (b.trim() === '' ? '0' : b.trim())).join('×');
+}
+
+/**
+ * Reps prescritas em texto livre (ex.: "12 a 15", "8-10", "AMRAP") — não é
+ * número puro nem Cluster Set. Nunca pode passar por parseFloat/parseInt nem
+ * por <input type="number"> (trunca em "12" ou fica em branco) — precisa de
+ * campo de texto livre editável, igual ao Cluster Set precisa dos blocos.
+ */
+function isFreeTextReps(s: { reps: number | string; tecnica?: string; tecnica_extra?: string }): boolean {
+  if (isClusterSetSerie(s)) return false;
+  if (typeof s.reps !== 'string') return false;
+  return !/^\d+$/.test(s.reps.trim());
+}
+
 /** Retorna as reps a exibir e se está abaixo do prescrito */
 function resolveReps(serie: SerieState): {
   valor: number | string;
@@ -246,6 +276,29 @@ function resolveReps(serie: SerieState): {
   const abaixo = !isNaN(execNum) && !isNaN(prescNum) && execNum < prescNum;
 
   return { valor: exec, abaixo };
+}
+
+/**
+ * Ao concluir uma série sem o aluno ter digitado reps, trava o valor que já
+ * estava pré-preenchido (histórico ou prescrito) como reps_executadas real —
+ * poupa o aluno de digitar de novo quando está repetindo a mesma carga/reps.
+ * Séries por tempo (is_tempo) não usam reps_executadas, ficam intactas.
+ */
+function fillRepsOnComplete<T extends { reps_executadas?: number | string; reps: number | string; is_tempo?: boolean }>(
+  s: T
+): T {
+  if (s.is_tempo) return s;
+  if (s.reps_executadas !== undefined && s.reps_executadas !== '') return s;
+  return { ...s, reps_executadas: s.reps };
+}
+
+/** Reps efetivas de uma série (executada, ou prescrita se ainda não editada) como número — usada pra inicializar o campo principal REPS do modal. */
+function repsEfetivas(serie?: { reps_executadas?: number | string; reps: number | string }): number {
+  if (!serie) return 0;
+  const exec = serie.reps_executadas;
+  const valor = exec === undefined || exec === null || exec === '' ? serie.reps : exec;
+  const num = typeof valor === 'string' ? parseFloat(valor) : valor;
+  return isNaN(num) ? 0 : num;
 }
 
 function calcVolume(exercicios: ExercicioState[]): number {
@@ -267,15 +320,15 @@ function calcTotalSets(exercicios: ExercicioState[]): number {
 }
 
 /**
- * Cor do número de peso/reps de uma série: cinza claro ("fantasma", ainda não
- * confirmado — seja vazio ou pré-preenchido do histórico) → cor normal (o aluno
- * editou/confirmou) → verde (concluída). Nunca roxo — roxo é só pro destaque da
- * série atual (background).
+ * Cor do número de peso/reps de uma série: cinza ("fantasma", ainda não
+ * confirmado — seja vazio ou pré-preenchido do histórico) → mesmo tom de
+ * preto não tão forte pra editado/confirmado E pra concluída (sem verde —
+ * o "concluído" já fica claro pelo check da série). Nunca roxo — roxo é só
+ * pro destaque da série atual (background).
  */
 function serieTextColor(completado: boolean, manual: boolean): string {
-  if (completado) return '#39c75a';
-  if (!manual) return 'var(--text-disabled)';
-  return 'var(--text-primary)';
+  if (completado || manual) return 'var(--text-secondary)';
+  return 'var(--text-disabled)';
 }
 
 /**
@@ -356,10 +409,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
       {showAnteriorCol && (
         <div className="min-w-0 overflow-hidden" style={{ paddingLeft: ANT_COL_PAD_LEFT }}>
           <p
-            className={cn(
-              'text-[11px] font-sans tabular-nums lining-nums truncate',
-              serie.completado && 'line-through'
-            )}
+            className="text-[11px] font-sans tabular-nums lining-nums truncate"
             style={{ color: serie.completado ? 'var(--text-disabled)' : 'var(--text-tertiary)' }}
             title={serie.anterior || '—'}
           >
@@ -392,6 +442,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderBottomColor = 'rgba(117, 27, 180,0.45)';
+              e.currentTarget.select();
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderBottomColor = 'transparent';
@@ -428,11 +479,12 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
               fontWeight: 500,
               fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
               fontVariantNumeric: 'tabular-nums lining-nums',
-              color: serie.completado ? '#39c75a' : 'var(--text-primary)',
+              color: serie.completado ? 'var(--text-secondary)' : 'var(--text-primary)',
               borderBottom: '1.5px solid transparent',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+              e.currentTarget.select();
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderBottomColor = 'transparent';
@@ -470,6 +522,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+              e.currentTarget.select();
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderBottomColor = 'transparent';
@@ -543,10 +596,20 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
       )}
       style={{ background: 'transparent' }}
     >
-      <div
-        className="flex items-start justify-between gap-2 px-4 pt-4 pb-3"
-        style={{ borderBottom: '1px solid var(--border-subtle)' }}
-      >
+      <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
+        {exercicio.imagem_url || exercicio.gif_url ? (
+          <img
+            // Miniatura estática (1º frame) — cai pro GIF animado se o exercício
+            // ainda não tem a miniatura gerada (compatibilidade com dados antigos).
+            src={exercicio.imagem_url || exercicio.gif_url}
+            alt={exercicio.nome}
+            className="rounded-lg object-cover shrink-0"
+            style={{ width: 48, height: 48, background: 'var(--surface-0)' }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : null}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 min-w-0">
             {onOpenCard ? (
@@ -575,19 +638,6 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
             Descanso: {formatRestTime(exercicio.descanso)}
           </p>
         </div>
-        {exercicio.imagem_url || exercicio.gif_url ? (
-          <img
-            // Miniatura estática (1º frame) — cai pro GIF animado se o exercício
-            // ainda não tem a miniatura gerada (compatibilidade com dados antigos).
-            src={exercicio.imagem_url || exercicio.gif_url}
-            alt={exercicio.nome}
-            className="rounded-lg object-cover flex-shrink-0"
-            style={{ width: 48, height: 48, background: 'var(--surface-0)' }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        ) : null}
         {exercicio.video_url && (
           <button
             type="button"
@@ -714,6 +764,10 @@ export default function ExecucaoTreinoPage() {
   const [bisetTransitionName, setBisetTransitionName] = useState<string | null>(null);
   const [modalCarga, setModalCarga] = useState(0);
   const [modalCargaStr, setModalCargaStr] = useState('');
+  const [modalReps, setModalReps] = useState(0);
+  const [modalRepsStr, setModalRepsStr] = useState('');
+  /** Um valor por bloco do Cluster Set da série atual (ex.: ["4","4","3","4"]) — só usado quando a série em foco é Cluster Set. */
+  const [modalClusterBlocosStr, setModalClusterBlocosStr] = useState<string[]>([]);
   const [showSeriesHistory, setShowSeriesHistory] = useState(true);
 
   // Cronômetro (exercícios por tempo / técnica Isometria — substitui o ajuste de carga)
@@ -745,13 +799,69 @@ export default function ExecucaoTreinoPage() {
   const tecnicaPanelRef = useRef<HTMLDivElement>(null);
   const modalTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const ajustarCarga = useCallback((delta: number) => {
-    setModalCarga((prev) => {
-      const next = Math.max(0, Math.round((prev + delta) * 100) / 100);
-      setModalCargaStr(String(next));
+
+  const ajustarReps = useCallback((delta: number) => {
+    setModalReps((prev) => {
+      const next = Math.max(0, Math.round(prev + delta));
+      setModalRepsStr(String(next));
       return next;
     });
   }, []);
+
+  /**
+   * Reps a gravar quando o checkbox da linha conclui a série direto (sem
+   * passar pelo modal). Em foco usa o que está sendo editado agora (junta os
+   * blocos se for Cluster Set); fora de foco usa o que a própria série já
+   * tem (nunca passa por repsEfetivas nesse caso — evita truncar "4×4×4×4").
+   */
+  function repsParaConcluirDireto(s: SerieState, emFoco: boolean): number | string {
+    if (emFoco) {
+      if (isClusterSetSerie(s)) return joinClusterBlocosStr(modalClusterBlocosStr);
+      if (isFreeTextReps(s)) return modalRepsStr;
+      return modalReps;
+    }
+    if (isClusterSetSerie(s) || isFreeTextReps(s)) return s.reps_executadas ?? s.reps;
+    return repsEfetivas(s);
+  }
+
+  /**
+   * Centraliza como o modal "pega" as reps de uma série ao virar a atual —
+   * Cluster Set precisa de um valor por bloco (não um número só, senão
+   * "4×4×4×4" virava só "4"); reps em texto livre ("12 a 15") precisam do
+   * texto cru (nunca repsEfetivas/parseFloat, que trunca em "12"); as demais
+   * técnicas seguem como sempre.
+   */
+  function seedModalRepsState(serie: SerieState | undefined) {
+    if (serie && isFreeTextReps(serie)) {
+      const fonte = serie.reps_executadas ?? serie.reps;
+      setModalReps(0);
+      setModalRepsStr(fonte !== undefined && fonte !== null ? String(fonte) : '');
+      setModalClusterBlocosStr([]);
+      return;
+    }
+    const reps = repsEfetivas(serie);
+    setModalReps(reps);
+    setModalRepsStr(reps > 0 ? String(reps) : '');
+    if (serie && isClusterSetSerie(serie)) {
+      const fonte = serie.reps_executadas ?? serie.reps;
+      setModalClusterBlocosStr(parseClusterBlocos(fonte).map(String));
+    } else {
+      setModalClusterBlocosStr([]);
+    }
+  }
+
+  /**
+   * Desmarcar uma série (usuário corrigindo um check errado) devolve o foco/placar
+   * do modal pra ela — senão o modal continuava mostrando a rodada seguinte mesmo
+   * com essa série de volta como pendente.
+   */
+  function reposicionarModalPara(rodadaIdx: number, fase: 'a' | 'b' | null, serie: SerieState) {
+    setModalRodadaIdx(rodadaIdx);
+    setBisetFase(fase);
+    setModalCarga(serie.peso_atual || 0);
+    setModalCargaStr(serie.peso_atual > 0 ? String(serie.peso_atual) : '');
+    seedModalRepsState(serie);
+  }
 
   useEffect(() => {
     if (modalBlockIdx !== null) {
@@ -854,25 +964,32 @@ export default function ExecucaoTreinoPage() {
 
       const exercicioIds = collectBibliotecaIds(exerciciosConfig);
 
-      // Biblioteca + última sessão por exercício (cargas "Anterior") + gênero do aluno em paralelo
-      const [{ data: bibData }, { data: historicoPorExercicio }, { data: alunoProfile }] = await Promise.all([
-        exercicioIds.length > 0
-          ? supabaseClient
-              .from('exercicios_biblioteca')
-              .select('id, grupo_muscular, gif_url, gif_url_feminino, imagem_url, imagem_url_feminino, video_url, equipamento')
-              .in('id', exercicioIds)
-          : Promise.resolve({ data: null as null }),
-        exercicioIds.length > 0
-          ? supabaseClient
-              .from('historico_treinos')
-              .select('data_conclusao, dados_sessao, exercicio_id')
-              .eq('aluno_id', uid)
-              .in('exercicio_id', exercicioIds)
-              .order('data_conclusao', { ascending: false })
-              .limit(Math.max(exercicioIds.length * 10, 50))
-          : Promise.resolve({ data: null as null }),
-        supabaseClient.from('profiles').select('sexo').eq('id', uid).maybeSingle(),
-      ]);
+      // Biblioteca + última sessão por exercício (cargas "Anterior") + gênero do
+      // aluno — antes 3 requisições em paralelo (e a de histórico trazia até 10x
+      // mais linhas do que precisa pra deduplicar no cliente); agora é 1 RPC só,
+      // que já devolve exatamente 1 linha de histórico por exercício.
+      let bibData: any[] | null = null;
+      let historicoPorExercicio: any[] | null = null;
+      let alunoProfile: { sexo?: string | null } | null = null;
+      if (exercicioIds.length > 0) {
+        const { data: extrasData, error: extrasError } = await supabaseClient
+          .rpc('get_ficha_execucao_extras', {
+            p_aluno_id: uid,
+            p_exercicio_ids: exercicioIds,
+          });
+        if (extrasError) throw extrasError;
+        const extras = (extrasData ?? {}) as Record<string, any>;
+        bibData = extras.biblioteca ?? [];
+        historicoPorExercicio = extras.ultimo_historico ?? [];
+        alunoProfile = extras.sexo != null ? { sexo: extras.sexo } : null;
+      } else {
+        const { data: profileOnly } = await supabaseClient
+          .from('profiles')
+          .select('sexo')
+          .eq('id', uid)
+          .maybeSingle();
+        alunoProfile = profileOnly;
+      }
 
       const gruposMusculares: Record<string, string> = Object.fromEntries(
         (bibData || []).map(ex => [ex.id, ex.grupo_muscular || ''])
@@ -1178,6 +1295,7 @@ export default function ExecucaoTreinoPage() {
     setBisetFase(fase);
     setModalCarga(carga);
     setModalCargaStr(carga > 0 ? String(carga) : '');
+    seedModalRepsState(ex.series[rodadaIdx]);
   }
 
   /** Troca de exercício por swipe lateral — não exige ter concluído o anterior. */
@@ -1222,6 +1340,7 @@ export default function ExecucaoTreinoPage() {
     setBisetFase(pos.fase);
     setModalCarga(carga);
     setModalCargaStr(carga > 0 ? String(carga) : '');
+    seedModalRepsState(ex.series[pos.rodadaIdx]);
   }
 
   /** Retomar: 1ª incompleta, ou último exercício da ficha se a lista já concluiu tudo. */
@@ -1240,6 +1359,12 @@ export default function ExecucaoTreinoPage() {
    * exercício (ainda não concluídas e que o aluno não editou o peso à mão)
    * já aparecem pré-preenchidas com esse valor. Editar uma série trava ela
    * como manual — deixa de receber o vazamento (mesmo padrão da ficha).
+   *
+   * peso_historico (pré-preenchido com a carga da última execução) NÃO trava
+   * mais a cascata: era o que fazia o peso digitado parar de propagar quando
+   * o aluno já tinha histórico nessas séries (o caso mais comum, depois da
+   * primeira vez fazendo o exercício) — só peso_manual (edição real, à mão,
+   * dessa série) deve travar.
    */
   function cascadePeso<
     T extends {
@@ -1257,10 +1382,44 @@ export default function ExecucaoTreinoPage() {
         cascata = true;
         return { ...s, peso_atual: peso, peso_input_str: rawStr, peso_manual: true };
       }
-      // Série que já veio preenchida do histórico não recebe o vazamento — já tem
-      // uma referência real da última execução, não deve ser sobrescrita.
-      if (cascata && !s.completado && !s.peso_manual && !s.peso_historico) {
+      if (cascata && !s.completado && !s.peso_manual) {
         return { ...s, peso_atual: peso, peso_input_str: formatPesoDisplay(peso) };
+      }
+      return s;
+    });
+  }
+
+  /**
+   * Reps digitadas numa série "vazam" pra frente igual o peso — mas só pra
+   * séries que ainda estão totalmente vazias (sem nenhuma reps pré-preenchida,
+   * nem de histórico): diferente do peso, aqui um valor já mostrado no campo
+   * NUNCA é sobrescrito pela cascata, só a edição manual naquela própria série.
+   */
+  function cascadeReps<
+    T extends {
+      ordem: number;
+      reps: number | string;
+      reps_executadas?: number | string;
+      reps_manual?: boolean;
+      completado: boolean;
+      tecnica?: string;
+      tecnica_extra?: string;
+    }
+  >(series: T[], serieOrdem: number, reps: number | string): T[] {
+    let cascata = false;
+    // Cluster Set e reps em texto livre ("12 a 15") não participam da cascata
+    // em nenhuma das pontas — o valor não é um número simples pra propagar
+    // pras séries seguintes (nem pra receber de uma série normal).
+    const origem = series.find((s) => s.ordem === serieOrdem);
+    const podeCascatear = !origem || (!isClusterSetSerie(origem) && !isFreeTextReps(origem));
+    return series.map((s) => {
+      if (s.ordem === serieOrdem) {
+        cascata = true;
+        return { ...s, reps_executadas: reps, reps_manual: true };
+      }
+      const vazia = s.reps_executadas === undefined || s.reps_executadas === '';
+      if (cascata && podeCascatear && !isClusterSetSerie(s) && !isFreeTextReps(s) && !s.completado && !s.reps_manual && vazia) {
+        return { ...s, reps_executadas: reps };
       }
       return s;
     });
@@ -1306,9 +1465,7 @@ export default function ExecucaoTreinoPage() {
               ...block,
               exercise: {
                 ...block.exercise,
-                series: block.exercise.series.map((s) =>
-                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps, reps_manual: true }
-                ),
+                series: cascadeReps(block.exercise.series, serieOrdem, reps),
               },
             };
           }
@@ -1318,9 +1475,7 @@ export default function ExecucaoTreinoPage() {
               ...block,
               [half]: {
                 ...block[half],
-                series: block[half].series.map((s) =>
-                  s.ordem !== serieOrdem ? s : { ...s, reps_executadas: reps, reps_manual: true }
-                ),
+                series: cascadeReps(block[half].series, serieOrdem, reps),
               },
             };
           };
@@ -1376,19 +1531,25 @@ export default function ExecucaoTreinoPage() {
     setBlocks((prev) => {
       let toggled = false;
       let descanso = 90;
-      const next = prev.map((block) => {
+      let touchedBlockIdx = -1;
+      const next = prev.map((block, bIdx) => {
         if (block.kind === 'simples') {
           if (block.exercise.id !== exercicioId) return block;
           const serieIdx = block.exercise.series.findIndex((s) => s.ordem === serieOrdem);
           if (serieIdx === -1) return block;
           toggled = !block.exercise.series[serieIdx].completado;
           descanso = block.exercise.descanso;
+          touchedBlockIdx = bIdx;
           return {
             ...block,
             exercise: {
               ...block.exercise,
               series: block.exercise.series.map((s) =>
-                s.ordem !== serieOrdem ? s : { ...s, completado: toggled }
+                s.ordem !== serieOrdem
+                  ? s
+                  : toggled
+                    ? fillRepsOnComplete({ ...s, completado: toggled })
+                    : { ...s, completado: toggled }
               ),
             },
           };
@@ -1399,27 +1560,60 @@ export default function ExecucaoTreinoPage() {
           if (serieIdx === -1) return block;
           toggled = !block[half].series[serieIdx].completado;
           descanso = block.descanso;
+          touchedBlockIdx = bIdx;
           return {
             ...block,
             [half]: {
               ...block[half],
               series: block[half].series.map((s) =>
-                s.ordem !== serieOrdem ? s : { ...s, completado: toggled }
+                s.ordem !== serieOrdem
+                  ? s
+                  : toggled
+                    ? fillRepsOnComplete({ ...s, completado: toggled })
+                    : { ...s, completado: toggled }
               ),
             },
           };
         }
         return block;
       });
-      if (toggled) {
-        haptic('success');
-        iniciarRest(descanso, () => {});
-      } else {
+
+      if (!toggled) {
         haptic('light');
+        return next;
       }
+
+      haptic('success');
+
+      // Marcou pelo checkbox a última série que faltava do exercício (não precisa
+      // ser em ordem — pode ter deixado a 3ª pra depois e concluído por último) e
+      // esse exercício é o que está aberto no card de execução: avança pro próximo
+      // igual ao fluxo do botão "Concluir exercício", sem esperar o descanso acabar.
+      const blockCompletoAgora = touchedBlockIdx !== -1 && isBlockComplete(next[touchedBlockIdx]);
+      const modalAbertoNesseBloco = modalBlockIdx === touchedBlockIdx;
+
+      if (blockCompletoAgora && modalAbertoNesseBloco) {
+        const isUltimoBloco = touchedBlockIdx >= next.length - 1;
+        if (isUltimoBloco) {
+          iniciarRest(descanso, () => {
+            if (next.some((b) => !isBlockComplete(b))) {
+              abrirPosicao(next, resolveResumePosition(next));
+              return;
+            }
+            setModalBlockIdx(null);
+            handleFinalizar();
+          }, { title: 'Descanso' });
+        } else {
+          iniciarRest(descanso, () => {}, { title: 'Descanso' });
+          abrirModalBlock(touchedBlockIdx + 1);
+        }
+      } else {
+        iniciarRest(descanso, () => {});
+      }
+
       return next;
     });
-  }, [treinoIniciado]);
+  }, [treinoIniciado, modalBlockIdx]);
 
   // ── Ações do modal ───────────────────────────────────────────────────────────
 
@@ -1434,7 +1628,49 @@ export default function ExecucaoTreinoPage() {
     }
   }
 
-  function concluirSerieModal(extra?: { tempo_executado_seg?: number }) {
+  /** Primeira rodada incompleta a partir de `apos` (exclusive), com fallback pra procurar
+   *  de trás pra frente — cobre o caso de o aluno concluir fora de ordem (ex.: 1, 2, 4 e
+   *  só depois a 3): o "próximo" nunca aponta pra uma rodada que já está feita. */
+  function proximaRodadaIncompleta(series: SerieState[], apos: number): number {
+    for (let i = apos + 1; i < series.length; i++) {
+      if (!series[i].completado) return i;
+    }
+    for (let i = 0; i <= apos && i < series.length; i++) {
+      if (!series[i].completado) return i;
+    }
+    return -1;
+  }
+
+  /** Mesma ideia que `proximaRodadaIncompleta`, mas pro Bi-Set (par A/B por rodada,
+   *  sempre A antes de B dentro da mesma rodada). */
+  function proximaPosicaoBiset(
+    seriesA: SerieState[],
+    seriesB: SerieState[],
+    apos: number
+  ): { rodada: number; fase: 'a' | 'b' } | null {
+    const total = seriesA.length;
+    const tryRange = (start: number, end: number) => {
+      for (let i = start; i < end; i++) {
+        if (!seriesA[i]?.completado) return { rodada: i, fase: 'a' as const };
+        if (!seriesB[i]?.completado) return { rodada: i, fase: 'b' as const };
+      }
+      return null;
+    };
+    return tryRange(apos + 1, total) || tryRange(0, Math.min(apos + 1, total));
+  }
+
+  /**
+   * Conclui uma série específica — usada tanto pelo botão principal ("Concluir
+   * série/exercício") quanto pelo checkbox de cada linha: são a mesma lógica,
+   * então o checkbox também move o foco/descanso/avança de exercício igual ao
+   * botão, não importa se a série concluída é a que está em foco ou não.
+   */
+  function concluirSerieEm(
+    pos: { rodadaIdx: number; fase: 'a' | 'b' | null },
+    carga: number,
+    reps: number | string,
+    extra?: { tempo_executado_seg?: number }
+  ) {
     if (modalBlockIdx === null) return;
     const block = blocks[modalBlockIdx];
     if (!block) return;
@@ -1442,10 +1678,12 @@ export default function ExecucaoTreinoPage() {
     const extraPatch = extra?.tempo_executado_seg != null
       ? { tempo_executado_seg: extra.tempo_executado_seg, tempo_input_str: undefined }
       : {};
+    const ehTempo = block.kind === 'simples'
+      ? block.exercise.series[pos.rodadaIdx]?.is_tempo
+      : (pos.fase === 'b' ? block.exercicioB : block.exercicioA).series[pos.rodadaIdx]?.is_tempo;
 
     if (block.kind === 'simples') {
       const ex = block.exercise;
-      const serie = ex.series[modalRodadaIdx];
       const newBlocks = blocks.map((b, i) => {
         if (i !== modalBlockIdx || b.kind !== 'simples') return b;
         return {
@@ -1453,7 +1691,9 @@ export default function ExecucaoTreinoPage() {
           exercise: {
             ...b.exercise,
             series: b.exercise.series.map((s, j) =>
-              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true, ...extraPatch }
+              j !== pos.rodadaIdx
+                ? s
+                : { ...s, peso_atual: carga, reps_executadas: ehTempo ? s.reps_executadas : reps, completado: true, ...extraPatch }
             ),
           },
         };
@@ -1462,10 +1702,11 @@ export default function ExecucaoTreinoPage() {
       persistBlocksNow(newBlocks);
       haptic('success');
 
-      const isUltimaSerie = modalRodadaIdx >= ex.series.length - 1;
+      const exAtualizado = (newBlocks[modalBlockIdx] as typeof block & { kind: 'simples' }).exercise;
+      const prox = proximaRodadaIncompleta(exAtualizado.series, pos.rodadaIdx);
       const isUltimoBloco = modalBlockIdx >= blocks.length - 1;
 
-      if (isUltimaSerie) {
+      if (prox === -1) {
         if (isUltimoBloco) {
           // Ficou alguma série pendente lá atrás (pulada/esquecida)? Manda pra ela
           // em vez de abrir a pesquisa direto — "Finalizar treino" continua liberado
@@ -1478,118 +1719,142 @@ export default function ExecucaoTreinoPage() {
           handleFinalizar();
           return;
         }
-        iniciarRest(ex.descanso, () => abrirModalBlock(modalBlockIdx + 1), {
-          title: 'Descanso',
-        });
+        // Não espera o descanso terminar pra ir pro próximo exercício — o timer
+        // continua contando em segundo plano, já sobre o card do próximo.
+        iniciarRest(ex.descanso, () => {}, { title: 'Descanso' });
+        abrirModalBlock(modalBlockIdx + 1);
       } else {
-        const prox = modalRodadaIdx + 1;
-        iniciarRest(ex.descanso, () => {
-          const nextCarga = ex.series[prox]?.peso_atual || modalCarga;
-          setModalRodadaIdx(prox);
-          setModalCarga(nextCarga);
-          setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
-        });
+        // Foco vai pra próxima série na hora — não espera o descanso terminar
+        // pra mudar o destaque, o timer só continua contando por cima.
+        const nextCarga = exAtualizado.series[prox]?.peso_atual || carga;
+        setModalRodadaIdx(prox);
+        setModalCarga(nextCarga);
+        setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+        seedModalRepsState(exAtualizado.series[prox]);
+        iniciarRest(ex.descanso, () => {});
       }
       return;
     }
 
     // Bi-Set
     const bisetBlock = block;
-    const totalRodadas = bisetBlock.exercicioA.series.length;
-    const isUltimaRodada = modalRodadaIdx >= totalRodadas - 1;
     const isUltimoBloco = modalBlockIdx >= blocks.length - 1;
+    const half = pos.fase === 'b' ? 'exercicioB' : 'exercicioA';
 
-    if (bisetFase === 'a') {
-      const newBlocks = blocks.map((b, i) => {
-        if (i !== modalBlockIdx || b.kind !== 'biset') return b;
-        return {
-          ...b,
-          exercicioA: {
-            ...b.exercicioA,
-            series: b.exercicioA.series.map((s, j) =>
-              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true, ...extraPatch }
-            ),
-          },
-        };
-      });
-      setBlocks(newBlocks);
-      persistBlocksNow(newBlocks);
-      haptic('success');
+    const newBlocks = blocks.map((b, i) => {
+      if (i !== modalBlockIdx || b.kind !== 'biset') return b;
+      return {
+        ...b,
+        [half]: {
+          ...b[half],
+          series: b[half].series.map((s, j) =>
+            j !== pos.rodadaIdx
+              ? s
+              : { ...s, peso_atual: carga, reps_executadas: ehTempo ? s.reps_executadas : reps, completado: true, ...extraPatch }
+          ),
+        },
+      };
+    });
+    setBlocks(newBlocks);
+    persistBlocksNow(newBlocks);
+    haptic('success');
 
-      const bSerie = bisetBlock.exercicioB.series[modalRodadaIdx];
+    const bisetAtualizado = newBlocks[modalBlockIdx] as typeof bisetBlock & { kind: 'biset' };
+    const seriesA = bisetAtualizado.exercicioA.series;
+    const seriesB = bisetAtualizado.exercicioB.series;
+
+    // Concluiu a A e a B da mesma rodada ainda não está feita → transição direta pra
+    // B dessa rodada (o par natural), sem procurar mais longe.
+    if (pos.fase === 'a' && !seriesB[pos.rodadaIdx]?.completado) {
+      const bSerie = seriesB[pos.rodadaIdx];
       const nextCarga = bSerie?.peso_atual || 0;
       setBisetTransitionName(bisetBlock.exercicioB.nome);
       setBisetFase('transicao');
       setTimeout(() => {
+        setModalRodadaIdx(pos.rodadaIdx);
         setBisetFase('b');
         setBisetTransitionName(null);
         setModalCarga(nextCarga);
         setModalCargaStr(nextCarga > 0 ? String(nextCarga) : '');
+        seedModalRepsState(bSerie);
       }, 300);
       return;
     }
 
-    if (bisetFase === 'b') {
-      const newBlocks = blocks.map((b, i) => {
-        if (i !== modalBlockIdx || b.kind !== 'biset') return b;
-        return {
-          ...b,
-          exercicioB: {
-            ...b.exercicioB,
-            series: b.exercicioB.series.map((s, j) =>
-              j !== modalRodadaIdx ? s : { ...s, peso_atual: modalCarga, completado: true, ...extraPatch }
-            ),
-          },
-        };
-      });
-      setBlocks(newBlocks);
-      persistBlocksNow(newBlocks);
-      haptic('success');
+    const descanso = bisetBlock.descanso;
+    const nextBlock = blocks[modalBlockIdx + 1];
+    const nextBlockLabel = nextBlock
+      ? (nextBlock.kind === 'simples' ? nextBlock.exercise.nome : nextBlock.exercicioA.nome)
+      : undefined;
+    const proxPos = proximaPosicaoBiset(seriesA, seriesB, pos.rodadaIdx);
 
-      const descanso = bisetBlock.descanso;
-      const nextBlock = blocks[modalBlockIdx + 1];
-      const nextBlockLabel = nextBlock
-        ? (nextBlock.kind === 'simples' ? nextBlock.exercise.nome : nextBlock.exercicioA.nome)
-        : undefined;
-
-      if (isUltimaRodada) {
-        iniciarRest(
-          descanso,
-          () => {
-            if (isUltimoBloco) {
-              if (newBlocks.some((b) => !isBlockComplete(b))) {
-                abrirPosicao(newBlocks, resolveResumePosition(newBlocks));
-                return;
-              }
-              setModalBlockIdx(null);
-              handleFinalizar();
-            } else {
-              abrirModalBlock(modalBlockIdx + 1);
+    if (!proxPos) {
+      // Não espera o descanso terminar pra ir pro próximo exercício — só o
+      // caso de finalizar o treino (isUltimoBloco) continua no callback.
+      iniciarRest(
+        descanso,
+        () => {
+          if (isUltimoBloco) {
+            if (newBlocks.some((b) => !isBlockComplete(b))) {
+              abrirPosicao(newBlocks, resolveResumePosition(newBlocks));
+              return;
             }
-          },
-          {
-            title: 'Descanso do Bi-Set',
-            subtitle: nextBlockLabel ? `Próximo exercício: ${nextBlockLabel}` : undefined,
-            subtitleHighlight: 'Bi-Set concluído ✓',
-          },
-        );
-      } else {
-        const proxRodada = modalRodadaIdx + 1;
-        iniciarRest(
-          descanso,
-          () => {
-            const carga = bisetBlock.exercicioA.series[proxRodada]?.peso_atual || 0;
-            setModalRodadaIdx(proxRodada);
-            setBisetFase('a');
-            setModalCarga(carga);
-            setModalCargaStr(carga > 0 ? String(carga) : '');
-          },
-          {
-            title: 'Descanso do Bi-Set',
-            subtitle: `Próxima rodada: ${bisetBlock.exercicioA.nome} · série ${proxRodada + 1}/${totalRodadas}`,
-          },
-        );
+            setModalBlockIdx(null);
+            handleFinalizar();
+          }
+        },
+        {
+          title: 'Descanso do Bi-Set',
+          subtitle: nextBlockLabel ? `Próximo exercício: ${nextBlockLabel}` : undefined,
+          subtitleHighlight: 'Bi-Set concluído ✓',
+        },
+      );
+      if (!isUltimoBloco) {
+        abrirModalBlock(modalBlockIdx + 1);
       }
+    } else {
+      // Foco vai pra próxima posição na hora — não espera o descanso terminar.
+      const serieAlvo = proxPos.fase === 'a' ? seriesA[proxPos.rodada] : seriesB[proxPos.rodada];
+      const carga2 = serieAlvo?.peso_atual || 0;
+      setModalRodadaIdx(proxPos.rodada);
+      setBisetFase(proxPos.fase);
+      setModalCarga(carga2);
+      setModalCargaStr(carga2 > 0 ? String(carga2) : '');
+      seedModalRepsState(serieAlvo);
+      iniciarRest(
+        descanso,
+        () => {},
+        {
+          title: 'Descanso do Bi-Set',
+          subtitle: `Próxima: ${proxPos.fase === 'a' ? bisetBlock.exercicioA.nome : bisetBlock.exercicioB.nome} · série ${proxPos.rodada + 1}`,
+        },
+      );
+    }
+  }
+
+  function concluirSerieModal(extra?: { tempo_executado_seg?: number }) {
+    const fase = bisetFase === 'a' || bisetFase === 'b' ? bisetFase : null;
+    const reps = modalSerie && isClusterSetSerie(modalSerie)
+      ? joinClusterBlocosStr(modalClusterBlocosStr)
+      : modalSerie && isFreeTextReps(modalSerie)
+        ? modalRepsStr
+        : modalReps;
+    concluirSerieEm({ rodadaIdx: modalRodadaIdx, fase }, modalCarga, reps, extra);
+  }
+
+  /**
+   * Ajusta a carga pelo campo principal do modal E já propaga (cascata) pra
+   * frente — antes só cascateava a carga digitada direto na linha da lista;
+   * o campo principal só "contava" quando a série era concluída. Também
+   * cobre editar o peso DEPOIS de já ter marcado a série como feita — o
+   * cascadePeso sempre atualiza a série de origem, esteja completada ou não.
+   */
+  function ajustarCargaECascatear(delta: number) {
+    const next = Math.max(0, Math.round((modalCarga + delta) * 100) / 100);
+    setModalCarga(next);
+    setModalCargaStr(String(next));
+    if (modalEx && modalSerie) {
+      handlePesoChange(modalEx.id, modalSerie.ordem, next, String(next));
     }
   }
 
@@ -1833,14 +2098,18 @@ export default function ExecucaoTreinoPage() {
       style={{ background: 'var(--surface-0)' }}
     >
 
-      {/* ── Header sticky (mobile + treino em andamento) ── */}
+      {/* ── Header sticky (mobile + treino em andamento) ──
+          Fundo sólido (sem blur/transparência) + padding pra área segura do
+          celular — sem isso, o topo da tela (atrás do relógio/bateria) ficava
+          sem a cor do app, criando uma linha visível separando o app do
+          sistema. Com fundo sólido esticando até ali, fica contínuo. */}
       <header
         className={cn(
-          'sticky top-0 z-40 backdrop-blur-sm',
+          'sticky top-0 z-40 pt-safe',
           !treinoIniciado && 'lg:hidden'
         )}
         style={{
-          background: 'color-mix(in srgb, var(--surface-0) 95%, transparent)',
+          background: 'var(--surface-0)',
           borderBottom: '1px solid var(--border-divider)',
         }}
       >
@@ -1874,18 +2143,6 @@ export default function ExecucaoTreinoPage() {
 
           {treinoIniciado && (
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowConfirmAbandon(true)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 active:opacity-70"
-                style={{
-                  background: 'transparent',
-                  color: 'var(--brand-primary)',
-                }}
-                title="Descartar treino"
-                aria-label="Descartar treino"
-              >
-                <Trash size={18} weight="bold" />
-              </button>
               <div className="text-right">
                 <p
                   className="font-sans tabular-nums lining-nums text-sm font-bold leading-none"
@@ -1900,7 +2157,19 @@ export default function ExecucaoTreinoPage() {
                 disabled={saving}
                 className="h-8 px-3 bg-brand text-text-on-brand rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
               >
-                {saving ? '...' : 'Finish'}
+                {saving ? '...' : 'Finalizar'}
+              </button>
+              <button
+                onClick={() => setShowConfirmAbandon(true)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 active:opacity-70"
+                style={{
+                  background: 'transparent',
+                  color: 'var(--brand-primary)',
+                }}
+                title="Descartar treino"
+                aria-label="Descartar treino"
+              >
+                <Trash size={18} weight="bold" />
               </button>
             </div>
           )}
@@ -2288,6 +2557,24 @@ export default function ExecucaoTreinoPage() {
             >
               <X size={20} />
             </button>
+            {modalEx.imagem_url || modalEx.gif_url ? (
+              <button
+                type="button"
+                onClick={() => modalEx.gif_url && setDemoImg(modalEx.gif_url)}
+                className="shrink-0 rounded-lg overflow-hidden active:opacity-80 transition-opacity"
+                style={{ width: 40, height: 40, background: 'var(--surface-1)' }}
+                aria-label={`Ver demonstração de ${modalEx.nome}`}
+              >
+                <img
+                  src={modalEx.imagem_url || modalEx.gif_url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </button>
+            ) : null}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
                 <h2 className="text-base font-bold leading-tight truncate min-w-0" style={{ color: 'var(--text-primary)' }}>
@@ -2420,103 +2707,260 @@ export default function ExecucaoTreinoPage() {
               </div>
             )}
 
-            {modalShowPeso && (
+            {!modalSerieEhTempo && (
               <>
-                {/* Display de carga (placar) */}
-                <div className="flex flex-col items-center gap-1 py-3 px-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
-                    Carga
-                    {isPerSideLoadEquipment(modalEx.equipamento, modalEx.nome) ? (
-                      <span className="normal-case tracking-normal font-medium text-text-tertiary"> · por lado</span>
-                    ) : null}
-                  </p>
+                {/* Display de carga + reps (placar) — lado a lado quando o exercício
+                    usa peso; só REPS, no tamanho original, quando não usa. */}
+                <div className={cn('flex items-start justify-center py-3 px-4', modalShowPeso ? 'gap-4' : '')}>
+                  {modalShowPeso && (
+                    <div className="flex flex-col items-center gap-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
+                        Carga
+                        {isPerSideLoadEquipment(modalEx.equipamento, modalEx.nome) ? (
+                          <span className="normal-case tracking-normal font-medium text-text-tertiary"> · lado</span>
+                        ) : null}
+                      </p>
 
-                  <div className="flex items-center gap-5">
-                    <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        ajustarCarga(-2.5);
-                      }}
-                      className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
-                      aria-label="Diminuir carga"
-                    >
-                      <Minus size={20} weight="bold" />
-                    </button>
-
-                    <div className="min-w-[100px] text-center">
-                      <div className="relative">
-                        <span
-                          className="block text-5xl font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none"
-                          aria-hidden
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            ajustarCargaECascatear(-2.5);
+                          }}
+                          className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0"
+                          aria-label="Diminuir carga"
                         >
-                          {modalCargaStr === '' ? '—' : modalCargaStr}
-                        </span>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={modalCargaStr}
-                          onChange={(e) => {
-                            const raw = e.target.value.replace(',', '.');
-                            if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
-                              setModalCargaStr(raw);
-                              const num = parseFloat(raw);
-                              setModalCarga(isNaN(num) ? 0 : num);
-                            }
+                          <Minus size={18} weight="bold" />
+                        </button>
+
+                        <div className="min-w-[76px] text-center">
+                          <div className="relative">
+                            <span
+                              className="block text-4xl font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none"
+                              aria-hidden
+                            >
+                              {modalCargaStr === '' ? '—' : modalCargaStr}
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={modalCargaStr}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(',', '.');
+                                if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                                  setModalCargaStr(raw);
+                                  const num = parseFloat(raw);
+                                  setModalCarga(isNaN(num) ? 0 : num);
+                                  if (modalEx && modalSerie) {
+                                    handlePesoChange(modalEx.id, modalSerie.ordem, isNaN(num) ? 0 : num, raw);
+                                  }
+                                }
+                              }}
+                              onFocus={(e) => {
+                                e.currentTarget.select();
+                              }}
+                              onBlur={() => {
+                                if (modalCargaStr !== '' && !isNaN(parseFloat(modalCargaStr))) {
+                                  const normalized = String(Math.max(0, Math.round(parseFloat(modalCargaStr) * 100) / 100));
+                                  setModalCargaStr(normalized);
+                                  setModalCarga(parseFloat(normalized));
+                                  if (modalEx && modalSerie) {
+                                    handlePesoChange(modalEx.id, modalSerie.ordem, parseFloat(normalized), normalized);
+                                  }
+                                }
+                              }}
+                              className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
+                              style={{ fontSize: '16px' }}
+                              aria-label="Editar carga em kg"
+                            />
+                          </div>
+                          <span className="block text-sm font-bold text-brand mt-0.5">kg</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            ajustarCargaECascatear(2.5);
                           }}
-                          onFocus={(e) => {
-                            e.currentTarget.select();
-                          }}
-                          onBlur={() => {
-                            if (modalCargaStr !== '' && !isNaN(parseFloat(modalCargaStr))) {
-                              const normalized = String(Math.max(0, Math.round(parseFloat(modalCargaStr) * 100) / 100));
-                              setModalCargaStr(normalized);
-                              setModalCarga(parseFloat(normalized));
-                            }
-                          }}
-                          className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
-                          style={{ fontSize: '16px' }}
-                          aria-label="Editar carga em kg"
-                        />
+                          className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0"
+                          aria-label="Aumentar carga"
+                        >
+                          <Plus size={18} weight="bold" />
+                        </button>
                       </div>
-                      <span className="block text-base font-bold text-brand mt-0.5">kg</span>
+
+                      {/* Ajuste rápido de carga */}
+                      <div className="flex gap-2 justify-center mt-1">
+                        {[
+                          { delta: -5, label: '−5' },
+                          { delta: 5, label: '+5' },
+                        ].map(({ delta, label }) => (
+                          <button
+                            key={delta}
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              ajustarCargaECascatear(delta);
+                            }}
+                            className="min-w-[52px] h-9 rounded-[10px] bg-surface-2 text-xs font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
+                            aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} kg`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+                  )}
 
-                    <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        ajustarCarga(2.5);
-                      }}
-                      className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation"
-                      aria-label="Aumentar carga"
-                    >
-                      <Plus size={20} weight="bold" />
-                    </button>
+                  <div className="flex flex-col items-center gap-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-disabled">
+                      {modalSerie && isClusterSetSerie(modalSerie) ? 'Reps por bloco' : 'Reps'}
+                    </p>
+
+                    {modalSerie && isClusterSetSerie(modalSerie) ? (
+                      // Cluster Set: um campo numérico por bloco (ex.: 4×4×4×4) — o aluno só
+                      // digita número, sem "×", então não dá pra usar um campo único aqui.
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 mt-1">
+                        {modalClusterBlocosStr.map((val, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            {i > 0 && <span className="text-lg font-black text-brand" aria-hidden>×</span>}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={val}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '' || /^\d*$/.test(raw)) {
+                                  setModalClusterBlocosStr((prev) => prev.map((v, j) => (j === i ? raw : v)));
+                                }
+                              }}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onBlur={() => {
+                                setModalClusterBlocosStr((prev) =>
+                                  prev.map((v, j) =>
+                                    j === i ? String(Math.max(0, Math.round(parseInt(v, 10) || 0))) : v,
+                                  ),
+                                );
+                              }}
+                              className="w-11 h-11 rounded-xl bg-surface-2 text-center text-lg font-black text-text-primary tabular-nums lining-nums focus:outline-none focus:ring-2 focus:ring-brand/50"
+                              style={{ fontSize: 16 }}
+                              aria-label={`Reps do bloco ${i + 1} de ${modalClusterBlocosStr.length}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : modalSerie && isFreeTextReps(modalSerie) ? (
+                      // Reps em texto livre ("12 a 15") — não dá pra usar stepper numérico
+                      // nem <input type="number"> (trunca/rejeita), então é texto livre editável.
+                      <input
+                        type="text"
+                        value={modalRepsStr}
+                        onChange={(e) => setModalRepsStr(e.target.value)}
+                        placeholder={String(modalSerie.reps)}
+                        className="mt-1 w-full max-w-[220px] h-12 rounded-xl bg-surface-2 text-center text-2xl font-black text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/50"
+                        style={{ fontSize: 20 }}
+                        aria-label="Editar repetições prescritas em intervalo"
+                      />
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              ajustarReps(-1);
+                            }}
+                            className={cn(
+                              'rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0',
+                              modalShowPeso ? 'w-10 h-10' : 'w-12 h-12',
+                            )}
+                            aria-label="Diminuir reps"
+                          >
+                            <Minus size={modalShowPeso ? 18 : 20} weight="bold" />
+                          </button>
+
+                          <div className={cn('text-center', modalShowPeso ? 'min-w-[76px]' : 'min-w-[100px]')}>
+                            <div className="relative">
+                              <span
+                                className={cn(
+                                  'block font-black tabular-nums lining-nums tracking-tight text-text-primary leading-none font-sans pointer-events-none',
+                                  modalShowPeso ? 'text-4xl' : 'text-5xl',
+                                )}
+                                aria-hidden
+                              >
+                                {modalRepsStr === '' ? '—' : modalRepsStr}
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={modalRepsStr}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  if (raw === '' || /^\d*$/.test(raw)) {
+                                    setModalRepsStr(raw);
+                                    const num = parseInt(raw, 10);
+                                    setModalReps(isNaN(num) ? 0 : num);
+                                  }
+                                }}
+                                onFocus={(e) => {
+                                  e.currentTarget.select();
+                                }}
+                                onBlur={() => {
+                                  if (modalRepsStr !== '' && !isNaN(parseInt(modalRepsStr, 10))) {
+                                    const normalized = String(Math.max(0, Math.round(parseInt(modalRepsStr, 10))));
+                                    setModalRepsStr(normalized);
+                                    setModalReps(parseInt(normalized, 10));
+                                  }
+                                }}
+                                className="absolute inset-0 w-full h-full cursor-text bg-transparent border-0 p-0 m-0 text-center opacity-0"
+                                style={{ fontSize: '16px' }}
+                                aria-label="Editar repetições"
+                              />
+                            </div>
+                            <span className={cn('block font-bold text-brand mt-0.5', modalShowPeso ? 'text-sm' : 'text-base')}>reps</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              ajustarReps(1);
+                            }}
+                            className={cn(
+                              'rounded-full bg-surface-2 flex items-center justify-center text-text-secondary active:scale-95 active:bg-surface-3 transition-transform touch-manipulation shrink-0',
+                              modalShowPeso ? 'w-10 h-10' : 'w-12 h-12',
+                            )}
+                            aria-label="Aumentar reps"
+                          >
+                            <Plus size={modalShowPeso ? 18 : 20} weight="bold" />
+                          </button>
+                        </div>
+
+                        {/* Ajuste rápido de reps */}
+                        <div className="flex gap-2 justify-center mt-1">
+                          {[
+                            { delta: -2, label: '−2' },
+                            { delta: 2, label: '+2' },
+                          ].map(({ delta, label }) => (
+                            <button
+                              key={delta}
+                              type="button"
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                ajustarReps(delta);
+                              }}
+                              className="min-w-[52px] h-9 rounded-[10px] bg-surface-2 text-xs font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
+                              aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} reps`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
-                </div>
-
-                {/* Ajustes rápidos */}
-                <div className="flex gap-2 justify-center px-4">
-                  {[
-                    { delta: -5, label: '−5' },
-                    { delta: -2.5, label: '−2.5' },
-                    { delta: 2.5, label: '+2.5' },
-                    { delta: 5, label: '+5' },
-                  ].map(({ delta, label }) => (
-                    <button
-                      key={delta}
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        ajustarCarga(delta);
-                      }}
-                      className="min-w-[60px] h-11 rounded-[10px] bg-surface-2 text-sm font-semibold text-text-secondary tabular-nums lining-nums active:bg-surface-3 active:scale-95 transition-all touch-manipulation"
-                      aria-label={`${delta > 0 ? 'Adicionar' : 'Remover'} ${Math.abs(delta)} kg`}
-                    >
-                      {label}
-                    </button>
-                  ))}
                 </div>
               </>
             )}
@@ -2587,7 +3031,20 @@ export default function ExecucaoTreinoPage() {
                                 >
                                   <button
                                     type="button"
-                                    onClick={() => handleCheck(exId, s.ordem)}
+                                    onClick={() => {
+                                      const fase = label === 'A' ? 'a' : 'b';
+                                      if (s.completado) {
+                                        reposicionarModalPara(rodadaIdx, fase, s);
+                                        handleCheck(exId, s.ordem);
+                                      } else {
+                                        // Mesma lógica do botão "Concluir série/exercício".
+                                        concluirSerieEm(
+                                          { rodadaIdx, fase },
+                                          isAtualRow ? modalCarga : s.peso_atual,
+                                          repsParaConcluirDireto(s, isAtualRow),
+                                        );
+                                      }
+                                    }}
                                     className="w-5 h-5 flex items-center justify-center shrink-0 text-[9px] font-bold border-0 bg-transparent"
                                     style={{ color: s.completado ? '#39c75a' : 'var(--text-secondary)' }}
                                     aria-label={
@@ -2629,6 +3086,7 @@ export default function ExecucaoTreinoPage() {
                                         const raw = e.target.value;
                                         handlePesoChange(exId, s.ordem, parsePesoInput(raw), raw);
                                       }}
+                                      onFocus={(e) => e.currentTarget.select()}
                                       placeholder="—"
                                       aria-label={`Editar peso — ${nome}, rodada ${rodadaIdx + 1}`}
                                       className="w-14 h-7 bg-transparent px-1 text-right text-xs font-medium font-sans tabular-nums lining-nums focus:outline-none border-b border-brand/30"
@@ -2658,14 +3116,99 @@ export default function ExecucaoTreinoPage() {
                                             'placeholder:text-text-disabled',
                                           )}
                                           style={{
-                                            color: s.completado ? '#39c75a' : 'var(--text-primary)',
+                                            color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)',
                                             borderBottom: '1.5px solid transparent',
                                           }}
                                           onFocus={(e) => {
                                             e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                            e.currentTarget.select();
                                           }}
                                           onBlur={(e) => {
                                             e.currentTarget.style.borderBottomColor = 'transparent';
+                                          }}
+                                        />
+                                      );
+                                    }
+                                    if (isClusterSetSerie(s)) {
+                                      // Cluster Set em foco: um campo por bloco (senão "4×4×4×4" virava só "4").
+                                      // Fora de foco continua só leitura do que já foi salvo/prescrito.
+                                      if (!isAtualRow) {
+                                        return (
+                                          <span
+                                            className="min-w-9 w-auto shrink-0 text-center text-xs font-medium tabular-nums lining-nums font-sans"
+                                            style={{ color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)' }}
+                                          >
+                                            {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <div className="flex shrink-0 items-center gap-0.5">
+                                          {modalClusterBlocosStr.map((val, i) => (
+                                            <input
+                                              key={i}
+                                              type="text"
+                                              inputMode="numeric"
+                                              value={val}
+                                              onChange={(e) => {
+                                                const raw = e.target.value;
+                                                if (raw === '' || /^\d*$/.test(raw)) {
+                                                  setModalClusterBlocosStr((prev) => prev.map((v, j) => (j === i ? raw : v)));
+                                                }
+                                              }}
+                                              onFocus={(e) => e.currentTarget.select()}
+                                              onBlur={() => {
+                                                setModalClusterBlocosStr((prev) => {
+                                                  const next = prev.map((v, j) =>
+                                                    j === i ? String(Math.max(0, Math.round(parseInt(v, 10) || 0))) : v,
+                                                  );
+                                                  handleRepsChange(exId, s.ordem, joinClusterBlocosStr(next));
+                                                  return next;
+                                                });
+                                              }}
+                                              aria-label={`Reps do bloco ${i + 1} — ${nome}, rodada ${rodadaIdx + 1}`}
+                                              className="w-5 h-5 shrink-0 rounded bg-surface-2 text-center text-[9px] font-bold text-text-primary tabular-nums lining-nums focus:outline-none"
+                                            />
+                                          ))}
+                                        </div>
+                                      );
+                                    }
+                                    if (isFreeTextReps(s)) {
+                                      // Reps em texto livre ("12 a 15") — nunca <input type="number">
+                                      // (rejeita/trunca). Fora de foco só leitura; em foco, texto livre.
+                                      if (!isAtualRow) {
+                                        return (
+                                          <span
+                                            className="min-w-9 w-auto shrink-0 text-center text-xs font-medium tabular-nums lining-nums font-sans"
+                                            style={{ color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)' }}
+                                          >
+                                            {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <input
+                                          type="text"
+                                          value={modalRepsStr}
+                                          placeholder={String(s.reps)}
+                                          onChange={(e) => setModalRepsStr(e.target.value)}
+                                          onBlur={(e) => {
+                                            e.currentTarget.style.borderBottomColor = 'transparent';
+                                            handleRepsChange(exId, s.ordem, e.target.value);
+                                          }}
+                                          aria-label={`Reps — ${nome}, rodada ${rodadaIdx + 1}. Prescrito: ${s.reps}`}
+                                          className={cn(
+                                            'min-w-9 w-auto shrink-0 bg-transparent text-center text-xs font-medium',
+                                            'tabular-nums lining-nums font-sans focus:outline-none',
+                                            'placeholder:text-text-disabled',
+                                          )}
+                                          style={{
+                                            color: serieTextColor(s.completado, s.reps_manual ?? false),
+                                            borderBottom: '1.5px solid transparent',
+                                          }}
+                                          onFocus={(e) => {
+                                            e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                            e.currentTarget.select();
                                           }}
                                         />
                                       );
@@ -2675,18 +3218,21 @@ export default function ExecucaoTreinoPage() {
                                         type="number"
                                         inputMode="numeric"
                                         value={
-                                          s.reps_executadas !== undefined && s.reps_executadas !== ''
-                                            ? s.reps_executadas
-                                            : ''
+                                          isAtualRow
+                                            ? modalRepsStr
+                                            : s.reps_executadas !== undefined && s.reps_executadas !== ''
+                                              ? s.reps_executadas
+                                              : ''
                                         }
                                         placeholder={String(s.reps)}
                                         onChange={(e) => {
                                           const raw = e.target.value;
-                                          handleRepsChange(
-                                            exId,
-                                            s.ordem,
-                                            raw === '' ? '' : parseFloat(raw) || 0,
-                                          );
+                                          const val = raw === '' ? '' : parseFloat(raw) || 0;
+                                          if (isAtualRow) {
+                                            setModalReps(typeof val === 'number' ? val : 0);
+                                            setModalRepsStr(raw);
+                                          }
+                                          handleRepsChange(exId, s.ordem, val);
                                         }}
                                         aria-label={`Reps — ${nome}, rodada ${rodadaIdx + 1}. Prescrito: ${s.reps}`}
                                         className={cn(
@@ -2700,6 +3246,7 @@ export default function ExecucaoTreinoPage() {
                                         }}
                                         onFocus={(e) => {
                                           e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                          e.currentTarget.select();
                                         }}
                                         onBlur={(e) => {
                                           e.currentTarget.style.borderBottomColor = 'transparent';
@@ -2732,6 +3279,7 @@ export default function ExecucaoTreinoPage() {
                         <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled text-center">REPS</span>
                         <span aria-hidden className="min-w-0" />
                         <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-text-disabled text-left">TÉC</span>
+                        <span aria-hidden />
                       </div>
                       {modalEx.series.map((s, idx) => {
                         const isAtual = idx === modalRodadaIdx;
@@ -2755,31 +3303,14 @@ export default function ExecucaoTreinoPage() {
                                   : 'transparent',
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => handleCheck(modalEx.id, s.ordem)}
-                              className="w-6 h-6 flex items-center justify-center text-[10px] font-bold mx-auto font-sans tabular-nums border-0 bg-transparent"
+                            <span
+                              className="w-6 h-6 flex items-center justify-center text-[10px] font-bold mx-auto font-sans tabular-nums"
                               style={{
-                                color: s.completado
-                                  ? '#39c75a'
-                                  : s.tecnica
-                                    ? 'var(--brand-primary)'
-                                    : isAtual
-                                      ? 'var(--brand-primary)'
-                                      : 'var(--text-tertiary)',
+                                color: s.tecnica || isAtual ? 'var(--brand-primary)' : 'var(--text-tertiary)',
                               }}
-                              aria-label={
-                                s.completado
-                                  ? `Série ${idx + 1} concluída — toque para desmarcar`
-                                  : `Série ${idx + 1}`
-                              }
                             >
-                              {s.completado ? (
-                                <Check size={14} weight="bold" />
-                              ) : (
-                                t1 || idx + 1
-                              )}
-                            </button>
+                              {t1 || idx + 1}
+                            </span>
 
                             <span
                               className="text-xs text-text-disabled tabular-nums lining-nums font-sans truncate"
@@ -2803,6 +3334,7 @@ export default function ExecucaoTreinoPage() {
                                     }
                                     handlePesoChange(modalEx.id, s.ordem, val, raw);
                                   }}
+                                  onFocus={(e) => e.currentTarget.select()}
                                   placeholder="—"
                                   aria-label={`Editar peso da série ${idx + 1}`}
                                   className="w-full max-w-10 bg-transparent text-center tabular-nums lining-nums font-sans focus:outline-none leading-none appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -2848,6 +3380,7 @@ export default function ExecucaoTreinoPage() {
                                       const digits = digitsFromTempoInput(e.target.value);
                                       handleTempoChange(modalEx.id, s.ordem, digitsToSeconds(digits), digits);
                                     }}
+                                    onFocus={(e) => e.currentTarget.select()}
                                     aria-label={`Tempo da série ${idx + 1}. Prescrito: ${s.reps}`}
                                     className={cn(
                                       'w-full mx-auto bg-transparent text-center',
@@ -2858,7 +3391,96 @@ export default function ExecucaoTreinoPage() {
                                       fontSize: 11,
                                       fontWeight: 500,
                                       fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
-                                      color: s.completado ? '#39c75a' : 'var(--text-primary)',
+                                      color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                      height: 22,
+                                    }}
+                                  />
+                                );
+                              }
+                              if (isClusterSetSerie(s)) {
+                                // Cluster Set em foco: um campo por bloco (senão "4×4×4×4" virava só "4").
+                                // Fora de foco continua só leitura do que já foi salvo/prescrito.
+                                if (!isAtual) {
+                                  return (
+                                    <span
+                                      className="w-full mx-auto block text-center tabular-nums lining-nums font-sans"
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                      }}
+                                    >
+                                      {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <div className="flex items-center justify-center gap-0.5">
+                                    {modalClusterBlocosStr.map((val, i) => (
+                                      <input
+                                        key={i}
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={val}
+                                        onChange={(e) => {
+                                          const raw = e.target.value;
+                                          if (raw === '' || /^\d*$/.test(raw)) {
+                                            setModalClusterBlocosStr((prev) => prev.map((v, j) => (j === i ? raw : v)));
+                                          }
+                                        }}
+                                        onFocus={(e) => e.currentTarget.select()}
+                                        onBlur={() => {
+                                          setModalClusterBlocosStr((prev) => {
+                                            const next = prev.map((v, j) =>
+                                              j === i ? String(Math.max(0, Math.round(parseInt(v, 10) || 0))) : v,
+                                            );
+                                            handleRepsChange(modalEx.id, s.ordem, joinClusterBlocosStr(next));
+                                            return next;
+                                          });
+                                        }}
+                                        aria-label={`Reps do bloco ${i + 1} da série ${idx + 1}`}
+                                        className="w-5 h-5 shrink-0 rounded bg-surface-2 text-center text-[9px] font-bold text-text-primary tabular-nums lining-nums focus:outline-none"
+                                      />
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              if (isFreeTextReps(s)) {
+                                // Reps em texto livre ("12 a 15") — nunca <input type="number">
+                                // (rejeita/trunca). Fora de foco só leitura; em foco, texto livre.
+                                if (!isAtual) {
+                                  return (
+                                    <span
+                                      className="w-full mx-auto block text-center tabular-nums lining-nums font-sans"
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        color: s.completado ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                      }}
+                                    >
+                                      {s.reps_executadas !== undefined && s.reps_executadas !== '' ? s.reps_executadas : s.reps}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <input
+                                    type="text"
+                                    value={modalRepsStr}
+                                    placeholder={String(s.reps)}
+                                    onChange={(e) => setModalRepsStr(e.target.value)}
+                                    onBlur={(e) => handleRepsChange(modalEx.id, s.ordem, e.target.value)}
+                                    onFocus={(e) => e.currentTarget.select()}
+                                    aria-label={`Reps da série ${idx + 1}. Prescrito: ${s.reps}`}
+                                    className={cn(
+                                      'w-full mx-auto bg-transparent text-center',
+                                      'tabular-nums lining-nums font-sans focus:outline-none',
+                                      'placeholder:text-text-disabled',
+                                    )}
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 500,
+                                      fontFamily: 'var(--font-sans), "DM Sans", system-ui, sans-serif',
+                                      color: serieTextColor(s.completado, s.reps_manual ?? false),
                                       height: 22,
                                     }}
                                   />
@@ -2869,19 +3491,23 @@ export default function ExecucaoTreinoPage() {
                                   type="number"
                                   inputMode="numeric"
                                   value={
-                                    s.reps_executadas !== undefined && s.reps_executadas !== ''
-                                      ? s.reps_executadas
-                                      : ''
+                                    isAtual
+                                      ? modalRepsStr
+                                      : s.reps_executadas !== undefined && s.reps_executadas !== ''
+                                        ? s.reps_executadas
+                                        : ''
                                   }
                                   placeholder={String(s.reps)}
                                   onChange={(e) => {
                                     const raw = e.target.value;
-                                    handleRepsChange(
-                                      modalEx.id,
-                                      s.ordem,
-                                      raw === '' ? '' : parseFloat(raw) || 0,
-                                    );
+                                    const val = raw === '' ? '' : parseFloat(raw) || 0;
+                                    if (isAtual) {
+                                      setModalReps(typeof val === 'number' ? val : 0);
+                                      setModalRepsStr(raw);
+                                    }
+                                    handleRepsChange(modalEx.id, s.ordem, val);
                                   }}
+                                  onFocus={(e) => e.currentTarget.select()}
                                   aria-label={`Reps da série ${idx + 1}. Prescrito: ${s.reps}`}
                                   className={cn(
                                     'w-full mx-auto bg-transparent text-center',
@@ -2910,6 +3536,37 @@ export default function ExecucaoTreinoPage() {
                                 <span className="text-[9px] text-text-disabled">—</span>
                               )}
                             </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (s.completado) {
+                                  reposicionarModalPara(idx, modalIsBiSet ? bisetFase as 'a' | 'b' : null, s);
+                                  handleCheck(modalEx.id, s.ordem);
+                                } else {
+                                  // Mesma lógica do botão "Concluir série/exercício" — o checkbox
+                                  // não é só um indicador, ele conclui igualzinho.
+                                  concluirSerieEm(
+                                    { rodadaIdx: idx, fase: null },
+                                    isAtual ? modalCarga : s.peso_atual,
+                                    repsParaConcluirDireto(s, isAtual),
+                                  );
+                                }
+                              }}
+                              className="w-[22px] h-[22px] rounded-[4px] flex items-center justify-center mx-auto transition-all active:scale-90"
+                              style={{
+                                ...(s.completado
+                                  ? { background: '#39c75a', border: '1.5px solid #39c75a', color: '#fff' }
+                                  : { background: 'transparent', border: '1.5px solid var(--border-default)', color: 'var(--text-tertiary)' }),
+                              }}
+                              aria-label={
+                                s.completado
+                                  ? `Série ${idx + 1} concluída — toque para desmarcar`
+                                  : `Concluir série ${idx + 1}`
+                              }
+                            >
+                              {s.completado && <Check size={12} weight="bold" />}
+                            </button>
                           </div>
                         );
                       })}
@@ -2919,26 +3576,16 @@ export default function ExecucaoTreinoPage() {
               )}
             </div>
 
-            {/* Preview de vídeo / gif — abaixo do histórico */}
+            {/* Preview de vídeo de execução — abaixo do histórico. O GIF fica só
+                na miniatura ao lado do nome, no header (não em destaque aqui).
+                Sem vídeo cadastrado, mantém o espaço reservado (sem "pulo" de layout). */}
             {modalEx.video_url ? (
               <div className="pb-2">
                 <VideoPlayerCard videoUrl={modalEx.video_url} exercicioNome={modalEx.nome} />
               </div>
-            ) : modalEx.gif_url ? (
-              <button
-                type="button"
-                onClick={() => setDemoImg(modalEx.gif_url!)}
-                className="mx-4 mt-4 mb-2 w-[calc(100%-2rem)] overflow-hidden rounded-[14px] bg-surface-1 active:opacity-90 transition-opacity touch-manipulation"
-                aria-label="Ver demonstração do exercício"
-              >
-                <img
-                  src={modalEx.gif_url}
-                  alt=""
-                  className="w-full h-[180px] object-cover"
-                  loading="lazy"
-                />
-              </button>
-            ) : null}
+            ) : (
+              <div className="mx-4 mt-4 mb-2 h-[180px]" aria-hidden />
+            )}
           </div>
 
           {/* Bottom bar */}

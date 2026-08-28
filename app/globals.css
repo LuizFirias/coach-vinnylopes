@@ -162,37 +162,16 @@ body {
   overscroll-behavior: none;
 }
 
+/* Fundo padrão Mobills (chapado, sem gradiente roxo) — antes só no mobile
+   via `body { background: var(--surface-0) }`, agora também no desktop. */
 @media (min-width: 1024px) {
   html[data-theme="light"] body,
   [data-theme="light"] body,
-  body.light {
-    background-color: #e8defc;
-    background-image:
-      radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(167, 139, 250, 0.58) 0%, transparent 65%),
-      radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(147, 51, 234, 0.40) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(216, 180, 254, 0.62) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.36) 0%, transparent 50%);
-    background-size: cover;
-    background-attachment: fixed;
-  }
-
+  body.light,
   html[data-theme="dark"] body,
   body.dark {
-    background-color: #080c14;
-    background-image:
-      radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(147, 51, 234, 0.12) 0%, transparent 65%),
-      radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(109, 40, 217, 0.10) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(167, 139, 250, 0.07) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.08) 0%, transparent 50%);
-    background-size: cover;
+    background-color: var(--surface-0);
+    background-image: none;
     background-attachment: fixed;
   }
 }
@@ -224,6 +203,23 @@ body {
 .hover\:border-card-hover:hover {
   border-color: transparent !important;
 }
+
+/* Cores de borda "curtas" (border-subtle, border-divider, border-input...) —
+   o tailwind.config.ts antigo registrava essas cores em colors.border.*, mas
+   o Tailwind v4 (CSS-first, via @theme acima) não lê mais esse arquivo JS sem
+   um @config explícito (não existe aqui). Resultado: essas classes nunca
+   geravam CSS nenhum — o border-color caía no padrão do navegador
+   (currentColor = a cor do texto), o que passava batido no tema escuro mas
+   ficava com contorno forte/preto no tema claro. Usadas em 60+ arquivos, então
+   em vez de reescrever tudo pra `border-border-subtle` (nome "correto" que o
+   Tailwind geraria a partir de --color-border-subtle), registramos aqui as
+   classes do jeito que o app inteiro já espera. */
+.border-subtle  { border-color: var(--border-subtle); }
+.border-default { border-color: var(--border-default); }
+.border-strong  { border-color: var(--border-strong); }
+.border-divider { border-color: var(--border-divider); }
+.border-input   { border-color: var(--border-input); }
+.border-accent  { border-color: var(--border-accent); }
 
 /* Explicit z-index utilities (Tailwind v4 default scale stops at z-50) */
 .z-60  { z-index: 60; }
@@ -757,7 +753,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Safe areas iOS */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
-.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.pt-safe,
+/* Alias — "pt-safe-top" era usada em algumas telas mas nunca tinha sido
+   definida (nunca gerava CSS nenhum), então o topo delas ficava sem
+   respeitar a área do relógio/bateria do celular. */
+.pt-safe-top { padding-top: env(safe-area-inset-top, 0px); }
 
 /* Bottom nav height — para calcular scroll padding */
 :root { --bottom-nav-height: 64px; }
@@ -889,6 +889,14 @@ html[data-theme="light"] .dashboard-aluno {
 .dashboard-text-muted { color: var(--dash-text-muted); }
 .dashboard-text-subtle { color: var(--dash-text-subtle); }
 .dashboard-progress-track { background-color: var(--dash-progress-track); }
+
+/* Texto sobre o card roxo fixo (hero / WorkoutCard) — NÃO usar --dash-text aqui:
+   esse token muda com o tema (fica quase preto no light) mas o fundo roxo do
+   hero é sempre o mesmo roxo nos dois temas, então o texto precisa ser sempre
+   branco/quase-branco, fixo, igual ao --dash-hero-icon. */
+.dashboard-hero-text { color: var(--dash-hero-icon, #FFFFFF); }
+.dashboard-hero-text-muted { color: rgba(255, 255, 255, 0.78); }
+.dashboard-hero-text-subtle { color: rgba(255, 255, 255, 0.58); }
 
 /* ── Mercado Pago Card Brick (assinatura) ──
    Herança HTML: classes internas do Brick mudam a cada build.
@@ -1249,7 +1257,7 @@ html.dark .coach-app-typography button[aria-haspopup="listbox"][aria-expanded="t
 
 /* Precisa da mesma cadeia de :not() do baseline — senão padding 14px ganha e o texto fica sob o ícone */
 .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-left-icon {
-  padding-left: 44px !important;
+  padding-left: 36px !important;
 }
 
 .coach-app-typography input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]).has-right-element {
@@ -1349,16 +1357,17 @@ html.dark .coach-app-typography textarea.field-token-input {
   cursor: pointer;
 }
 
-/* Campos de série (Reps / kg / tempo) — só caracteres, sem caixa preenchida */
+/* Campos de série (Reps / kg / tempo) — contorno leve + fundo normal
+   (padrão Hevy), pra ficar claro que o campo é editável. */
 .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
 ).serie-metric-input {
   min-height: 0 !important;
   height: 2rem !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+  padding: 0 4px !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 6px !important;
+  background: var(--surface-2) !important;
   box-shadow: none !important;
   outline: none !important;
   font-size: 14px !important;
@@ -1369,21 +1378,26 @@ html.dark .coach-app-typography textarea.field-token-input {
   appearance: none;
 }
 
+.coach-app-typography :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
+).serie-metric-input:focus {
+  border-color: var(--brand-primary) !important;
+}
+
 /* A baseline de tema (html[data-theme="light/dark"] .coach-app-typography …,
-   mais abaixo neste arquivo) força border:1px nos inputs — e por começar
-   com um seletor de elemento (html) a mais, empata em especificidade com a
-   regra acima e VENCE mesmo com a mesma quantidade de classes. Por isso o
-   campo continuava com contorno mesmo com "border: none !important" escrito
-   ali em cima. Repetir o mesmo prefixo aqui garante que esta regra sempre
-   vença, nos dois temas. */
+   mais abaixo neste arquivo) também mexe em border/background dos inputs —
+   e por começar com um seletor de elemento (html) a mais, empata em
+   especificidade com a regra acima e VENCE mesmo com a mesma quantidade de
+   classes. Repetir o mesmo prefixo aqui garante que esta regra sempre vença,
+   nos dois temas. */
 html[data-theme="light"] .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
 ).serie-metric-input,
 html[data-theme="dark"] .coach-app-typography :is(
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])
 ).serie-metric-input {
-  border: none !important;
-  background: transparent !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--surface-2) !important;
 }
 
 /* Underline (login / nova ficha): sem fundo — só linha inferior sutil */
@@ -1860,8 +1874,15 @@ html[data-theme="light"] .novo-aluno-form button[aria-haspopup="listbox"] {
   color-scheme: light;
 }
 
-.novo-aluno-form input.has-phone-prefix {
-  padding-left: 5.75rem !important;
+/* Rotina colapsada (nova-ficha, acordeão) — hover destaca qual vai abrir. */
+.rotina-colapsada-card {
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.16) 0%, rgba(117, 27, 180, 0.10) 100%);
+  transition: background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.rotina-colapsada-card:hover {
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.30) 0%, rgba(117, 27, 180, 0.24) 100%);
+  box-shadow: 0 6px 16px rgba(117, 27, 180, 0.28);
+  transform: translateY(-2px);
 }
 
 /* KPIs da lista: brilho interno sutil (neutro, sem tint) */
@@ -1891,59 +1912,18 @@ html.dark .coach-list-kpi-card {
 
 @media (min-width: 1024px) {
   html[data-theme="light"] .auron-sidebar {
-    /* Mesma receita do gradiente do body (background-attachment:fixed) —
-       evita depender de transparência real, igual ao ajuste do topbar. */
-    background-color: #e8defc !important;
-    background-image:
-      radial-gradient(ellipse 55% 50% at 100% 0%,
-        rgba(167, 139, 250, 0.58) 0%, transparent 65%),
-      radial-gradient(ellipse 65% 60% at 60% 65%,
-        rgba(147, 51, 234, 0.40) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 0% 15%,
-        rgba(216, 180, 254, 0.62) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 85% 85%,
-        rgba(124, 58, 237, 0.36) 0%, transparent 50%) !important;
-    background-size: cover !important;
-    background-attachment: fixed !important;
+    /* Roxo original chapado (--brand-primary), igual ao sidebar do dark —
+       sem gradiente, sem depender do fundo da página. */
+    background: var(--brand-primary) !important;
     border: 0 !important;
     border-right: none !important;
     box-shadow: none !important;
-    color: #5e6982;
+    color: #ffffff;
   }
 
-  html[data-theme="light"] .auron-sidebar .sidebar-logo-icon {
-    color: #5e6982 !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-group-label {
-    color: #5e6982 !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle {
-    color: #5e6982 !important;
-    background: transparent !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--active {
-    color: #343a46 !important;
-    background: #ffffff !important;
-    border-left: 0 !important;
-    border-radius: 4px !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-logout {
-    color: #5e6982 !important;
-  }
-
-  html[data-theme="light"] .auron-sidebar .sidebar-logout:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
+  /* Ícone/grupo/links/logout do sidebar: sem override de cor no light —
+     o fundo agora é o mesmo roxo sólido do dark, então usa o texto branco
+     das regras base (ver .auron-sidebar .sidebar-* mais abaixo). */
 
   html[data-theme="light"] .coach-app-typography .coach-chrome-header {
     /* Não fixo — rola junto com a página, igual ao Nutrium (só o sidebar fica parado). */
@@ -1961,12 +1941,11 @@ html.dark .coach-list-kpi-card {
     overflow: visible;
   }
 
-  /* Perfil do aluno — header sem título/ações (ver CoachAppChrome), a faixa
-     de 92px ficaria vazia. Só nessa rota, só desktop. */
+  /* Título da seção some no desktop (já está marcado no sidebar) — a faixa
+     de 92px do header some junto, subindo o conteúdo. Só a dashboard mantém
+     o header (saudação + avatar/notificações). */
   html[data-theme="light"] .coach-app-typography .coach-chrome-header.coach-chrome-header--compact {
-    height: 0 !important;
-    padding: 0 !important;
-    border-bottom: 0 !important;
+    display: none !important;
   }
 
   html[data-theme="light"] .coach-chrome-header .coach-page-title {
@@ -2024,7 +2003,10 @@ html.dark .coach-list-kpi-card {
     min-height: 100dvh;
     /* Corta o topbar (1º filho) na curva do canto — senão o quadrado dele cobre a borda. */
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.82);
+    /* Sólido, azul (padrão Mobills) — antes era um branco translúcido pra
+       deixar o gradiente roxo do body vazar; agora o body é roxo só no
+       sidebar/bordas, então o shell fica opaco e contrasta com ele. */
+    background: var(--surface-0);
     /* Sombra direcionada (baixo/direita) — evita o "borrão" escuro no canto
        superior-esquerdo arredondado, que agora fica exposto sobre o gradiente. */
     box-shadow: 6px 8px 24px -6px rgba(30, 28, 40, 0.14);
@@ -2049,6 +2031,17 @@ html.dark .coach-list-kpi-card {
     background: transparent;
     border: 0;
     backdrop-filter: none;
+  }
+
+  /* Título da seção some no desktop (dark) — mesmo tratamento do light:
+     header some e o shell ocupa a tela toda desde o topo. */
+  html[data-theme="dark"] .coach-app-typography .coach-chrome-header.coach-chrome-header--compact {
+    display: none !important;
+  }
+
+  html[data-theme="dark"] .coach-main-shell:has(.coach-chrome-header--compact) {
+    margin-top: 0;
+    min-height: 100dvh;
   }
 }
 
@@ -2112,33 +2105,6 @@ html.dark .coach-list-kpi-card {
 .auron-sidebar .sidebar-logout:hover {
   color: #ffffff !important;
   background: rgba(255, 255, 255, 0.12) !important;
-}
-
-@media (min-width: 1024px) {
-  html[data-theme="light"] .auron-sidebar .sidebar-group-label {
-    color: #5e6982 !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle {
-    color: #5e6982 !important;
-    background: transparent !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--idle:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-nav-link--active {
-    color: #343a46 !important;
-    background: #ffffff !important;
-    border-left-width: 0 !important;
-    border-radius: 4px !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-logout {
-    color: #5e6982 !important;
-  }
-  html[data-theme="light"] .auron-sidebar .sidebar-logout:hover {
-    color: #343a46 !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-  }
 }
 
 /* ── Perfil — tema claro: cards/inputs brancos · dark: surface navy ─ */

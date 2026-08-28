@@ -7,6 +7,7 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
 import { cn } from '@/lib/utils/cn';
 import { useUnreadFeedbacksCount } from '@/lib/feedbacks/useUnreadFeedbacksCount';
+import { useNaoLidasRealtime } from '@/lib/chat/realtime';
 import { AuronLinkIcon } from '@/app/components/ui/Auronlinkicon';
 import {
   CalendarBlank,
@@ -18,8 +19,6 @@ import {
   Trophy,
   User,
   SignOut,
-  List,
-  X,
   Users,
   SquaresFour,
   HeartStraight,
@@ -31,6 +30,7 @@ import {
   ChartBar,
   CaretLeft,
   CaretRight,
+  Power,
 } from '@phosphor-icons/react';
 
 type IconComponent = ComponentType<{
@@ -122,6 +122,7 @@ const coachItemConfig: Record<string, MenuItem> = {
   feedbacks: { id: 'feedbacks', name: 'Feedbacks', href: '/admin/feedbacks', icon: FeedbackIcon },
   'master-control': { id: 'master-control', name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
   'perfil-master': { id: 'perfil-master', name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
+  perfil: { id: 'perfil', name: 'Perfil', href: '/admin/perfil', icon: User },
 };
 
 /** Dashboard fica solto após a logo (sem título de seção). */
@@ -129,12 +130,14 @@ const coachMenuGroups: MenuGroup[] = [
   { label: 'Gestão', items: ['alunos', 'treinos', 'nutricao', 'agenda', 'biblioteca'] },
   { label: 'Acompanhamento', items: ['ranking', 'chat', 'feedbacks'] },
   { label: 'Negócio', items: ['financeiro', 'parceiros', 'convites'] },
-  { label: 'Sistema', items: ['master-control', 'perfil-master'] },
+  { label: 'Sistema', items: ['perfil', 'master-control', 'perfil-master'] },
 ];
 
 function resolveCoachGroups(isSuperAdmin: boolean): { label: string; items: MenuItem[] }[] {
+  // Super admin usa "Perfil Master" (/super-admin/perfil) em vez do "Perfil"
+  // genérico do coach — evita os dois aparecendo juntos.
   const hidden = isSuperAdmin
-    ? new Set<string>()
+    ? new Set<string>(['perfil'])
     : new Set(['convites', 'master-control', 'perfil-master']);
 
   return coachMenuGroups
@@ -153,6 +156,10 @@ export default function Sidebar() {
   const { userRole, loading, user } = useAuth();
   const pathname = usePathname();
   const { hasUnread: hasUnreadFeedbacks } = useUnreadFeedbacksCount();
+  // Só o coach usa isso (bolinha de "não lida" no ícone de Mensagens do
+  // drawer mobile) — pra aluno passa null, o hook não dispara nenhuma busca.
+  const isAlunoRole = userRole === 'aluno';
+  const chatNaoLidas = useNaoLidasRealtime(isAlunoRole ? null : user?.id ?? null, 'coach');
 
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -218,9 +225,6 @@ export default function Sidebar() {
   const isSuperAdmin = userRole === 'super_admin';
   const coachGroups = isAluno ? [] : resolveCoachGroups(isSuperAdmin);
   const coachDashboard = coachItemConfig.dashboard;
-  const flatMobileItems = isAluno
-    ? alunoMenuItems
-    : [coachDashboard, ...coachGroups.flatMap((g) => g.items)];
 
   const homeHref = isAluno ? '/aluno/dashboard' : '/admin/dashboard';
 
@@ -231,34 +235,44 @@ export default function Sidebar() {
     const isActive =
       pathname === m.href ||
       (m.href === '/admin/alunos' && Boolean(pathname?.startsWith('/admin/aluno/')));
-    const showBadge = m.id === 'feedbacks' && hasUnreadFeedbacks;
+    const showBadge =
+      (m.id === 'feedbacks' && hasUnreadFeedbacks) ||
+      (m.id === 'chat' && chatNaoLidas > 0);
 
     if (opts?.mobile) {
+      // Mesmo visual do link do sidebar desktop (ícone liso, sem "badge" em
+      // caixa, mesma fonte/cor/estado ativo) — só um pouco mais alto pro toque.
       return (
         <Link
           key={m.href}
           href={m.href}
-          className={`group flex items-center gap-3 rounded-lg px-3 py-3 text-[10px] uppercase tracking-widest transition-all ${
+          className={cn(
+            'group relative flex h-11 items-center gap-3 px-3 transition-all',
             isActive
-              ? 'bg-brand text-black shadow-lg shadow-brand/20'
-              : 'text-text-secondary hover:bg-brand/5 hover:text-brand'
-          }`}
+              ? 'rounded-l-none rounded-r-lg border-l-2 border-white bg-white/15 font-semibold text-white'
+              : 'rounded-lg text-white/85 hover:bg-white/10 hover:text-white',
+          )}
           onClick={opts.onNavigate}
         >
-          <div
-            className={`relative flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm transition-all ${
-              isActive ? 'border-brand/30 bg-brand/20' : 'border-card bg-surface-2'
-            }`}
-          >
-            <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
+          <span className="relative shrink-0">
+            <Icon size={20} weight={isActive ? 'fill' : 'regular'} />
             {showBadge && (
               <span
-                className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand ring-2 ring-surface-1"
+                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-white ring-1 ring-brand"
                 aria-hidden
               />
             )}
-          </div>
-          {m.name}
+          </span>
+          <span
+            className="flex-1 truncate font-semibold tracking-wide"
+            style={{
+              fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+              fontFeatureSettings: 'normal',
+              fontSize: '14px',
+            }}
+          >
+            {m.name}
+          </span>
         </Link>
       );
     }
@@ -433,31 +447,56 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      <button aria-label="Menu" onClick={() => setOpen(true)} className="hidden">
-        <List size={22} className="text-brand" />
-      </button>
+      {/* Gatilho do menu no mobile — só coach (aluno continua com a barra
+          inferior). Ícone liso, sem caixa/contorno (fica fixo em toda tela,
+          não pode competir visualmente com o conteúdo da página) — some
+          enquanto o drawer está aberto, já que dá pra fechar clicando fora
+          ou escolhendo uma seção. */}
+      {/* Mesmo estilo do "puxador de papel" (sidebar-collapse-tab) do desktop
+          — grudado na borda esquerda da tela, não um botão solto. */}
+      {!isAluno && !open && (
+        <button
+          type="button"
+          aria-label="Abrir menu"
+          onClick={() => setOpen(true)}
+          className="fixed left-0 z-50 flex w-4 items-center justify-center border-0 bg-brand text-white lg:hidden"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)',
+            height: 48,
+            borderRadius: '0 8px 8px 0',
+            boxShadow: '4px 2px 12px rgba(0,0,0,0.28)',
+          }}
+        >
+          <CaretRight size={13} weight="bold" />
+        </button>
+      )}
 
+      {/* Fundo sólido ao abrir — sem desfoque, a tela por trás fica nítida. */}
       <div
-        className={`fixed inset-0 z-40 transition-all duration-500 ${open ? 'pointer-events-auto opacity-100 backdrop-blur-md' : 'pointer-events-none opacity-0'}`}
+        className={cn(
+          'fixed inset-0 z-40 bg-black/70 transition-opacity duration-300 lg:hidden',
+          open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+        )}
         aria-hidden={!open}
         onClick={() => setOpen(false)}
-      >
-        <div className="absolute inset-0 bg-black/80" />
-      </div>
+      />
 
+      {/* Drawer — mesmo visual do sidebar desktop (cor, fonte, ícones,
+          grupos com título) só que como painel deslizante. */}
       <aside
-        className={`fixed left-0 top-0 z-50 h-full w-[75%] max-w-[280px] transform border-r border-border-subtle bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] transition-transform duration-500 ease-out lg:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        className={cn(
+          'auron-sidebar fixed left-0 top-0 z-50 flex h-full w-[55%] max-w-[196px] flex-col border-0 shadow-[20px_0_60px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out lg:hidden',
+          open ? 'translate-x-0' : '-translate-x-full',
+        )}
       >
-        <div className="flex items-center justify-between gap-3 p-6 pb-4">
-          <Link
-            href={homeHref}
-            className="flex min-w-0 items-center gap-2"
-            onClick={() => setOpen(false)}
-          >
-            <AuronLinkIcon size={22} className="shrink-0 text-brand" />
+        <div
+          className="flex shrink-0 items-center px-4 pb-4"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}
+        >
+          <Link href={homeHref} className="flex min-w-0 items-center" onClick={() => setOpen(false)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/logo-auron-nome-roxo.svg"
+              src="/images/logo-auron-nome.svg"
               alt="Auron"
               width={148}
               height={24}
@@ -465,33 +504,50 @@ export default function Sidebar() {
               draggable={false}
             />
           </Link>
-          <button
-            onClick={() => setOpen(false)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-1 text-text-secondary transition-all hover:text-brand"
-            aria-label="Fechar"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        <nav className="mb-6 mt-3 flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto px-4">
-          {flatMobileItems.map((m) =>
-            renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }),
+        <nav
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+        >
+          {isAluno ? (
+            alunoMenuItems.map((m) => renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }))
+          ) : (
+            <>
+              {renderNavLink(coachDashboard, { mobile: true, onNavigate: () => setOpen(false) })}
+              {coachGroups.map((group) => (
+                <div key={group.label} className="mt-3 flex flex-col gap-1">
+                  <div className="sidebar-group-label mb-0.5 truncate px-3 text-[9px] font-medium uppercase tracking-[1.4px]">
+                    {group.label}
+                  </div>
+                  {group.items.map((m) => renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }))}
+                </div>
+              ))}
+              {/* Sair — logo abaixo de Perfil, mesmo visual dos outros itens
+                  (sem botão grande/linha separada). */}
+              <button
+                type="button"
+                onClick={async () => {
+                  await supabaseClient.auth.signOut();
+                  window.location.href = '/login';
+                }}
+                className="group flex h-11 items-center gap-3 rounded-lg px-3 text-white/85 transition-all hover:bg-white/10 hover:text-white"
+              >
+                <Power size={20} />
+                <span
+                  className="flex-1 truncate text-left font-semibold tracking-wide"
+                  style={{
+                    fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+                    fontFeatureSettings: 'normal',
+                    fontSize: '14px',
+                  }}
+                >
+                  Sair
+                </span>
+              </button>
+            </>
           )}
         </nav>
-
-        <div className="absolute bottom-8 left-0 right-0 px-5">
-          <button
-            onClick={async () => {
-              await supabaseClient.auth.signOut();
-              window.location.href = '/login';
-            }}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-danger text-[9px] uppercase tracking-widest text-white shadow-lg shadow-danger/20 transition-all hover:bg-danger/80 active:scale-95"
-          >
-            <SignOut size={16} />
-            Sair
-          </button>
-        </div>
       </aside>
     </>
   );

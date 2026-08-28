@@ -1,20 +1,38 @@
-import type { MeasurementPeriod, MedicaoRecord, MeasurementMetricId } from '@/lib/measurements/types';
+import type { MeasurementCustomRange, MeasurementPeriod, MedicaoRecord, MeasurementMetricId } from '@/lib/measurements/types';
 import { MEASUREMENT_METRICS } from '@/lib/measurements/types';
 
-const PERIOD_DAYS: Record<MeasurementPeriod, number> = {
-  '7d': 7,
+const PERIOD_DAYS: Record<Exclude<MeasurementPeriod, 'custom'>, number> = {
   '30d': 30,
   '90d': 90,
   '1a': 365,
 };
 
+/** [inicioMs, fimMs] pro período — "custom" usa o range escolhido (dia inteiro,
+ *  início 00:00 até fim 23:59); os outros são "hoje menos N dias" até agora. */
+function resolvePeriodRangeMs(
+  period: MeasurementPeriod,
+  customRange?: MeasurementCustomRange | null,
+): [number, number] {
+  const now = Date.now();
+  if (period === 'custom' && customRange?.start && customRange?.end) {
+    const start = new Date(`${customRange.start}T00:00:00`).getTime();
+    const end = new Date(`${customRange.end}T23:59:59`).getTime();
+    return [start, end];
+  }
+  const days = period === 'custom' ? 30 : PERIOD_DAYS[period];
+  return [now - days * 86400000, now];
+}
+
 export function filterByPeriod<T extends { data_medicao: string }>(
   records: T[],
   period: MeasurementPeriod,
+  customRange?: MeasurementCustomRange | null,
 ): T[] {
-  const now = Date.now();
-  const ms = PERIOD_DAYS[period] * 86400000;
-  return records.filter((r) => now - new Date(r.data_medicao).getTime() <= ms);
+  const [start, end] = resolvePeriodRangeMs(period, customRange);
+  return records.filter((r) => {
+    const t = new Date(r.data_medicao).getTime();
+    return t >= start && t <= end;
+  });
 }
 
 export function formatMeasurementDate(iso: string, short = false): string {
@@ -27,7 +45,7 @@ export function formatMeasurementDate(iso: string, short = false): string {
 
 export function formatChartDate(iso: string, period: MeasurementPeriod): string {
   const date = new Date(iso);
-  if (period === '7d' || period === '30d') {
+  if (period === '30d' || period === 'custom') {
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   }
   return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
@@ -53,12 +71,15 @@ export function getMetricValues(
 export function computePeriodDelta(
   values: Array<{ data: string; valor: number }>,
   period: MeasurementPeriod,
+  customRange?: MeasurementCustomRange | null,
 ): number | null {
   if (values.length === 0) return null;
 
-  const now = Date.now();
-  const ms = PERIOD_DAYS[period] * 86400000;
-  const inPeriod = values.filter((v) => now - new Date(v.data).getTime() <= ms);
+  const [start, end] = resolvePeriodRangeMs(period, customRange);
+  const inPeriod = values.filter((v) => {
+    const t = new Date(v.data).getTime();
+    return t >= start && t <= end;
+  });
   const sorted = [...inPeriod].sort(
     (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime(),
   );
@@ -77,10 +98,11 @@ export function buildChartData(
   records: MedicaoRecord[],
   metricId: MeasurementMetricId,
   period: MeasurementPeriod,
+  customRange?: MeasurementCustomRange | null,
 ): Array<{ date: string; value: number; iso: string }> {
   const metric = MEASUREMENT_METRICS.find((m) => m.id === metricId)!;
   const chronological = [...records].reverse();
-  const inPeriod = filterByPeriod(chronological, period);
+  const inPeriod = filterByPeriod(chronological, period, customRange);
 
   return inPeriod
     .map((r) => {

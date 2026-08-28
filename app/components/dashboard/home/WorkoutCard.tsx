@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Barbell, ClipboardText, Ruler } from '@phosphor-icons/react';
-import { dashboardColors } from '@/lib/tokens/dashboardColors';
 
 type TreinoStatus = 'pendente' | 'concluido' | 'off' | 'sem-plano';
 
@@ -43,16 +42,16 @@ export function WorkoutCard({
         <ClipboardText
           className="mx-auto mb-2 h-8 w-8"
           weight="regular"
-          style={{ color: dashboardColors.accent }}
+          style={{ color: '#FFFFFF' }}
         />
-        <p className="text-lg font-bold dashboard-text">Sem treino hoje</p>
-        <p className="mt-1 text-sm dashboard-text-subtle">
+        <p className="text-lg font-bold dashboard-hero-text">Sem treino hoje</p>
+        <p className="mt-1 text-sm dashboard-hero-text-subtle">
           Aproveite para descansar e se alimentar bem.
         </p>
         <Link
           href="/aluno/treinos"
-          className="mt-4 inline-block w-full rounded-xl border-[1.5px] py-3 text-sm font-semibold transition-colors hover:bg-blue-600/10"
-          style={{ borderColor: dashboardColors.accent, color: dashboardColors.accent }}
+          className="mt-4 inline-block w-full rounded-xl border-[1.5px] py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+          style={{ borderColor: 'rgba(255, 255, 255, 0.4)' }}
         >
           Ver treinos disponíveis
         </Link>
@@ -72,7 +71,7 @@ export function WorkoutCard({
         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--dash-hero-icon)' }}>
           Treino de hoje
         </p>
-        <p className="mt-2 text-2xl font-extrabold tracking-tight dashboard-text">Dia de descanso</p>
+        <p className="mt-2 text-2xl font-extrabold tracking-tight dashboard-hero-text">Dia de descanso</p>
         <p className="mt-1 text-sm" style={{ color: 'var(--dash-hero-icon)' }}>Recuperação ativa</p>
         <Link
           href="/aluno/medidas"
@@ -103,20 +102,20 @@ export function WorkoutCard({
           <button
             type="button"
             onClick={onAlterar}
-            className="text-[11px] font-semibold uppercase tracking-wide dashboard-text-subtle hover:opacity-80"
+            className="text-[11px] font-semibold uppercase tracking-wide dashboard-hero-text-subtle hover:opacity-80"
           >
             Alterar
           </button>
         )}
       </div>
 
-      <p className="text-2xl font-extrabold uppercase tracking-tight dashboard-text">
+      <p className="text-2xl font-extrabold uppercase tracking-tight dashboard-hero-text">
         {nome || 'Rotina prescrita'}
       </p>
-      <p className="mt-1 text-sm font-medium dashboard-text-muted">
+      <p className="mt-1 text-sm font-medium dashboard-hero-text-muted">
         {isConcluido ? 'Treino concluído' : 'Pronto para treinar'}
       </p>
-      <p className="mt-1 text-sm dashboard-text-subtle">
+      <p className="mt-1 text-sm dashboard-hero-text-subtle">
         {isConcluido
           ? `+${checkinPontos ?? 20} pts ganhos hoje`
           : qtdExercicios > 0

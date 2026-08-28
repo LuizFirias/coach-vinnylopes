@@ -12,8 +12,7 @@ export function formatWeight(kg: number | null | undefined): string {
 }
 
 export function formatVolume(kg: number): string {
-  if (kg >= 1000) return `${(kg / 1000).toFixed(1)} ton`;
-  return `${kg.toLocaleString('pt-BR')} kg`;
+  return `${Math.round(kg).toLocaleString('pt-BR')} kg`;
 }
 
 /** Segundos -> "1h 23min" / "38min" — usado em cards de treino (histórico, perfil). */

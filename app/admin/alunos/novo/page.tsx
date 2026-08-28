@@ -55,16 +55,18 @@ export default function NovoAlunoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24">
-      <div className="flex w-full justify-center px-4 pb-8 pt-4 sm:px-8 sm:pb-10 sm:pt-6">
-        <div className="w-full max-w-xl">
-          <div className="mb-4 flex items-center gap-2.5">
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pb-6">
+      <div className="flex w-full justify-center px-4 pb-8 pt-4 sm:px-8 sm:pb-10 sm:pt-6 lg:items-start lg:pb-6 lg:pt-6">
+        <div className="w-full max-w-xl lg:flex lg:max-w-3xl lg:items-start lg:gap-6">
+          {/* Desktop: só a seta, alinhada com o topo do card (sem título em
+              cima dele) — economiza a altura que fazia a tela ter scroll. */}
+          <div className="mb-4 flex items-center gap-2.5 lg:mb-0 lg:shrink-0">
             <BackButton onClick={goBack} />
-            <p className="text-xl font-semibold leading-tight text-text-primary">
+            <p className="text-xl font-semibold leading-tight text-text-primary lg:hidden">
               Adicionar aluno
             </p>
           </div>
-          <div className="rounded-2xl bg-surface-1 px-5 py-5 sm:px-6">
+          <div className="rounded-2xl bg-surface-1 px-5 py-5 sm:px-6 lg:flex-1 lg:py-4">
             <NovoAlunoForm layout="page" onCancel={goBack} />
           </div>
         </div>

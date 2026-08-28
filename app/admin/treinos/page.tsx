@@ -579,9 +579,9 @@ export default function TreinosPage() {
               {/* Busca + tabela — metade da largura, centralizado */}
               <div className="coach-list-panel flex flex-col gap-5">
                 {/* Search & Filters — padrão flat */}
-                <div className="field-flat-input bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3.5">
-                    <div className="relative w-full sm:flex-1 sm:max-w-sm pl-6">
+                <div className="field-flat-input bg-surface-1 border-0 rounded-xl shadow-sm overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3">
+                    <div className="relative flex h-9 w-full items-center sm:flex-1 sm:max-w-sm pl-6">
                       <MagnifyingGlass
                         size={14}
                         className="pointer-events-none absolute left-0 top-1/2 z-10 -translate-y-1/2 text-text-disabled"
@@ -593,7 +593,7 @@ export default function TreinosPage() {
                         placeholder="Buscar por rotina ou aluno..."
                         aria-label="Buscar treinos"
                         style={{ touchAction: "manipulation" }}
-                        className="w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled"
+                        className="h-full w-full bg-transparent border-0 outline-none shadow-none text-sm text-text-primary placeholder:text-text-disabled"
                       />
                     </div>
 

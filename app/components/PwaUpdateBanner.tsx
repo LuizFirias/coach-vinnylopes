@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowsClockwise } from "@phosphor-icons/react";
+import { Sparkle } from "@phosphor-icons/react";
 
 const STORAGE_KEY = "auron-app-version";
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -19,16 +19,38 @@ async function fetchRemoteVersion(): Promise<string | null> {
   }
 }
 
+/** Só o app instalado (PWA "standalone") precisa desse aviso — uma aba no
+ *  navegador (mobile ou desktop) já pega a versão nova sozinha ao recarregar. */
+function isStandalonePwa(): boolean {
+  if (typeof window === "undefined") return false;
+  const mq = window.matchMedia?.("(display-mode: standalone)")?.matches;
+  const iosStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return !!mq || !!iosStandalone;
+}
+
+const CARD_STYLE = {
+  background: "var(--mobile-card-bg, #ffffff)",
+  border: "1px solid var(--mobile-card-border, rgba(0,0,0,0.08))",
+  boxShadow: "var(--mobile-card-shadow, 0 12px 32px rgba(0,0,0,0.18))",
+} as const;
+
 /**
- * No PWA (sobretudo iPhone) não há “puxar para atualizar”.
- * Quando o usuário volta ao app ou passa um tempo com ele aberto,
- * comparamos a versão do servidor e oferecemos um toque para recarregar.
+ * No PWA instalado (sobretudo iPhone) não há "puxar para atualizar".
+ * Quando o usuário volta ao app e a versão do servidor mudou, mostramos um
+ * modal central bloqueante — pede pra tocar em "Atualizar" antes de seguir,
+ * garantindo que ele nunca fique numa versão velha sem perceber.
  */
 export default function PwaUpdateBanner() {
   const [available, setAvailable] = useState(false);
+  const [isPwa, setIsPwa] = useState(false);
   const checking = useRef(false);
 
+  useEffect(() => {
+    setIsPwa(isStandalonePwa());
+  }, []);
+
   const check = useCallback(async () => {
+    if (!isStandalonePwa()) return;
     if (checking.current) return;
     checking.current = true;
     try {
@@ -54,6 +76,8 @@ export default function PwaUpdateBanner() {
   }, []);
 
   useEffect(() => {
+    if (!isStandalonePwa()) return;
+
     void (async () => {
       if ("serviceWorker" in navigator) {
         try {
@@ -90,25 +114,54 @@ export default function PwaUpdateBanner() {
     window.location.reload();
   };
 
-  if (!available) return null;
+  if (!available || !isPwa) return null;
 
+  return <PwaUpdateModal onUpdate={() => void atualizar()} />;
+}
+
+/**
+ * Só a parte visual do modal — separada pra dar pra pré-visualizar em telas
+ * de teste sem precisar estar num PWA instalado com versão desatualizada de
+ * verdade (ver botão de teste em /aluno/treinos).
+ */
+export function PwaUpdateModal({ onUpdate }: { onUpdate: () => void }) {
   return (
     <div
-      className="fixed inset-x-0 top-0 z-[100] flex justify-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pointer-events-none"
-      role="status"
-      aria-live="polite"
+      className="fixed inset-0 z-[300] flex items-center justify-center px-6"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)" }}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="pwa-update-title"
+      // Sem onClick no fundo — "obriga" a tocar no botão, não fecha clicando fora.
     >
-      <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-xl border-0 bg-surface-1 px-3 py-2.5 shadow-elev-2">
-        <p className="min-w-0 flex-1 text-xs font-medium leading-snug text-text-primary">
-          Nova versão do Auronfit disponível
+      <div
+        className="w-full max-w-[300px] rounded-[18px] px-5 py-6 text-center"
+        style={CARD_STYLE}
+      >
+        <span
+          className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+          style={{ background: "rgba(117, 27, 180, 0.12)" }}
+          aria-hidden
+        >
+          <Sparkle size={22} weight="fill" className="text-brand" />
+        </span>
+        <p id="pwa-update-title" className="text-[15px] font-bold leading-snug text-text-primary">
+          Estamos sempre melhorando por você
+        </p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-text-tertiary">
+          Uma nova versão do AuronFit já está disponível. Atualize pra continuar com tudo em dia.
         </p>
         <button
           type="button"
-          onClick={() => void atualizar()}
-          className="inline-flex h-9 shrink-0 touch-manipulation items-center gap-1.5 rounded-lg bg-brand/15 px-3 text-xs font-bold text-brand"
+          onClick={onUpdate}
+          className="mt-4 h-11 w-full touch-manipulation rounded-[10px] text-sm font-bold text-white"
+          style={{
+            background: "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+            boxShadow: "0 4px 20px rgba(117, 27, 180, 0.45)",
+            border: "none",
+          }}
         >
-          <ArrowsClockwise size={14} weight="bold" />
-          Atualizar
+          Atualizar agora
         </button>
       </div>
     </div>

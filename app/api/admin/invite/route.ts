@@ -62,6 +62,10 @@ export async function POST(req: Request) {
     const fullName = String(body?.full_name || "").trim();
     const dateOfBirth = body?.date_of_birth ? String(body.date_of_birth) : null;
     const objetivo = body?.objetivo ? String(body.objetivo) : null;
+    const modalidadesEsporte =
+      Array.isArray(body?.modalidades_esporte) && body.modalidades_esporte.length > 0
+        ? body.modalidades_esporte.map((m: unknown) => String(m))
+        : ["musculacao"];
     const tipoPlano = body?.tipo_plano ? String(body.tipo_plano) : null;
     const dataInicio = body?.data_inicio ? String(body.data_inicio) : null;
     const dataExpiracao = body?.data_expiracao ? String(body.data_expiracao) : null;
@@ -201,6 +205,7 @@ export async function POST(req: Request) {
         must_change_password: true,
         date_of_birth: dateOfBirth || null,
         objetivo: objetivo || null,
+        modalidades_esporte: modalidadesEsporte,
         tipo_plano: tipoPlano || null,
         data_inicio: dataInicio || new Date().toISOString().slice(0, 10),
         data_expiracao: dataExpiracao || null,

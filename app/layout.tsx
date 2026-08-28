@@ -1,5 +1,5 @@
 import './globals.css';
-import { Inter, JetBrains_Mono, Poppins, Montserrat, DM_Sans, Nunito_Sans } from 'next/font/google';
+import { Inter, Poppins, Montserrat, DM_Sans, Nunito_Sans } from 'next/font/google';
 import Sidebar from './components/sidebar';
 import MainWrapper from './components/MainWrapper';
 import SessionManager from './components/SessionManager';
@@ -43,12 +43,6 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-mono',
 });
 
 const poppins = Poppins({
@@ -117,7 +111,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} ${poppins.variable} ${montserrat.variable} ${dmSans.variable} ${nunitoSans.variable} overflow-x-clip`} data-theme="light">
+    <html lang="pt-br" suppressHydrationWarning className={`${inter.variable} ${poppins.variable} ${montserrat.variable} ${dmSans.variable} ${nunitoSans.variable} overflow-x-clip`} data-theme="light">
       <head>
         {/* Inline (sem next/script) — evita ChunkLoadError do Script em HMR/restart */}
         <script

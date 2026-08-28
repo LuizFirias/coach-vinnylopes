@@ -24,7 +24,7 @@ export function QuickActions() {
       </Link>
 
       <Link
-        href="/aluno/treinos"
+        href="/aluno/perfil"
         id="btn-ver-historico"
         className="dashboard-card flex flex-col items-center gap-1.5 rounded-[14px] border-0 py-4 transition-colors active:scale-[0.98]"
       >

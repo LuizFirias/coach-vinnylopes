@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CaretLeft, ShareNetwork } from '@phosphor-icons/react';
+import { CaretLeft, ShareNetwork, CaretDown, Barbell } from '@phosphor-icons/react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getHistoricoTreinosFull } from '@/lib/queries/historicoTreinosCache';
+import { parseFichaItems, isBiSetFichaItem } from '@/lib/utils/biset';
+import { getPublicR2Url } from '@/lib/r2/urls';
 import { formatDurationLong } from '@/lib/utils/format';
+import { cn } from '@/lib/utils/cn';
 import { useCoachShareHandle } from '@/lib/hooks/useCoachShareHandle';
 import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { formatWorkoutDateFull, type ProfileWorkoutItem } from '@/app/components/profile/ProfileWorkoutHistory';
@@ -25,6 +28,8 @@ interface ExercicioDetalhe {
   nome: string;
   grupo_muscular: string;
   series: SerieDetalhe[];
+  gif_url: string | null;
+  imagem_url: string | null;
 }
 
 interface WorkoutDetalhe {
@@ -50,6 +55,7 @@ export default function TreinoHistoricoDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [workout, setWorkout] = useState<WorkoutDetalhe | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [showAllMuscles, setShowAllMuscles] = useState(false);
 
   const coachUsername = useCoachShareHandle(userId);
 
@@ -81,25 +87,64 @@ export default function TreinoHistoricoDetalhePage() {
       setAvatarUrl(profile?.avatar_url || null);
       setSexo(profile?.sexo || null);
 
-      const rows = historico.filter((h) => h.data_conclusao === sessionKey);
+      const rowsSemOrdem = historico.filter((h) => h.data_conclusao === sessionKey);
 
-      if (rows.length === 0) {
+      if (rowsSemOrdem.length === 0) {
         setWorkout(null);
         setLoading(false);
         return;
       }
 
-      const exercicioIds = [...new Set(rows.map((r) => r.exercicio_id).filter(Boolean))] as string[];
+      const exercicioIds = [...new Set(rowsSemOrdem.map((r) => r.exercicio_id).filter(Boolean))] as string[];
       let gruposPorExercicio = new Map<string, string>();
+      let mediaPorExercicio = new Map<string, { gif_url: string | null; imagem_url: string | null }>();
       if (exercicioIds.length > 0) {
         const { data: exData } = await supabaseClient
           .from('exercicios_biblioteca')
-          .select('id, grupo_muscular')
+          .select('id, grupo_muscular, gif_url, gif_url_feminino, imagem_url, imagem_url_feminino')
           .in('id', exercicioIds);
         gruposPorExercicio = new Map(
           (exData ?? []).map((e: any) => [e.id as string, e.grupo_muscular as string]),
         );
+        const feminino = profile?.sexo === 'feminino';
+        mediaPorExercicio = new Map(
+          (exData ?? []).map((e: any) => [
+            e.id as string,
+            {
+              gif_url: getPublicR2Url((feminino && e.gif_url_feminino) || e.gif_url),
+              imagem_url: getPublicR2Url((feminino && e.imagem_url_feminino) || e.imagem_url),
+            },
+          ]),
+        );
       }
+
+      // Ordem = a mesma que o personal definiu na ficha (não a ordem que o
+      // banco devolve, que não é garantida) — casa pelo exercicio_id com a
+      // posição dele na ficha de origem (bi-set conta A e B, nessa ordem).
+      const fichaId = rowsSemOrdem[0]?.ficha_id;
+      const ordemPorExercicio = new Map<string, number>();
+      if (fichaId) {
+        const { data: fichaData } = await supabaseClient
+          .from('fichas_treino')
+          .select('configuracao')
+          .eq('id', fichaId)
+          .maybeSingle();
+        const exerciciosFicha = (fichaData?.configuracao as { exercicios?: unknown[] } | null)?.exercicios;
+        if (Array.isArray(exerciciosFicha)) {
+          let idx = 0;
+          for (const item of parseFichaItems(exerciciosFicha)) {
+            if (isBiSetFichaItem(item)) {
+              ordemPorExercicio.set(item.exercicioA.exercicio_id, idx++);
+              if (item.exercicioB) ordemPorExercicio.set(item.exercicioB.exercicio_id, idx++);
+            } else {
+              ordemPorExercicio.set(item.id, idx++);
+            }
+          }
+        }
+      }
+      const ordemDe = (exercicioId: string | null): number =>
+        (exercicioId ? ordemPorExercicio.get(exercicioId) : undefined) ?? Number.MAX_SAFE_INTEGER;
+      const rows = [...rowsSemOrdem].sort((a, b) => ordemDe(a.exercicio_id) - ordemDe(b.exercicio_id));
 
       const firstDs = (rows[0]?.dados_sessao ?? {}) as Record<string, any>;
       const duracaoSegundos =
@@ -124,10 +169,13 @@ export default function TreinoHistoricoDetalhePage() {
           totalSets += 1;
           volumeTotal += s.peso_atual * (Number(s.reps) || 0);
         });
+        const media = (row.exercicio_id && mediaPorExercicio.get(row.exercicio_id)) || null;
         return {
           nome: ds.nome_exercicio || 'Exercício',
           grupo_muscular: (row.exercicio_id && gruposPorExercicio.get(row.exercicio_id)) || 'Outro',
           series,
+          gif_url: media?.gif_url ?? null,
+          imagem_url: media?.imagem_url ?? null,
         };
       });
 
@@ -181,7 +229,9 @@ export default function TreinoHistoricoDetalhePage() {
 
   return (
     <SubscriptionGuard>
-      <div className="min-h-screen bg-surface-0 px-4 pb-28 lg:px-8 lg:pl-28 lg:pb-12">
+      {/* Fundo branco puro (não o cinza-azulado padrão Mobills do resto do
+       *  app) — pedido explícito, igual ao Hevy, só nesta tela. */}
+      <div className="min-h-screen px-4 pb-28 lg:px-8 lg:pl-28 lg:pb-12" style={{ backgroundColor: '#FFFFFF' }}>
         <div className="mx-auto flex max-w-[640px] flex-col gap-4 lg:pt-10">
           <div className="flex items-center justify-between pt-4">
             <button
@@ -267,7 +317,7 @@ export default function TreinoHistoricoDetalhePage() {
                       Muscle Split
                     </p>
                     <div className="flex flex-col gap-3">
-                      {muscleSplit.map((m) => (
+                      {(showAllMuscles ? muscleSplit : muscleSplit.slice(0, 3)).map((m) => (
                         <div key={m.musculo}>
                           <div className="mb-1 flex items-center justify-between">
                             <span className="text-sm text-text-primary">{m.musculo}</span>
@@ -284,6 +334,16 @@ export default function TreinoHistoricoDetalhePage() {
                         </div>
                       ))}
                     </div>
+                    {muscleSplit.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllMuscles((v) => !v)}
+                        className="mt-2 flex items-center gap-1 text-xs font-semibold text-brand touch-manipulation"
+                      >
+                        {showAllMuscles ? 'Mostrar menos' : `Mostrar mais (${muscleSplit.length - 3})`}
+                        <CaretDown size={12} weight="bold" className={showAllMuscles ? 'rotate-180' : ''} />
+                      </button>
+                    )}
                   </div>
 
                   <div className="border-t border-surface-2" />
@@ -295,30 +355,50 @@ export default function TreinoHistoricoDetalhePage() {
                   Workout
                 </p>
                 <div className="flex flex-col gap-4">
-                  {workout.exercicios.map((ex, i) => (
-                    <div key={`${ex.nome}-${i}`}>
-                      <p className="mb-1.5 text-sm font-semibold text-text-primary">{ex.nome}</p>
-                      <div className="flex items-center justify-between px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
-                        <span>Set</span>
-                        <span>Weight &amp; Reps</span>
+                  {workout.exercicios.map((ex, i) => {
+                    // Exercício inteiro sem nenhuma série marcada como feita — fica
+                    // riscado e opaco (não conta pra carga, não foi de fato realizado).
+                    const exercicioNaoFeito = ex.series.length > 0 && ex.series.every((s) => !s.completado);
+                    return (
+                      <div key={`${ex.nome}-${i}`} className={exercicioNaoFeito ? 'opacity-45' : undefined}>
+                        <div className="mb-1.5 flex items-center gap-2.5">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-3">
+                            {ex.imagem_url || ex.gif_url ? (
+                              <img src={ex.imagem_url || ex.gif_url || ''} alt="" aria-hidden className="h-full w-full object-cover" />
+                            ) : (
+                              <Barbell size={16} className="text-brand" />
+                            )}
+                          </span>
+                          <p className={cn('text-sm font-semibold text-text-primary', exercicioNaoFeito && 'line-through decoration-2')}>
+                            {ex.nome}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+                          <span>Set</span>
+                          <span>Weight &amp; Reps</span>
+                        </div>
+                        <div className="flex flex-col">
+                          {ex.series.map((s, si) => (
+                            <div
+                              key={s.ordem}
+                              className={cn(
+                                'flex items-center justify-between rounded-lg px-1 py-1.5 text-sm',
+                                si % 2 === 1 && 'bg-surface-3',
+                                s.completado ? 'text-text-primary' : 'text-text-tertiary line-through',
+                              )}
+                            >
+                              <span className="tabular-nums lining-nums text-text-tertiary">
+                                {s.ordem}
+                              </span>
+                              <span className="tabular-nums lining-nums">
+                                {s.peso_atual > 0 ? `${s.peso_atual} kg × ${s.reps}` : `${s.reps} reps`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        {ex.series.map((s) => (
-                          <div
-                            key={s.ordem}
-                            className="flex items-center justify-between rounded-lg px-1 py-1.5 text-sm text-text-primary odd:bg-surface-1"
-                          >
-                            <span className="tabular-nums lining-nums text-text-tertiary">
-                              {s.ordem}
-                            </span>
-                            <span className="tabular-nums lining-nums">
-                              {s.peso_atual > 0 ? `${s.peso_atual} kg × ${s.reps}` : `${s.reps} reps`}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </>

@@ -12,6 +12,8 @@ export interface AulaAgenda {
   local_tipo: LocalTipo;
   endereco: string | null;
   status: "agendada" | "concluida" | "cancelada";
+  /** De quem foi a falta quando status='cancelada' — null = motivo não especificado. */
+  falta_de: "coach" | "aluno" | null;
   tipo: ItemTipo;
   titulo: string | null;
   aluno?: {
@@ -24,7 +26,7 @@ export interface AulaAgenda {
 }
 
 const AULA_SELECT =
-  "id, coach_id, aluno_id, data_hora, duracao_min, local_tipo, endereco, status, tipo, titulo, aluno:profiles!aluno_id(id, full_name, coaching_reference, avatar_url, sexo)";
+  "id, coach_id, aluno_id, data_hora, duracao_min, local_tipo, endereco, status, falta_de, tipo, titulo, aluno:profiles!aluno_id(id, full_name, coaching_reference, avatar_url, sexo)";
 
 /** Próxima aula agendada (a partir de agora), pra o card do dashboard. */
 export async function fetchProximaAula(coachId: string): Promise<AulaAgenda | null> {
@@ -46,20 +48,27 @@ export async function fetchProximaAula(coachId: string): Promise<AulaAgenda | nu
   return (data as unknown as AulaAgenda) ?? null;
 }
 
-/** Lista de aulas futuras (card "Próximas aulas agendadas"). */
-export async function fetchAulasFuturas(coachId: string): Promise<AulaAgenda[]> {
+/**
+ * Aulas pendentes de marcação (card "Próximas aulas") — futuras + as dos
+ * últimos 7 dias que ainda não foram marcadas como feita/falta, pra não
+ * sumirem sem o coach confirmar o que aconteceu.
+ */
+export async function fetchAulasPendentes(coachId: string): Promise<AulaAgenda[]> {
+  const seteDiasAtras = new Date();
+  seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
   const { data, error } = await supabaseClient
     .from("aulas_presenciais")
     .select(AULA_SELECT)
     .eq("coach_id", coachId)
     .eq("status", "agendada")
     .eq("tipo", "aula")
-    .gte("data_hora", new Date().toISOString())
+    .gte("data_hora", seteDiasAtras.toISOString())
     .order("data_hora", { ascending: true })
     .limit(100);
 
   if (error) {
-    console.warn("[agenda] fetchAulasFuturas:", error.message);
+    console.warn("[agenda] fetchAulasPendentes:", error.message);
     return [];
   }
   return (data as unknown as AulaAgenda[]) ?? [];
@@ -71,11 +80,12 @@ export async function fetchAgendaRange(
   startISO: string,
   endISO: string,
 ): Promise<AulaAgenda[]> {
+  // Sem filtrar "cancelada" — aulas canceladas/faltadas continuam aparecendo
+  // no grid (estilizadas em vermelho), pra não sumirem da agenda.
   const { data, error } = await supabaseClient
     .from("aulas_presenciais")
     .select(AULA_SELECT)
     .eq("coach_id", coachId)
-    .neq("status", "cancelada")
     .gte("data_hora", startISO)
     .lt("data_hora", endISO)
     .order("data_hora", { ascending: true });
@@ -85,6 +95,33 @@ export async function fetchAgendaRange(
     return [];
   }
   return (data as unknown as AulaAgenda[]) ?? [];
+}
+
+/**
+ * Últimas N aulas com um status específico (feitas/canceladas) — pra lista
+ * que substitui "Próximas aulas" quando o coach clica no card de contagem.
+ * Vem do mais recente pro mais antigo (fácil pegar as N últimas) e já
+ * devolve invertido (mais antiga → mais recente), ordem de exibição pedida.
+ */
+export async function fetchAulasPorStatus(
+  coachId: string,
+  status: "concluida" | "cancelada",
+  limit = 30,
+): Promise<AulaAgenda[]> {
+  const { data, error } = await supabaseClient
+    .from("aulas_presenciais")
+    .select(AULA_SELECT)
+    .eq("coach_id", coachId)
+    .eq("status", status)
+    .eq("tipo", "aula")
+    .order("data_hora", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.warn("[agenda] fetchAulasPorStatus:", error.message);
+    return [];
+  }
+  return ((data as unknown as AulaAgenda[]) ?? []).reverse();
 }
 
 export interface CriarAulaInput {
@@ -132,10 +169,29 @@ export async function criarEvento(input: CriarEventoInput) {
   if (error) throw error;
 }
 
-export async function cancelarAula(id: string) {
+/** Marca a aula como feita. */
+export async function marcarConcluida(id: string) {
   const { error } = await supabaseClient
     .from("aulas_presenciais")
-    .update({ status: "cancelada" })
+    .update({ status: "concluida", falta_de: null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/** Marca a aula como não feita, guardando de quem foi a falta. */
+export async function marcarFalta(id: string, faltaDe: "coach" | "aluno") {
+  const { error } = await supabaseClient
+    .from("aulas_presenciais")
+    .update({ status: "cancelada", falta_de: faltaDe })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/** "Desmarcar" — exclui a aula de vez (não é uma falta, não entra em estatística). */
+export async function excluirAula(id: string) {
+  const { error } = await supabaseClient
+    .from("aulas_presenciais")
+    .delete()
     .eq("id", id);
   if (error) throw error;
 }

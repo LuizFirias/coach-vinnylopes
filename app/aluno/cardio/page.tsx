@@ -62,31 +62,21 @@ export default function CardioPage() {
       return;
     }
 
-    const [{ data: sessoesData }, { data: prescricoesData }, { data: medidaData }] =
-      await Promise.all([
-        supabaseClient
-          .from('cardio_sessoes')
-          .select('*')
-          .eq('aluno_id', user.id)
-          .order('data', { ascending: false })
-          .limit(60),
-        supabaseClient
-          .from('cardio_prescricoes')
-          .select('*')
-          .eq('aluno_id', user.id)
-          .eq('ativo', true)
-          .order('created_at', { ascending: false }),
-        supabaseClient
-          .from('medidas_aluno')
-          .select('peso')
-          .eq('aluno_id', user.id)
-          .not('peso', 'is', null)
-          .limit(1),
-      ]);
+    // Antes eram 3 requisições em paralelo — agora é 1 RPC só (mesmo padrão
+    // já aplicado na dashboard e na nutrição).
+    const { data: bootstrapData, error: bootstrapError } = await supabaseClient
+      .rpc('get_cardio_page_bootstrap', { p_aluno_id: user.id });
 
-    setSessoes((sessoesData as CardioSessao[]) ?? []);
-    setPrescricoes((prescricoesData as CardioPrescricao[]) ?? []);
-    setAvisoPeso((medidaData?.length ?? 0) === 0);
+    if (bootstrapError) {
+      console.error('[Cardio] Erro ao buscar dados:', bootstrapError);
+      setLoading(false);
+      return;
+    }
+
+    const bootstrap = (bootstrapData ?? {}) as Record<string, any>;
+    setSessoes((bootstrap.sessoes as CardioSessao[]) ?? []);
+    setPrescricoes((bootstrap.prescricoes as CardioPrescricao[]) ?? []);
+    setAvisoPeso(!bootstrap.tem_peso_cadastrado);
     setLoading(false);
   }, []);
 

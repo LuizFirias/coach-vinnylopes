@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { CaretRight } from "@phosphor-icons/react";
+import { Barbell, CaretRight } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils/cn";
 import { getRoutineExercisePreview } from "@/lib/utils/routineDisplay";
-import { AuronLinkIcon } from "@/app/components/ui/Auronlinkicon";
 
 interface RoutineExercise {
   nome?: string;
@@ -37,11 +36,21 @@ export function RoutineCard({ routine, isDesktop = false }: RoutineCardProps) {
       )}
       style={{
         background: "var(--surface-1)",
-        border: "1px solid transparent",
+        border: "1px solid var(--border-subtle)",
         boxShadow: "none",
       }}
     >
-      <AuronLinkIcon size={20} active className="shrink-0" />
+      <div
+        className="flex items-center justify-center shrink-0 rounded-full"
+        style={{
+          width: 36,
+          height: 36,
+          background: "var(--surface-2)",
+          border: "1px solid var(--border-subtle)",
+        }}
+      >
+        <Barbell size={18} weight="fill" className="text-brand" />
+      </div>
 
       <div className="flex-1 min-w-0">
         <p

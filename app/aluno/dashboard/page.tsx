@@ -8,7 +8,7 @@ import { getPublicStorageUrl } from '@/lib/storageUrls';
 import Link from "next/link";
 import { ArrowRight, WarningCircle } from '@phosphor-icons/react';
 import DumbbellLoader from "@/app/components/DumbbellLoader";
-import { getTodayBrazil, toBrazilDateString } from '@/lib/dateUtils';
+import { getTodayBrazil, toBrazilDateString, getNowBrazilHHMM } from '@/lib/dateUtils';
 import { CoachCard } from '@/app/components/dashboard/CoachCard';
 import { HeroHeader } from '@/app/components/dashboard/home/HeroHeader';
 import { WorkoutCard } from '@/app/components/dashboard/home/WorkoutCard';
@@ -16,6 +16,7 @@ import { WeekCalendar, type DiaSemana } from '@/app/components/dashboard/home/We
 import { DayConfigPicker } from '@/app/components/dashboard/home/DayConfigPicker';
 import { StreakRow } from '@/app/components/dashboard/home/StreakRow';
 import { NutritionCard } from '@/app/components/dashboard/home/NutritionCard';
+import { loadMealItemsLight } from '@/lib/nutrition/plans';
 import { HydrationCard } from '@/app/components/dashboard/home/HydrationCard';
 import { QuickActions } from '@/app/components/dashboard/home/QuickActions';
 import { updateTreinoStatus } from '@/lib/aluno/updateTreinoStatus';
@@ -171,6 +172,9 @@ export default function AlunoDashboardPage() {
     refeicoesConcluidas: number;
     totalRefeicoes: number;
     proximaRefeicao?: { nome: string; horario: string } | null;
+    /** Já passou do horário e o aluno ainda não marcou como feita — fica colapsado no card, com seta pra abrir. */
+    refeicoesPendentes?: { id: string; nome: string; horario: string }[];
+    planId?: string;
   } | null>(null);
 
   // Água
@@ -226,63 +230,23 @@ export default function AlunoDashboardPage() {
     setLoading(false);
   };
 
-  const fetchWeeklyAgenda = async (
+  /**
+   * Processa o jsonb de agenda_semanal (vindo de get_agenda_semanal_aluno, seja
+   * direto ou embutido em get_dashboard_bootstrap_aluno) em dias/weekStats e
+   * aplica o estado — sem chamada de rede própria, quem chama já tem os dados.
+   */
+  const applyAgendaSemanal = (
+    agendaData: Record<string, any>,
+    days: DiaSemana[],
+    weekMonday: string,
+    weekSunday: string,
     uid: string,
-  ): Promise<{ days: DiaSemana[]; weekStats: WeekStats }> => {
-    const days = getUpcomingDays();
-    const { monday: weekMonday, sunday: weekSunday } = getCurrentIsoWeekRange();
-    // A janela de busca cobre tanto os dias visíveis no calendário quanto a semana
-    // ISO corrente (seg-dom) inteira, mesmo quando ela começa antes do "ontem" exibido.
-    const startOfWeek = days[0].data < weekMonday ? days[0].data : weekMonday;
-    const endOfWeek = days[days.length - 1].data > weekSunday ? days[days.length - 1].data : weekSunday;
-
-    try {
-      const [
-        { data: agendaSemana },
-        { data: agendaDiaria },
-        { data: checkinsSemana },
-        { data: historicoSemana },
-        { data: cardioSessoesSemana },
-        { data: cardioPrescricoesAtivas },
-      ] = await Promise.all([
-        supabaseClient
-          .from('agenda_semanal')
-          .select('dia_semana, ficha_id, treino_pdf_id, is_off, is_cardio, fichas_treino(nome_rotina)')
-          .eq('aluno_id', uid),
-        supabaseClient
-          .from('agenda_diaria')
-          .select('data, ficha_id, treino_pdf_id, is_off, is_cardio, fichas_treino(nome_rotina)')
-          .eq('aluno_id', uid)
-          .gte('data', startOfWeek)
-          .lte('data', endOfWeek),
-        supabaseClient
-          .from('treinos_manuais')
-          .select('data_treino, concluido, pontos_earn')
-          .eq('aluno_id', uid)
-          .eq('concluido', true)
-          .gte('data_treino', startOfWeek)
-          .lte('data_treino', endOfWeek),
-        // Conclusão automática: ficha realmente executada (não depende de check-in manual)
-        supabaseClient
-          .from('historico_treinos')
-          .select('data_conclusao')
-          .eq('aluno_id', uid)
-          .gte('data_conclusao', `${startOfWeek}T00:00:00-03:00`)
-          .lte('data_conclusao', `${endOfWeek}T23:59:59-03:00`),
-        // Cardio realmente registrado — conta minutos e marca o dia como concluído
-        supabaseClient
-          .from('cardio_sessoes')
-          .select('data, duracao_min')
-          .eq('aluno_id', uid)
-          .gte('data', startOfWeek)
-          .lte('data', endOfWeek),
-        // Meta de cardio da semana: soma das prescrições ativas nos dias que caem nela
-        supabaseClient
-          .from('cardio_prescricoes')
-          .select('duracao_min, dias_semana')
-          .eq('aluno_id', uid)
-          .eq('ativo', true),
-      ]);
+  ): { days: DiaSemana[]; weekStats: WeekStats } => {
+      const agendaDiaria: any[] = agendaData.agenda_diaria ?? [];
+      const checkinsSemana: any[] = agendaData.checkins_semana ?? [];
+      const historicoSemana: any[] = agendaData.historico_semana ?? [];
+      const cardioSessoesSemana: any[] = agendaData.cardio_sessoes_semana ?? [];
+      const cardioPrescricoesAtivas: any[] = agendaData.cardio_prescricoes_ativas ?? [];
 
       const overrideByDate = new Map(
         (agendaDiaria ?? []).map((item: any) => [item.data as string, item]),
@@ -299,11 +263,10 @@ export default function AlunoDashboardPage() {
       }
 
       const resolveDay = (dataIso: string) => {
-        const dateObj = new Date(dataIso + 'T12:00:00');
-        const jsDay = dateObj.getDay();
-        const override = overrideByDate.get(dataIso);
-        const agendaItem =
-          override ?? agendaSemana?.find((item: any) => item.dia_semana === jsDay);
+        // Só agenda_diaria (data exata) decide o dia — agenda_semanal (padrão
+        // recorrente por dia da semana) foi descontinuada: marcar um treino
+        // numa quarta-feira não deve repeti-lo nas quartas seguintes.
+        const agendaItem = overrideByDate.get(dataIso);
 
         let temTreino = false;
         let isOff = false;
@@ -390,6 +353,37 @@ export default function AlunoDashboardPage() {
       }
 
       return { days: updatedDays, weekStats: nextWeekStats };
+  };
+
+  const fetchWeeklyAgenda = async (
+    uid: string,
+  ): Promise<{ days: DiaSemana[]; weekStats: WeekStats }> => {
+    const days = getUpcomingDays();
+    const { monday: weekMonday, sunday: weekSunday } = getCurrentIsoWeekRange();
+    // A janela de busca cobre tanto os dias visíveis no calendário quanto a semana
+    // ISO corrente (seg-dom) inteira, mesmo quando ela começa antes do "ontem" exibido.
+    const startOfWeek = days[0].data < weekMonday ? days[0].data : weekMonday;
+    const endOfWeek = days[days.length - 1].data > weekSunday ? days[days.length - 1].data : weekSunday;
+
+    try {
+      // Antes eram 5 requisições em paralelo (agenda_diaria, treinos_manuais,
+      // historico_treinos, cardio_sessoes, cardio_prescricoes) — agora é 1 RPC
+      // só, que faz as mesmas 5 buscas dentro do banco.
+      const { data: agendaSemanal, error: agendaSemanalError } = await supabaseClient
+        .rpc('get_agenda_semanal_aluno', {
+          p_aluno_id: uid,
+          p_start: startOfWeek,
+          p_end: endOfWeek,
+        });
+      if (agendaSemanalError) throw agendaSemanalError;
+
+      return applyAgendaSemanal(
+        (agendaSemanal ?? {}) as Record<string, any>,
+        days,
+        weekMonday,
+        weekSunday,
+        uid,
+      );
     } catch (err) {
       console.error('[Dashboard] Erro ao buscar agenda semanal:', err);
       return { days, weekStats };
@@ -433,9 +427,11 @@ export default function AlunoDashboardPage() {
         if (!day) {
           const next = {
             nome: plan.name,
+            planId: plan.id,
             refeicoesConcluidas: 0,
             totalRefeicoes: 0,
             proximaRefeicao: null as null,
+            refeicoesPendentes: [] as { id: string; nome: string; horario: string }[],
           };
           setPlanoNutricao(next);
           patchDashboardAlunoCache(uid, { planoNutricao: next });
@@ -452,8 +448,24 @@ export default function AlunoDashboardPage() {
         const checkedMealIds = new Set(checkins?.map((c) => c.meal_id) || []);
         const nextMeal = mealList.find((m) => !checkedMealIds.has(m.id));
 
+        // Já passou do horário sugerido e o aluno ainda não marcou como feita —
+        // fica colapsada no card em vez de simplesmente sumir da lista.
+        const agoraHHMM = getNowBrazilHHMM();
+        const refeicoesPendentes = mealList
+          .filter((m) => {
+            if (checkedMealIds.has(m.id)) return false;
+            const horario = m.time_suggestion ? String(m.time_suggestion).slice(0, 5) : '';
+            return horario !== '' && horario < agoraHHMM;
+          })
+          .map((m) => ({
+            id: m.id,
+            nome: m.title,
+            horario: m.time_suggestion ? String(m.time_suggestion).slice(0, 5) : '',
+          }));
+
         const next = {
           nome: plan.name,
+          planId: plan.id,
           refeicoesConcluidas: checkedMealIds.size,
           totalRefeicoes: mealList.length,
           proximaRefeicao: nextMeal
@@ -464,6 +476,7 @@ export default function AlunoDashboardPage() {
                   : '',
               }
             : null,
+          refeicoesPendentes,
         };
         setPlanoNutricao(next);
         patchDashboardAlunoCache(uid, { planoNutricao: next });
@@ -472,74 +485,46 @@ export default function AlunoDashboardPage() {
       }
     })();
 
-    // Fichas/PDFs — só usados ao editar agenda
+    // Fichas/PDFs (editar agenda) + feedbacks pendentes + parceiros — antes 3
+    // requisições separadas (+ uma 4ª pra fichas/PDFs), agora 1 RPC só.
     void (async () => {
       try {
-        const [{ data: fichasData }, { data: pdfsData }] = await Promise.all([
-          supabaseClient
-            .from('fichas_treino')
-            .select('id, nome_rotina')
-            .eq('aluno_id', uid)
-            .eq('ativo', true),
-          supabaseClient
-            .from('treinos_alunos')
-            .select('id, nome_arquivo')
-            .eq('aluno_id', uid),
-        ]);
+        const { data: secondaryData, error: secondaryError } = await supabaseClient
+          .rpc('get_dashboard_secondary_aluno', {
+            p_aluno_id: uid,
+            p_coach_id: coachIdForExtras,
+          });
+        if (secondaryError) throw secondaryError;
+        const secondary = (secondaryData ?? {}) as Record<string, any>;
 
         const options: WorkoutOption[] = [];
-        fichasData?.forEach((f) =>
+        (secondary.fichas_treino ?? []).forEach((f: any) =>
           options.push({ id: f.id, name: f.nome_rotina, type: 'ficha' }),
         );
-        pdfsData?.forEach((p) =>
+        (secondary.treinos_alunos ?? []).forEach((p: any) =>
           options.push({ id: p.id, name: p.nome_arquivo, type: 'pdf' }),
         );
         setAvailableWorkouts(options);
         patchDashboardAlunoCache(uid, { availableWorkouts: options });
-      } catch (err) {
-        console.warn('[Dashboard] Erro ao buscar treinos para configuração:', err);
-      }
-    })();
 
-    if (!coachIdForExtras) return;
-
-    void (async () => {
-      try {
-        const { count: fbCount } = await supabaseClient
-          .from('feedbacks_treinos')
-          .select('id', { count: 'exact', head: true })
-          .eq('aluno_id', uid);
-        const feedbacks = fbCount ?? 0;
-        setCoachPendings((prev) => {
-          const next = { ...prev, feedbacks };
-          patchDashboardAlunoCache(uid, { coachPendings: next });
-          return next;
-        });
-      } catch (err) {
-        console.warn('[Dashboard] Erro ao buscar feedbacks pendentes:', err);
-      }
-    })();
-
-    if (coachExtrasEnabled) {
-      void (async () => {
-        try {
-          const { data: parceirosData } = await supabaseClient
-            .from('parceiros')
-            .select('id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens')
-            .eq('coach_id', coachIdForExtras)
-            .order('nome_marca', { ascending: true });
-          const list = parceirosData || [];
-          setParceiros(list);
-          patchDashboardAlunoCache(uid, { parceiros: list });
-        } catch {
-          setParceiros([]);
-          patchDashboardAlunoCache(uid, { parceiros: [] });
+        if (coachIdForExtras) {
+          const feedbacks = secondary.feedbacks_count ?? 0;
+          setCoachPendings((prev) => {
+            const next = { ...prev, feedbacks };
+            patchDashboardAlunoCache(uid, { coachPendings: next });
+            return next;
+          });
         }
-      })();
-    } else {
-      setParceiros([]);
-      patchDashboardAlunoCache(uid, { parceiros: [] });
-    }
+
+        const parceirosList = coachExtrasEnabled ? (secondary.parceiros ?? []) : [];
+        setParceiros(parceirosList);
+        patchDashboardAlunoCache(uid, { parceiros: parceirosList });
+      } catch (err) {
+        console.warn('[Dashboard] Erro ao buscar dados secundários:', err);
+        setParceiros([]);
+        patchDashboardAlunoCache(uid, { parceiros: [] });
+      }
+    })();
   };
 
   const fetchDashboard = async (opts?: { force?: boolean }) => {
@@ -602,27 +587,29 @@ export default function AlunoDashboardPage() {
       const today = getTodayBrazil();
       const coachIdValue = profile.coach_id ?? null;
 
-      // ── Dados principais em paralelo (sem duplicar agenda do dia) ─────────
-      const [kpiResult, coachResult, aguaResult, weekResult] = await Promise.all([
-        supabaseClient.rpc('get_kpis_aluno', { p_aluno_id: uid }).then(
-          (r) => r,
-          () => ({ data: null, error: true }),
-        ),
-        coachIdValue
-          ? supabaseClient
-              .from('profiles')
-              .select('full_name, avatar_url, sexo, subscription_active, account_type, role')
-              .eq('id', coachIdValue)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
-        supabaseClient
-          .from('registros_agua')
-          .select('id, copos, ml_por_copo')
-          .eq('aluno_id', uid)
-          .eq('data_registro', today)
-          .maybeSingle(),
-        fetchWeeklyAgenda(uid),
-      ]);
+      // ── Dados principais — antes 4 requisições em paralelo (KPIs, perfil do
+      // coach, água de hoje, agenda da semana), agora 1 RPC só que já embute
+      // a agenda semanal (get_agenda_semanal_aluno) por dentro. ────────────
+      const days = getUpcomingDays();
+      const { monday: weekMonday, sunday: weekSunday } = getCurrentIsoWeekRange();
+      const startOfWeek = days[0].data < weekMonday ? days[0].data : weekMonday;
+      const endOfWeek = days[days.length - 1].data > weekSunday ? days[days.length - 1].data : weekSunday;
+
+      const { data: bootstrapData, error: bootstrapError } = await supabaseClient
+        .rpc('get_dashboard_bootstrap_aluno', {
+          p_aluno_id: uid,
+          p_coach_id: coachIdValue,
+          p_today: today,
+          p_start: startOfWeek,
+          p_end: endOfWeek,
+        });
+      if (bootstrapError) throw bootstrapError;
+      const bootstrap = (bootstrapData ?? {}) as Record<string, any>;
+
+      const kpiResult = { data: bootstrap.kpis ?? null };
+      const coachResult = { data: bootstrap.coach_profile ?? null };
+      const aguaResult = { data: bootstrap.agua_hoje ?? null };
+      const weekResult = applyAgendaSemanal(bootstrap, days, weekMonday, weekSunday, uid);
 
       let nextKpis: KpisAluno | null = null;
       if (kpiResult.data) {
@@ -748,6 +735,56 @@ export default function AlunoDashboardPage() {
     } catch (err) {
       console.error('[Dashboard] Erro:', err);
       setLoading(false);
+    }
+  };
+
+  /**
+   * Marca uma refeição pendente como feita direto do card do dashboard —
+   * otimista (atualiza a lista/contagem na hora, sem esperar a rede) e some
+   * da lista de pendentes assim que confirmado.
+   */
+  const handleMarcarRefeicaoDashboard = async (mealId: string) => {
+    if (!userId || !planoNutricao?.planId) return;
+    const today = getTodayBrazil();
+    const refeicaoRemovida = planoNutricao.refeicoesPendentes?.find((r) => r.id === mealId);
+
+    setPlanoNutricao((prev) =>
+      prev
+        ? {
+            ...prev,
+            refeicoesConcluidas: prev.refeicoesConcluidas + 1,
+            refeicoesPendentes: (prev.refeicoesPendentes ?? []).filter((r) => r.id !== mealId),
+          }
+        : prev,
+    );
+
+    try {
+      const { error } = await supabaseClient.from('nutrition_meal_checkins').upsert(
+        {
+          student_id: userId,
+          plan_id: planoNutricao.planId,
+          meal_id: mealId,
+          checkin_date: today,
+          status: 'done',
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'student_id,meal_id,checkin_date' },
+      );
+      if (error) throw error;
+    } catch (err) {
+      console.error('[Dashboard] Erro ao marcar refeição:', err);
+      // Desfaz o otimismo — a rede não confirmou.
+      if (refeicaoRemovida) {
+        setPlanoNutricao((prev) =>
+          prev
+            ? {
+                ...prev,
+                refeicoesConcluidas: Math.max(0, prev.refeicoesConcluidas - 1),
+                refeicoesPendentes: [...(prev.refeicoesPendentes ?? []), refeicaoRemovida],
+              }
+            : prev,
+        );
+      }
     }
   };
 
@@ -1048,6 +1085,8 @@ export default function AlunoDashboardPage() {
               refeicoesFeitasHoje={planoNutricao.refeicoesConcluidas}
               totalRefeicoes={planoNutricao.totalRefeicoes}
               proximaRefeicao={planoNutricao.proximaRefeicao}
+              refeicoesPendentes={planoNutricao.refeicoesPendentes}
+              onMarcarRefeicao={handleMarcarRefeicaoDashboard}
               onVerPlano={() => router.push('/aluno/plano-alimentar')}
             />
           )}

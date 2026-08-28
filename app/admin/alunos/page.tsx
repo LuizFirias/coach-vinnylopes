@@ -156,6 +156,10 @@ export default function AdminAlunosPage() {
   // Filters State
   const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'pendentes' | 'inativos'>('todos');
   const [planoFilter, setPlanoFilter] = useState<string>('todos');
+  // TODO: adicionar filtro por modalidades_esporte e objetivo (ver spec "Modalidade
+  // Esportiva + Revisão de Objetivo", ago/2026). Campo já indexado via GIN em
+  // profiles.modalidades_esporte (migration 0091); constantes em
+  // lib/constants/student-profile.ts.
   const [planosPersonalizados, setPlanosPersonalizados] = useState<CoachPlan[]>([]);
   const [sortOption, setSortOption] = useState<'recentes' | 'atividade' | 'vencimento' | 'nome'>('atividade');
   const [filtersOpen, setFiltersOpen] = useState(false);

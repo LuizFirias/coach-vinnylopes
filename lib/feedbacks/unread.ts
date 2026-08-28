@@ -15,7 +15,12 @@ export async function countUnreadFeedbacks(coachId: string): Promise<number> {
     .is('lido_em', null);
 
   if (error) {
-    console.error('[countUnreadFeedbacks]', error);
+    console.error('[countUnreadFeedbacks]', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return 0;
   }
   return count ?? 0;

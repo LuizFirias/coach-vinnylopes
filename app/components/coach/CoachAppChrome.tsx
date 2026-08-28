@@ -133,7 +133,10 @@ export function CoachAppChrome({ children }: { children: React.ReactNode }) {
           // Título e ações são desktop-only agora (ver abaixo) — a barra inteira
           // some no mobile, sem faixa vazia sobrando.
           "coach-chrome-header sticky top-0 z-[300] isolate hidden w-full max-w-full overflow-x-clip border-b border-border-subtle/40 bg-surface-0/95 backdrop-blur-md lg:flex lg:overflow-visible",
-          pathname.startsWith("/admin/aluno/") && "coach-chrome-header--compact",
+          // Desktop: só a dashboard mostra o header (saudação + avatar/notif) —
+          // nas outras seções o nome já está marcado no sidebar, então o header
+          // some inteiro (ver .coach-chrome-header--compact) e o conteúdo sobe.
+          pathname !== "/admin/dashboard" && "coach-chrome-header--compact",
         )}
       >
         <div className="box-border flex h-full min-w-0 w-full max-w-full items-center gap-3 px-4 py-2 md:px-8 lg:h-full lg:px-0 lg:py-0">

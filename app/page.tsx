@@ -1019,12 +1019,19 @@ function LoginForm() {
                   </button>
                 </div>
 
-                {capsLockActive && (
-                  <div className="flex items-center gap-1.5 text-xs text-warning">
-                    <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
-                    <span>Caps Lock está ativado</span>
-                  </div>
-                )}
+                {/* Sempre montado (só a opacidade muda) — o espaço já fica
+                    reservado no fluxo, então ativar/desativar Caps Lock não
+                    empurra o resto do formulário nem recentraliza o card. */}
+                <div
+                  className={cn(
+                    "flex items-center gap-1.5 text-[11px] text-warning transition-opacity",
+                    capsLockActive ? "opacity-100" : "opacity-0",
+                  )}
+                  aria-hidden={!capsLockActive}
+                >
+                  <WarningCircle className="w-3 h-3 flex-shrink-0" weight="fill" />
+                  <span>Caps Lock está ativado</span>
+                </div>
 
                 <label
                   htmlFor="rememberMe"

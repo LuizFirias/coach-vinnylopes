@@ -68,3 +68,62 @@ export function getMonthGridDays(anchor: Date): Date[] {
 }
 
 export const WEEKDAY_LABELS_SHORT = ["seg.", "ter.", "qua.", "qui.", "sex.", "sáb.", "dom."];
+
+export type PeriodoFiltro = "hoje" | "semana" | "mes" | "3meses";
+
+/** Janela [start, end) pra cada opção de período — sempre relativa a agora
+ *  (não à navegação do calendário principal, que é independente). */
+export function rangeForPeriodo(periodo: PeriodoFiltro): { start: Date; end: Date } {
+  const now = new Date();
+  if (periodo === "hoje") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return { start, end: addDays(start, 1) };
+  }
+  if (periodo === "semana") {
+    const start = getMonday(now);
+    return { start, end: addDays(start, 7) };
+  }
+  if (periodo === "mes") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { start, end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+  }
+  // 3meses — mês atual + 2 anteriores
+  const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  return { start, end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+}
+
+/** Divide [start, end) em categorias pro gráfico — granularidade automática:
+ *  ≤10 dias vira dia a dia, ≤45 dias vira semana a semana, mais que isso vira mês a mês. */
+export function bucketRange(start: Date, end: Date): { categoria: string; from: Date; to: Date }[] {
+  const capitalizar = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const spanDays = Math.max(1, (end.getTime() - start.getTime()) / 86_400_000);
+
+  if (spanDays <= 10) {
+    const dias = Math.round(spanDays);
+    return Array.from({ length: dias }, (_, i) => {
+      const from = addDays(start, i);
+      const label = capitalizar(from.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""));
+      return { categoria: label, from, to: addDays(from, 1) };
+    });
+  }
+
+  if (spanDays <= 45) {
+    const semanas = Math.ceil(spanDays / 7);
+    return Array.from({ length: semanas }, (_, i) => {
+      const from = addDays(start, i * 7);
+      const to = addDays(from, 7);
+      return { categoria: `S${i + 1}`, from, to };
+    });
+  }
+
+  const meses: { categoria: string; from: Date; to: Date }[] = [];
+  let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (cursor < end) {
+    const proximo = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    const label = capitalizar(cursor.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""));
+    meses.push({ categoria: label, from: cursor, to: proximo });
+    cursor = proximo;
+  }
+  return meses;
+}

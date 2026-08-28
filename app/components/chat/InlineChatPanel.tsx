@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import Link from "next/link";
+import { UserCircle } from "@phosphor-icons/react";
 import { getSafeSession } from "@/lib/authErrorHandler";
 import { marcarMensagensLidas } from "@/lib/chat/actions";
 import { useChat } from "@/lib/chat/realtime";
+import { StudentAvatar } from "@/app/components/profile/StudentAvatar";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 
@@ -12,6 +15,15 @@ interface InlineChatPanelProps {
   meuId: string;
   /** Chamado depois de marcar como lida — pai zera o badge/dot local sem recarregar tudo. */
   onRead?: () => void;
+  /** Painel direito do chat desktop (2 colunas, estilo WhatsApp) — sem
+   *  altura fixa (o pai controla via flex) e com cabeçalho próprio
+   *  (avatar + nome + link pro perfil do aluno). Sem isso, é o accordion
+   *  antigo (260px, embutido na linha da lista). */
+  fullHeight?: boolean;
+  alunoId?: string;
+  nomeOutro?: string;
+  avatarOutro?: string | null;
+  sexoOutro?: string | null;
 }
 
 /** Altura visível — cabe ~4 mensagens antes de precisar rolar (padrão Nutrium). */
@@ -34,8 +46,18 @@ function formatDateDivider(iso: string): string {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-/** Conversa expandida inline na lista — não navega pra outra página/rota. */
-export function InlineChatPanel({ conversaId, meuId, onRead }: InlineChatPanelProps) {
+/** Conversa expandida inline na lista — não navega pra outra página/rota.
+ *  Com `fullHeight`, vira o painel direito do chat desktop 2 colunas. */
+export function InlineChatPanel({
+  conversaId,
+  meuId,
+  onRead,
+  fullHeight,
+  alunoId,
+  nomeOutro,
+  avatarOutro,
+  sexoOutro,
+}: InlineChatPanelProps) {
   const { mensagens, loading, bottomRef, appendLocal } = useChat(conversaId);
 
   useEffect(() => {
@@ -59,11 +81,32 @@ export function InlineChatPanel({ conversaId, meuId, onRead }: InlineChatPanelPr
   }, [mensagens]);
 
   return (
-    <div className="border-t border-border-subtle">
-      {/* Papel de parede roxo claro — diferencia da lista branca acima */}
+    <div className={fullHeight ? "flex h-full min-h-0 flex-col" : "border-t border-border-subtle"}>
+      {fullHeight && (
+        <div className="flex shrink-0 items-center gap-3 border-b border-border-subtle px-4 py-3">
+          <StudentAvatar name={nomeOutro ?? "Aluno"} avatarUrl={avatarOutro} sexo={sexoOutro} sizeClassName="h-9 w-9" />
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-text-primary">{nomeOutro}</p>
+          {alunoId && (
+            <Link
+              href={`/admin/aluno/${alunoId}`}
+              title="Ver perfil do aluno"
+              aria-label="Ver perfil do aluno"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:text-brand"
+            >
+              <UserCircle size={20} />
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Papel de parede neutra — igual ao WhatsApp, que também não usa a
+       *  cor da marca no canvas de mensagens, só nas bolhas/UI. */}
       <div
-        className="overflow-y-auto px-5 py-4"
-        style={{ height: PANEL_HEIGHT_PX, backgroundColor: "#F4EBFC" }}
+        className={fullHeight ? "min-h-0 flex-1 overflow-y-auto px-5 py-4" : "overflow-y-auto px-5 py-4"}
+        style={{
+          height: fullHeight ? undefined : PANEL_HEIGHT_PX,
+          backgroundColor: fullHeight ? "var(--filter-bg, #ebebf0)" : "#F4EBFC",
+        }}
       >
         {loading ? (
           <p className="text-center text-xs text-text-tertiary">Carregando...</p>
@@ -91,7 +134,7 @@ export function InlineChatPanel({ conversaId, meuId, onRead }: InlineChatPanelPr
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-surface-1 px-3 py-3">
+      <div className="shrink-0 bg-surface-1 px-3 py-3">
         <ChatInput conversaId={conversaId} onSent={appendLocal} />
       </div>
     </div>

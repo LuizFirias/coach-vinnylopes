@@ -35,6 +35,104 @@ interface StudentNutritionStat {
   planId?: string;
 }
 
+const STATUS_LABELS: Record<StudentNutritionStat['status'], string> = {
+  'em-dia': 'Em dia',
+  'atencao': 'Atenção',
+  'sem-checkin': 'Sem check-in',
+  'sem-plano': 'Sem plano',
+};
+
+const STATUS_BADGE_CLASSES: Record<StudentNutritionStat['status'], string> = {
+  'em-dia': 'bg-success/15 text-success',
+  'atencao': 'bg-warning/15 text-warning',
+  'sem-checkin': 'bg-danger/15 text-danger',
+  'sem-plano': 'bg-surface-2 text-text-tertiary',
+};
+
+const STATUS_DOT_CLASSES: Record<StudentNutritionStat['status'], string> = {
+  'em-dia': 'bg-success',
+  'atencao': 'bg-warning',
+  'sem-checkin': 'bg-danger',
+  'sem-plano': 'bg-text-tertiary',
+};
+
+/* Ordem das colunas do kanban (desktop) — mais urgente primeiro */
+const STATUS_COLUMNS: StudentNutritionStat['status'][] = ['sem-checkin', 'atencao', 'sem-plano', 'em-dia'];
+
+/** Card de aluno da Nutrição — usado na lista (mobile) e no kanban (desktop, `compact`). */
+function NutricaoStudentCard({ student, compact }: { student: StudentNutritionStat; compact?: boolean }) {
+  const temPlano = student.planName !== 'Sem plano';
+  const adesaoAlunoClass =
+    !temPlano
+      ? 'text-text-tertiary'
+      : student.adherence7d > 80
+        ? 'text-success'
+        : student.adherence7d > 33
+          ? 'text-warning'
+          : 'text-danger';
+  const href = student.planId
+    ? withReturnUrl(`/admin/nutricao/planos/${student.planId}`, '/admin/nutricao')
+    : withReturnUrl('/admin/nutricao/novo-plano', '/admin/nutricao');
+
+  return (
+    <div className="relative rounded-xl border-0 bg-surface-1 shadow-sm overflow-hidden">
+      <div className={cn('flex items-start', compact ? 'gap-2.5 px-3 py-2.5' : 'gap-3 px-4 py-3.5')}>
+        <div className={cn('flex shrink-0 items-center justify-center text-brand', compact ? 'h-8 w-8' : 'h-10 w-10')}>
+          <AppleLogo size={compact ? 15 : 18} weight="bold" />
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className={cn('font-bold text-text-primary truncate leading-tight', compact ? 'text-[12.5px]' : 'text-sm')}>
+              {student.name}
+            </p>
+            {/* Badge de status: some no kanban — a coluna já indica o status. */}
+            {!compact && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+                  STATUS_BADGE_CLASSES[student.status],
+                )}
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full', STATUS_DOT_CLASSES[student.status])} />
+                {STATUS_LABELS[student.status]}
+              </span>
+            )}
+          </div>
+          <p className={cn('mt-1 truncate text-text-tertiary', compact ? 'text-[10px]' : 'text-[11px]')}>
+            {student.planName}
+            {temPlano ? ` · ${student.todayMeals} hoje` : ''}
+            {!compact && student.lastCheckin ? ` · ${student.lastCheckin}` : ''}
+            {temPlano && (
+              <>
+                {' · '}
+                <span className={cn('font-bold font-mono tabular-nums lining-nums', adesaoAlunoClass)}>
+                  Adesão 7d · {student.adherence7d}%
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+        {!compact && (
+          <Link
+            href={href}
+            className="mt-2.5 shrink-0 text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors whitespace-nowrap"
+          >
+            {student.planId ? 'Ver plano' : 'Prescrever'}
+          </Link>
+        )}
+      </div>
+      {compact && (
+        <Link
+          href={href}
+          className="block border-t border-border-subtle/60 px-3 py-1.5 text-center text-[10.5px] font-semibold text-brand hover:text-brand-hover transition-colors"
+        >
+          {student.planId ? 'Ver plano' : 'Prescrever'}
+        </Link>
+      )}
+    </div>
+  );
+}
+
 export default function NutricaoPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [studentNutritionList, setStudentNutritionList] = useState<StudentNutritionStat[]>([]);
@@ -300,9 +398,9 @@ export default function NutricaoPage() {
     <div className="min-h-screen p-4 md:p-8 lg:p-10 lg:pl-8 pb-28">
       <div className="w-full max-w-[min(1600px,96vw)] mx-auto">
           <div className="flex flex-col gap-5">
-            {/* Título no topo */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h1 className="text-lg font-bold text-text-primary tracking-tight">Nutrição</h1>
+            {/* Título — só no mobile; no desktop a seção já está marcada no sidebar (ver CoachAppChrome) */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between lg:justify-end gap-3">
+              <h1 className="text-lg font-bold text-text-primary tracking-tight lg:hidden">Nutrição</h1>
               <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto">
                 <Link
                   href={withReturnUrl('/admin/nutricao/novo-plano', '/admin/nutricao')}
@@ -477,94 +575,46 @@ export default function NutricaoPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {filteredStudents.map((student) => {
-                    const statusLabels = {
-                      'em-dia': 'Em dia',
-                      'atencao': 'Atenção',
-                      'sem-checkin': 'Sem check-in',
-                      'sem-plano': 'Sem plano',
-                    } as const;
-                    const statusColors = {
-                      'em-dia': 'bg-success/15 text-success',
-                      'atencao': 'bg-warning/15 text-warning',
-                      'sem-checkin': 'bg-danger/15 text-danger',
-                      'sem-plano': 'bg-surface-2 text-text-tertiary',
-                    } as const;
-                    const temPlano = student.planName !== 'Sem plano';
-                    const adesaoAlunoClass =
-                      !temPlano
-                        ? 'text-text-tertiary'
-                        : student.adherence7d > 80
-                          ? 'text-success'
-                          : student.adherence7d > 33
-                            ? 'text-warning'
-                            : 'text-danger';
+                <>
+                  {/* Mobile/tablet: lista única com o card completo */}
+                  <div className="flex flex-col gap-3 lg:hidden">
+                    {filteredStudents.map((student) => (
+                      <NutricaoStudentCard key={student.id} student={student} />
+                    ))}
+                  </div>
 
-                    return (
-                      <div
-                        key={student.id}
-                        className="relative rounded-xl border-0 bg-surface-1 shadow-sm overflow-hidden"
-                      >
-                        <div className="flex items-start gap-3 px-4 py-3.5">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center text-brand">
-                            <AppleLogo size={18} weight="bold" />
+                  {/* Desktop: kanban por status (padrão Notion/Trello) — cards compactos,
+                      um card por aluno, agrupados na coluna do status dele. */}
+                  <div className="hidden lg:grid lg:grid-cols-4 lg:items-start lg:gap-4">
+                    {STATUS_COLUMNS.map((status) => {
+                      const columnStudents = filteredStudents.filter((s) => s.status === status);
+                      return (
+                        <div key={status} className="flex min-w-0 flex-col gap-2.5">
+                          <div className="flex items-center gap-2 px-1">
+                            <span className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_DOT_CLASSES[status])} />
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-text-secondary">
+                              {STATUS_LABELS[status]}
+                            </span>
+                            <span className="text-[11px] font-semibold tabular-nums text-text-tertiary">
+                              {columnStudents.length}
+                            </span>
                           </div>
-                          <div className="min-w-0 flex-1 pt-0.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm font-bold text-text-primary truncate leading-tight">
-                                {student.name}
-                              </p>
-                              <span
-                                className={cn(
-                                  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
-                                  statusColors[student.status],
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    'w-1.5 h-1.5 rounded-full',
-                                    student.status === 'em-dia' && 'bg-success',
-                                    student.status === 'atencao' && 'bg-warning',
-                                    student.status === 'sem-checkin' && 'bg-danger',
-                                    student.status === 'sem-plano' && 'bg-text-tertiary',
-                                  )}
-                                />
-                                {statusLabels[student.status]}
-                              </span>
-                            </div>
-                            <p className="mt-1 text-[11px] text-text-tertiary truncate">
-                              {student.planName}
-                              {temPlano ? ` · ${student.todayMeals} hoje` : ''}
-                              {student.lastCheckin ? ` · ${student.lastCheckin}` : ''}
-                            </p>
-                            {temPlano && (
-                              <p className={cn('mt-1 text-[11px] font-bold font-mono tabular-nums lining-nums', adesaoAlunoClass)}>
-                                Adesão 7d · {student.adherence7d}%
-                              </p>
+                          <div className="flex flex-col gap-2">
+                            {columnStudents.length === 0 ? (
+                              <div className="rounded-xl border border-dashed border-border-subtle px-3 py-6 text-center text-[11px] text-text-tertiary">
+                                Nenhum aluno
+                              </div>
+                            ) : (
+                              columnStudents.map((student) => (
+                                <NutricaoStudentCard key={student.id} student={student} compact />
+                              ))
                             )}
                           </div>
-                          <Link
-                            href={
-                              student.planId
-                                ? withReturnUrl(
-                                    `/admin/nutricao/planos/${student.planId}`,
-                                    '/admin/nutricao',
-                                  )
-                                : withReturnUrl(
-                                    '/admin/nutricao/novo-plano',
-                                    '/admin/nutricao',
-                                  )
-                            }
-                            className="mt-2.5 shrink-0 text-[11px] font-semibold text-brand hover:text-brand-hover transition-colors whitespace-nowrap"
-                          >
-                            {student.planId ? 'Ver plano' : 'Prescrever'}
-                          </Link>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
 

@@ -87,8 +87,11 @@ export function MealCard({
           className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center"
           style={{
             borderRadius: 5,
-            border: "none",
-            background: isDone ? "#39c75a" : "var(--filter-bg, #ebebf0)",
+            // Sem borda, o quadrado "desmarcado" ficava branco em cima de
+            // card branco no tema light — invisível. Border fixo resolve
+            // nos dois temas (marcado não precisa, já é verde sólido).
+            border: isDone ? "none" : "1.5px solid var(--border-default)",
+            background: isDone ? "#39c75a" : "transparent",
             transition: "all 0.15s",
           }}
         >
