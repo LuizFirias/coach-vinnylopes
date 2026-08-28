@@ -9,8 +9,7 @@ import {
   WarningCircle, 
   Eye, 
   EyeSlash, 
-  ShieldCheck, 
-  ChatCircle, 
+  ChatCircle,
   Check
 } from "@phosphor-icons/react";
 import PWAInstall from "./components/PWAInstall";
@@ -535,10 +534,7 @@ function LoginForm() {
             priority
             className="w-14 lg:w-16 h-auto object-contain rounded-xl drop-shadow-2xl animate-fade-in mb-2"
           />
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="text-brand w-6 h-6" />
-            <h1 className="text-lg lg:text-xl font-bold text-text-primary tracking-widest uppercase font-display">COACH VINNY</h1>
-          </div>
+          <h1 className="text-lg lg:text-xl font-bold text-text-primary tracking-widest uppercase font-display">COACH VINNY</h1>
         </div>
 
         {/* Form — estilo Mobills: tabs Entrar/Cadastrar + campos underline */}
