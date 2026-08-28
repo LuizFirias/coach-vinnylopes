@@ -38,7 +38,7 @@ AS $$
       'kpis', public.get_kpis_aluno(p_aluno_id),
       'coach_profile', (
         SELECT row_to_json(c) FROM (
-          SELECT full_name, avatar_url, sexo, subscription_active, account_type, role
+          SELECT full_name, avatar_url, sexo, role
           FROM profiles
           WHERE id = p_coach_id
         ) c

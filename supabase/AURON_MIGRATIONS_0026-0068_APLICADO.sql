@@ -1,7 +1,7 @@
 -- ============================================================
--- Coach Vinny — migrations trazidas do AURON (0026 a 0067)
--- Gerado automaticamente para aplicação em lote, na ordem correta.
--- Rodar tudo de uma vez no SQL Editor do Supabase.
+-- Coach Vinny — migrations trazidas do AURON (0026 a 0068)
+-- JÁ APLICADAS em produção em 2026-08-28 (ver backups/ antes/depois).
+-- Mantido aqui só como registro/referência — não precisa rodar de novo.
 -- ============================================================
 
 -- @@FILE_START@@ 0026_auron_nutricao_digital_fase01.sql
@@ -2412,7 +2412,7 @@ AS $$
       'kpis', public.get_kpis_aluno(p_aluno_id),
       'coach_profile', (
         SELECT row_to_json(c) FROM (
-          SELECT full_name, avatar_url, sexo, subscription_active, account_type, role
+          SELECT full_name, avatar_url, sexo, role
           FROM profiles
           WHERE id = p_coach_id
         ) c
@@ -2765,6 +2765,12 @@ END $$;
 -- app são bulking/cutting/recomposicao/manutencao (ver NovoAlunoForm.tsx,
 -- aluno/perfil/page.tsx, signup/aluno/page.tsx), não os nomes que a spec
 -- original assumia. Mapeamento:
+--
+-- Coach Vinny já tinha uma constraint com esse mesmo nome, restringindo
+-- objetivo aos valores antigos (bulking/cutting/manutencao/recomposicao)
+-- — precisa cair antes do remapeamento abaixo, senão o UPDATE nem roda.
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_objetivo_check;
+
 UPDATE profiles SET objetivo = 'hipertrofia'   WHERE objetivo = 'bulking';
 UPDATE profiles SET objetivo = 'emagrecimento' WHERE objetivo = 'cutting';
 UPDATE profiles SET objetivo = 'definicao'     WHERE objetivo = 'recomposicao';
@@ -2849,4 +2855,27 @@ ALTER TABLE historico_treinos
 COMMIT;
 
 -- @@FILE_END@@ 0067_historico_treinos_preserva_ao_excluir_ficha.sql
+
+-- @@FILE_START@@ 0068_coach_has_write_access_stub.sql
+-- Stub da função coach_has_write_access() usada por policies do AURON
+-- (ex.: 0034_create_cardio_tables.sql) que checavam assinatura ativa do
+-- coach antes de liberar escrita. Coach Vinny não tem plano/assinatura
+-- (treinador único) — a versão original dependia de colunas
+-- (subscription_active, account_type) que não existem neste banco.
+--
+-- Equivalente ao hasActiveAccess()/assertCoachWriteAccess() neutralizados
+-- do lado da aplicação: sempre libera.
+--
+-- Aplicada manualmente antes da 0034 durante o merge do AURON (sem essa
+-- função, a policy de cardio_prescricoes_coach_insert falha ao ser criada).
+
+CREATE OR REPLACE FUNCTION public.coach_has_write_access()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT true;
+$$;
+
+-- @@FILE_END@@ 0068_coach_has_write_access_stub.sql
 

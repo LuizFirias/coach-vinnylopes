@@ -32,6 +32,12 @@ END $$;
 -- app são bulking/cutting/recomposicao/manutencao (ver NovoAlunoForm.tsx,
 -- aluno/perfil/page.tsx, signup/aluno/page.tsx), não os nomes que a spec
 -- original assumia. Mapeamento:
+--
+-- Coach Vinny já tinha uma constraint com esse mesmo nome, restringindo
+-- objetivo aos valores antigos (bulking/cutting/manutencao/recomposicao)
+-- — precisa cair antes do remapeamento abaixo, senão o UPDATE nem roda.
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_objetivo_check;
+
 UPDATE profiles SET objetivo = 'hipertrofia'   WHERE objetivo = 'bulking';
 UPDATE profiles SET objetivo = 'emagrecimento' WHERE objetivo = 'cutting';
 UPDATE profiles SET objetivo = 'definicao'     WHERE objetivo = 'recomposicao';
