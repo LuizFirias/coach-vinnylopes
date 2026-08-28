@@ -51,3 +51,6 @@ next-env.d.ts
 gitleaks-report.json
 
 diff-*.txt
+
+# Backups locais de banco (dados reais de alunos — nunca commitar)
+/backups/
