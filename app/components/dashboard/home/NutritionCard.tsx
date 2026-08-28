@@ -127,7 +127,7 @@ export function NutritionCard({
           >
             <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-500">
               <WarningCircle size={13} weight="fill" />
-              {refeicoesPendentes.length} refeição{refeicoesPendentes.length === 1 ? '' : 'ões'} sem marcar
+              {refeicoesPendentes.length} {refeicoesPendentes.length === 1 ? 'refeição' : 'refeições'} sem marcar
             </span>
             <CaretDown
               size={12}
