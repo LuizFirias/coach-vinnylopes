@@ -391,12 +391,12 @@ function LoginForm() {
         {/* Logo */}
         <div className="flex flex-col items-center text-center mb-3 sm:mb-4 lg:mb-5">
           <Image
-            src="/logo.png"
+            src="/logo-preto.png"
             alt="Coach Vinny"
-            width={96}
-            height={96}
+            width={406}
+            height={240}
             priority
-            className="w-20 lg:w-24 h-auto object-contain rounded-xl drop-shadow-2xl animate-fade-in"
+            className="w-40 lg:w-48 h-auto object-contain drop-shadow-2xl animate-fade-in"
           />
         </div>
 
