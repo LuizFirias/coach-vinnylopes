@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from"react";
 import { X, ArrowSquareOut, FileText, ArrowLeft, DeviceMobile } from "@phosphor-icons/react";
@@ -31,7 +31,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
       <div className="relative w-full h-full bg-[#0a0a0a] rounded-3xl border border-[#D4AF37]/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/5 bg-black/40 shrink-0">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-card bg-black/40 shrink-0">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button
               onClick={onClose}
@@ -100,7 +100,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
             <>
               {loading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10 bg-zinc-950">
-                  <DumbbellLoader text="Carregando Documento..." />
+                  <DumbbellLoader text="Carregando Documento..." variant="inline" />
                 </div>
               )}
               <iframe
@@ -115,7 +115,7 @@ export default function PDFViewer({ url, title, onClose }: PDFViewerProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-white/5 bg-black/40 flex items-center justify-between shrink-0">
+        <div className="p-3 border-t border-card bg-black/40 flex items-center justify-between shrink-0">
           <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em]">
             Exibição segura • Coach Vinny Protocol
           </p>

@@ -3,7 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils/cn';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonVariant = 'primary' | 'primary-capsule' | 'secondary' | 'ghost' | 'danger' | 'success';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -17,19 +17,31 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand text-text-on-brand hover:bg-brand-hover hover:shadow-glow-brand active:bg-brand-pressed',
+    'bg-brand text-text-on-brand shadow-btn-glow hover:shadow-btn-glow-hover hover:bg-brand-hover active:bg-brand-pressed',
+  'primary-capsule':
+    'bg-brand text-text-on-brand shadow-btn-glow hover:shadow-btn-glow-hover hover:bg-brand-hover active:bg-brand-pressed overflow-hidden p-0',
   secondary:
     'bg-surface-3 text-text-primary border border-border hover:bg-surface-2',
   ghost:
     'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-2',
   danger:
-    'bg-danger-subtle text-danger border border-danger-border hover:bg-danger hover:text-text-primary',
+    // Evitar classe `text-danger`: em design-tokens.css ela é unlayered e
+    // sobrescreve hover:text-white (texto some no fundo vermelho).
+    'bg-danger-subtle border border-danger-border text-[color:var(--danger)] hover:bg-danger hover:text-white hover:border-danger active:bg-danger active:text-white',
+  success:
+    'bg-[#39c75a] text-text-on-brand shadow-none active:opacity-80',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
   sm: 'h-10 px-4 text-sm',
   md: 'h-12 px-5 text-base',
   lg: 'h-14 px-6 text-lg',
+};
+
+const capsuleSizeClasses: Record<ButtonSize, string> = {
+  sm: 'h-10 text-sm',
+  md: 'h-12 text-base',
+  lg: 'h-14 text-lg',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -47,6 +59,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref
 ) {
+  const isPrimaryCapsule = variant === 'primary-capsule';
+  const capsuleIcon = !loading && leftIcon ? leftIcon : null;
+
   return (
     <button
       ref={ref}
@@ -55,21 +70,38 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         'inline-flex items-center justify-center gap-2 rounded-lg font-semibold',
         'transition-all duration-fast ease-out',
         'active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100',
+        loading && 'opacity-70 disabled:opacity-70',
+        isPrimaryCapsule && 'relative justify-start gap-0 text-left',
         'focus-visible:outline-none focus-visible:shadow-focus-ring',
         variantClasses[variant],
-        sizeClasses[size],
+        isPrimaryCapsule ? capsuleSizeClasses[size] : sizeClasses[size],
         fullWidth && 'w-full',
         className
       )}
       {...rest}
     >
-      {loading ? (
-        <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      {isPrimaryCapsule ? (
+        <>
+          <span className="flex h-full w-[52px] shrink-0 items-center justify-center bg-black/15">
+            {loading ? (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              capsuleIcon
+            )}
+          </span>
+          <span className="flex-1 pr-[52px] text-center">{children}</span>
+        </>
       ) : (
-        leftIcon
+        <>
+          {loading ? (
+            <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            leftIcon
+          )}
+          {children}
+          {!loading && rightIcon}
+        </>
       )}
-      {children}
-      {!loading && rightIcon}
     </button>
   );
 });

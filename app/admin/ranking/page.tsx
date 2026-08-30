@@ -2,23 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
-import { getPublicStorageUrl } from '@/lib/storageUrls';
-import { Trophy, Star, User, WarningCircle, Lightning } from '@phosphor-icons/react';
+import { getSafeSession } from '@/lib/authErrorHandler';
+import { Trophy, Star, Clock, WarningCircle, Lightning } from '@phosphor-icons/react';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
-import PageHeader from '@/app/components/PageHeader';
-import DataTable from '@/app/components/DataTable';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { cn } from '@/lib/utils/cn';
+import { toBrazilDateString } from '@/lib/dateUtils';
 
 interface RankingEntry {
   id: string;
   coaching_reference?: string | null;
   email?: string | null;
   avatar_url?: string | null;
+  sexo?: string | null;
   total_pontos: number;
   oculto_no_ranking?: boolean | null;
-  posicao: number;
-  streak: number;
-  treinos_periodo: number;
 }
 
 export default function AdminRankingPage() {
@@ -36,8 +34,7 @@ export default function AdminRankingPage() {
       setLoading(true);
       setError(null);
 
-      const { data: authData } = await supabaseClient.auth.getUser();
-      const coachId = authData?.user?.id;
+      const coachId = (await getSafeSession())?.user?.id;
       if (!coachId) { setError('Sessão inválida'); return; }
 
       const { data: links, error: linksError } = await supabaseClient
@@ -50,125 +47,80 @@ export default function AdminRankingPage() {
       const alunoIds = (links || []).map(l => l.aluno_id);
       if (alunoIds.length === 0) { setEntries([]); return; }
 
-      // 1. Buscar perfis dos alunos
+      // Buscar perfis dos alunos
       const { data: profiles, error: profilesError } = await supabaseClient
         .from('profiles')
-        .select('id, coaching_reference, email, avatar_url, oculto_no_ranking')
+        .select('id, coaching_reference, email, avatar_url, sexo, oculto_no_ranking')
         .in('id', alunoIds)
         .eq('arquivado', false);
 
       if (profilesError) throw profilesError;
 
-      // 2. Buscar sequência (streak) de v_streak_aluno
-      const { data: streaksData, error: streaksError } = await supabaseClient
-        .from('v_streak_aluno')
-        .select('aluno_id, streak_atual')
-        .in('aluno_id', alunoIds);
+      let pontsMap: Map<string, number>;
 
-      const streakMap = new Map<string, number>();
-      if (!streaksError && streaksData) {
-        streaksData.forEach(s => streakMap.set(s.aluno_id, s.streak_atual || 0));
-      }
-
-      // 3. Definir limites de data com base no período selecionado
-      const agora = new Date();
-      let inicioPeriodo: string | null = null;
-      let fimPeriodo: string | null = null;
-
-      if (periodo !== 'total') {
-        const mesReferencia = periodo === 'mes_atual' ? agora : new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
-        inicioPeriodo = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth(), 1).toISOString();
-        fimPeriodo = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth() + 1, 0, 23, 59, 59).toISOString();
-      }
-
-      // 4. Buscar treinos digitais (historico_treinos) no período
-      let queryDigital = supabaseClient
-        .from('historico_treinos')
-        .select('aluno_id, data_conclusao')
-        .in('aluno_id', alunoIds);
-
-      if (inicioPeriodo && fimPeriodo) {
-        queryDigital = queryDigital.gte('data_conclusao', inicioPeriodo).lte('data_conclusao', fimPeriodo);
-      }
-      const { data: rawDigital, error: digitalErr } = await queryDigital;
-      if (digitalErr) throw digitalErr;
-
-      // Agrupar treinos digitais por dia único
-      const digitalDaysMap = new Map<string, Set<string>>();
-      (rawDigital || []).forEach(d => {
-        if (!digitalDaysMap.has(d.aluno_id)) {
-          digitalDaysMap.set(d.aluno_id, new Set<string>());
-        }
-        digitalDaysMap.get(d.aluno_id)!.add(d.data_conclusao.slice(0, 10));
-      });
-
-      // 5. Buscar treinos manuais (treinos_manuais) no período
-      let queryManual = supabaseClient
-        .from('treinos_manuais')
-        .select('aluno_id, pontos_earn')
-        .in('aluno_id', alunoIds)
-        .eq('concluido', true);
-
-      if (inicioPeriodo && fimPeriodo) {
-        queryManual = queryManual.gte('data_treino', inicioPeriodo).lte('data_treino', fimPeriodo);
-      }
-      const { data: rawManual, error: manualErr } = await queryManual;
-      if (manualErr) throw manualErr;
-
-      // Contabilizar treinos manuais e pontos
-      const manualCountMap = new Map<string, number>();
-      const manualPointsMap = new Map<string, number>();
-      (rawManual || []).forEach(m => {
-        manualCountMap.set(m.aluno_id, (manualCountMap.get(m.aluno_id) || 0) + 1);
-        manualPointsMap.set(m.aluno_id, (manualPointsMap.get(m.aluno_id) || 0) + (m.pontos_earn || 20));
-      });
-
-      // 6. Definir mapa de pontos com base no período
-      let pointsMap = new Map<string, number>();
       if (periodo === 'total') {
-        const { data: totalPointsData, error: pointsError } = await supabaseClient
+        const { data: pontuacoes, error: pontsError } = await supabaseClient
           .from('pontuacao_alunos')
           .select('aluno_id, total_pontos')
           .in('aluno_id', alunoIds);
 
-        if (pointsError) throw pointsError;
-        (totalPointsData || []).forEach(p => pointsMap.set(p.aluno_id, p.total_pontos || 0));
+        if (pontsError) throw pontsError;
+        pontsMap = new Map((pontuacoes || []).map(p => [p.aluno_id, p.total_pontos]));
       } else {
-        alunoIds.forEach(id => {
-          const digitalUniqueCount = digitalDaysMap.get(id)?.size || 0;
-          const manualPts = manualPointsMap.get(id) || 0;
-          pointsMap.set(id, (digitalUniqueCount * 20) + manualPts);
-        });
+        const agora = new Date();
+        const mesReferencia = periodo === 'mes_atual' ? agora : new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+        const inicioPeriodo = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth(), 1).toISOString();
+        const fimPeriodo = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+        const { data: fichasSessoes, error: fichasError } = await supabaseClient
+          .from('historico_treinos')
+          .select('aluno_id, data_conclusao')
+          .in('aluno_id', alunoIds)
+          .gte('data_conclusao', inicioPeriodo)
+          .lte('data_conclusao', fimPeriodo);
+        if (fichasError) throw fichasError;
+
+        const sessoesUnicas = (fichasSessoes || []).reduce((acc: Record<string, Set<string>>, r) => {
+          if (!acc[r.aluno_id]) acc[r.aluno_id] = new Set();
+          acc[r.aluno_id].add(toBrazilDateString(r.data_conclusao));
+          return acc;
+        }, {});
+
+        const { data: treirosManuais, error: manuaisError } = await supabaseClient
+          .from('treinos_manuais')
+          .select('aluno_id, pontos_earn')
+          .in('aluno_id', alunoIds)
+          .eq('concluido', true)
+          .gte('data_treino', inicioPeriodo)
+          .lte('data_treino', fimPeriodo);
+        if (manuaisError) throw manuaisError;
+
+        const pontosManuais = (treirosManuais || []).reduce((acc: Record<string, number>, r) => {
+          acc[r.aluno_id] = (acc[r.aluno_id] || 0) + (r.pontos_earn || 20);
+          return acc;
+        }, {});
+
+        pontsMap = new Map(
+          alunoIds.map(id => [
+            id,
+            (sessoesUnicas[id]?.size || 0) * 20 + (pontosManuais[id] || 0),
+          ])
+        );
       }
 
-      // Mapear e estruturar registros
-      const mappedEntries: RankingEntry[] = (profiles || []).map(p => {
-        const digitalCount = digitalDaysMap.get(p.id)?.size || 0;
-        const manualCount = manualCountMap.get(p.id) || 0;
-        const totalWorkouts = digitalCount + manualCount;
-
-        return {
+      const sorted = (profiles || [])
+        .map(p => ({
           id: p.id,
           coaching_reference: p.coaching_reference,
           email: p.email,
           avatar_url: p.avatar_url,
+          sexo: p.sexo,
           oculto_no_ranking: p.oculto_no_ranking,
-          total_pontos: pointsMap.get(p.id) ?? 0,
-          streak: streakMap.get(p.id) ?? 0,
-          treinos_periodo: totalWorkouts,
-          posicao: 0
-        };
-      });
+          total_pontos: pontsMap.get(p.id) ?? 0,
+        }))
+        .sort((a, b) => b.total_pontos - a.total_pontos);
 
-      // Ordenar decrescente por pontos
-      mappedEntries.sort((a, b) => b.total_pontos - a.total_pontos);
-
-      // Atribuir as posições oficiais
-      mappedEntries.forEach((entry, idx) => {
-        entry.posicao = idx + 1;
-      });
-
-      setEntries(mappedEntries);
+      setEntries(sorted);
     } catch (err: any) {
       console.error('Erro ao buscar ranking:', err);
       setError('Não foi possível carregar o ranking.');
@@ -177,195 +129,149 @@ export default function AdminRankingPage() {
     }
   }
 
-  const toggleVisibilidade = async (entry: RankingEntry) => {
+  async function toggleVisibilidade(alunoId: string, atualOculto: boolean) {
     try {
-      const newValue = !entry.oculto_no_ranking;
       const { error } = await supabaseClient
         .from('profiles')
-        .update({ oculto_no_ranking: newValue })
-        .eq('id', entry.id);
+        .update({ oculto_no_ranking: !atualOculto })
+        .eq('id', alunoId);
       if (error) throw error;
-      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, oculto_no_ranking: newValue } : e));
-    } catch (err: any) {
-      alert('Erro ao alterar visibilidade: ' + err.message);
+      setEntries(prev => prev.map(e => e.id === alunoId ? { ...e, oculto_no_ranking: !atualOculto } : e));
+    } catch (err) {
+      console.error('Erro ao atualizar visibilidade:', err);
+      alert('Erro ao atualizar visibilidade');
     }
-  };
-
-  const columns = [
-    {
-      key: 'posicao',
-      label: 'Posição',
-      sortable: true,
-      width: '90px',
-      render: (row: RankingEntry) => {
-        const medalha = ['🥇', '🥈', '🥉'][row.posicao - 1] ?? null;
-        if (medalha) {
-          return <span className="text-base select-none">{medalha}</span>;
-        }
-        return <span className="font-bold text-text-secondary text-xs font-mono">{row.posicao}º</span>;
-      }
-    },
-    {
-      key: 'coaching_reference',
-      label: 'Atleta',
-      sortable: true,
-      width: '280px',
-      render: (row: RankingEntry) => {
-        const displayName = row.coaching_reference || row.email?.split('@')[0] || 'Atleta';
-        const avatarSrc = row.avatar_url ? getPublicStorageUrl('avatars', row.avatar_url) : null;
-        return (
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-8 h-8 rounded-full overflow-hidden border-2 shrink-0 flex items-center justify-center font-bold text-xs text-white shadow-sm",
-              row.posicao <= 3 ? "border-brand/35 bg-brand-subtle" : "border-border-subtle bg-surface-3"
-            )}>
-              {avatarSrc ? (
-                <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
-              ) : (
-                displayName[0].toUpperCase()
-              )}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-bold text-text-primary truncate text-xs">{displayName}</span>
-              <span className="text-[10px] text-text-secondary truncate leading-none mt-0.5">{row.email}</span>
-            </div>
-          </div>
-        );
-      }
-    },
-    {
-      key: 'streak',
-      label: 'Sequência',
-      sortable: true,
-      render: (row: RankingEntry) => {
-        if (row.streak <= 0) return <span className="text-text-tertiary text-xs">—</span>;
-        return (
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-brand font-mono">
-            🔥 {row.streak} {row.streak === 1 ? 'dia' : 'dias'}
-          </span>
-        );
-      }
-    },
-    {
-      key: 'treinos_periodo',
-      label: 'Treinos no Período',
-      sortable: true,
-      render: (row: RankingEntry) => (
-        <span className="text-xs text-text-secondary font-mono font-medium">
-          {row.treinos_periodo} {row.treinos_periodo === 1 ? 'treino' : 'treinos'}
-        </span>
-      )
-    },
-    {
-      key: 'total_pontos',
-      label: 'Pontos',
-      sortable: true,
-      render: (row: RankingEntry) => (
-        <div className="flex items-center gap-1.5 text-brand font-mono font-bold text-xs">
-          <Lightning size={14} className="fill-brand shrink-0" />
-          <span>{row.total_pontos} pts</span>
-        </div>
-      )
-    },
-    {
-      key: 'oculto_no_ranking',
-      label: 'Visibilidade',
-      sortable: true,
-      render: (row: RankingEntry) => {
-        const isOculto = row.oculto_no_ranking;
-        return (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleVisibilidade(row);
-            }}
-            className={cn(
-              "px-2 py-0.5 rounded-[4px] text-[9px] font-bold uppercase tracking-wide border transition-all cursor-pointer",
-              isOculto 
-                ? "bg-surface-3 border-border-default text-text-disabled hover:border-brand/20 hover:text-text-secondary" 
-                : "bg-brand-subtle border-brand-border text-brand hover:opacity-90"
-            )}
-          >
-            {isOculto ? 'Oculto' : 'Visível'}
-          </button>
-        );
-      }
-    }
-  ];
+  }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-16 xl:pl-[240px]">
-      <div className="max-w-[1440px] px-6 md:px-10 py-8 mx-auto w-full flex flex-col gap-6 animate-fade-in">
-        
+    <div className="min-h-screen p-4 md:p-6 lg:pl-8 pb-24">
+      <div className="max-w-4xl mx-auto">
+
         {/* Header */}
-        <PageHeader
-          title="Ranking de Pontuação"
-          subtitle="Classificação por pontos acumulados e engajamento dos atletas"
-          breadcrumbs={[
-            { label: "Atletas", href: "/admin/alunos" },
-            { label: "Ranking" }
-          ]}
-        />
+        <div className="mb-6 py-4 border-b border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight font-display">
+              Ranking de Performance
+            </h1>
+            <p className="text-xs text-text-secondary mt-0.5">Classificação por consistência e treinos concluídos</p>
+          </div>
+
+          {/* Filtro de Período */}
+          <div className="flex gap-1 p-0.5 bg-surface-2 border-0 rounded-lg sm:w-80 w-full shrink-0 h-9.5 items-center">
+            {[
+              { key: 'total', label: 'Total' },
+              { key: 'mes_atual', label: 'Este mês' },
+              { key: 'mes_anterior', label: 'Mês anterior' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setPeriodo(key as typeof periodo)}
+                className={cn(
+                  'flex-1 py-1 px-2 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all h-8.5',
+                  periodo === key
+                    ? 'bg-surface-0 border-0 text-text-primary shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-[6px] bg-danger-subtle border border-danger-border text-danger text-sm">
+          <div className="mb-6 p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger flex items-center gap-3 text-xs font-semibold">
             <WarningCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
 
-        {/* Filtro de Período */}
-        <div className="flex bg-surface-2 p-1 rounded-[6px] border border-border-subtle w-fit mb-2">
-          {[
-            { key: 'total', label: 'Total' },
-            { key: 'mes_atual', label: 'Este mês' },
-            { key: 'mes_anterior', label: 'Mês anterior' },
-          ].map(({ key, label }) => {
-            const active = periodo === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setPeriodo(key as typeof periodo)}
-                className={cn(
-                  "px-3.5 py-1.5 text-[10px] font-bold uppercase rounded-[4px] transition-colors whitespace-nowrap",
-                  active
-                    ? "bg-brand text-text-on-brand shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Tabela Principal */}
         {loading ? (
-          <div className="flex items-center justify-center py-24 bg-surface-1 border border-border-subtle rounded-[10px] shadow-sm">
-            <DumbbellLoader text="Calculando posições e sequências..." />
+          <div className="flex items-center justify-center py-24">
+            <DumbbellLoader text="Calculando posições..." variant="inline" />
           </div>
         ) : entries.length === 0 ? (
-          <div className="bg-surface-1 border border-border-subtle shadow-sm rounded-[10px] p-16 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-full bg-surface-2 border border-border-subtle flex items-center justify-center text-text-disabled mb-5">
-              <Trophy className="w-6 h-6" />
+          <div className="bg-surface-1 border-0 shadow-sm rounded-xl py-12 px-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="w-10 h-10 rounded-lg bg-surface-2 border-0 flex items-center justify-center text-text-disabled mb-4">
+              <Star className="w-5 h-5" />
             </div>
-            <h2 className="text-sm font-bold text-text-primary mb-2">Nenhum atleta ativo no período</h2>
-            <p className="text-xs text-text-tertiary max-w-sm">O ranking será atualizado automaticamente assim que os atletas realizarem novos treinos ou check-ins.</p>
+            <h2 className="text-sm font-bold text-text-primary mb-1">Nenhum aluno listado</h2>
+            <p className="text-xs text-text-tertiary max-w-xs leading-normal">O ranking será preenchido conforme os alunos concluírem treinos e acumularem pontos.</p>
           </div>
         ) : (
-          <DataTable
-            columns={columns}
-            data={entries}
-            pagination={{ pageSize: 15 }}
-            emptyState={
-              <div className="text-center py-12 flex flex-col items-center justify-center gap-2">
-                <Trophy size={28} className="text-text-disabled" />
-                <p className="text-xs text-text-tertiary">Nenhum atleta com pontuação no período selecionado</p>
-              </div>
-            }
-          />
-        )}
+          <div className="bg-surface-1 border-0 shadow-sm rounded-xl overflow-hidden">
+            <div className="hidden md:grid grid-cols-[60px_1fr_120px_120px] px-5 py-2.5 bg-surface-2 border-b border-divider">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Posição</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">Aluno</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary text-right">Pontuação</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary text-right">Visibilidade</span>
+            </div>
 
+            <div className="divide-y divide-border-subtle/50">
+              {entries.map((entry, index) => {
+                const displayName = entry.coaching_reference || entry.email?.split('@')[0] || 'Aluno';
+                const isTop3 = index < 3;
+
+                return (
+                  <div key={entry.id} className={cn(
+                    'flex items-center gap-4 px-4 md:px-5 py-2.5 hover:bg-surface-2/40 transition-colors',
+                    entry.oculto_no_ranking && 'opacity-70'
+                  )}>
+                    <div className="w-8 flex-shrink-0 flex items-center gap-1">
+                      <span className={cn('text-xs font-mono font-medium', isTop3 ? 'text-brand' : 'text-text-tertiary')}>
+                        #{index + 1}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <StudentAvatar
+                        name={displayName}
+                        avatarUrl={entry.avatar_url}
+                        sexo={entry.sexo}
+                        sizeClassName="w-7 h-7"
+                        className={isTop3 ? "border-brand/30" : undefined}
+                      />
+                      <span className={cn(
+                        'font-bold truncate text-xs',
+                        isTop3 ? 'text-text-primary' : 'text-text-secondary'
+                      )}>
+                        {displayName}
+                      </span>
+                    </div>
+
+                    <div className="hidden md:flex items-center justify-end gap-1 flex-shrink-0 min-w-[120px]">
+                      <Lightning className="w-3.5 h-3.5 text-brand" />
+                      <span className="text-xs font-bold text-brand font-mono tabular-nums lining-nums">{entry.total_pontos} pts</span>
+                    </div>
+
+                    <div className="hidden md:flex items-center justify-end flex-shrink-0 min-w-[120px]">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleVisibilidade(entry.id, !!entry.oculto_no_ranking);
+                        }}
+                        className={cn(
+                          "text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded transition-colors",
+                          entry.oculto_no_ranking
+                            ? "bg-surface-3 border-0 text-text-tertiary hover:bg-surface-4"
+                            : "bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20"
+                        )}
+                      >
+                        {entry.oculto_no_ranking ? "Oculto" : "Visível"}
+                      </button>
+                    </div>
+
+                    {/* Mobile pontos */}
+                    <div className="flex md:hidden items-center gap-0.5 flex-shrink-0">
+                      <Lightning className="w-3 h-3 text-brand" />
+                      <span className="text-xs font-bold text-brand font-mono tabular-nums lining-nums">{entry.total_pontos}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

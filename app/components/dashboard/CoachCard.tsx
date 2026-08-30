@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Chat, ChartLineUp } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils/cn';
+import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 
 interface CoachCardProps {
   coachNome: string;
   coachAvatar: string | null;
+  coachSexo?: string | null;
   mensagensPendentes?: number;
   feedbacksPendentes?: number;
 }
@@ -15,29 +16,23 @@ interface CoachCardProps {
 export function CoachCard({
   coachNome,
   coachAvatar,
+  coachSexo,
   mensagensPendentes = 0,
   feedbacksPendentes = 0,
 }: CoachCardProps) {
   return (
-    <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 shadow-elev-1">
+    <div className="bg-surface-1 border border-card rounded-2xl p-4 shadow-elev-1">
       <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3">
         Seu coach
       </p>
 
       <div className="flex items-center gap-3 mb-4">
-        {coachAvatar ? (
-          <Image
-            src={coachAvatar}
-            alt={coachNome}
-            width={48}
-            height={48}
-            className="w-12 h-12 rounded-full object-cover border border-border-subtle"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-brand-subtle border border-brand-border flex items-center justify-center text-brand font-bold">
-            {coachNome.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <StudentAvatar
+          name={coachNome}
+          avatarUrl={coachAvatar}
+          sexo={coachSexo}
+          sizeClassName="w-12 h-12"
+        />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-text-primary truncate">{coachNome}</p>
           <p className="text-xs text-text-tertiary">Acompanhamento individualizado</p>
@@ -46,10 +41,10 @@ export function CoachCard({
 
       <div className="grid grid-cols-2 gap-2">
         <Link
-          href="/aluno/mensagens"
+          href="/aluno/chat"
           className={cn(
             'flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all',
-            'bg-surface-2 border-border-subtle hover:border-brand/30',
+            'bg-surface-2 border-card hover:border-brand/30',
           )}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -71,7 +66,7 @@ export function CoachCard({
           href="/aluno/feedbacks"
           className={cn(
             'flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border transition-all',
-            'bg-surface-2 border-border-subtle hover:border-brand/30',
+            'bg-surface-2 border-card hover:border-brand/30',
           )}
         >
           <div className="flex items-center gap-2 min-w-0">

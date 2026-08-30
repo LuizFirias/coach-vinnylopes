@@ -1,0 +1,366 @@
+# AURON Design System Rules
+# Coloque este arquivo em: .cursor/rules/auron-design.mdc
+# O Cursor agent (auto) carrega automaticamente regras relevantes por contexto
+
+---
+description: Design system e diretrizes visuais do AURON. Aplicar sempre que criar, editar ou refatorar qualquer componente de UI, tela, e-mail ou card de compartilhamento do projeto AURON.
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.css"
+  - "**/*.html"
+  - "**/components/**"
+  - "**/screens/**"
+  - "**/app/**"
+alwaysApply: false
+---
+
+## Identidade Visual AURON
+
+### Paleta de cores (NUNCA usar hex hardcoded — usar variáveis CSS)
+```
+--bg-page:        #0d0d0d   (navy escuro — NÃO preto puro)
+--bg-card:        #141414
+--bg-input:       #1e1e1e
+--border-subtle:  #1a2540
+--border-input:   #282828
+
+--color-accent:   #2b7fff   (azul — ação primária, valores em destaque)
+--color-success:  #39c75a   (verde — ativo, sucesso, queda de peso)
+--color-danger:   #e05555   (vermelho — risco, erro, ganho de peso)
+--color-warning:  #f59e0b   (amarelo — atenção, pendente)
+
+--text-primary:   #ffffff
+--text-secondary: #7a8aab
+--text-muted:     #444444
+```
+
+### Tipografia
+```
+Família: Inter (400, 500, 600, 700, 800, 900)
+
+Valor/KPI principal:    48–96px / weight 900 / letter-spacing -2px
+Título de tela:         20–28px / weight 800
+Nome de item/card:      14–16px / weight 600
+Label uppercase:        9–11px / weight 500–600 / letter-spacing 1–2px / text-transform uppercase
+Texto de tabela:        12–14px / weight 400–500
+Texto secundário:       10–12px / weight 400 / color --text-secondary
+```
+
+### Border Radius
+```
+Cards e containers: 12–14px
+Botões de ação:     10px
+Inputs:             8–10px
+Badges de status:   4–6px
+Pills e tabs:       9999px (SOMENTE status pills e tabs ativas)
+```
+
+---
+
+## Semântica de Cor — NUNCA violar
+
+| Cor | Usar para | Nunca usar para |
+|-----|-----------|-----------------|
+| `#2b7fff` azul | CTA, accent, valores em destaque, border de campo ativo | Status neutro |
+| `#39c75a` verde | Ativo, sucesso, queda de peso (delta negativo = bom) | Alerta, risco |
+| `#e05555` vermelho | Risco, erro, ganho de peso, deletar | Destaque genérico |
+| `#f59e0b` amarelo | Atenção, pendente, vencendo em breve | Erro, sucesso |
+| `#7a8aab` cinza | Labels, timestamps, texto secundário | Ação, status |
+
+---
+
+## Regras Anti-Template — O que NUNCA gerar
+
+O Cursor NUNCA deve gerar estes padrões — são característicos de Lovable/v0/Base44:
+
+### ❌ Empty state com ícone + texto longo
+```tsx
+// ERRADO:
+<View style={styles.emptyState}>
+  <Icon name="chart-bar" size={40} color="#2a3a60" />
+  <Text>Registre pelo menos 2 medidas para visualizar o gráfico.</Text>
+</View>
+
+// CORRETO: gráfico sempre renderizado com dados parciais
+// Com 0 pontos: linha horizontal muda em #1e1e1e
+// Com 1 ponto: ponto isolado visível
+// Hint discreto: texto de 8px abaixo do gráfico
+```
+
+### ❌ Delta badge em pill colorido
+```tsx
+// ERRADO:
+<View style={{ backgroundColor: '#0d2a0d', borderRadius: 6, padding: '2px 8px' }}>
+  <Text style={{ color: '#39c75a' }}>🟢 −0.5 kg</Text>
+</View>
+
+// CORRETO:
+<Text style={{ color: '#39c75a', fontSize: 13, fontWeight: '700' }}>−0.5</Text>
+```
+
+### ❌ Mini-cards side-by-side decorativos
+```tsx
+// ERRADO:
+<View style={{ flexDirection: 'row', gap: 6 }}>
+  <View style={styles.miniCard}><Text>Última</Text><Text>83kg</Text></View>
+  <View style={styles.miniCard}><Text>Variação</Text><Text>—</Text></View>
+</View>
+
+// CORRETO:
+<Text style={{ color: '#444', fontSize: 11 }}>↔ sem variação no período</Text>
+```
+
+### ❌ Painel lateral de "Rotas Rápidas"
+```tsx
+// ERRADO: card lateral com lista de links que duplicam o header
+<View style={styles.sidePanel}>
+  <Text>ROTAS RÁPIDAS</Text>
+  <TouchableOpacity><Text>Nova Ficha Digital →</Text></TouchableOpacity>
+  <TouchableOpacity><Text>Cadastrar PDF →</Text></TouchableOpacity>
+</View>
+
+// CORRETO: remover completamente — os botões já existem no header
+```
+
+### ❌ Botão de ação primária com fundo escuro
+```tsx
+// ERRADO:
+<TouchableOpacity style={{ backgroundColor: '#1e3a7a' }}>
+
+// CORRETO:
+<TouchableOpacity style={{ backgroundColor: '#2b7fff' }}>
+```
+
+### ❌ Valor KPI pequeno demais
+```tsx
+// ERRADO:
+<Text style={{ fontSize: 22, fontWeight: '700' }}>83.0 kg</Text>
+
+// CORRETO:
+<Text style={{ fontSize: 48, fontWeight: '900', letterSpacing: -2 }}>83.0</Text>
+<Text style={{ fontSize: 20, fontWeight: '700', color: '#2b7fff' }}>kg</Text>
+```
+
+### ❌ Label "EXERCÍCIO" repetida em cada card de ficha
+```tsx
+// ERRADO:
+<View>
+  <Text style={styles.label}>EXERCÍCIO</Text>
+  <Text style={styles.name}>Abdominal infra</Text>
+  <TouchableOpacity style={styles.obsCard}>
+    <Text>OBSERVAÇÕES PARA O ALUNO</Text>
+    <Icon name="chevron-right" />
+  </TouchableOpacity>
+</View>
+
+// CORRETO:
+<View style={styles.cardHeader}>
+  <Icon name="grip-vertical" />
+  <Text style={styles.exerciseName}>Abdominal infra</Text>
+  <RestBadge seconds={60} />
+  <Icon name="pencil" />
+  <Icon name="trash" />
+</View>
+```
+
+### ❌ Delete sem confirmação
+```tsx
+// ERRADO:
+<TouchableOpacity onPress={() => onDelete(item.id)}>
+  <Icon name="trash" />
+</TouchableOpacity>
+
+// CORRETO: sempre abrir modal de confirmação antes
+<TouchableOpacity onPress={() => setDeleteTarget(item)}>
+  <Icon name="trash" />
+</TouchableOpacity>
+{deleteTarget && (
+  <ConfirmModal
+    title="Excluir item"
+    description={`Tem certeza que deseja excluir "${deleteTarget.name}"?`}
+    confirmLabel="Excluir"
+    confirmVariant="danger"
+    onConfirm={() => { onDelete(deleteTarget.id); setDeleteTarget(null) }}
+    onCancel={() => setDeleteTarget(null)}
+  />
+)}
+```
+
+---
+
+## Padrões de Componentes Corretos
+
+### KPI Card
+```tsx
+<View style={{
+  backgroundColor: '#141414',
+  borderRadius: 12,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: hasAlert ? '#e05555' : '#1a2540'
+}}>
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: dotColor }} />
+    <Text style={{ fontSize: 11, color: '#7a8aab', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      {label}
+    </Text>
+  </View>
+  <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }}>{value}</Text>
+  <Text style={{ fontSize: 11, color: '#7a8aab', marginTop: 4 }}>{subtitle}</Text>
+</View>
+```
+
+### Gráfico de linha (sempre renderizado)
+```tsx
+// Regra: renderizar com qualquer quantidade de pontos (0, 1, N)
+// Com 0 pontos: linha base horizontal #1e1e1e
+// Com 1 ponto: circle isolado
+// Com 2+: polyline #2b7fff opacity 0.5
+
+<View style={{ backgroundColor: '#0f0f0f', borderRadius: 10, padding: 10 }}>
+  <Svg>
+    <Line x1={0} y1={height-2} x2={width} y2={height-2} stroke="#1e1e1e" strokeWidth={0.5} />
+    {data.length >= 2 && (
+      <Polyline
+        points={computedPoints}
+        fill="none"
+        stroke="#2b7fff"
+        strokeWidth={1.5}
+        opacity={0.5}
+      />
+    )}
+    {data.length >= 1 && (
+      <Circle cx={lastX} cy={lastY} r={3} fill="#2b7fff" opacity={0.7} />
+    )}
+  </Svg>
+</View>
+```
+
+### Tabela mobile → cards
+```tsx
+// Regra: toda tabela com 4+ colunas precisa de versão card para mobile
+const isMobile = useBreakpoint('mobile') // hook em /hooks/useBreakpoint.ts
+
+if (isMobile) return <CardList items={items} />
+return <Table items={items} />
+
+// Card mobile: nome + badge status + meta em 2 colunas + ação
+```
+
+### Header fixo com salvar
+```tsx
+// Regra: botão Salvar sempre visível — NUNCA só no rodapé
+<View style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#0d0d0d' }}>
+  <TouchableOpacity
+    style={[styles.saveBtn, !isDirty && { opacity: 0.4 }]}
+    onPress={onSave}
+    disabled={!isDirty}
+  >
+    <Text>{isSaving ? 'Salvando...' : 'Salvar'}</Text>
+  </TouchableOpacity>
+</View>
+```
+
+---
+
+## Mobile — Regras Universais
+
+```
+Breakpoint mobile:    < 768px
+Tap target mínimo:    44×44pt (TODOS os elementos interativos)
+Input font-size:      ≥ 16px (previne zoom iOS)
+Bottom bar:           respeitar safe-area-inset-bottom
+Scroll horizontal:    NUNCA permitir
+touch-action:         manipulation em botões e links
+
+Adaptações:
+- 4 KPIs desktop → grid 2×2 mobile
+- Tabelas → lista de cards mobile
+- Header com 3 botões → header compacto + bottom sheet
+- Drag & drop → long press ativa modo reordenação
+- Salvar → bottom bar fixa (NÃO no header mobile)
+```
+
+---
+
+## Dados e Formatação
+
+```ts
+// Volume sempre em kg (NÃO toneladas)
+// 5900 → "5.900 kg"
+formatVolume(kg: number): string {
+  return `${kg.toLocaleString('pt-BR')} kg`
+}
+
+// Tempo de descanso
+// 60 → "1min" | 90 → "1:30" | 30 → "30s"
+formatRestTime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return s === 0 ? `${m}min` : `${m}:${String(s).padStart(2, '0')}`
+}
+
+// Delta de peso
+// negativo = verde (queda de peso = bom)
+// positivo = vermelho (ganho = ruim, depende do contexto)
+deltaColor = delta < 0 ? '#39c75a' : '#e05555'
+
+// Tabela Supabase de exercícios: exercicios_biblioteca (NÃO exercises)
+// Séries: fichas_treino.configuracao (JSONB)
+// Peso prescrito: campo peso / peso_sugerido no JSON
+```
+
+---
+
+## Componentes Existentes — NÃO Recriar
+
+```
+MuscleBody:     @/components/ui/MuscleBody
+                Props: activeMuscles[], activeColor, inactiveColor, strokeColor, size, showBothViews
+
+useBreakpoint:  @/hooks/useBreakpoint
+                useBreakpoint('mobile') → true quando < 768px
+
+RestBadge:      @/components/workout-builder/RestBadge
+formatVolume:   @/utils/workout
+formatRestTime: @/lib/utils/restTime
+workout-techniques: @/lib/constants/workout-techniques
+                getTechniqueByValue(value), getExtraByValue(value)
+```
+
+---
+
+## Acessibilidade — Obrigatório
+
+```
+- aria-label em todos os botões icon-only
+- aria-hidden="true" em ícones decorativos
+- :focus-visible com outline visível (NUNCA outline: none sem substituto)
+- Elementos de status: não depender só de cor (adicionar texto ou ícone)
+- font-variant-numeric: tabular-nums em colunas de números
+- Animações: usar transform e opacity (NÃO top/left/width/height)
+- prefers-reduced-motion: sempre ter fallback estático
+- Listas com > 50 itens: virtualizar
+```
+
+---
+
+## Checklist antes de entregar qualquer componente
+
+```
+[ ] Nenhum empty state com ícone grande + texto longo
+[ ] Nenhum delta em pill colorido (usar texto direto)
+[ ] Nenhum mini-card decorativo side-by-side
+[ ] Nenhum painel lateral duplicando botões do header
+[ ] Botão primário usa #2b7fff (não fundo escuro)
+[ ] Métricas centrais: fontSize ≥ 44px, weight ≥ 900
+[ ] Gráfico renderiza com 0, 1 ou N pontos
+[ ] Delete tem modal de confirmação
+[ ] Tabela tem versão card para mobile < 768px
+[ ] Tap targets ≥ 44×44pt no mobile
+[ ] isDirty guard em formulários críticos
+[ ] Componentes existentes reutilizados (não recriados)
+[ ] Variáveis CSS usadas (não hex hardcoded)
+```

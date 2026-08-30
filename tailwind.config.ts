@@ -13,49 +13,56 @@ const config: Config = {
     extend: {
       colors: {
         surface: {
-          0: '#08080A',
-          1: '#15151A',
-          2: '#1F1F25',
-          3: '#2A2A32',
-          4: '#353540',
+          0: '#0d0d0d',   // page bg
+          1: '#111827',   // card — alinhado ao dash do aluno
+          2: '#1e1e1e',   // elevated / input
+          3: '#222222',   // overlay / divisor
+          4: '#282828',   // borda input
         },
         text: {
-          primary:   '#F5F5F7',
-          secondary: '#B8B8BD',
-          tertiary:  '#7A7A82',
-          disabled:  '#4A4A50',
-          'on-brand': '#1A1A1D',
+          primary: '#FAFAFA',
+          secondary: '#A1A1AA',
+          tertiary: '#71717A',
+          disabled: '#52525B',
+          'on-brand': '#FAFAFA',
         },
         brand: {
-          DEFAULT: '#D4A437',
-          primary: '#D4A437',
-          hover:   '#E1B548',
-          pressed: '#B88B25',
-          subtle:  'rgba(212, 164, 55, 0.12)',
-          border:  'rgba(212, 164, 55, 0.32)',
+          DEFAULT: '#D4A843',
+          primary: '#D4A843',
+          hover: '#E8B339',
+          pressed: '#B8902F',
+          subtle: 'rgba(212, 168, 67, 0.10)',
+          border: 'rgba(212, 168, 67, 0.20)',
         },
         success: {
-          DEFAULT: '#2EB872',
-          subtle:  'rgba(46, 184, 114, 0.12)',
-          border:  'rgba(46, 184, 114, 0.40)',
+          DEFAULT: '#39c75a',
+          subtle: 'rgba(57, 199, 90, 0.10)',
+          border: 'rgba(57, 199, 90, 0.20)',
         },
         warning: {
-          DEFAULT: '#E8A33B',
-          subtle:  'rgba(232, 163, 59, 0.12)',
+          DEFAULT: '#F59E0B',
+          subtle: 'rgba(245, 158, 11, 0.10)',
+          border: 'rgba(245, 158, 11, 0.20)',
         },
         danger: {
-          DEFAULT: '#E5484D',
-          subtle:  'rgba(229, 72, 77, 0.12)',
-          border:  'rgba(229, 72, 77, 0.40)',
+          DEFAULT: '#e05555',
+          subtle: 'rgba(224, 85, 85, 0.10)',
+          border: 'rgba(224, 85, 85, 0.20)',
         },
         info: {
-          DEFAULT: '#3B82F6',
-          subtle:  'rgba(59, 130, 246, 0.12)',
+          DEFAULT: '#38BDF8',
+          subtle: 'rgba(56, 189, 248, 0.10)',
+          border: 'rgba(56, 189, 248, 0.20)',
         },
         border: {
-          subtle:  'rgba(255, 255, 255, 0.06)',
-          DEFAULT: 'rgba(255, 255, 255, 0.10)',
-          strong:  'rgba(255, 255, 255, 0.18)',
+          subtle: '#27272A',
+          DEFAULT: '#3F3F46',
+          strong: '#52525B',
+          card: 'var(--border-card)',
+          'card-hover': 'var(--border-card-hover)',
+          input: 'var(--border-input)',
+          divider: 'var(--border-divider)',
+          accent: 'var(--border-accent)',
         },
         gold: {
           50:  '#FFF8E1',
@@ -66,8 +73,11 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-        mono: ['JetBrains Mono', 'SF Mono', 'Menlo', 'monospace'],
+        sans: ['var(--font-sans)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['var(--font-display)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        accent: ['var(--font-accent)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        mono: ['var(--font-mono)', 'SF Mono', 'Menlo', 'monospace'],
+        kpi: ['var(--font-kpi)', 'DM Sans', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         '2xs':  ['11px', { lineHeight: '1.5'  }],
@@ -88,10 +98,12 @@ const config: Config = {
         bold:     '700',
       },
       letterSpacing: {
-        tight:  '-0.02em',
-        normal: '0',
-        wide:   '0.02em',
-        caps:   '0.08em',
+        tight:    '-0.02em',
+        normal:   '0',
+        wide:     '0.02em',
+        caps:     '0.08em',
+        display:  'var(--tracking-display)',
+        headline: 'var(--tracking-headline)',
       },
       spacing: {
         '1':  '4px',
@@ -106,10 +118,10 @@ const config: Config = {
         '16': '64px',
       },
       borderRadius: {
-        sm:   '6px',
-        md:   '10px',
-        lg:   '14px',
-        xl:   '20px',
+        sm:   '4px',
+        md:   '6px',
+        lg:   '8px',
+        xl:   '10px',
         full: '9999px',
       },
       boxShadow: {
@@ -120,6 +132,8 @@ const config: Config = {
         'glow-success': '0 0 24px rgba(46, 184, 114, 0.30)',
         'pr-glow':      '0 0 20px rgba(46, 184, 114, 0.40)',
         'focus-ring':   '0 0 0 2px rgba(212, 164, 55, 0.50)',
+        'btn-glow':       '0 4px 20px rgba(212, 164, 55, 0.45)',
+        'btn-glow-hover': '0 6px 28px rgba(212, 164, 55, 0.60)',
         // v3 premium aliases
         'gold-glow':    '0 4px 24px rgba(232, 179, 57, 0.25)',
         'card':         '0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)',
@@ -130,6 +144,7 @@ const config: Config = {
         'gradient-surface':   'linear-gradient(160deg, #18181C 0%, #0F0F11 100%)',
         'gradient-glow-gold': 'radial-gradient(circle at 30% 20%, rgba(232,179,57,0.18) 0%, rgba(232,179,57,0) 60%)',
         'gradient-success':   'linear-gradient(135deg, #4ADE80 0%, #22C55E 100%)',
+        'btn-primary':        'linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)',
       },
       transitionTimingFunction: {
         'out':     'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -149,6 +164,9 @@ const config: Config = {
         'mobile': '428px',
       },
       keyframes: {
+        spin: {
+          to: { transform: 'rotate(360deg)' },
+        },
         shimmer: {
           '0%':   { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0'  },
@@ -168,6 +186,7 @@ const config: Config = {
         },
       },
       animation: {
+        spin:            'spin 1s linear infinite',
         'shimmer':        'shimmer 1.5s ease-in-out infinite',
         'pulse-success':  'pulse-success 600ms ease-out',
         'pop-spring':     'pop-spring 400ms cubic-bezier(0.34, 1.56, 0.64, 1)',

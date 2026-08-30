@@ -19,7 +19,7 @@ export function MealNowCard({
   onMarcar,
 }: MealNowCardProps) {
   return (
-    <div className="bg-surface-1 border border-border-subtle rounded-2xl p-4 shadow-elev-1">
+    <div className="bg-surface-1 border border-card rounded-2xl p-4 shadow-elev-1">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <ForkKnife className="w-3.5 h-3.5 text-success" />

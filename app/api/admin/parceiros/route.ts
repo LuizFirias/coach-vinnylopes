@@ -1,22 +1,17 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedCoach } from '@/lib/auth/getAuthenticatedCoach';
 
 const supabaseAdmin = getSupabaseAdmin();
 
 export async function PUT(request: NextRequest) {
   try {
-    // Validar autenticação
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    const auth = await getAuthenticatedCoach(request);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
+    const { userId, role } = auth;
 
     const { id, nome_marca, descricao, cupom, link_desconto, logo_url, imagens } = await request.json();
 
@@ -35,7 +30,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Parceiro não encontrado" }, { status: 404 });
     }
 
-    if (parceiroExistente.coach_id !== user.id) {
+    if (role !== 'super_admin' && parceiroExistente.coach_id !== userId) {
       return NextResponse.json({ error: "Você não tem permissão para editar este parceiro" }, { status: 403 });
     }
 
@@ -65,18 +60,12 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Validar autenticação
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    const auth = await getAuthenticatedCoach(request);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
+    const { userId, role } = auth;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -96,7 +85,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Parceiro não encontrado" }, { status: 404 });
     }
 
-    if (parceiro.coach_id !== user.id) {
+    if (role !== 'super_admin' && parceiro.coach_id !== userId) {
       return NextResponse.json({ error: "Você não tem permissão para deletar este parceiro" }, { status: 403 });
     }
 

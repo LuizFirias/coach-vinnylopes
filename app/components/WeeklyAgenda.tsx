@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from"react";
 import { Barbell, X, Check, FileText, Moon, CircleNotch, PencilSimple } from "@phosphor-icons/react";
@@ -6,6 +6,7 @@ import { supabaseClient } from"@/lib/supabaseClient";
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { extractStoragePath, getSignedStorageUrl } from '@/lib/storageUrls';
 import AddManualWorkoutModal from"./AddManualWorkoutModal";
+import DumbbellLoader from"./DumbbellLoader";
 import { getTodayBrazil } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils/cn';
 
@@ -56,7 +57,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
   return (
     <div className="fixed inset-0 z-[150] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm p-0 md:p-4" onClick={onClose}>
       <div
-        className="relative bg-[#0A0A0A] w-full md:max-w-lg rounded-t-2xl md:rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[78vh] md:max-h-[90vh]"
+        className="relative bg-[#0A0A0A] w-full md:max-w-lg rounded-t-2xl md:rounded-3xl border border-card shadow-2xl overflow-hidden flex flex-col max-h-[78vh] md:max-h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle mobile */}
@@ -65,7 +66,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-white/5">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-card">
           <div>
             <p className="text-[9px] text-[#D4AF37] uppercase tracking-[0.4em]">Configurar dia</p>
             <h2 className="text-base md:text-xl text-white uppercase tracking-tight">{dayFull[day]}</h2>
@@ -84,7 +85,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
             className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
               selected === 'rest'
                 ? 'bg-zinc-700/40 border-white/30 ring-2 ring-white/20'
-                : 'bg-zinc-900/50 border-white/5 hover:border-white/20'
+                : 'bg-zinc-900/50 border-card hover:border-card-hover'
             }`}
           >
             <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
@@ -105,7 +106,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
               className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
                 selected === 'livre'
                   ? 'bg-[#D4AF37]/10 border-[#D4AF37]/50 ring-2 ring-[#D4AF37]/20'
-                  : 'bg-zinc-900/50 border-white/5 hover:border-[#D4AF37]/20'
+                  : 'bg-zinc-900/50 border-card hover:border-[#D4AF37]/20'
               }`}
             >
               <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] shrink-0">
@@ -143,7 +144,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
                     className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
                       selected !== 'rest' && selected !== 'livre' && (selected as WorkoutOption)?.id === w.id
                         ? 'bg-[#D4AF37]/10 border-[#D4AF37]/50 ring-2 ring-[#D4AF37]/20'
-                        : 'bg-zinc-900/50 border-white/5 hover:border-[#D4AF37]/20'
+                        : 'bg-zinc-900/50 border-card hover:border-[#D4AF37]/20'
                     }`}
                   >
                     <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-green-500/10 flex items-center justify-center text-green-400 shrink-0">
@@ -174,7 +175,7 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
                     className={`w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${
                       selected !== 'rest' && selected !== 'livre' && (selected as WorkoutOption)?.id === w.id
                         ? 'bg-[#D4AF37]/10 border-[#D4AF37]/50 ring-2 ring-[#D4AF37]/20'
-                        : 'bg-zinc-900/50 border-white/5 hover:border-[#D4AF37]/20'
+                        : 'bg-zinc-900/50 border-card hover:border-[#D4AF37]/20'
                     }`}
                   >
                     <div className="w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-red-500/10 flex items-center justify-center text-red-400 shrink-0">
@@ -195,10 +196,10 @@ function DayConfigModal({ isOpen, day, currentEntry, availableWorkouts, saving, 
         </div>
 
         {/* Footer */}
-        <div className="px-3 py-3 md:p-6 border-t border-white/5 flex gap-2 md:gap-3 bg-black/40">
+        <div className="px-3 py-3 md:p-6 border-t border-card flex gap-2 md:gap-3 bg-black/40">
           <button
             onClick={onClose}
-            className="flex-1 py-3 md:py-4 bg-zinc-900 border border-white/10 text-zinc-400 text-[10px] md:text-[11px] uppercase tracking-widest rounded-xl md:rounded-2xl hover:bg-zinc-800 transition-all"
+            className="flex-1 py-3 md:py-4 bg-zinc-900 border border-card text-zinc-400 text-[10px] md:text-[11px] uppercase tracking-widest rounded-xl md:rounded-2xl hover:bg-zinc-800 transition-all"
           >
             Cancelar
           </button>
@@ -317,6 +318,10 @@ export default function WeeklyAgenda() {
             descricao: descricao?.trim() || null,
             data_treino: todayStr,
           });
+          await supabaseClient
+            .from('profiles')
+            .update({ ultimo_checkin: new Date().toISOString() })
+            .eq('id', session.user.id);
         }
       } catch (err) {
         console.error('Erro ao salvar treino livre:', err);
@@ -386,6 +391,10 @@ export default function WeeklyAgenda() {
             descricao: descricao?.trim() || null,
             data_treino: todayStr,
           });
+          await supabaseClient
+            .from('profiles')
+            .update({ ultimo_checkin: new Date().toISOString() })
+            .eq('id', user.id);
         }
       }
 
@@ -399,8 +408,8 @@ export default function WeeklyAgenda() {
   };
 
   if (loading) return (
-    <div className="h-20 flex items-center justify-center text-text-secondary animate-pulse uppercase text-[10px] tracking-widest">
-      Carregando Agenda...
+    <div className="h-20 flex items-center justify-center">
+      <DumbbellLoader size={32} variant="inline" />
     </div>
   );
 
@@ -418,33 +427,33 @@ export default function WeeklyAgenda() {
               key={dayIdx}
               onClick={() => setEditingDay(dayIdx)}
               className={cn(
-                'flex flex-col items-center gap-1.5 min-w-[64px] flex-shrink-0 rounded-xl border p-2.5 transition-all',
+                'flex flex-col items-center gap-1 min-w-[50px] flex-shrink-0 rounded-lg border p-1.5 transition-all',
                 isToday
-                  ? 'bg-brand/10 border-brand/40'
+                  ? 'bg-brand/10 border-brand/40 shadow-sm'
                   : entry?.is_rest_day
-                    ? 'bg-surface-1 border-border-subtle opacity-50'
+                    ? 'bg-surface-1 border-card opacity-50'
                     : entry?.workout_name
-                      ? 'bg-surface-1 border-border-subtle hover:border-border-default'
+                      ? 'bg-surface-1 border-card hover:border-card-hover'
                       : 'bg-surface-1 border-dashed border-border-default hover:border-brand/20'
               )}
             >
               <span className={cn(
-                'text-2xs font-semibold uppercase tracking-caps',
+                'text-[8px] font-bold uppercase tracking-wider',
                 isToday ? 'text-brand' : 'text-text-tertiary'
               )}>
                 {label}
               </span>
               {entry?.is_rest_day ? (
-                <span className="text-[10px] text-text-disabled leading-tight">Off</span>
+                <span className="text-[9px] font-medium text-text-disabled leading-none">Off</span>
               ) : entry?.workout_name ? (
-                <span className="text-[10px] font-medium text-text-primary leading-tight text-center w-full truncate block px-0.5">
-                  {entry.workout_name.length > 7 ? entry.workout_name.slice(0, 7) + '…' : entry.workout_name}
+                <span className="text-[9px] font-semibold text-text-primary leading-none text-center w-full truncate block px-0.5" title={entry.workout_name}>
+                  {entry.workout_name.length > 5 ? entry.workout_name.slice(0, 5) + '…' : entry.workout_name}
                 </span>
               ) : (
-                <span className="text-[10px] text-text-disabled">+</span>
+                <span className="text-[8px] font-bold text-text-disabled leading-none">+</span>
               )}
               <div className={cn(
-                'w-1.5 h-1.5 rounded-full',
+                'w-1 h-1 rounded-full mt-0.5',
                 entry?.is_rest_day
                   ? 'bg-border-default'
                   : entry?.workout_name

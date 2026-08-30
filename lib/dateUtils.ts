@@ -20,6 +20,18 @@ export function getTodayBrazil(): string {
 }
 
 /**
+ * Retorna a hora atual no formato HH:MM considerando o fuso horário do Brasil —
+ * usado pra comparar com horário sugerido de refeição/aula e saber se já passou.
+ */
+export function getNowBrazilHHMM(): string {
+  const now = new Date();
+  const brazilDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const hours = String(brazilDate.getHours()).padStart(2, '0');
+  const minutes = String(brazilDate.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+/**
  * Retorna um objeto Date ajustado para o início do dia no fuso horário do Brasil
  * @returns Date object
  */

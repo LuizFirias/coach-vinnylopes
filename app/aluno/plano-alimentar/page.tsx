@@ -1,46 +1,33 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
-import { getPublicStorageUrl, extractStoragePath } from '@/lib/storageUrls';
+import { extractStoragePath } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import PDFViewer from '@/app/components/PDFViewer';
-import DumbbellLoader from '@/app/components/DumbbellLoader';
-import Link from 'next/link';
-import {
-  ArrowLeft, ForkKnife, FileText, Drop, Check, Plus, Minus, CaretDown, CaretUp,
-  Barbell, Timer, Leaf,
-} from '@phosphor-icons/react';
-import { cn } from '@/lib/utils/cn';
+import { ForkKnife, FileText, FilePdf } from '@phosphor-icons/react';
+import { calculateItemMacros, sumMacros, CalculatedMacro } from '@/lib/nutrition/calculateMacros';
 import { getTodayBrazil } from '@/lib/dateUtils';
-import { motion } from 'framer-motion';
+import { loadStudentNutritionPageData, attachMealSubstitutionsForMealIds } from '@/lib/nutrition/plans';
+import { buildAutoExpandedMap } from '@/lib/nutrition/mealAutoExpand';
+import { NutritionPageHeader } from '@/app/components/nutrition/NutritionPageHeader';
+import { ActivePlanCard } from '@/app/components/nutrition/ActivePlanCard';
+import { MacrosCard } from '@/app/components/nutrition/MacrosCard';
+import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
+import { HydrationSection } from '@/app/components/nutrition/HydrationSection';
+import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface Plano {
+interface PlanoPDF {
   id: string;
   aluno_id: string;
   nome_arquivo: string;
   descricao: string | null;
   criado_em: string;
   url_pdf: string;
-}
-
-interface Refeicao {
-  id: string;
-  plano_id: string;
-  nome: string;
-  horario_sugerido: string | null; // "HH:MM:SS"
-  ordem: number;
-  ingredientes: Ingrediente[];
-  observacoes: string | null;
-}
-
-interface Ingrediente {
-  nome: string;
-  quantidade?: string;
-  gramas?: number;
 }
 
 interface RegistroAgua {
@@ -51,36 +38,182 @@ interface RegistroAgua {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function fmtHorario(t: string | null): string {
-  if (!t) return '';
-  return t.slice(0, 5); // "HH:MM"
-}
-
 function getTodayISO() {
   return getTodayBrazil();
 }
 
+function mapDigitalMealFoods(meal: { items?: Array<{
+  id?: string;
+  quantity_grams?: number | string;
+  portion_label?: string | null;
+  food?: {
+    name: string;
+    portions?: Array<{ label: string; grams: number }>;
+  };
+  substitutions?: Array<{
+    quantity_grams?: number | string;
+    portion_label?: string | null;
+    food?: {
+      name: string;
+      portions?: Array<{ label: string; grams: number }>;
+    };
+  }>;
+}> }): MealFoodItem[] {
+  const foods: MealFoodItem[] = [];
+  for (const item of meal.items ?? []) {
+    const food = item.food;
+    if (!food) continue;
+    const portionGrams =
+      item.portion_label && food.portions
+        ? food.portions.find((p) => p.label === item.portion_label)?.grams
+        : undefined;
+    foods.push({
+      id: item.id,
+      name: food.name,
+      quantityGrams: item.quantity_grams,
+      portionLabel: item.portion_label,
+      portionGrams: portionGrams ?? null,
+      substitutions: (item.substitutions ?? [])
+        .map((sub) => {
+          const subPortionGrams =
+            sub.portion_label && sub.food?.portions
+              ? sub.food.portions.find((p) => p.label === sub.portion_label)?.grams
+              : undefined;
+          return {
+            name: sub.food?.name ?? '',
+            quantityGrams: sub.quantity_grams,
+            portionLabel: sub.portion_label,
+            portionGrams: subPortionGrams ?? null,
+          };
+        })
+        .filter((sub) => sub.name),
+    });
+  }
+  return foods;
+}
+
+function mapLegacyMealFoods(ingredientes: Array<{ nome?: string; quantidade?: string }>): MealFoodItem[] {
+  return (ingredientes ?? []).map((ing, idx) => ({
+    id: `legacy-${idx}`,
+    name: ing.nome ?? '',
+    quantityText: ing.quantidade ?? null,
+  }));
+}
+
+// ─── Cache ───────────────────────────────────────────────────────────────────
+// Guarda o resultado do último carregamento (30s) só pra pintar a tela na hora
+// quando o aluno volta pra essa aba — o fetchData continua rodando por trás
+// pra trazer o dado mais recente (checkins, água, plano do dia).
+
+interface NutricaoSnapshot {
+  digitalPlan: any | null;
+  digitalCheckins: Record<string, string>;
+  expandedMeals: Record<string, boolean>;
+  planoPDF: PlanoPDF | null;
+  historicoPDFs: PlanoPDF[];
+  legacyRefeicoes: any[];
+  legacyConsumidos: string[];
+  agua: RegistroAgua;
+}
+
+const nutricaoCache = createKeyedCache<NutricaoSnapshot>(30_000);
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function PlanoAlimentarPage() {
-  const [loading, setLoading] = useState(true);
+  const cachedSnapshot = nutricaoCache.peek('atual');
+  const [loading, setLoading] = useState(cachedSnapshot === undefined);
   const [userId, setUserId] = useState<string | null>(null);
 
-  const [plano, setPlano] = useState<Plano | null>(null);
-  const [refeicoes, setRefeicoes] = useState<Refeicao[]>([]);
-  const [consumidosHoje, setConsumidosHoje] = useState<Set<string>>(new Set());
-  const [agua, setAgua] = useState<RegistroAgua>({ id: null, copos: 0, ml_por_copo: 250 });
-  const [metaCopos] = useState(8);
+  // Digital Plan states
+  const [digitalPlan, setDigitalPlan] = useState<any | null>(cachedSnapshot?.digitalPlan ?? null);
+  const [digitalCheckins, setDigitalCheckins] = useState<Record<string, string>>(cachedSnapshot?.digitalCheckins ?? {}); // meal_id -> status ('done', etc)
+  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>(cachedSnapshot?.expandedMeals ?? {});
+  const [togglingMealId, setTogglingMealId] = useState<string | null>(null);
 
-  const [expandedRefeicao, setExpandedRefeicao] = useState<string | null>(null);
-  const [savingConsumido, setSavingConsumido] = useState<string | null>(null);
+  // PDF Plan states
+  const [planoPDF, setPlanoPDF] = useState<PlanoPDF | null>(cachedSnapshot?.planoPDF ?? null);
+  const [historicoPDFs, setHistoricoPDFs] = useState<PlanoPDF[]>(cachedSnapshot?.historicoPDFs ?? []);
+  const [legacyRefeicoes, setLegacyRefeicoes] = useState<any[]>(cachedSnapshot?.legacyRefeicoes ?? []);
+  const [legacyConsumidos, setLegacyConsumidos] = useState<Set<string>>(new Set(cachedSnapshot?.legacyConsumidos ?? []));
+
+  // Common features
+  const [agua, setAgua] = useState<RegistroAgua>(cachedSnapshot?.agua ?? { id: null, copos: 0, ml_por_copo: 250 });
+  const [metaCopos] = useState(8);
   const [savingAgua, setSavingAgua] = useState(false);
 
+  // PDF Viewer
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [coachInfo, setCoachInfo] = useState<{ nome: string; avatar: string | null } | null>(null);
+  const [pdfTitle, setPdfTitle] = useState<string>('');
 
-  // ── Carregar ────────────────────────────────────────────────────────────────
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [loadedDate, setLoadedDate] = useState<string>('');
+  const [isDesktop, setIsDesktop] = useState(false);
+  const didFetchRef = useRef(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+
+  const subsLoadedPlanRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!digitalPlan || !isDesktop) return;
+    const planId = digitalPlan.id as string | undefined;
+    const meals = digitalPlan.days?.[0]?.meals ?? [];
+    const expanded: Record<string, boolean> = {};
+    const ids: string[] = [];
+    meals.forEach((meal: { id: string }) => {
+      expanded[meal.id] = true;
+      ids.push(meal.id);
+    });
+    setExpandedMeals(expanded);
+
+    if (!planId || !ids.length || subsLoadedPlanRef.current === planId) return;
+    subsLoadedPlanRef.current = planId;
+    void attachMealSubstitutionsForMealIds(digitalPlan, ids, supabaseClient).then((enriched) => {
+      if (enriched !== digitalPlan) setDigitalPlan(enriched);
+    });
+  }, [digitalPlan, isDesktop]);
+
+  useEffect(() => {
+    if (digitalPlan || legacyRefeicoes.length === 0 || !isDesktop) return;
+    const expanded: Record<string, boolean> = {};
+    legacyRefeicoes.forEach((meal) => {
+      expanded[meal.id] = true;
+    });
+    setExpandedMeals(expanded);
+  }, [legacyRefeicoes, digitalPlan, isDesktop]);
+
+  const ensureMealSubstitutions = useCallback((mealId: string) => {
+    setDigitalPlan((prev: any) => {
+      if (!prev) return prev;
+      const meal = prev.days?.[0]?.meals?.find((m: any) => m.id === mealId);
+      const needs =
+        meal?.items?.some((i: any) => !i._subsLoaded) ?? false;
+      if (!needs) return prev;
+
+      void attachMealSubstitutionsForMealIds(prev, [mealId], supabaseClient).then((enriched) => {
+        if (enriched !== prev) setDigitalPlan(enriched);
+      });
+      return prev;
+    });
+  }, []);
+
+  const toggleMealExpand = useCallback((mealId: string) => {
+    setExpandedMeals((prev) => {
+      const nextOpen = !prev[mealId];
+      if (nextOpen) ensureMealSubstitutions(mealId);
+      return { ...prev, [mealId]: nextOpen };
+    });
+  }, [ensureMealSubstitutions]);
+
+  // ── Carregar Dados ──────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
     try {
@@ -91,126 +224,168 @@ export default function PlanoAlimentarPage() {
       const uid = user.id;
       setUserId(uid);
       const today = getTodayISO();
+      setLoadedDate(today);
 
-      // Buscar coach do aluno no profile
-      try {
-        const { data: profileData } = await supabaseClient
-          .from('profiles')
-          .select('coach_id')
-          .eq('id', uid)
-          .maybeSingle();
+      // Bundle direto no Supabase — sem API /digital (N+1 no servidor)
+      const { digitalPlan: digitalPlanData, plansPDF: plansPDFData, agua: aguaData, checkins } =
+        await loadStudentNutritionPageData(uid, today, supabaseClient);
 
-        if (profileData?.coach_id) {
-          const { data: coachData } = await supabaseClient
-            .from('profiles')
-            .select('full_name, avatar_url')
-            .eq('id', profileData.coach_id)
-            .maybeSingle();
+      // Acumula o que foi carregado pra guardar no cache no final (evita
+      // reconsultar o estado do React, que só atualiza no próximo render)
+      let checkinsMapForCache: Record<string, string> = {};
+      let expandedMapForCache: Record<string, boolean> = {};
+      let planoPDFForCache: PlanoPDF | null = null;
+      let historicoPDFsForCache: PlanoPDF[] = [];
+      let legacyRefeicoesForCache: any[] = [];
+      let legacyConsumidosForCache: Set<string> = new Set();
 
-          if (coachData) {
-            setCoachInfo({
-              nome: coachData.full_name?.split(' ')[0] || 'Coach',
-              avatar: coachData.avatar_url ? getPublicStorageUrl('avatars', coachData.avatar_url) : null,
-            });
-          }
+      if (digitalPlanData) {
+        setDigitalPlan(digitalPlanData);
+
+        const checkinsMap: Record<string, string> = {};
+        checkins.forEach((c) => {
+          checkinsMap[c.meal_id] = c.status;
+        });
+        setDigitalCheckins(checkinsMap);
+        checkinsMapForCache = checkinsMap;
+
+        const day1 = digitalPlanData.days?.[0];
+        let expandedIds: string[] = [];
+        if (day1?.meals?.length) {
+          const expandedMap = buildAutoExpandedMap(
+            day1.meals.map((m: { id: string; time_suggestion?: string | null; meal_type?: string | null }) => ({
+              id: m.id,
+              time: m.time_suggestion,
+              meal_type: m.meal_type,
+            })),
+            (id) => checkinsMap[id] === 'done',
+          );
+          setExpandedMeals(expandedMap);
+          expandedMapForCache = expandedMap;
+          expandedIds = Object.keys(expandedMap).filter((id) => expandedMap[id]);
         }
-      } catch (err) {
-        console.warn('[Nutrição] Erro ao buscar coach:', err);
+
+        // Lazy: só a(s) refeição(ões) já aberta(s) — evita 500/timeout no mount
+        if (expandedIds.length) {
+          void attachMealSubstitutionsForMealIds(
+            digitalPlanData,
+            expandedIds,
+            supabaseClient,
+          ).then((enriched) => {
+            if (enriched !== digitalPlanData) setDigitalPlan(enriched);
+          });
+        }
       }
 
-      // Plano mais recente
-      const { data: planoData } = await supabaseClient
-        .from('plano_alimentar_pdf')
-        .select('id, aluno_id, nome_arquivo, descricao, criado_em, url_pdf')
-        .eq('aluno_id', uid)
-        .order('criado_em', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      if (plansPDFData && plansPDFData.length > 0) {
+        if (!digitalPlanData) {
+          setPlanoPDF(plansPDFData[0]);
+          setHistoricoPDFs(plansPDFData.slice(1));
+          planoPDFForCache = plansPDFData[0];
+          historicoPDFsForCache = plansPDFData.slice(1);
 
-      if (!planoData) { setLoading(false); return; }
-      setPlano(planoData);
+          // Em paralelo: consumos do dia sem .in() — ids extras são ignorados pelo Set.has
+          const [{ data: refeicaoData }, { data: consumos }] = await Promise.all([
+            supabaseClient
+              .from('refeicoes_plano')
+              .select('id, plano_id, nome, horario_sugerido, ordem, ingredientes, observacoes')
+              .eq('plano_id', plansPDFData[0].id)
+              .order('ordem', { ascending: true }),
+            supabaseClient
+              .from('consumos_refeicao')
+              .select('refeicao_id')
+              .eq('aluno_id', uid)
+              .eq('data_consumo', today),
+          ]);
 
-      // Refeições do plano
-      const { data: refeicaoData } = await supabaseClient
-        .from('refeicoes_plano')
-        .select('id, plano_id, nome, horario_sugerido, ordem, ingredientes, observacoes')
-        .eq('plano_id', planoData.id)
-        .order('ordem', { ascending: true });
-
-      setRefeicoes(refeicaoData || []);
-
-      // Consumos de hoje
-      if (refeicaoData && refeicaoData.length > 0) {
-        const ids = refeicaoData.map((r: any) => r.id);
-        const { data: consumos } = await supabaseClient
-          .from('consumos_refeicao')
-          .select('refeicao_id')
-          .eq('aluno_id', uid)
-          .eq('data_consumo', today)
-          .in('refeicao_id', ids);
-
-        setConsumidosHoje(new Set((consumos || []).map((c: any) => c.refeicao_id)));
+          const legacyMeals = refeicaoData || [];
+          const consumidos = new Set((consumos || []).map((c: any) => c.refeicao_id as string));
+          setLegacyRefeicoes(legacyMeals);
+          setLegacyConsumidos(consumidos);
+          legacyRefeicoesForCache = legacyMeals;
+          legacyConsumidosForCache = consumidos;
+          if (legacyMeals.length > 0) {
+            const legacyExpandedMap = buildAutoExpandedMap(
+              legacyMeals.map((r: { id: string; horario_sugerido?: string | null }) => ({
+                id: r.id,
+                time: r.horario_sugerido,
+              })),
+              (id) => consumidos.has(id),
+            );
+            setExpandedMeals(legacyExpandedMap);
+            expandedMapForCache = legacyExpandedMap;
+          }
+        } else {
+          setHistoricoPDFs(plansPDFData);
+          historicoPDFsForCache = plansPDFData;
+        }
       }
 
-      // Água de hoje
-      const { data: aguaData } = await supabaseClient
-        .from('registros_agua')
-        .select('id, copos, ml_por_copo')
-        .eq('aluno_id', uid)
-        .eq('data_registro', today)
-        .maybeSingle();
-
+      let aguaSnapshot: RegistroAgua = { id: null, copos: 0, ml_por_copo: 250 };
       if (aguaData) {
-        setAgua({ id: aguaData.id, copos: aguaData.copos, ml_por_copo: aguaData.ml_por_copo });
+        aguaSnapshot = { id: aguaData.id, copos: aguaData.copos, ml_por_copo: aguaData.ml_por_copo };
+        setAgua(aguaSnapshot);
       }
+
+      // Guarda o snapshot pra próxima visita renderizar na hora
+      nutricaoCache.invalidate('atual');
+      void nutricaoCache.get('atual', async () => ({
+        digitalPlan: digitalPlanData ?? null,
+        digitalCheckins: checkinsMapForCache,
+        expandedMeals: expandedMapForCache,
+        planoPDF: planoPDFForCache,
+        historicoPDFs: historicoPDFsForCache,
+        legacyRefeicoes: legacyRefeicoesForCache,
+        legacyConsumidos: Array.from(legacyConsumidosForCache),
+        agua: aguaSnapshot,
+      }));
     } catch (err) {
-      console.error('[PlanoAlimentar] Erro:', err);
+      console.error('[PlanoAlimentar] Erro geral ao buscar dados:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // ── Ações ───────────────────────────────────────────────────────────────────
-
-  const toggleRefeicao = async (refeicaoId: string) => {
-    if (!userId || savingConsumido) return;
-    setSavingConsumido(refeicaoId);
-
+  const checkDateChange = useCallback(() => {
     const today = getTodayISO();
-    const jaConsumido = consumidosHoje.has(refeicaoId);
-
-    try {
-      if (jaConsumido) {
-        await supabaseClient
-          .from('consumos_refeicao')
-          .delete()
-          .eq('aluno_id', userId)
-          .eq('refeicao_id', refeicaoId)
-          .eq('data_consumo', today);
-
-        setConsumidosHoje(prev => {
-          const next = new Set(prev);
-          next.delete(refeicaoId);
-          return next;
-        });
-      } else {
-        await supabaseClient
-          .from('consumos_refeicao')
-          .insert({ aluno_id: userId, refeicao_id: refeicaoId, data_consumo: today });
-
-        setConsumidosHoje(prev => new Set([...prev, refeicaoId]));
-      }
-    } catch (err) {
-      console.error('[Consumo] Erro:', err);
-    } finally {
-      setSavingConsumido(null);
+    if (loadedDate && today !== loadedDate) {
+      setLoadedDate(today);
+      setDigitalCheckins({});
+      setLegacyConsumidos(new Set());
+      setAgua({ id: null, copos: 0, ml_por_copo: 250 });
+      fetchData();
+      return true;
     }
-  };
+    return false;
+  }, [loadedDate, fetchData]);
+
+  useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkDateChange();
+    }, 15000); // Verifica a cada 15 segundos
+    return () => clearInterval(interval);
+  }, [checkDateChange]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      checkDateChange();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [checkDateChange]);
+
+  // ── Ações de Hidratação ──────────────────────────────────────────────────────
 
   const updateAgua = async (delta: number) => {
     if (!userId || savingAgua) return;
+    const dateChanged = checkDateChange();
+    if (dateChanged) return;
     const next = Math.max(0, Math.min(20, agua.copos + delta));
     if (next === agua.copos) return;
 
@@ -232,6 +407,7 @@ export default function PlanoAlimentarPage() {
         setAgua(a => ({ ...a, id: data?.id ?? null }));
       }
       setAgua(a => ({ ...a, copos: next }));
+      nutricaoCache.invalidate('atual');
     } catch (err) {
       console.error('[Água] Erro:', err);
     } finally {
@@ -239,12 +415,167 @@ export default function PlanoAlimentarPage() {
     }
   };
 
-  const openPdf = async () => {
-    if (!plano || !userId) return;
-    if (plano.aluno_id !== userId) return;
+  const toggleCopo = async (index: number) => {
+    // Clicar num copo já bebido desmarca a partir dali; clicar num não-bebido marca até ele
+    const newCopos = index < agua.copos ? index : index + 1;
+    const delta = newCopos - agua.copos;
+    await updateAgua(delta);
+  };
+
+  // ── Ações do Plano Digital ───────────────────────────────────────────────────
+
+  const toggleDigitalMeal = async (mealId: string) => {
+    if (!userId || !digitalPlan || togglingMealId) return;
+    const dateChanged = checkDateChange();
+    if (dateChanged) return;
+    setFeedbackError(null);
+
+    const today = getTodayISO();
+    const isDone = digitalCheckins[mealId] === 'done';
+
+    // Otimista: marca/desmarca na hora — a requisição roda em segundo plano.
+    // Sem isso, o check só aparecia depois da rede responder, e cada toque
+    // parecia travar por causa da latência (é o que estava sendo relatado).
+    if (isDone) {
+      setDigitalCheckins(prev => {
+        const next = { ...prev };
+        delete next[mealId];
+        return next;
+      });
+    } else {
+      setDigitalCheckins(prev => ({ ...prev, [mealId]: 'done' }));
+    }
+    setTogglingMealId(mealId);
 
     try {
-      const filePath = extractStoragePath('plano_alimentar', plano.url_pdf) || plano.url_pdf;
+      if (isDone) {
+        const { error } = await supabaseClient
+          .from('nutrition_meal_checkins')
+          .delete()
+          .eq('student_id', userId)
+          .eq('meal_id', mealId)
+          .eq('checkin_date', today);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseClient
+          .from('nutrition_meal_checkins')
+          .upsert({
+            student_id: userId,
+            plan_id: digitalPlan.id,
+            meal_id: mealId,
+            checkin_date: today,
+            status: 'done',
+            created_at: new Date().toISOString()
+          }, {
+            onConflict: 'student_id,meal_id,checkin_date'
+          });
+
+        if (error) throw error;
+      }
+      nutricaoCache.invalidate('atual');
+    } catch (err: any) {
+      console.error('[Digital Checkin] Erro:', err);
+      // Desfaz o otimismo — a rede não confirmou, volta pro estado real.
+      if (isDone) {
+        setDigitalCheckins(prev => ({ ...prev, [mealId]: 'done' }));
+      } else {
+        setDigitalCheckins(prev => {
+          const next = { ...prev };
+          delete next[mealId];
+          return next;
+        });
+      }
+      setFeedbackError('Não foi possível registrar agora. Tente novamente.');
+      setTimeout(() => setFeedbackError(null), 4000);
+    } finally {
+      setTogglingMealId(null);
+    }
+  };
+
+  const getDigitalMealMacros = (meal: any): CalculatedMacro => {
+    const itemMacros = (meal.items || []).map((item: any) => {
+      const food = item.food;
+      if (!food) return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
+      return calculateItemMacros(food, Number(item.quantity_grams));
+    });
+    return sumMacros(itemMacros);
+  };
+
+  const getDigitalPlanMacros = (): CalculatedMacro => {
+    const day1 = digitalPlan?.days?.[0];
+    if (!day1 || !day1.meals) return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
+    // Só conta macros das refeições marcadas como feitas hoje
+    const mealMacros = day1.meals
+      .filter((m: { id: string }) => digitalCheckins[m.id] === 'done')
+      .map((m: unknown) => getDigitalMealMacros(m));
+    return sumMacros(mealMacros);
+  };
+
+  // ── Ações do Plano PDF ────────────────────────────────────────────────────────
+
+  const toggleLegacyMeal = async (refeicaoId: string) => {
+    if (!userId || togglingMealId) return;
+    const dateChanged = checkDateChange();
+    if (dateChanged) return;
+
+    const today = getTodayISO();
+    const jaConsumido = legacyConsumidos.has(refeicaoId);
+
+    // Otimista — mesmo motivo do toggle do plano digital: não espera a rede
+    // pra refletir o toque, senão marca refeição parece travado.
+    if (jaConsumido) {
+      setLegacyConsumidos(prev => {
+        const next = new Set(prev);
+        next.delete(refeicaoId);
+        return next;
+      });
+    } else {
+      setLegacyConsumidos(prev => new Set([...prev, refeicaoId]));
+    }
+    setTogglingMealId(refeicaoId);
+
+    try {
+      if (jaConsumido) {
+        const { error } = await supabaseClient
+          .from('consumos_refeicao')
+          .delete()
+          .eq('aluno_id', userId)
+          .eq('refeicao_id', refeicaoId)
+          .eq('data_consumo', today);
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseClient
+          .from('consumos_refeicao')
+          .insert({ aluno_id: userId, refeicao_id: refeicaoId, data_consumo: today });
+        if (error) throw error;
+      }
+      nutricaoCache.invalidate('atual');
+    } catch (err) {
+      console.error('[Consumo Legado] Erro:', err);
+      // Desfaz o otimismo.
+      if (jaConsumido) {
+        setLegacyConsumidos(prev => new Set([...prev, refeicaoId]));
+      } else {
+        setLegacyConsumidos(prev => {
+          const next = new Set(prev);
+          next.delete(refeicaoId);
+          return next;
+        });
+      }
+    } finally {
+      setTogglingMealId(null);
+    }
+  };
+
+  // ── Visualização de PDF ───────────────────────────────────────────────────────
+
+  const openPdfForPlan = async (targetPlano: PlanoPDF) => {
+    if (!userId) return;
+    if (targetPlano.aluno_id !== userId) return;
+
+    try {
+      const filePath = extractStoragePath('plano_alimentar', targetPlano.url_pdf) || targetPlano.url_pdf;
       const { data, error } = await supabaseClient.storage
         .from('plano_alimentar')
         .createSignedUrl(filePath, 3600);
@@ -254,469 +585,374 @@ export default function PlanoAlimentarPage() {
         return;
       }
       setPdfUrl(data.signedUrl);
+      setPdfTitle(targetPlano.nome_arquivo);
       setPdfViewerOpen(true);
     } catch (err) {
       console.error('[PDF] Erro:', err);
     }
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const openPdf = () => {
+    if (planoPDF) openPdfForPlan(planoPDF);
+  };
+
+  // ── Renderização ─────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <DumbbellLoader text="Carregando nutrição..." />
+      <div
+        className="flex min-h-screen items-center justify-center pb-24 lg:pb-12"
+        style={{ background: 'var(--mobile-page-bg-solid)' }}
+      >
+        <DumbbellLoader />
       </div>
     );
   }
 
-  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const refeicoesFeitasHoje = refeicoes.filter(r => consumidosHoje.has(r.id)).length;
+  // Digital calculations
+  const totalMealsCount = digitalPlan?.days?.[0]?.meals?.length || 0;
+  const completedMealsCount = Object.values(digitalCheckins).filter((s) => s === 'done').length;
+  const digitalPlanMacros = getDigitalPlanMacros();
 
-  // Metas diárias de macros para exibição estética/funcional (Fase 8)
-  const metaProt = 150; // 150g
-  const metaCarb = 180; // 180g
-  const metaGord = 60;  // 60g
-  const metaKcal = (metaProt * 4) + (metaCarb * 4) + (metaGord * 9);
+  // Legacy calculations
+  const totalLegacyMeals = legacyRefeicoes.length;
+  const completedLegacyMeals = legacyConsumidos.size;
 
-  // Computar consumidos hoje com base nas refeições marcadas
-  const macrosHoje = refeicoes.reduce(
-    (acc, r, index) => {
-      if (!consumidosHoje.has(r.id)) return acc;
-      
-      // Distribuir valores estéticos baseados no index da refeição
-      let p = 25;
-      let c = 35;
-      let g = 10;
-      if (index === 0) { p = 30; c = 45; g = 12; } // Café da manhã
-      else if (index === 1) { p = 15; c = 10; g = 5; }  // Lanche
-      else if (index === 2) { p = 45; c = 60; g = 18; } // Almoço
-      else if (index === 3) { p = 20; c = 15; g = 6; }  // Lanche da tarde
-      else if (index === 4) { p = 40; c = 50; g = 9; }  // Jantar
-      
-      return {
-        prot: acc.prot + p,
-        carb: acc.carb + c,
-        gord: acc.gord + g,
-      };
-    },
-    { prot: 0, carb: 0, gord: 0 }
-  );
+  // Date header
+  const now = new Date();
+  const diasSemanaLabels = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const mesesLabels = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const diaSemanaStr = diasSemanaLabels[now.getDay()];
+  const diaNumStr = now.getDate();
+  const mesStr = mesesLabels[now.getMonth()];
 
-  const kcalHoje = (macrosHoje.prot * 4) + (macrosHoje.carb * 4) + (macrosHoje.gord * 9);
+  // Water
+  const mlAtual = agua.copos * agua.ml_por_copo;
+  const mlMeta = metaCopos * agua.ml_por_copo;
+  const dateLabel = `${diaSemanaStr}, ${diaNumStr} de ${mesStr}`;
+  const datePart = `${diaNumStr} de ${mesStr}`;
 
-  // Frações de progresso para os anéis circulares
-  const pctProt = Math.min(1, macrosHoje.prot / metaProt);
-  const pctCarb = Math.min(1, macrosHoje.carb / metaCarb);
-  const pctGord = Math.min(1, macrosHoje.gord / metaGord);
+  const macroDisplays = digitalPlan?.calories_target
+    ? [
+        { label: 'Kcal', current: digitalPlanMacros.calories, target: digitalPlan.calories_target as number, unit: '' },
+        { label: 'Proteína', current: digitalPlanMacros.protein, target: digitalPlan.protein_target as number | null, unit: 'g' },
+        { label: 'Carbo', current: digitalPlanMacros.carbs, target: digitalPlan.carbs_target as number | null, unit: 'g' },
+        { label: 'Gordura', current: digitalPlanMacros.fat, target: digitalPlan.fat_target as number | null, unit: 'g' },
+      ]
+    : [];
+
+  const hydrationBlock = (digitalPlan || planoPDF) ? (
+    <HydrationSection
+      mlCurrent={mlAtual}
+      mlTarget={mlMeta}
+      cupsCurrent={agua.copos}
+      cupsTarget={metaCopos}
+      saving={savingAgua}
+      isDesktop={isDesktop}
+      onToggleCup={toggleCopo}
+    />
+  ) : null;
 
   return (
     <SubscriptionGuard>
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="min-h-screen bg-surface-0 p-4 md:p-6 lg:p-10 lg:pl-28 pb-24 text-text-primary"
+      <div
+        className="min-h-screen pb-24 lg:pb-12"
+        style={{ background: 'var(--mobile-page-bg-solid)' }}
       >
-        <div className="max-w-2xl mx-auto flex flex-col gap-6">
+        <div className="max-w-2xl lg:max-w-[1000px] mx-auto flex flex-col pt-safe lg:px-6 lg:pt-10">
 
-          {/* ── Header ── */}
-          <div>
-            <Link
-              href="/aluno/dashboard"
-              className="inline-flex items-center gap-1.5 text-brand text-2xs uppercase tracking-caps mb-4 hover:opacity-80 transition-opacity"
-            >
-              <ArrowLeft className="w-3 h-3" /> Dashboard
-            </Link>
-            <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-0.5">
-              {hoje}
-            </p>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Nutrição</h1>
-          </div>
+          <NutritionPageHeader
+            weekday={diaSemanaStr}
+            datePart={datePart}
+            dateLabel={dateLabel}
+            isDesktop={isDesktop}
+            className="px-4 pt-4 pb-3 lg:hidden"
+          />
 
-          {/* ── Sem plano (Empty State com dicas e avatar do Coach) ── */}
-          {!plano && (
-            <motion.div
-              initial={{ scale: 0.98, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.4 }}
-              className="flex flex-col items-center text-center gap-4 px-4 py-8 border border-border-subtle rounded-2xl relative overflow-hidden"
-              style={{ background: 'var(--gradient-surface)' }}
-            >
-              <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--gradient-glow-gold)', opacity: 0.6 }} aria-hidden="true" />
-              <div className="w-16 h-16 bg-surface-2 border border-border-subtle rounded-2xl flex items-center justify-center">
-                <ForkKnife className="w-8 h-8 text-brand" weight="light" />
+          {/* Feedback error toast */}
+          {feedbackError && (
+            <div className="mx-4 mb-3 flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-xs font-semibold animate-shake">
+              <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0 animate-pulse" />
+              {feedbackError}
+            </div>
+          )}
+
+          {/* ── SEM PLANO (Nem digital nem PDF) ── */}
+          {!digitalPlan && !planoPDF && (
+            <div className="flex flex-col items-center text-center gap-4 px-4 py-8">
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                style={{
+                  background: 'var(--mobile-empty-bg)',
+                  border: '1px solid var(--mobile-empty-border)',
+                }}
+              >
+                <ForkKnife className="w-8 h-8 text-brand" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-text-primary mb-2">Plano em preparação</h2>
-                <p className="text-sm text-text-secondary leading-relaxed max-w-xs mx-auto">
-                  Seu coach está preparando seu plano alimentar personalizado. Ele aparecerá aqui assim que for liberado.
+                <h2 className="mb-2 text-lg font-bold text-text-primary">
+                  Plano alimentar em preparação
+                </h2>
+                <p className="mx-auto max-w-xs text-sm leading-relaxed text-text-tertiary">
+                  Seu coach ainda não liberou um plano alimentar para você. Enquanto isso, mantenha a hidratação e rotina saudável.
                 </p>
               </div>
 
-              {/* Dicas básicas enquanto aguarda */}
-              <div className="w-full mt-2 text-left">
-                <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-2">Enquanto isso</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { Icon: Drop, text: 'Beba 35ml/kg de água por dia' },
-                    { Icon: Barbell, text: 'Priorize proteínas em cada refeição' },
-                    { Icon: Timer, text: 'Intervalos de 3-4h entre refeições' },
-                    { Icon: Leaf, text: 'Prefira alimentos naturais' },
-                  ].map(({ Icon, text }, i) => (
-                    <div key={i} className="flex flex-col gap-2 bg-surface-1 border border-border-subtle rounded-xl p-3">
-                      <Icon className="w-5 h-5 text-brand" weight="light" />
-                      <span className="text-xs text-text-secondary leading-relaxed">{text}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="mt-4 flex w-full flex-col gap-2 text-left">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                  Dicas de hidratação e rotina
+                </p>
+                {[
+                  { icon: '💧', text: 'Beba pelo menos 35ml de água por kg de peso todos os dias' },
+                  { icon: '🥩', text: 'Consuma fontes limpas de proteínas em todas as refeições' },
+                  { icon: '⏰', text: 'Tente comer a cada 3 ou 4 horas para manter o metabolismo ativo' },
+                ].map((tip, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 rounded-[16px] px-4 py-3"
+                    style={{
+                      background: 'var(--mobile-card-bg)',
+                      border: '1px solid var(--mobile-card-border)',
+                      boxShadow: 'var(--mobile-card-shadow)',
+                    }}
+                  >
+                    <span className="flex-shrink-0 text-lg leading-none">{tip.icon}</span>
+                    <span className="text-xs font-medium leading-relaxed text-text-secondary">
+                      {tip.text}
+                    </span>
+                  </div>
+                ))}
               </div>
-
-              {/* Dicas do Coach com Avatar (Fase 8) */}
-              <div className="w-full mt-4 p-4 bg-surface-2/40 border border-border-subtle rounded-2xl flex gap-3 items-start text-left">
-                <div className="w-10 h-10 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {coachInfo?.avatar ? (
-                    <img src={coachInfo.avatar} alt={coachInfo.nome} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-xs font-bold text-brand">{coachInfo?.nome?.charAt(0) || 'V'}</span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-text-primary">Dicas do {coachInfo?.nome || 'Coach Vinny'}</p>
-                  <p className="text-2xs text-text-secondary mt-1 leading-relaxed">
-                    "Mantenha a constância na água e na proteína. Seu plano está sendo elaborado sob medida para o seu objetivo!"
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+            </div>
           )}
 
-          {plano && (
-            <>
-              {/* ── Card do plano ── */}
-              <div className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4 flex items-center justify-between gap-3">
+          {/* ── CASO 1: PLANO DIGITAL ATIVO ── */}
+          {digitalPlan && (
+            <div className="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-6 lg:items-start px-4 lg:px-0">
+              <aside className="lg:sticky lg:top-6 space-y-4 mb-4 lg:mb-0">
+                <NutritionPageHeader
+                  weekday={diaSemanaStr}
+                  datePart={datePart}
+                  dateLabel={dateLabel}
+                  isDesktop={isDesktop}
+                  className="hidden lg:block"
+                />
+                {(digitalPlan.protein_target || digitalPlan.carbs_target || digitalPlan.fat_target) ? (
+                  <MacrosCard
+                    proteina={Number(digitalPlan.protein_target) || 0}
+                    carbo={Number(digitalPlan.carbs_target) || 0}
+                    gordura={Number(digitalPlan.fat_target) || 0}
+                    readOnly
+                  />
+                ) : null}
+                <ActivePlanCard
+                  planName={digitalPlan.name}
+                  goal={digitalPlan.goal || 'Hipertrofia'}
+                  completedMeals={completedMealsCount}
+                  totalMeals={totalMealsCount}
+                  macros={macroDisplays}
+                  isDesktop={isDesktop}
+                />
+                {hydrationBlock && <div className="hidden lg:block">{hydrationBlock}</div>}
+              </aside>
+
+              <main className="space-y-2 mb-4 lg:mb-0">
+                {(digitalPlan.orientacoes_gerais || digitalPlan.notes) && (
+                  <div className="mb-2 flex overflow-hidden rounded-[16px]">
+                    <div
+                      className="w-1 shrink-0"
+                      style={{
+                        background: 'linear-gradient(180deg, #F5D061, #D4A843)',
+                      }}
+                      aria-hidden
+                    />
+                    <div
+                      className="flex-1 rounded-r-[16px] border border-l-0 border-brand-border bg-brand-subtle px-3.5 py-3"
+                    >
+                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-brand">
+                        Orientações gerais
+                      </p>
+                      <p className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
+                        {digitalPlan.orientacoes_gerais || digitalPlan.notes}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {digitalPlan.days?.[0]?.meals?.map((meal: {
+                  id: string;
+                  title: string;
+                  time_suggestion?: string | null;
+                  notes?: string | null;
+                  items?: Parameters<typeof mapDigitalMealFoods>[0]['items'];
+                }) => {
+                  const isMealDone = digitalCheckins[meal.id] === 'done';
+                  const isExpanded = !!expandedMeals[meal.id];
+                  const mMacros = getDigitalMealMacros(meal);
+
+                  return (
+                    <MealCard
+                      key={meal.id}
+                      mealId={meal.id}
+                      title={meal.title}
+                      time={meal.time_suggestion}
+                      calories={mMacros.calories}
+                      isDone={isMealDone}
+                      isExpanded={isExpanded}
+                      isToggling={togglingMealId === meal.id}
+                      isDesktop={isDesktop}
+                      foods={mapDigitalMealFoods(meal)}
+                      notes={meal.notes}
+                      onToggleExpand={() => toggleMealExpand(meal.id)}
+                      onToggleDone={() => toggleDigitalMeal(meal.id)}
+                    />
+                  );
+                })}
+                {hydrationBlock && <div className="lg:hidden pt-2">{hydrationBlock}</div>}
+              </main>
+            </div>
+          )}
+
+          {/* ── CASO 2: APENAS PLANO PDF ATIVO (Fallback) ── */}
+          {!digitalPlan && planoPDF && (
+            <div className="px-4 lg:px-0 space-y-4 mb-4">
+              <div
+                className="flex items-center justify-between gap-3 rounded-[16px] p-4"
+                style={{
+                  background: 'var(--mobile-card-bg)',
+                  border: '1px solid var(--mobile-card-border)',
+                  boxShadow: 'var(--mobile-card-shadow)',
+                }}
+              >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-brand flex-shrink-0">
-                    <ForkKnife className="w-5 h-5 text-brand" weight="light" />
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-brand"
+                    style={{ background: 'var(--filter-bg, #ebebf0)' }}
+                  >
+                    <ForkKnife className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-text-primary truncate">
-                      {plano.nome_arquivo.replace('.pdf', '')}
+                    <p className="truncate text-sm font-semibold text-text-primary">
+                      {planoPDF.nome_arquivo.replace('.pdf', '')}
                     </p>
-                    <p className="text-xs text-text-tertiary mt-0.5">
-                      {new Date(plano.criado_em).toLocaleDateString('pt-BR')}
+                    <p className="text-xs text-text-tertiary">
+                      Enviado em {new Date(planoPDF.criado_em).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={openPdf}
-                  className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-surface-3 border border-border-subtle text-xs font-semibold text-text-secondary hover:text-text-primary hover:border-border-default transition-all flex-shrink-0"
+                  id="btn-ver-pdf-nutricao"
+                  className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                  style={{ background: 'var(--filter-bg, #ebebf0)', border: 'none' }}
                 >
-                  <FileText className="w-3.5 h-3.5 text-text-tertiary" weight="light" />
+                  <FileText className="w-3.5 h-3.5" />
                   Ver PDF
                 </button>
               </div>
 
-              {/* ── Anéis de Progresso de Macros (Fase 8) ── */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.15, duration: 0.4 }}
-                className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-5 flex flex-col gap-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-2xs font-bold uppercase tracking-caps text-text-tertiary">Progresso Nutricional</span>
-                    <h3 className="text-sm font-bold text-text-primary mt-0.5">Balanço de Macronutrientes</h3>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-black text-brand tabular-nums">{kcalHoje}</span>
-                    <span className="text-xs text-text-tertiary"> / {metaKcal} kcal</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-around gap-4 py-2">
-                  {/* Círculo Proteínas */}
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="relative w-16 h-16 flex items-center justify-center">
-                      <svg className="w-16 h-16 transform -rotate-90">
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          className="stroke-surface-3"
-                          strokeWidth="4"
-                          fill="transparent"
-                        />
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          className="stroke-rose-500 transition-all duration-500 ease-out"
-                          strokeWidth="4"
-                          fill="transparent"
-                          strokeDasharray={2 * Math.PI * 26}
-                          strokeDashoffset={2 * Math.PI * 26 * (1 - pctProt)}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute flex flex-col items-center">
-                        <span className="text-[10px] font-extrabold text-rose-500 leading-none">{Math.round(pctProt * 100)}%</span>
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] font-bold text-text-primary">Proteínas</p>
-                      <p className="text-[10px] text-text-tertiary mt-0.5">{macrosHoje.prot}g / {metaProt}g</p>
-                    </div>
-                  </div>
-
-                  {/* Círculo Carboidratos */}
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="relative w-16 h-16 flex items-center justify-center">
-                      <svg className="w-16 h-16 transform -rotate-90">
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          className="stroke-surface-3"
-                          strokeWidth="4"
-                          fill="transparent"
-                        />
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          className="stroke-amber-500 transition-all duration-500 ease-out"
-                          strokeWidth="4"
-                          fill="transparent"
-                          strokeDasharray={2 * Math.PI * 26}
-                          strokeDashoffset={2 * Math.PI * 26 * (1 - pctCarb)}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute flex flex-col items-center">
-                        <span className="text-[10px] font-extrabold text-amber-500 leading-none">{Math.round(pctCarb * 100)}%</span>
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] font-bold text-text-primary">Carbos</p>
-                      <p className="text-[10px] text-text-tertiary mt-0.5">{macrosHoje.carb}g / {metaCarb}g</p>
-                    </div>
-                  </div>
-
-                  {/* Círculo Gorduras */}
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="relative w-16 h-16 flex items-center justify-center">
-                      <svg className="w-16 h-16 transform -rotate-90">
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          className="stroke-surface-3"
-                          strokeWidth="4"
-                          fill="transparent"
-                        />
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          className="stroke-sky-500 transition-all duration-500 ease-out"
-                          strokeWidth="4"
-                          fill="transparent"
-                          strokeDasharray={2 * Math.PI * 26}
-                          strokeDashoffset={2 * Math.PI * 26 * (1 - pctGord)}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute flex flex-col items-center">
-                        <span className="text-[10px] font-extrabold text-sky-500 leading-none">{Math.round(pctGord * 100)}%</span>
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] font-bold text-text-primary">Gorduras</p>
-                      <p className="text-[10px] text-text-tertiary mt-0.5">{macrosHoje.gord}g / {metaGord}g</p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* ── Refeições de hoje ── */}
-              {refeicoes.length > 0 && (
-                <section>
+              {legacyRefeicoes.length > 0 && (
+                <div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Refeições de hoje</p>
-                    <span className="text-xs text-text-tertiary">
-                      {refeicoesFeitasHoje} de {refeicoes.length} feitas
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+                      Refeições de hoje
+                    </p>
+                    <span className="text-xs text-text-muted">
+                      {completedLegacyMeals} de {totalLegacyMeals} feitas
                     </span>
                   </div>
 
-                  {/* Barra de progresso */}
-                  <div className="h-1.5 bg-surface-3 rounded-full mb-4 overflow-hidden">
-                    <div
-                      className="h-full bg-brand rounded-full transition-all duration-300"
-                      style={{ width: refeicoes.length > 0 ? `${(refeicoesFeitasHoje / refeicoes.length) * 100}%` : '0%' }}
-                    />
-                  </div>
-
                   <div className="flex flex-col gap-2">
-                    {refeicoes.map((r, rIdx) => {
-                      const feita = consumidosHoje.has(r.id);
-                      const expanded = expandedRefeicao === r.id;
-                      const temIngredientes = r.ingredientes && r.ingredientes.length > 0;
+                    {legacyRefeicoes.map((r) => {
+                      const feita = legacyConsumidos.has(r.id);
+                      const expanded = !!expandedMeals[r.id];
+                      const ingreds = r.ingredientes || [];
 
                       return (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 + rIdx * 0.05, duration: 0.3 }}
+                        <MealCard
                           key={r.id}
-                          className={cn(
-                            'rounded-2xl border transition-all duration-200',
-                            feita
-                              ? 'bg-success-subtle border-success-border shadow-elev-1'
-                              : 'bg-surface-1 border-border-subtle shadow-elev-1'
-                          )}
-                        >
-                          <div className="flex items-center gap-3 p-3">
-                            {/* Check button */}
-                            <button
-                              onClick={() => toggleRefeicao(r.id)}
-                              disabled={savingConsumido === r.id}
-                              className={cn(
-                                'w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                                feita
-                                  ? 'bg-success border-success text-white'
-                                  : 'border-border-default bg-surface-3 text-transparent hover:border-brand'
-                              )}
-                              aria-label={feita ? 'Desmarcar refeição' : 'Marcar como feita'}
-                            >
-                              <Check className="w-3.5 h-3.5" weight="bold" />
-                            </button>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <p className={cn(
-                                'text-sm font-semibold leading-tight',
-                                feita ? 'text-success line-through opacity-70' : 'text-text-primary'
-                              )}>
-                                {r.nome}
-                              </p>
-                              {r.horario_sugerido && (
-                                <p className="text-2xs text-text-tertiary mt-0.5">{fmtHorario(r.horario_sugerido)}</p>
-                              )}
-                            </div>
-
-                            {/* Expandir ingredientes */}
-                            {temIngredientes && (
-                              <button
-                                onClick={() => setExpandedRefeicao(expanded ? null : r.id)}
-                                className="w-8 h-8 flex items-center justify-center text-text-tertiary hover:text-text-secondary transition-colors"
-                                aria-label="Ver ingredientes"
-                              >
-                                {expanded ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Ingredientes expandidos */}
-                          {expanded && temIngredientes && (
-                            <div className="px-3 pb-3 pt-0 border-t border-border-subtle/50">
-                              <ul className="mt-2 space-y-1">
-                                {r.ingredientes.map((ing, i) => (
-                                  <li key={i} className="flex items-center justify-between text-xs text-text-secondary">
-                                    <span>{ing.nome}</span>
-                                    {(ing.quantidade || ing.gramas) && (
-                                      <span className="text-text-tertiary ml-2">
-                                        {ing.gramas ? `${ing.gramas}g` : ing.quantidade}
-                                      </span>
-                                    )}
-                                  </li>
-                                ))}
-                              </ul>
-                              {r.observacoes && (
-                                <p className="mt-2 text-xs text-text-tertiary italic border-t border-border-subtle/50 pt-2">
-                                  {r.observacoes}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </motion.div>
+                          mealId={r.id}
+                          title={r.nome}
+                          time={r.horario_sugerido}
+                          isDone={feita}
+                          isExpanded={expanded}
+                          isToggling={togglingMealId === r.id}
+                          isDesktop={isDesktop}
+                          foods={mapLegacyMealFoods(ingreds)}
+                          notes={r.observacoes}
+                          showExpandControl={ingreds.length > 0 || !!r.observacoes}
+                          onToggleExpand={() =>
+                            setExpandedMeals((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                          }
+                          onToggleDone={() => toggleLegacyMeal(r.id)}
+                        />
                       );
                     })}
                   </div>
-                </section>
+                </div>
               )}
 
-              {/* ── Água ── */}
-              <section className="bg-surface-1 border border-border-subtle shadow-elev-1 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Drop className="w-4 h-4 text-brand" weight="light" />
-                    <p className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary">Hidratação</p>
-                  </div>
-                  <span className="text-xs text-text-tertiary font-semibold">
-                    {agua.copos * agua.ml_por_copo}ml / {metaCopos * agua.ml_por_copo}ml
-                  </span>
-                </div>
-
-                {/* Copos visuais */}
-                <div className="flex gap-1.5 flex-wrap mb-4">
-                  {Array.from({ length: metaCopos }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => updateAgua(i < agua.copos ? -(agua.copos - i) : i + 1 - agua.copos)}
-                      disabled={savingAgua}
-                      className={cn(
-                        'w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all',
-                        i < agua.copos
-                          ? 'bg-brand/20 border-brand text-brand shadow-sm'
-                          : 'bg-surface-3 border-border-subtle text-text-tertiary hover:border-brand/40'
-                      )}
-                      aria-label={`${i + 1} copo${i > 0 ? 's' : ''}`}
-                    >
-                      <Drop className="w-3.5 h-3.5" weight="light" />
-                    </button>
-                  ))}
-                </div>
-
-                {/* Controles +/- */}
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => updateAgua(-1)}
-                    disabled={savingAgua || agua.copos === 0}
-                    className="w-9 h-9 rounded-xl bg-surface-3 border border-border-subtle flex items-center justify-center text-text-secondary disabled:opacity-30 hover:text-text-primary transition-colors"
-                  >
-                    <Minus className="w-4 h-4" weight="bold" />
-                  </button>
-                  <div className="flex-1 text-center">
-                    <span className="text-lg font-bold text-text-primary">{agua.copos}</span>
-                    <span className="text-xs text-text-tertiary ml-1">/ {metaCopos} copos</span>
-                  </div>
-                  <button
-                    onClick={() => updateAgua(1)}
-                    disabled={savingAgua || agua.copos >= metaCopos}
-                    className="w-9 h-9 rounded-xl bg-brand text-text-on-brand flex items-center justify-center disabled:opacity-30 shadow-sm shadow-brand/30 transition-opacity"
-                  >
-                    <Plus className="w-4 h-4" weight="bold" />
-                  </button>
-                </div>
-
-                {agua.copos >= metaCopos && (
-                  <p className="mt-3 text-xs font-semibold text-brand text-center animate-pulse">
-                    Meta atingida! Excelente hidratação hoje.
-                  </p>
-                )}
-              </section>
-            </>
+              {hydrationBlock && <div className="pt-2">{hydrationBlock}</div>}
+            </div>
           )}
-        </div>
-      </motion.div>
 
-      {/* PDF Viewer */}
-      {pdfViewerOpen && pdfUrl && plano && (
+          {/* Hidratação para plano digital já está no grid acima */}
+
+          {/* ── HISTÓRICO DE DOCUMENTOS PDF ADICIONAIS ── */}
+          {historicoPDFs.length > 0 && (
+            <div
+              className="mx-4 mb-6 rounded-[16px] p-4 lg:mx-0"
+              style={{
+                background: 'var(--mobile-card-bg)',
+                border: '1px solid var(--mobile-card-border)',
+                boxShadow: 'var(--mobile-card-shadow)',
+              }}
+            >
+              <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                <FilePdf className="w-3.5 h-3.5" />
+                Documentos em PDF
+              </p>
+              <div className="flex flex-col gap-2">
+                {historicoPDFs.map(histPlano => (
+                  <div
+                    key={histPlano.id}
+                    className="flex items-center justify-between gap-3 rounded-lg p-3"
+                    style={{
+                      background: 'var(--mobile-empty-bg)',
+                      border: '1px solid var(--mobile-empty-border)',
+                    }}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FilePdf className="h-4 w-4 shrink-0 text-text-tertiary" />
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-text-primary">
+                          {histPlano.nome_arquivo.replace('.pdf', '')}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-text-tertiary">
+                          Enviado em {new Date(histPlano.criado_em).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => openPdfForPlan(histPlano)}
+                      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-text-secondary transition-colors hover:text-text-primary"
+                      style={{ background: 'var(--filter-bg, #ebebf0)', border: 'none' }}
+                    >
+                      Abrir PDF
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* PDF Viewer Modal */}
+      {pdfViewerOpen && pdfUrl && (
         <PDFViewer
           url={pdfUrl}
-          title={plano.nome_arquivo}
+          title={pdfTitle}
           onClose={() => { setPdfViewerOpen(false); setPdfUrl(null); }}
         />
       )}

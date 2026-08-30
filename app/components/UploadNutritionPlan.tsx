@@ -156,7 +156,7 @@ export default function UploadNutritionPlan({
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl border border-[#D4AF37]/20 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-black/40">
+        <div className="flex items-center justify-between p-6 border-b border-card bg-black/40">
           <h2 className="text-lg text-white uppercase tracking-tight">
             Plano Alimentar
           </h2>
@@ -180,14 +180,32 @@ export default function UploadNutritionPlan({
 
           {/* File Upload Area */}
           <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all cursor-pointer ${
+            onDragEnter={(e) => {
+              if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+                handleDrag(e);
+              }
+            }}
+            onDragLeave={(e) => {
+              if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+                handleDrag(e);
+              }
+            }}
+            onDragOver={(e) => {
+              if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+                handleDrag(e);
+              }
+            }}
+            onDrop={(e) => {
+              if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+                handleDrop(e);
+              } else {
+                e.preventDefault();
+              }
+            }}
+            className={`rounded-lg p-6 md:p-8 text-center transition-all cursor-pointer border-0 md:border-2 md:border-dashed ${
               dragActive
-                ?"border-[#D4AF37] bg-[#D4AF37]/5"
-                :"border-zinc-700 hover:border-[#D4AF37]/50 bg-zinc-900/30"
+                ?"md:border-[#D4AF37] md:bg-[#D4AF37]/5 bg-zinc-900/30"
+                :"bg-zinc-900/30 md:border-zinc-700 md:hover:border-[#D4AF37]/50"
             }`}
           >
             <input
@@ -200,7 +218,14 @@ export default function UploadNutritionPlan({
             <label htmlFor="file-input" className="cursor-pointer block">
               <FileText size={32} className="mx-auto mb-3 text-zinc-600" />
               <p className="text-sm text-white mb-1">
-                {file ? file.name :"Selecione ou arraste o PDF"}
+                {file ? (
+                  file.name
+                ) : (
+                  <>
+                    <span className="md:hidden">Toque para selecionar o PDF</span>
+                    <span className="hidden md:inline">Selecione ou arraste o PDF</span>
+                  </>
+                )}
               </p>
               <p className="text-[9px] text-zinc-500">
                 Máximo 10MB • Apenas PDF

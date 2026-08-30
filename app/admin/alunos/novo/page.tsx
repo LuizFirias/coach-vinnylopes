@@ -2,79 +2,43 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseClient } from "@/lib/supabaseClient";
-import { UserPlus, CheckCircle } from "@phosphor-icons/react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card } from "@/components/ui/Card";
-import { ScreenHeader } from "@/components/layout/ScreenHeader";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
+import { BackButton } from "@/app/components/ui/BackButton";
+import { getBootstrapProfile } from "@/lib/auth/bootstrapProfile";
+import { readReturnUrl } from "@/lib/utils/adminNav";
+import { NovoAlunoForm } from "@/app/components/admin/alunos/NovoAlunoForm";
 
 export default function NovoAlunoPage() {
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
+  const goBack = () => {
+    router.push(readReturnUrl(window.location.search, "/admin/alunos"));
+  };
   const [checkingRole, setCheckingRole] = useState(true);
   const [isCoach, setIsCoach] = useState(false);
 
   useEffect(() => {
     const checkRole = async () => {
       try {
-        const { data: authData, error: authError } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (authError || !user) { router.replace("/login"); return; }
-
-        const { data: profileData, error: profileError } = await supabaseClient
-          .from("profiles").select("role").eq("id", user.id).single();
-
-        if (profileError || profileData?.role !== "coach") { router.replace("/aluno/treinos"); return; }
-
+        const boot = await getBootstrapProfile();
+        if (!boot) {
+          router.replace("/login");
+          return;
+        }
+        if (boot.role !== "coach" && boot.role !== "super_admin") {
+          router.replace("/aluno/dashboard");
+          return;
+        }
         setIsCoach(true);
       } finally {
         setCheckingRole(false);
       }
     };
-
-    checkRole();
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setTemporaryPassword(null);
-
-    if (!fullName.trim() || !email.trim()) { setError("Informe nome e e-mail"); return; }
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ full_name: fullName.trim(), email: email.trim() }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Falha ao criar aluno");
-
-      setSuccess(data?.message || "Aluno cadastrado com sucesso!");
-      setTemporaryPassword(data?.temporaryPassword);
-      setFullName("");
-      setEmail("");
-    } catch (err: any) {
-      setError(err?.message || "Erro ao criar aluno");
-    } finally {
-      setLoading(false);
-    }
-  };
+    void checkRole();
+  }, [router]);
 
   if (checkingRole) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-surface-0">
         <DumbbellLoader />
       </div>
     );
@@ -82,8 +46,8 @@ export default function NovoAlunoPage() {
 
   if (!isCoach) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center p-6">
-        <div className="max-w-2xl w-full bg-surface-1 p-12 rounded-2xl border border-border-subtle shadow-elev-1 text-text-secondary text-center text-sm uppercase tracking-caps">
+      <div className="flex min-h-screen items-center justify-center bg-surface-0 p-6">
+        <div className="w-full max-w-2xl rounded-xl bg-surface-1 p-12 text-center text-sm uppercase tracking-caps text-text-secondary">
           Acesso restrito para coach.
         </div>
       </div>
@@ -91,72 +55,21 @@ export default function NovoAlunoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 pb-24 lg:pl-28">
-      <ScreenHeader
-        title="Recrutar Atleta"
-        subtitle="Protocolo de convite e acesso imediato"
-      />
-
-      <div className="px-4 max-w-2xl flex flex-col gap-4">
-
-        {error && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
-            <div className="w-2 h-2 rounded-full bg-danger flex-shrink-0 animate-pulse" />
-            {error}
+    <div className="min-h-screen bg-surface-0 pb-24 lg:pb-6">
+      <div className="flex w-full justify-center px-4 pb-8 pt-4 sm:px-8 sm:pb-10 sm:pt-6 lg:items-start lg:pb-6 lg:pt-6">
+        <div className="w-full max-w-xl lg:flex lg:max-w-3xl lg:items-start lg:gap-6">
+          {/* Desktop: só a seta, alinhada com o topo do card (sem título em
+              cima dele) — economiza a altura que fazia a tela ter scroll. */}
+          <div className="mb-4 flex items-center gap-2.5 lg:mb-0 lg:shrink-0">
+            <BackButton onClick={goBack} />
+            <p className="text-xl font-semibold leading-tight text-text-primary lg:hidden">
+              Adicionar aluno
+            </p>
           </div>
-        )}
-
-        {success && (
-          <div className="flex flex-col gap-4 px-4 py-4 rounded-xl bg-success-subtle border border-success-border">
-            <div className="flex items-center gap-3 text-success text-sm">
-              <CheckCircle size={18} />
-              {success}
-            </div>
-            {temporaryPassword && (
-              <div className="bg-surface-2 border border-border-default rounded-xl p-5 text-center">
-                <p className="text-2xs uppercase tracking-caps text-text-tertiary mb-3">Senha Temporária de Ativação</p>
-                <div className="text-3xl font-mono text-text-primary bg-surface-3 py-5 px-4 rounded-xl select-all border border-border-default mb-4 tracking-widest">
-                  {temporaryPassword}
-                </div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-danger-subtle border border-danger-border text-danger rounded-lg">
-                  <span className="text-xs">Copie e forneça ao atleta agora</span>
-                </div>
-              </div>
-            )}
+          <div className="rounded-2xl bg-surface-1 px-5 py-5 sm:px-6 lg:flex-1 lg:py-4">
+            <NovoAlunoForm layout="page" onCancel={goBack} />
           </div>
-        )}
-
-        <Card className="rounded-2xl shadow-elev-1">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <Input
-              label="Nome completo do atleta"
-              name="fullName"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Ex: João Vitor Performance"
-              disabled={loading}
-            />
-            <Input
-              label="E-mail de cadastro"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="atleta@email.com"
-              disabled={loading}
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              loading={loading}
-              leftIcon={<UserPlus size={16} />}
-              fullWidth
-            >
-              Liberar Acesso Agora
-            </Button>
-          </form>
-        </Card>
+        </div>
       </div>
     </div>
   );

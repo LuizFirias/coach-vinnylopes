@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, type ComponentType } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { useAuth } from './AuthProvider';
-import { getPublicStorageUrl } from '@/lib/storageUrls';
 import { cn } from '@/lib/utils/cn';
+import { useUnreadFeedbacksCount } from '@/lib/feedbacks/useUnreadFeedbacksCount';
+import { useNaoLidasRealtime } from '@/lib/chat/realtime';
 import {
+  CalendarBlank,
   Barbell,
   ForkKnife,
   Ruler,
@@ -17,263 +19,500 @@ import {
   Trophy,
   User,
   SignOut,
-  List,
-  X,
   Users,
   SquaresFour,
-  ShieldWarning,
-  Gear,
+  HeartStraight,
   AppleLogo,
   BookOpen,
   ChatCircle,
-  ChartBar
+  ChartBar,
+  CaretLeft,
+  CaretRight,
+  Power,
 } from '@phosphor-icons/react';
 
-const menuItems = [
-  { name: 'Dashboard', href: '/aluno/dashboard', icon: SquaresFour },
-  { name: 'Treinos', href: '/aluno/treinos', icon: Barbell },
-  { name: 'Plano Alimentar', href: '/aluno/plano-alimentar', icon: ForkKnife },
-  { name: 'Medidas', href: '/aluno/medidas', icon: Ruler },
-  { name: 'Fotos', href: '/aluno/fotos', icon: Camera },
-  { name: 'Ranking', href: '/aluno/ranking', icon: Trophy },
-  { name: 'Perfil', href: '/aluno/perfil', icon: User },
+type IconComponent = ComponentType<{
+  size?: number | string;
+  weight?: 'fill' | 'regular';
+  className?: string;
+}>;
+
+type MenuItem = {
+  id: string;
+  name: string;
+  href: string;
+  icon: IconComponent;
+};
+
+type MenuGroup = {
+  label: string;
+  items: string[];
+};
+
+const SIDEBAR_EXPANDED_PX = 180;
+const SIDEBAR_COLLAPSED_PX = 80;
+
+/**
+ * Ajuste MANUAL da lateralidade do elo (só com sidebar aberto).
+ * Unidade: pixels. 0 = elo centralizado no sidebar (igual ao nome).
+ * Negativo = esquerda · Positivo = direita.
+ */
+const ELO_OFFSET_X_PX = 0;
+
+/**
+ * Distância do topo até o elo — alinhado à altura do topbar (92px),
+ * pra o item "Dashboard" nascer perto da linha do card branco.
+ */
+const LOGO_TOP_OFFSET_PX = 16;
+
+/** Balão com “!” — feedbacks do aluno. */
+function FeedbackIcon({
+  size = 18,
+  weight = 'regular',
+  className,
+}: {
+  size?: number | string;
+  weight?: 'fill' | 'regular';
+  className?: string;
+}) {
+  const px = typeof size === 'number' ? size : 18;
+  return (
+    <span
+      className={cn('relative inline-flex items-center justify-center', className)}
+      style={{ width: px, height: px }}
+      aria-hidden
+    >
+      <ChatCircle size={px} weight={weight} className="absolute inset-0" />
+      <span
+        className="relative z-[1] font-bold leading-none"
+        style={{ fontSize: Math.max(9, Math.round(px * 0.42)), marginTop: -1 }}
+      >
+        !
+      </span>
+    </span>
+  );
+}
+
+const alunoMenuItems: MenuItem[] = [
+  { id: 'dashboard', name: 'Dashboard', href: '/aluno/dashboard', icon: SquaresFour },
+  { id: 'treinos', name: 'Treinos', href: '/aluno/treinos', icon: Barbell },
+  { id: 'cardio', name: 'Cardio', href: '/aluno/cardio', icon: HeartStraight },
+  { id: 'plano-alimentar', name: 'Plano Alimentar', href: '/aluno/plano-alimentar', icon: ForkKnife },
+  { id: 'chat', name: 'Mensagens', href: '/aluno/chat', icon: ChatCircle },
+  { id: 'medidas', name: 'Medidas', href: '/aluno/medidas', icon: Ruler },
+  { id: 'fotos', name: 'Fotos', href: '/aluno/fotos', icon: Camera },
+  { id: 'ranking', name: 'Ranking', href: '/aluno/ranking', icon: Trophy },
+  { id: 'perfil', name: 'Perfil', href: '/aluno/perfil', icon: User },
 ];
 
-const coachMenuItems = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
-  { name: 'Atletas', href: '/admin/alunos', icon: Users },
-  { name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
-  { name: 'Treinos', href: '/admin/treinos', icon: Barbell },
-  { name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
-  { name: 'Feedbacks', href: '/admin/feedbacks', icon: ChatCircle },
-  { name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
-  { name: 'Ranking', href: '/admin/ranking', icon: Trophy },
-  { name: 'Relatórios', href: '/admin/relatorios', icon: ChartBar },
-  { name: 'Perfil', href: '/admin/perfil', icon: User },
+/* Convites/Master Control/Perfil Master eram exclusivos do modo multi-coach
+   do AURON (super-admin gerenciando vários coaches) — não se aplicam aqui,
+   onde só existe um treinador. */
+const coachItemConfig: Record<string, MenuItem> = {
+  dashboard: { id: 'dashboard', name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
+  agenda: { id: 'agenda', name: 'Agenda', href: '/admin/agenda', icon: CalendarBlank },
+  alunos: { id: 'alunos', name: 'Alunos', href: '/admin/alunos', icon: Users },
+  treinos: { id: 'treinos', name: 'Treinos', href: '/admin/treinos', icon: Barbell },
+  nutricao: { id: 'nutricao', name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
+  biblioteca: { id: 'biblioteca', name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
+  relatorios: { id: 'relatorios', name: 'Relatórios', href: '/admin/relatorios', icon: ChartBar },
+  parceiros: { id: 'parceiros', name: 'Parceiros', href: '/admin/parceiros', icon: Handshake },
+  ranking: { id: 'ranking', name: 'Ranking', href: '/admin/ranking', icon: Trophy },
+  chat: { id: 'chat', name: 'Mensagens', href: '/admin/chat', icon: ChatCircle },
+  feedbacks: { id: 'feedbacks', name: 'Feedbacks', href: '/admin/feedbacks', icon: FeedbackIcon },
+  perfil: { id: 'perfil', name: 'Perfil', href: '/admin/perfil', icon: User },
+};
+
+/** Dashboard fica solto após a logo (sem título de seção). */
+const coachMenuGroups: MenuGroup[] = [
+  { label: 'Gestão', items: ['alunos', 'treinos', 'nutricao', 'agenda', 'biblioteca'] },
+  { label: 'Acompanhamento', items: ['ranking', 'chat', 'feedbacks'] },
+  { label: 'Negócio', items: ['relatorios', 'parceiros'] },
+  { label: 'Sistema', items: ['perfil'] },
 ];
 
-const superAdminMenuItems = [
-  { name: 'Master Control', href: '/super-admin', icon: ShieldWarning },
-  { name: 'Perfil Master', href: '/super-admin/perfil', icon: Gear },
-];
+function resolveCoachGroups(): { label: string; items: MenuItem[] }[] {
+  return coachMenuGroups
+    .map((group) => ({
+      label: group.label,
+      items: group.items
+        .map((id) => coachItemConfig[id])
+        .filter(Boolean),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const { userRole, loading, user } = useAuth();
   const pathname = usePathname();
-  const [profile, setProfile] = useState<{ name: string; avatarUrl: string | null } | null>(null);
+  const { hasUnread: hasUnreadFeedbacks } = useUnreadFeedbacksCount();
+  // Só o coach usa isso (bolinha de "não lida" no ícone de Mensagens do
+  // drawer mobile) — pra aluno passa null, o hook não dispara nenhuma busca.
+  const isAlunoRole = userRole === 'aluno';
+  const chatNaoLidas = useNaoLidasRealtime(isAlunoRole ? null : user?.id ?? null, 'coach');
+
+  const [isExpanded, setIsExpanded] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-    const fetchProfile = async () => {
-      try {
-        const { data, error } = await supabaseClient
-          .from('profiles')
-          .select('full_name, avatar_url')
-          .eq('id', user.id)
-          .single();
-        if (!error && data) {
-          setProfile({
-            name: data.full_name || user.email?.split('@')[0] || 'Usuário',
-            avatarUrl: data.avatar_url ? getPublicStorageUrl('avatars', data.avatar_url) : null,
-          });
-        } else {
-          setProfile({
-            name: user.email?.split('@')[0] || 'Usuário',
-            avatarUrl: null,
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching profile:', err);
-      }
-    };
-    fetchProfile();
-  }, [user]);
+    const saved = localStorage.getItem('sidebar-expanded');
+    const expanded = saved !== 'false';
+    setIsExpanded(expanded);
+    document.documentElement.style.setProperty(
+      '--sidebar-width',
+      expanded ? `${SIDEBAR_EXPANDED_PX}px` : `${SIDEBAR_COLLAPSED_PX}px`,
+    );
+  }, []);
 
-  // Ocultar em rotas públicas ou enquanto carrega
-  if (pathname === '/login' || pathname === '/' || loading) {
+  const toggleSidebar = () => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    localStorage.setItem('sidebar-expanded', String(next));
+    document.documentElement.style.setProperty(
+      '--sidebar-width',
+      next ? `${SIDEBAR_EXPANDED_PX}px` : `${SIDEBAR_COLLAPSED_PX}px`,
+    );
+  };
+
+  const collapseTab = (
+    <button
+      type="button"
+      onClick={toggleSidebar}
+      className="sidebar-collapse-tab"
+      style={{ top: LOGO_TOP_OFFSET_PX + 38 }}
+      title={isExpanded ? 'Recolher menu' : 'Expandir menu'}
+      aria-label={isExpanded ? 'Recolher menu' : 'Expandir menu'}
+    >
+      {isExpanded ? (
+        <CaretLeft size={12} weight="bold" />
+      ) : (
+        <CaretRight size={12} weight="bold" />
+      )}
+    </button>
+  );
+
+  if (
+    pathname === '/login' ||
+    pathname === '/' ||
+    pathname?.startsWith('/auth/') ||
+    pathname?.startsWith('/signup') ||
+    pathname === '/termos' ||
+    pathname === '/privacidade' ||
+    pathname === '/aluno/trocar-senha' ||
+    pathname === '/admin/trocar-senha' ||
+    pathname === '/aluno/onboarding' ||
+    pathname === '/admin/boas-vindas' ||
+    pathname?.startsWith('/admin/preview-aluno') ||
+    loading
+  ) {
     return null;
   }
 
-  // Se não há usuário autenticado, não renderizar
   if (!user) {
     return null;
   }
 
-  const currentMenuItems = userRole === 'aluno' ? menuItems : userRole === 'coach' ? coachMenuItems : superAdminMenuItems;
+  const isAluno = userRole === 'aluno';
+  const coachGroups = isAluno ? [] : resolveCoachGroups();
+  const coachDashboard = coachItemConfig.dashboard;
+
+  const homeHref = isAluno ? '/aluno/dashboard' : '/admin/dashboard';
+
+  const renderNavLink = (m: MenuItem, opts?: { onNavigate?: () => void; mobile?: boolean }) => {
+    const Icon = m.icon;
+    // Perfil de um aluno (/admin/aluno/[id]) conta como estando dentro da
+    // seção "Alunos" — o link do sidebar continua destacado lá também.
+    const isActive =
+      pathname === m.href ||
+      (m.href === '/admin/alunos' && Boolean(pathname?.startsWith('/admin/aluno/')));
+    const showBadge =
+      (m.id === 'feedbacks' && hasUnreadFeedbacks) ||
+      (m.id === 'chat' && chatNaoLidas > 0);
+
+    if (opts?.mobile) {
+      // Mesmo visual do link do sidebar desktop (ícone liso, sem "badge" em
+      // caixa, mesma fonte/cor/estado ativo) — só um pouco mais alto pro toque.
+      return (
+        <Link
+          key={m.href}
+          href={m.href}
+          className={cn(
+            'group relative flex h-11 items-center gap-3 px-3 transition-all',
+            isActive
+              ? 'rounded-l-none rounded-r-lg border-l-2 border-white bg-white/15 font-semibold text-white'
+              : 'rounded-lg text-white/85 hover:bg-white/10 hover:text-white',
+          )}
+          onClick={opts.onNavigate}
+        >
+          <span className="relative shrink-0">
+            <Icon size={20} weight={isActive ? 'fill' : 'regular'} />
+            {showBadge && (
+              <span
+                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-white ring-1 ring-brand"
+                aria-hidden
+              />
+            )}
+          </span>
+          <span
+            className="flex-1 truncate font-semibold tracking-wide"
+            style={{
+              fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+              fontFeatureSettings: 'normal',
+              fontSize: '14px',
+            }}
+          >
+            {m.name}
+          </span>
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        key={m.href}
+        href={m.href}
+        title={!isExpanded ? m.name : undefined}
+        className={cn(
+          'sidebar-nav-link group relative flex h-10 items-center gap-2.5 px-2.5 transition-all',
+          isActive
+            ? 'sidebar-nav-link--active rounded-l-none rounded-r-lg border-l-2 border-white bg-white/15 font-semibold text-white'
+            : 'sidebar-nav-link--idle rounded-lg text-white/85 hover:bg-white/10 hover:text-white',
+          isExpanded ? 'justify-start' : 'justify-center',
+        )}
+      >
+        {isActive && !isExpanded && (
+          <div className="absolute left-0 h-4 w-1 rounded-r-full bg-brand" />
+        )}
+        <span className="relative shrink-0">
+          <Icon
+            size={19}
+            weight={isActive ? 'fill' : 'regular'}
+            className={cn(!isActive && 'transition-transform group-hover:scale-105')}
+          />
+          {showBadge && (
+            <span
+              className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-brand ring-1 ring-black/40"
+              aria-hidden
+            />
+          )}
+        </span>
+
+        {isExpanded && (
+          <span
+            className="flex-1 truncate font-semibold tracking-wide"
+            style={{
+              fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+              fontFeatureSettings: "normal",
+              fontSize: "14px",
+            }}
+          >
+            {m.name}
+          </span>
+        )}
+
+        {!isExpanded && (
+          <div
+            className="pointer-events-none absolute left-full z-100 ml-4 whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-medium tracking-wider text-white opacity-0 backdrop-blur-xl transition-all group-hover:opacity-100"
+            style={{
+              background: '#141414',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            }}
+          >
+            {m.name}
+          </div>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <>
-      {/* Sidebar for Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full bg-bg-base border-r border-border-subtle flex-col py-8 items-stretch z-60 shadow-2xl transition-[width] duration-200 ease-in-out w-16 xl:w-[240px]">
-        
-        {/* Logo */}
-        <Link href={userRole === 'aluno' ? '/aluno/dashboard' : userRole === 'coach' ? '/admin/alunos' : '/super-admin'} className="mb-10 group cursor-pointer flex items-center gap-3 px-3.5">
-          <div className="w-9 h-9 bg-surface-1 rounded-lg flex items-center justify-center shadow-xl border border-border-subtle group-hover:border-brand/40 group-hover:scale-105 transition-all overflow-hidden flex-shrink-0">
-            <Image src="/logo.png" alt="Coach Vinny" width={24} height={24} className="object-contain" />
-          </div>
-          <span className="hidden xl:block font-black text-text-primary text-[11px] uppercase tracking-caps whitespace-nowrap overflow-hidden text-ellipsis">
-            COACH VINNY
-          </span>
-        </Link>
+      <aside
+        style={{
+          width: isExpanded ? SIDEBAR_EXPANDED_PX : SIDEBAR_COLLAPSED_PX,
+        }}
+        className="auron-sidebar fixed left-0 top-0 z-60 hidden h-full min-h-0 flex-col items-stretch overflow-visible border-0 bg-transparent px-3 pb-2 transition-[width] duration-300 lg:flex"
+      >
+        {/* Aba “ponta de papel” — fora do fluxo, não empurra logo/nome */}
+        {collapseTab}
 
-        {/* Menu Items */}
-        <nav className="flex flex-col gap-2.5 flex-1 w-full px-2.5">
-           {currentMenuItems.map((m) => {
-              const Icon = m.icon;
-              const isActive = pathname === m.href;
-              return (
-                <Link
-                  key={m.href}
-                  href={m.href}
-                  className={cn(
-                    "h-11 rounded-lg flex items-center transition-all group relative px-3 gap-3 w-full",
-                    isActive ? "bg-brand-subtle text-brand" : "text-text-disabled hover:text-brand/60 hover:bg-brand/5"
+        {/* Logo centralizada no sidebar (sem nome ao lado) */}
+        <div
+          className="mb-3.5 flex shrink-0 flex-col items-center px-1"
+          style={{ paddingTop: LOGO_TOP_OFFSET_PX }}
+        >
+          <div
+            className="flex h-9 items-center justify-center"
+            style={{ transform: `translateX(${ELO_OFFSET_X_PX}px)` }}
+          >
+            <Link href={homeHref} className="group cursor-pointer">
+              <Image
+                src="/logo-preto.png"
+                alt="Coach Vinny"
+                width={isExpanded ? 36 : 28}
+                height={isExpanded ? 36 : 28}
+                className="sidebar-logo-icon shrink-0 object-contain transition-opacity group-hover:opacity-90"
+              />
+            </Link>
+          </div>
+        </div>
+
+        <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {isAluno ? (
+            <div className="flex flex-col gap-1 pt-1">
+              {alunoMenuItems.map((m) => renderNavLink(m))}
+            </div>
+          ) : (
+            <>
+              {/* Dashboard solto — como “Página inicial” do Nutrium */}
+              <div className="mb-3 flex flex-col gap-1 pt-1">
+                {renderNavLink(coachDashboard)}
+              </div>
+
+              {coachGroups.map((group) => (
+                <div key={group.label} className="mb-4 flex flex-col gap-1">
+                  {isExpanded && (
+                    <div className="sidebar-group-label mb-1.5 truncate px-1.5 text-[9px] font-medium uppercase tracking-[1.4px]">
+                      {group.label}
+                    </div>
                   )}
-                >
-                   {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-brand rounded-r-full" />}
-                   <Icon size={20} weight={isActive ? 'fill' : 'regular'} className={cn("transition-transform flex-shrink-0", !isActive && "group-hover:scale-110")} />
-                   <span className="hidden xl:block text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-                     {m.name}
-                   </span>
-                   {/* Tooltip on collapsed mode */}
-                   <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-text-primary text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 xl:group-hover:opacity-0 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
-                     {m.name}
-                   </div>
-                </Link>
-              );
-           })}
+                  {group.items.map((m) => renderNavLink(m))}
+                </div>
+              ))}
+            </>
+          )}
         </nav>
 
-        {/* Footer with profile + logout */}
-        <div className="mt-auto pt-4 border-t border-border-subtle/50 w-full px-2.5 flex flex-col gap-3">
-          {/* Profile block */}
-          <div className="flex items-center gap-3 px-3 py-2 bg-surface-1/50 rounded-lg border border-border-subtle/30 overflow-hidden min-h-[44px]">
-            {profile?.avatarUrl ? (
-              <img
-                src={profile.avatarUrl}
-                alt={profile.name}
-                className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-surface-3 flex items-center justify-center border border-border-subtle flex-shrink-0">
-                <User size={14} className="text-brand" />
-              </div>
-            )}
-            <div className="hidden xl:flex flex-col min-w-0">
-              <span className="text-[10px] text-text-primary font-bold truncate leading-tight">
-                {profile?.name || 'Coach'}
-              </span>
-              <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mt-0.5">
-                {userRole?.replace('_', ' ')}
-              </span>
-            </div>
+        <div className="mt-auto shrink-0">
+          <div className="flex flex-col gap-1 border-t border-white/15 pb-0.5 pt-2">
+            <button
+              onClick={async () => {
+                try {
+                  await supabaseClient.auth.signOut({ scope: 'local' });
+                } catch {}
+                localStorage.clear();
+                window.location.href = '/login';
+              }}
+              className={`sidebar-logout group flex h-9 w-full items-center gap-2.5 rounded-lg transition-all ${isExpanded ? 'justify-start px-1.5' : 'justify-center'}`}
+              title="Sair"
+            >
+              <SignOut size={18} className="shrink-0" />
+              {isExpanded && (
+                <span
+                  className="font-semibold tracking-wide"
+                  style={{
+                    fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+                    fontFeatureSettings: "normal",
+                    fontSize: "14px",
+                  }}
+                >
+                  Sair
+                </span>
+              )}
+            </button>
           </div>
-
-          {/* Logout button */}
-          <button
-            onClick={async () => {
-              try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch {}
-              localStorage.clear();
-              window.location.href = '/login';
-            }}
-            className="h-11 rounded-lg flex items-center text-text-disabled hover:text-danger hover:bg-danger/10 transition-all group relative px-3 gap-3 w-full"
-          >
-             <SignOut size={20} className="flex-shrink-0" />
-             <span className="hidden xl:block text-xs font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-               Sair
-             </span>
-             {/* Tooltip on collapsed mode */}
-             <div className="absolute left-full ml-4 px-3 py-2 bg-surface-1/95 backdrop-blur-xl text-danger text-[10px] uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 xl:group-hover:opacity-0 border border-border-subtle pointer-events-none transition-all whitespace-nowrap z-100 shadow-2xl">
-               Sair
-             </div>
-          </button>
         </div>
       </aside>
 
-      {/* Hamburger button - Mobile Only - DISABLED */}
-      <button
-        aria-label="Menu"
-        onClick={() => setOpen(true)}
-        className="hidden"
-      >
-        <List size={22} className="text-brand" />
-      </button>
+      {/* Gatilho do menu no mobile — só coach (aluno continua com a barra
+          inferior). Ícone liso, sem caixa/contorno (fica fixo em toda tela,
+          não pode competir visualmente com o conteúdo da página) — some
+          enquanto o drawer está aberto, já que dá pra fechar clicando fora
+          ou escolhendo uma seção. */}
+      {/* Mesmo estilo do "puxador de papel" (sidebar-collapse-tab) do desktop
+          — grudado na borda esquerda da tela, não um botão solto. */}
+      {!isAluno && !open && (
+        <button
+          type="button"
+          aria-label="Abrir menu"
+          onClick={() => setOpen(true)}
+          className="fixed left-0 z-50 flex w-4 items-center justify-center border-0 bg-brand text-white lg:hidden"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)',
+            height: 48,
+            borderRadius: '0 8px 8px 0',
+            boxShadow: '4px 2px 12px rgba(0,0,0,0.28)',
+          }}
+        >
+          <CaretRight size={13} weight="bold" />
+        </button>
+      )}
 
-      {/* Drawer Overlay - Mobile Only */}
+      {/* Fundo sólido ao abrir — sem desfoque, a tela por trás fica nítida. */}
       <div
-        className={`fixed inset-0 z-40 transition-all duration-500 ${open ? 'opacity-100 pointer-events-auto backdrop-blur-md' : 'opacity-0 pointer-events-none'}`}
+        className={cn(
+          'fixed inset-0 z-40 bg-black/70 transition-opacity duration-300 lg:hidden',
+          open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+        )}
         aria-hidden={!open}
         onClick={() => setOpen(false)}
+      />
+
+      {/* Drawer — mesmo visual do sidebar desktop (cor, fonte, ícones,
+          grupos com título) só que como painel deslizante. */}
+      <aside
+        className={cn(
+          'auron-sidebar fixed left-0 top-0 z-50 flex h-full w-[55%] max-w-[196px] flex-col border-0 shadow-[20px_0_60px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out lg:hidden',
+          open ? 'translate-x-0' : '-translate-x-full',
+        )}
       >
-        <div className="absolute inset-0 bg-black/80" />
-      </div>
-
-      {/* Drawer Menu - Mobile Only */}
-      <aside className={`fixed left-0 top-0 h-full w-[75%] max-w-[280px] bg-bg-base shadow-[20px_0_60px_rgba(0,0,0,0.4)] z-50 transform transition-transform duration-500 ease-out border-r border-border-subtle ${open ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
-        <div className="p-6 pb-4 flex items-center justify-between">
-          <div className="w-11 h-11 bg-surface-1 rounded-lg flex items-center justify-center shadow-lg border border-border-subtle overflow-hidden">
-            <Image src="/logo.png" alt="Coach Vinny" width={36} height={36} className="object-contain" />
-          </div>
-          <button
-            onClick={() => setOpen(false)}
-            className="w-10 h-10 flex items-center justify-center bg-surface-1 text-text-secondary hover:text-brand rounded-lg transition-all"
-            aria-label="Fechar"
-          >
-            <X size={20} />
-          </button>
+        <div
+          className="flex shrink-0 items-center px-4 pb-4"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}
+        >
+          <Link href={homeHref} className="flex min-w-0 items-center" onClick={() => setOpen(false)}>
+            <Image
+              src="/logo-preto.png"
+              alt="Coach Vinny"
+              width={36}
+              height={36}
+              className="shrink-0 object-contain"
+            />
+          </Link>
         </div>
 
-        <div className="px-5 mt-3 mb-6">
-           <div className="p-4 bg-surface-1 rounded-lg border border-border-subtle flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center border border-border-subtle">
-                 <User size={15} className="text-brand" />
-              </div>
-              <div className="flex flex-col">
-                 <span className="text-[8px] text-text-disabled uppercase tracking-widest leading-none mb-1">Acesso</span>
-                 <span className="text-[9px] text-text-primary uppercase tracking-wide">
-                    {userRole?.replace('_', ' ') || 'Carregando...'}
-                 </span>
-              </div>
-           </div>
-        </div>
-
-        <nav className="px-4 flex flex-col gap-1.5 overflow-y-auto max-h-[60vh]">
-          {currentMenuItems.map((m) => {
-            const Icon = m.icon;
-            const isActive = pathname === m.href;
-            return (
-              <Link
-                key={m.href}
-                href={m.href}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] uppercase tracking-widest transition-all group ${
-                  isActive ? 'bg-brand text-black shadow-lg shadow-brand/20' : 'text-text-secondary hover:text-brand hover:bg-brand/5'
-                }`}
-                onClick={() => setOpen(false)}
-              >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shadow-sm border ${
-                  isActive ? 'bg-brand/20 border-brand/30' : 'bg-surface-2 border-border-subtle'
-                }`}>
-                  <Icon size={16} weight={isActive ? 'fill' : 'regular'} />
+        <nav
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+        >
+          {isAluno ? (
+            alunoMenuItems.map((m) => renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }))
+          ) : (
+            <>
+              {renderNavLink(coachDashboard, { mobile: true, onNavigate: () => setOpen(false) })}
+              {coachGroups.map((group) => (
+                <div key={group.label} className="mt-3 flex flex-col gap-1">
+                  <div className="sidebar-group-label mb-0.5 truncate px-3 text-[9px] font-medium uppercase tracking-[1.4px]">
+                    {group.label}
+                  </div>
+                  {group.items.map((m) => renderNavLink(m, { mobile: true, onNavigate: () => setOpen(false) }))}
                 </div>
-                {m.name}
-              </Link>
-            );
-          })}
+              ))}
+              {/* Sair — logo abaixo de Perfil, mesmo visual dos outros itens
+                  (sem botão grande/linha separada). */}
+              <button
+                type="button"
+                onClick={async () => {
+                  await supabaseClient.auth.signOut();
+                  window.location.href = '/login';
+                }}
+                className="group flex h-11 items-center gap-3 rounded-lg px-3 text-white/85 transition-all hover:bg-white/10 hover:text-white"
+              >
+                <Power size={20} />
+                <span
+                  className="flex-1 truncate text-left font-semibold tracking-wide"
+                  style={{
+                    fontFamily: 'var(--font-nunito-sans), "Nunito Sans", serif',
+                    fontFeatureSettings: 'normal',
+                    fontSize: '14px',
+                  }}
+                >
+                  Sair
+                </span>
+              </button>
+            </>
+          )}
         </nav>
-
-        <div className="absolute bottom-8 left-0 right-0 px-5">
-            <button
-              onClick={async () => {
-                await supabaseClient.auth.signOut();
-                window.location.href = '/login';
-              }}
-              className="w-full h-12 bg-danger text-white rounded-lg flex items-center justify-center gap-2 text-[9px] uppercase tracking-widest hover:bg-danger/80 transition-all active:scale-95 shadow-lg shadow-danger/20"
-            >
-              <SignOut size={16} />
-              Sair
-            </button>
-        </div>
       </aside>
     </>
   );

@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect } from 'react';
-import { DeviceMobile, DownloadSimple, X } from '@phosphor-icons/react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { DeviceMobile, X } from '@phosphor-icons/react';
 
 export default function PWAInstall() {
   const [show, setShow] = useState(false);
@@ -12,18 +12,24 @@ export default function PWAInstall() {
     setMounted(true);
 
     // Verificar se já está instalado (standalone)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
-      || (window.navigator as any).standalone 
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as any).standalone
       || document.referrer.includes('android-app://');
 
     if (isStandalone) return;
 
     // Detectar plataforma
     const userAgent = window.navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(userAgent)) {
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    const isAndroid = /android/.test(userAgent);
+
+    if (isIOS) {
       setPlatform('ios');
-    } else if (/android/.test(userAgent)) {
+    } else if (isAndroid) {
       setPlatform('android');
+    } else {
+      // Se não for mobile (iOS ou Android), não mostrar o modal
+      return;
     }
 
     // Mostrar após 3 segundos
@@ -38,62 +44,116 @@ export default function PWAInstall() {
   // Don't render anything until client-side hydration is complete
   if (!mounted || !show) return null;
 
+  const dismiss = () => {
+    setShow(false);
+    localStorage.setItem('pwa-dismissed', 'true');
+  };
+
   return (
-    <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 animate-slide-up">
-      <div className="bg-surface-1 border border-brand/30 rounded-4xl p-6 shadow-2xl shadow-black">
-        <button 
-          onClick={() => {
-            setShow(false);
-            localStorage.setItem('pwa-dismissed', 'true');
-          }}
-          className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+    <div className="fixed bottom-6 left-4 right-4 z-50 animate-slide-up md:left-auto md:right-6 md:w-96">
+      <div
+        className="relative rounded-[20px] p-6"
+        style={{
+          background: 'var(--mobile-card-bg)',
+          border: '1px solid var(--mobile-card-border)',
+          boxShadow: 'var(--mobile-card-shadow, 0 8px 32px rgba(0,0,0,0.18))',
+        }}
+      >
+        <button
+          type="button"
+          onClick={dismiss}
+          className="absolute top-4 right-4 transition-colors"
+          style={{ color: 'var(--text-tertiary)' }}
+          aria-label="Fechar"
         >
           <X size={20} />
         </button>
 
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 bg-brand rounded-2xl flex items-center justify-center shadow-lg shadow-brand/20">
-            <DeviceMobile className="text-black" size={24} />
+        <div className="mb-4 flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 items-center justify-center rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)',
+              boxShadow: '0 3px 10px rgba(212, 168, 67,0.35)',
+            }}
+          >
+            <DeviceMobile className="text-white" size={24} weight="bold" />
           </div>
           <div>
-            <h3 className="text-white uppercase tracking-wider text-sm">Instalar Aplicativo</h3>
-            <p className="text-slate-500 text-xs">Acesse seu treino com um clique.</p>
+            <h3
+              className="text-sm font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              Instalar Aplicativo
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              Acesse seu treino com um clique.
+            </p>
           </div>
         </div>
 
-        <div className="space-y-4 bg-black/40 rounded-2xl p-4 border border-white/5">
+        <div
+          className="space-y-3 rounded-2xl p-4"
+          style={{
+            background: 'var(--filter-bg, #ebebf0)',
+            border: '1px solid var(--mobile-card-border)',
+          }}
+        >
           {platform === 'ios' ? (
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 text-[11px] text-slate-300">
-                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">1</div>
-                <p>Toque no ícone de <span className="text-brand">Compartilhar</span> na barra inferior.</p>
-              </div>
-              <div className="flex items-start gap-3 text-[11px] text-slate-300">
-                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">2</div>
-                <p>Role para baixo e selecione <span className="text-brand">"Adicionar à Tela de Início"</span>.</p>
-              </div>
-            </div>
+            <>
+              <Step n={1}>
+                Toque no ícone de <span style={{ color: '#D4A843', fontWeight: 600 }}>Compartilhar</span> na barra inferior.
+              </Step>
+              <Step n={2}>
+                Role para baixo e selecione <span style={{ color: '#D4A843', fontWeight: 600 }}>&quot;Adicionar à Tela de Início&quot;</span>.
+              </Step>
+            </>
           ) : (
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 text-[11px] text-slate-300">
-                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">1</div>
-                <p>Toque nos <span className="text-brand">três pontos (⋮)</span> no canto superior do navegador.</p>
-              </div>
-              <div className="flex items-start gap-3 text-[11px] text-slate-300">
-                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white">2</div>
-                <p>Selecione <span className="text-brand">"Instalar aplicativo"</span> ou"Adicionar à tela inicial".</p>
-              </div>
-            </div>
+            <>
+              <Step n={1}>
+                Toque nos <span style={{ color: '#D4A843', fontWeight: 600 }}>três pontos (⋮)</span> no canto superior do navegador.
+              </Step>
+              <Step n={2}>
+                Selecione <span style={{ color: '#D4A843', fontWeight: 600 }}>&quot;Instalar aplicativo&quot;</span> ou <span style={{ color: '#D4A843', fontWeight: 600 }}>&quot;Adicionar à tela inicial&quot;</span>.
+              </Step>
+            </>
           )}
         </div>
 
-        <button 
+        <button
+          type="button"
           onClick={() => setShow(false)}
-          className="w-full mt-4 py-3 bg-white/5 hover:bg-white/10 text-white text-[10px] uppercase tracking-[0.2em] rounded-xl transition-all"
+          className="mt-4 w-full rounded-[10px] py-3 text-[10px] font-semibold uppercase tracking-[0.2em] transition-opacity active:opacity-90"
+          style={{
+            background: 'linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)',
+            boxShadow: '0 3px 10px rgba(212, 168, 67,0.35)',
+            color: '#fff',
+            border: 'none',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+          }}
         >
           Entendi
         </button>
       </div>
+    </div>
+  );
+}
+
+function Step({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+      <div
+        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+        style={{
+          background: 'var(--mobile-card-bg)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--mobile-card-border)',
+        }}
+      >
+        {n}
+      </div>
+      <p>{children}</p>
     </div>
   );
 }

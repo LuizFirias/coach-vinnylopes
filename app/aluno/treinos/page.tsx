@@ -5,12 +5,11 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/authErrorHandler';
 import { getSignedStorageUrl } from '@/lib/storageUrls';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
-import { Barbell, FileText, MagnifyingGlass, ArrowRight, Lightning, Wind, PersonSimpleRun, Clock } from '@phosphor-icons/react';
+import { FileText, MagnifyingGlass } from '@phosphor-icons/react';
 import PDFViewer from '@/app/components/PDFViewer';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
-import Link from 'next/link';
-import { cn } from '@/lib/utils/cn';
-import { motion } from 'framer-motion';
+import { RoutineCard } from '@/app/components/treinos/RoutineCard';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
 
 interface TreinoPDF {
   id: string;
@@ -24,31 +23,46 @@ interface FichaTreino {
   id: string;
   nome_rotina: string;
   criado_em: string;
-  configuracao?: {
-    exercicios?: Array<{
-      nome: string;
-    }>;
-  };
+  exercicios?: Array<{
+    nome: string;
+    grupo_muscular?: string;
+  }>;
 }
 
-function parseDateSafe(value: string): Date {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split('-').map(Number);
-    return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
-  }
-  return new Date(value);
-}
+type TreinosLista = { fichas: FichaTreino[]; treinos_pdf: TreinoPDF[] };
+// Evita mostrar "Carregando treinos…" de novo toda vez que o aluno volta
+// pra essa aba — a lista raramente muda entre uma visita e outra.
+const treinosListaCache = createKeyedCache<TreinosLista>(60_000);
 
 export default function AlunoTreinosPage() {
+  const cached = treinosListaCache.peek('atual');
   const [userId, setUserId] = useState<string | null>(null);
-  const [fichas, setFichas] = useState<FichaTreino[]>([]);
-  const [treinosPdf, setTreinosPdf] = useState<TreinoPDF[]>([]);
-  const [frequencias, setFrequencias] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  const [fichas, setFichas] = useState<FichaTreino[]>(cached?.fichas ?? []);
+  const [treinosPdf, setTreinosPdf] = useState<TreinoPDF[]>(cached?.treinos_pdf ?? []);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<TreinoPDF | null>(null);
+  const [openingPdfId, setOpeningPdfId] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  const [selectedFilter, setSelectedFilter] = useState<string>('Todos');
+  const openPdf = async (pdf: TreinoPDF) => {
+    if (pdf.aluno_id !== userId || openingPdfId) return;
+    setOpeningPdfId(pdf.id);
+    try {
+      const signed = await getSignedStorageUrl('treinos-pdf', pdf.url_pdf, 3600);
+      setSelectedPdf({ ...pdf, url_pdf: signed || pdf.url_pdf });
+    } finally {
+      setOpeningPdfId(null);
+    }
+  };
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const fetchTreinos = async () => {
@@ -58,42 +72,23 @@ export default function AlunoTreinosPage() {
         if (!user) { setError('Sessão expirada. Faça login novamente.'); setLoading(false); return; }
 
         const uid = user.id;
-
-        const { data: fichasData } = await supabaseClient
-          .from('fichas_treino')
-          .select('id, nome_rotina, criado_em, configuracao')
-          .eq('aluno_id', uid)
-          .eq('ativo', true)
-          .order('criado_em', { ascending: false });
-
-        const { data: pdfsData } = await supabaseClient
-          .from('treinos_alunos')
-          .select('id, aluno_id, url_pdf, nome_arquivo, data_upload')
-          .eq('aluno_id', uid)
-          .order('data_upload', { ascending: false });
-
-        const { data: agendaData } = await supabaseClient
-          .from('agenda_semanal')
-          .select('ficha_id')
-          .eq('aluno_id', uid);
-
-        const freqMap: Record<string, number> = {};
-        agendaData?.forEach((item: any) => {
-          if (item.ficha_id) {
-            freqMap[item.ficha_id] = (freqMap[item.ficha_id] || 0) + 1;
-          }
-        });
-        setFrequencias(freqMap);
-
         setUserId(uid);
-        setFichas(fichasData || []);
 
-        const pdfsComLinks = await Promise.all((pdfsData || []).map(async (pdf: any) => {
-          const signed = await getSignedStorageUrl('treinos-pdf', pdf.url_pdf, 3600);
-          return { ...pdf, url_pdf: signed || pdf.url_pdf };
-        }));
+        // Antes eram 2 requisições, e a de fichas trazia a configuração inteira
+        // (todas as séries/técnicas) só pra montar o resuminho de exercícios do
+        // card. Agora é 1 RPC só, que já devolve só {nome, grupo_muscular} por
+        // exercício — bem mais leve em fichas com muitos exercícios.
+        const lista = await treinosListaCache.get('atual', async () => {
+          const { data: listaData, error: listaError } = await supabaseClient
+            .rpc('get_treinos_lista_aluno', { p_aluno_id: uid });
+          if (listaError) throw listaError;
+          const raw = (listaData ?? {}) as Record<string, any>;
+          return { fichas: raw.fichas ?? [], treinos_pdf: raw.treinos_pdf ?? [] };
+        });
 
-        setTreinosPdf(pdfsComLinks);
+        setFichas(lista.fichas);
+        // URL assinada só quando o aluno abre o PDF — evita 1 request por PDF no boot
+        setTreinosPdf(lista.treinos_pdf);
       } catch {
         setError('Erro ao conectar com o servidor');
       } finally {
@@ -106,7 +101,7 @@ export default function AlunoTreinosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--surface-0)' }}>
         <DumbbellLoader text="Carregando treinos..." />
       </div>
     );
@@ -114,215 +109,119 @@ export default function AlunoTreinosPage() {
 
   const total = fichas.length + treinosPdf.length;
 
-  const FILTERS = [
-    { label: 'Todos', icon: Barbell },
-    { label: 'Força', icon: Barbell },
-    { label: 'Cardio', icon: PersonSimpleRun },
-    { label: 'HIIT', icon: Lightning },
-    { label: 'Mobilidade', icon: Wind },
-  ];
-
-  const fichasFiltradas = selectedFilter === 'Todos'
-    ? fichas
-    : fichas.filter(f =>
-        f.nome_rotina.toLowerCase().includes(selectedFilter.toLowerCase())
-      );
-
-  const itemVariants: any = {
-    hidden: { opacity: 0, y: 12 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }
-  };
-
   return (
     <SubscriptionGuard>
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={{
-          hidden: { opacity: 0 },
-          visible: {
-            opacity: 1,
-            transition: {
-              staggerChildren: 0.05
-            }
-          }
-        }}
-        className="min-h-screen bg-surface-0 pb-28 lg:pl-28"
-      >
-
-        {/* Header */}
-        <motion.div
-          variants={itemVariants}
-          className="px-4 pt-8 pb-6 max-w-2xl mx-auto relative overflow-hidden"
-        >
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Meus Treinos</h1>
-          <p className="text-xs text-text-secondary mt-0.5">
-            {fichas.length} rotina{fichas.length !== 1 ? 's' : ''} ativa{fichas.length !== 1 ? 's' : ''} esta semana
-          </p>
-
-          {/* Category filter chips */}
-          <div 
-            className="flex gap-2 overflow-x-auto scrollbar-hide mt-4 pb-0.5"
-            style={{
-              maskImage: 'linear-gradient(to right, black 85%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent 100%)'
-            }}
+      <div className="min-h-screen pb-24" style={{ background: 'var(--surface-0)' }}>
+        <div className="px-4 pt-6 pb-4 max-w-[680px] mx-auto lg:pt-10 lg:pb-6">
+          <h1
+            className="text-[22px] lg:text-[26px] font-bold tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
           >
-            {FILTERS.map(({ label, icon: Icon }) => {
-              const active = selectedFilter === label;
-              return (
-                <button
-                  key={label}
-                  onClick={() => setSelectedFilter(label)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all',
-                    active
-                      ? 'text-black shadow-gold-glow'
-                      : 'bg-surface-2 text-text-secondary border border-border-subtle hover:border-brand/30',
-                  )}
-                  style={active ? { background: 'var(--gradient-gold)' } : {}}
-                >
-                  <Icon className="w-3.5 h-3.5" weight={active ? 'fill' : 'regular'} />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </motion.div>
+            Minhas Rotinas
+          </h1>
+        </div>
 
-        <div className="px-4 max-w-2xl mx-auto flex flex-col gap-5">
-
+        <div className="px-4 max-w-[680px] mx-auto flex flex-col gap-4 lg:gap-6">
           {error && (
-            <motion.div
-              variants={itemVariants}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm"
-            >
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm">
               {error}
-            </motion.div>
+            </div>
           )}
 
-          {/* Fichas interativas */}
-          {fichasFiltradas.length > 0 && (
+          {fichas.length > 0 && (
             <section>
-              <div className="flex flex-col gap-2">
-                {fichasFiltradas.map(ficha => {
-                  const exercicios = (ficha.configuracao?.exercicios ?? [])
-                    .map(ex => ex.nome)
-                    .filter(Boolean) as string[];
-
-                  const freq = frequencias[ficha.id] || 0;
+              <div
+                className={`
+                  flex flex-col gap-2.5 lg:gap-3
+                  md:grid md:grid-cols-2 md:gap-3
+                  lg:flex lg:flex-col
+                `}
+              >
+                {fichas.map((ficha, index) => {
+                  const exercicios = ficha.exercicios ?? [];
+                  const isLastOddOnTablet =
+                    fichas.length % 2 === 1 && index === fichas.length - 1;
 
                   return (
-                    <motion.div key={ficha.id} variants={itemVariants}>
-                      <Link
-                        href={`/aluno/treinos/ficha?id=${ficha.id}`}
-                        className="w-full bg-surface-1 hover:bg-surface-2 rounded-[14px] p-4 flex items-start gap-4 transition-all active:scale-[0.99] group border-none shadow-sm"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-brand-subtle flex items-center justify-center shrink-0 mt-0.5 text-brand">
-                          <Barbell size={24} weight="fill" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h2 className="text-[17px] font-semibold text-text-primary group-hover:text-brand transition-colors truncate">
-                                {ficha.nome_rotina}
-                              </h2>
-                              <p className="text-2xs text-text-secondary mt-0.5">
-                                {exercicios.length > 0
-                                  ? `${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''}`
-                                  : 'Sem exercícios'}
-                                {' · '}
-                                Criado em {parseDateSafe(ficha.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                              </p>
-                            </div>
-                            {freq > 0 ? (
-                              <span className="px-2.5 py-1 bg-brand-subtle text-brand text-[10px] font-bold rounded-lg shrink-0">
-                                {freq}×/semana
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-1 bg-surface-2 text-text-tertiary text-[10px] font-semibold rounded-lg shrink-0">
-                                Ficha
-                              </span>
-                            )}
-                          </div>
-                          {exercicios.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-3">
-                              {exercicios.slice(0, 3).map((nome, i) => (
-                                <span key={i} className="px-2.5 py-1 bg-surface-2 rounded-lg text-2xs font-medium text-text-secondary whitespace-nowrap">
-                                  {nome}
-                                </span>
-                              ))}
-                              {exercicios.length > 3 && (
-                                <span className="px-2.5 py-1 bg-surface-2/40 rounded-lg text-[10px] font-semibold text-text-tertiary">
-                                  +{exercicios.length - 3} mais
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-                    </motion.div>
+                    <div
+                      key={ficha.id}
+                      className={isLastOddOnTablet ? 'md:col-span-2 lg:col-span-1' : undefined}
+                    >
+                      <RoutineCard
+                        isDesktop={isDesktop}
+                        routine={{
+                          id: ficha.id,
+                          nome_rotina: ficha.nome_rotina,
+                          criado_em: ficha.criado_em,
+                          exercicios,
+                        }}
+                      />
+                    </div>
                   );
                 })}
               </div>
+
+              {fichas.length < 3 && (
+                <p className="text-xs text-center mt-4 lg:mt-6" style={{ color: 'var(--text-tertiary)' }}>
+                  Seu coach pode adicionar mais rotinas ao seu plano
+                </p>
+              )}
             </section>
           )}
 
-          {/* PDFs */}
           {treinosPdf.length > 0 && (
             <section>
-              <motion.p
-                variants={itemVariants}
-                className="text-2xs font-semibold uppercase tracking-caps text-text-tertiary mb-3 flex items-center gap-2"
+              <p
+                className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-3 flex items-center gap-2"
+                style={{ color: 'var(--text-tertiary)' }}
               >
-                <span className="w-1 h-4 bg-border-subtle rounded-full inline-block" />
                 Fichas PDF
-              </motion.p>
-              <div className="flex flex-col gap-2">
+              </p>
+              <div className="flex flex-col gap-2.5">
                 {treinosPdf.map(pdf => (
-                  <motion.div key={pdf.id} variants={itemVariants}>
-                    <button
-                      onClick={() => {
-                        if (pdf.aluno_id !== userId) return;
-                        setSelectedPdf(pdf);
-                      }}
-                      className="w-full text-left bg-surface-1 border border-border-subtle shadow-elev-1 hover:shadow-elev-2 hover:border-brand/20 p-4 rounded-2xl transition-all active:scale-[0.99] flex items-center gap-3.5 group"
+                  <button
+                    key={pdf.id}
+                    onClick={() => void openPdf(pdf)}
+                    className="w-full text-left p-3.5 rounded-[12px] transition-all active:scale-[0.99] flex items-center gap-3 group min-h-16"
+                    style={{
+                      background: 'var(--surface-1)',
+                      border: '1px solid var(--border-subtle)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    }}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0"
+                      style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
                     >
-                      <div className="w-11 h-11 rounded-2xl bg-surface-2 border border-border-subtle flex items-center justify-center text-text-secondary shrink-0 group-hover:border-brand/30 transition-colors">
-                        <FileText size={20} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-text-primary truncate group-hover:text-brand transition-colors">
-                          {pdf.nome_arquivo.replace('.pdf', '')}
-                        </p>
-                        <p className="text-xs text-text-tertiary mt-0.5">
-                          Enviado em {parseDateSafe(pdf.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </p>
-                      </div>
-                      <div className="w-7 h-7 rounded-xl bg-surface-3 group-hover:bg-surface-2 flex items-center justify-center text-text-tertiary shrink-0 transition-colors">
-                        <MagnifyingGlass size={13} />
-                      </div>
-                    </button>
-                  </motion.div>
+                      <FileText size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                        {pdf.nome_arquivo.replace('.pdf', '')}
+                      </p>
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                        Enviado em {new Date(pdf.data_upload).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: 'var(--surface-2)', color: 'var(--text-disabled)' }}
+                    >
+                      <MagnifyingGlass size={14} />
+                    </div>
+                  </button>
                 ))}
               </div>
             </section>
           )}
 
-          {/* Empty state */}
           {total === 0 && (
-            <motion.div variants={itemVariants} className="text-center py-20 bg-surface-1 rounded-[14px]">
-              <Barbell size={80} className="text-text-tertiary mx-auto mb-4 opacity-50" />
-              <h2 className="text-sm font-bold text-text-primary">Seu coach ainda está preparando seu treino</h2>
-              <div className="flex items-center justify-center gap-1.5 text-xs text-text-secondary mt-2">
-                <Clock size={14} className="text-brand" />
-                <span>Em breve sua rotina estará disponível por aqui</span>
-              </div>
-            </motion.div>
+            <p className="text-sm text-center py-16" style={{ color: 'var(--text-tertiary)' }}>
+              Nenhum treino ativo. Seu coach ainda não atribuiu uma rotina para o seu perfil.
+            </p>
           )}
-
         </div>
-      </motion.div>
+      </div>
 
       {selectedPdf && (
         <PDFViewer
