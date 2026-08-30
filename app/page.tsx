@@ -393,12 +393,11 @@ function LoginForm() {
           <Image
             src="/logo.png"
             alt="Coach Vinny"
-            width={64}
-            height={64}
+            width={96}
+            height={96}
             priority
-            className="w-14 lg:w-16 h-auto object-contain rounded-xl drop-shadow-2xl animate-fade-in mb-2"
+            className="w-20 lg:w-24 h-auto object-contain rounded-xl drop-shadow-2xl animate-fade-in"
           />
-          <h1 className="text-lg lg:text-xl font-bold text-text-primary tracking-widest uppercase font-display">COACH VINNY</h1>
         </div>
 
         {/* Form — estilo Mobills: campos underline. Sem tela de cadastro
