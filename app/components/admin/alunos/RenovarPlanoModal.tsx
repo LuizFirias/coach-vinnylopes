@@ -66,6 +66,13 @@ export function RenovarPlanoModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Só reinicializa os campos quando o modal ABRE (transição false -> true) —
+  // não a cada vez que `profile` muda de referência. O componente pai recria
+  // esse objeto a cada render dele; se ficasse na dependência, qualquer
+  // re-render da tela do aluno (bem frequente) resetava os campos que o
+  // coach já tinha digitado, dando a impressão de o modal "se atualizar
+  // sozinho" enquanto aberto.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!open) return;
     setStatus(profile.status_pagamento || 'pago');
@@ -76,7 +83,7 @@ export function RenovarPlanoModal({
     setForma('pix');
     setObservacao('');
     setError(null);
-  }, [open, profile]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
