@@ -2525,9 +2525,9 @@ export default function AdminAlunoPage({ params }: { params: Promise<{ id: strin
                   <span className="text-text-secondary font-medium">Situação de Cobrança</span>
                   <span className={cn(
                     "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border",
-                    isPaid ? "bg-success-subtle text-success border-success/15" : "bg-danger-subtle text-danger border-danger/15"
+                    isPaid && !isExpired ? "bg-success-subtle text-success border-success/15" : "bg-danger-subtle text-danger border-danger/15"
                   )}>
-                    {isPaid ? "Em dia" : "Pendente/Atrasado"}
+                    {isPaid && !isExpired ? "Em dia" : isExpired ? "Vencido" : "Pendente/Atrasado"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
