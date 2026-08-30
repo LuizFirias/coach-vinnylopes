@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import DumbbellLoader from "@/app/components/DumbbellLoader";
 import { getPostLoginPath, type PostLoginProfile } from "@/lib/auth/getPostLoginPath";
-import { clearOAuthIntent, getOAuthIntent } from "@/lib/auth/googleOAuth";
+import { clearOAuthIntent } from "@/lib/auth/googleOAuth";
 
 /** Evita double-run do React Strict Mode consumir o code duas vezes. */
 let callbackInFlight = false;
@@ -94,13 +94,7 @@ async function loadProfile(
 }
 
 function pathForProfile(profile: PostLoginProfile) {
-  const intent = getOAuthIntent();
   clearOAuthIntent();
-
-  if (intent === "signup-coach" && (profile.role || "aluno") === "aluno") {
-    return "/signup/coach?oauth=1";
-  }
-
   return getPostLoginPath(profile);
 }
 

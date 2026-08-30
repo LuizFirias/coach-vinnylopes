@@ -40,7 +40,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [mode, setMode] = useState<"login" | "register" | "recovery">("login");
+  const [mode, setMode] = useState<"login" | "recovery">("login");
   const [recoveryEmail, setRecoveryEmail] = useState("");
   const [recoverySent, setRecoverySent] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
@@ -54,10 +54,7 @@ function LoginForm() {
   // Novas features da especificação de melhorias de login
   const [rememberMe, setRememberMe] = useState(false);
   const [capsLockActive, setCapsLockActive] = useState(false);
-  const [coachCount, setCoachCount] = useState<number | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const resolveLoginErrorMessage = async (emailAddress: string): Promise<string> => {
     try {
@@ -125,18 +122,11 @@ function LoginForm() {
     setRoleTab(tab);
   }, [searchParams]);
 
-  const handleGoogleLogin = async (authMode: "login" | "register" = "login") => {
+  const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError(null);
     const isCoach = roleTabRef.current === "coach";
-    const intent =
-      authMode === "register"
-        ? isCoach
-          ? "signup-coach"
-          : "signup-aluno"
-        : isCoach
-          ? "login-coach"
-          : "login-aluno";
+    const intent = isCoach ? "login-coach" : "login-aluno";
     const err = await loginComGoogle(intent);
     if (err) {
       setError(err);
@@ -221,13 +211,6 @@ function LoginForm() {
       router.replace(getPostLoginPath(profile));
     };
     checkExistingSession();
-
-    fetch("/api/public/coach-count")
-      .then((res) => res.json())
-      .then((data) => {
-        if (typeof data?.count === "number") setCoachCount(data.count);
-      })
-      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps -- executar apenas na montagem
   }, []);
 
@@ -381,125 +364,6 @@ function LoginForm() {
     }
   };
 
-  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-
-    const trimmedName = fullName.trim();
-    const trimmedEmail = email.trim().toLowerCase();
-
-    if (!trimmedName) {
-      setError("Informe seu nome completo.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Informe um e-mail válido.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (!termsAccepted) {
-      setError("Aceite os Termos de Uso e a Política de Privacidade.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const isCoach = roleTabRef.current === "coach";
-      const endpoint = isCoach ? "/api/auth/signup-coach" : "/api/auth/signup-aluno";
-      const inviteCode = searchParams?.get("convite") ?? undefined;
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          isCoach
-            ? {
-                email: trimmedEmail,
-                password,
-                fullName: trimmedName,
-                inviteCode,
-              }
-            : {
-                email: trimmedEmail,
-                password,
-                fullName: trimmedName,
-              },
-        ),
-      });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        setError(result.error || "Erro ao criar conta. Tente novamente.");
-        setLoading(false);
-        return;
-      }
-
-      await supabaseClient.auth.signOut({ scope: "local" });
-      try {
-        await fetch("/api/session", { method: "DELETE" });
-      } catch {
-        // ignore
-      }
-      localStorage.removeItem("user_role");
-      localStorage.removeItem("user_id");
-
-      const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-        email: trimmedEmail,
-        password,
-      });
-
-      if (signInError || !signInData.session || !signInData.user) {
-        router.push(`/?email=${encodeURIComponent(trimmedEmail)}&novo=true&tab=${roleTabRef.current}`);
-        return;
-      }
-
-      if (typeof window !== "undefined" && signInData.session.access_token) {
-        try {
-          localStorage.setItem(
-            "sb-auth-token",
-            JSON.stringify({
-              access_token: signInData.session.access_token,
-              refresh_token: signInData.session.refresh_token,
-              expires_at: signInData.session.expires_at,
-            }),
-          );
-        } catch {
-          // ignore
-        }
-      }
-
-      try {
-        await fetch("/api/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            access_token: signInData.session.access_token,
-            refresh_token: signInData.session.refresh_token,
-            expires_at: signInData.session.expires_at,
-          }),
-        });
-      } catch {
-        // ignore
-      }
-
-      const { data: profileData } = await supabaseClient
-        .from("profiles")
-        .select("role, must_change_password, first_access_completed, onboarding_visto")
-        .eq("id", signInData.user.id)
-        .single();
-
-      router.push(profileData ? getPostLoginPath(profileData) : isCoach ? "/admin/boas-vindas" : "/aluno/onboarding");
-    } catch {
-      setError("Erro inesperado ao criar conta. Tente novamente.");
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-[100dvh] bg-surface-0 flex flex-col antialiased selection:bg-brand/35 selection:text-white">
       <PWAInstall />
@@ -537,47 +401,11 @@ function LoginForm() {
           <h1 className="text-lg lg:text-xl font-bold text-text-primary tracking-widest uppercase font-display">COACH VINNY</h1>
         </div>
 
-        {/* Form — estilo Mobills: tabs Entrar/Cadastrar + campos underline */}
+        {/* Form — estilo Mobills: campos underline. Sem tela de cadastro
+            público — coach único, alunos só entram via convite (link
+            enviado pelo coach), nunca por auto-cadastro. */}
         <div className="relative z-20 w-full max-w-[380px] px-6 md:px-7 lg:px-0">
-          {mode !== "recovery" && (
-            <div
-              role="tablist"
-              aria-label="Entrar ou cadastrar"
-              className="mb-6 flex w-full items-center justify-center gap-10"
-            >
-              {(
-                [
-                  { id: "login" as const, label: "Entrar" },
-                  { id: "register" as const, label: "Cadastrar" },
-                ] as const
-              ).map((tab) => {
-                const active = mode === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => {
-                      setMode(tab.id);
-                      setError(null);
-                    }}
-                    className={cn(
-                      "relative pb-2.5 text-[13px] font-bold uppercase tracking-[0.14em] transition-colors",
-                      active ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary",
-                    )}
-                  >
-                    {tab.label}
-                    {active && (
-                      <span className="absolute left-0 right-0 bottom-0 h-[3px] rounded-full bg-brand" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {(mode === "login" || mode === "register") && (
+          {mode === "login" && (
             <div
               role="tablist"
               aria-label="Tipo de acesso"
@@ -697,207 +525,6 @@ function LoginForm() {
               </motion.div>
             )}
 
-            {/* ── Cadastrar ── */}
-            {mode === "register" && (
-              <motion.form
-                key="register"
-                initial={false}
-                onSubmit={handleRegister}
-                className="space-y-5 relative z-10"
-              >
-                <AnimatePresence mode="wait">
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="flex items-start gap-2 bg-red-500/10 border-l-4 border-red-500 rounded-md p-3 text-sm text-red-400"
-                    >
-                      <WarningCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                      <span>{error}</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <GoogleSignInButton
-                  loading={googleLoading}
-                  disabled={loading}
-                  label="Cadastrar com Google"
-                  onClick={() => {
-                    void handleGoogleLogin("register");
-                  }}
-                />
-
-                <div className="flex items-center gap-3 py-1">
-                  <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.12)" }} />
-                  <span
-                    className="text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: "#aaa" }}
-                  >
-                    ou
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.12)" }} />
-                </div>
-
-                <input
-                  id="register-name"
-                  type="text"
-                  value={fullName}
-                  disabled={loading}
-                  onChange={(e) => {
-                    setFullName(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Nome"
-                  required
-                  autoComplete="name"
-                  className={AUTH_UNDERLINE_INPUT}
-                />
-
-                <input
-                  id="register-email"
-                  type="email"
-                  value={email}
-                  disabled={loading}
-                  onChange={handleEmailChange}
-                  placeholder="E-mail"
-                  required
-                  autoComplete="email"
-                  className={AUTH_UNDERLINE_INPUT}
-                />
-
-                <div className="relative">
-                  <input
-                    id="register-password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    disabled={loading}
-                    onChange={handlePasswordChange}
-                    onKeyUp={handlePasswordKeyDown}
-                    onKeyDown={handlePasswordKeyDown}
-                    placeholder="Senha"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    className={cn(AUTH_UNDERLINE_INPUT, "pr-9")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors p-1"
-                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  >
-                    {showPassword ? (
-                      <EyeSlash className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-
-                {password.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex gap-1.5">
-                      {[1, 2, 3].map((level) => {
-                        const strength = getPasswordStrength(password);
-                        return (
-                          <div
-                            key={level}
-                            className={cn(
-                              "h-1 flex-1 rounded-full transition-colors",
-                              strength >= level
-                                ? strength === 1
-                                  ? "bg-red-400"
-                                  : strength === 2
-                                    ? "bg-amber-400"
-                                    : "bg-emerald-500"
-                                : "bg-black/10",
-                            )}
-                          />
-                        );
-                      })}
-                    </div>
-                    <p className="text-[11px] text-text-tertiary">
-                      {getPasswordStrength(password) <= 1
-                        ? "Senha fraca — use 8+ caracteres"
-                        : getPasswordStrength(password) === 2
-                          ? "Senha média"
-                          : "Senha forte"}
-                    </p>
-                  </div>
-                )}
-
-                {capsLockActive && (
-                  <div className="flex items-center gap-1.5 text-xs text-warning">
-                    <WarningCircle className="w-3.5 h-3.5 flex-shrink-0" weight="fill" />
-                    <span>Caps Lock está ativado</span>
-                  </div>
-                )}
-
-                <label
-                  htmlFor="termsAccepted"
-                  className="relative z-20 flex min-h-[40px] cursor-pointer touch-manipulation select-none items-start gap-2.5"
-                >
-                  <input
-                    id="termsAccepted"
-                    type="checkbox"
-                    checked={termsAccepted}
-                    disabled={loading}
-                    onChange={(e) => {
-                      setTermsAccepted(e.target.checked);
-                      setError(null);
-                    }}
-                    className="sr-only"
-                  />
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full transition-colors duration-200",
-                      termsAccepted ? "bg-brand" : "border-[1.5px] bg-transparent",
-                    )}
-                    style={!termsAccepted ? { borderColor: "rgba(0,0,0,0.2)" } : undefined}
-                  >
-                    {termsAccepted && <Check className="h-3 w-3 text-white" weight="bold" />}
-                  </span>
-                  <span className="text-[12px] leading-relaxed text-text-secondary">
-                    Li e concordo com os{" "}
-                    <Link href="/termos" className="text-brand font-semibold hover:underline">
-                      Termos de Uso
-                    </Link>{" "}
-                    e a{" "}
-                    <Link
-                      href="/privacidade"
-                      className="text-brand font-semibold hover:underline"
-                    >
-                      Política de Privacidade
-                    </Link>
-                    .
-                  </span>
-                </label>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={AUTH_PILL_CTA}
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)",
-                    boxShadow: "0 4px 20px rgba(212, 168, 67, 0.45)",
-                    fontSize: "13px",
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      <span>Criando conta...</span>
-                    </>
-                  ) : (
-                    "Concordar e cadastrar"
-                  )}
-                </button>
-              </motion.form>
-            )}
-
             {/* ── Login ── */}
             {mode === "login" && (
               <motion.form
@@ -925,7 +552,7 @@ function LoginForm() {
                   disabled={loading}
                   label="Entrar com Google"
                   onClick={() => {
-                    void handleGoogleLogin("login");
+                    void handleGoogleLogin();
                   }}
                 />
 
