@@ -20,6 +20,9 @@ interface SeriePreview {
   peso_input_str?: string;
   reps: number | string;
   reps_executadas?: number | string;
+  /** Texto exatamente como o aluno digitou — evita reformatar/perder dígito
+   *  enquanto ele digita (mesmo padrão do peso_input_str). */
+  reps_input_str?: string;
   tecnica?: string;
   tecnica_extra?: string;
   completado: boolean;
@@ -66,7 +69,7 @@ interface HalfPreviewProps {
   videoUrl?: string;
   treinoIniciado: boolean;
   onPesoChange: (ordem: number, peso: number, rawStr?: string) => void;
-  onRepsChange: (ordem: number, reps: number | string) => void;
+  onRepsChange: (ordem: number, reps: number | string, rawStr?: string) => void;
   onTempoChange: (ordem: number, seconds: number, rawStr?: string) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen?: (url: string) => void;
@@ -255,14 +258,15 @@ function HalfPreview({
                   type="number"
                   inputMode="numeric"
                   value={
-                    serie.reps_executadas !== undefined && serie.reps_executadas !== ""
+                    serie.reps_input_str ??
+                    (serie.reps_executadas !== undefined && serie.reps_executadas !== ""
                       ? serie.reps_executadas
-                      : ""
+                      : "")
                   }
                   placeholder={String(serie.reps)}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    onRepsChange(serie.ordem, raw === "" ? "" : parseFloat(raw) || 0);
+                    onRepsChange(serie.ordem, raw === "" ? "" : parseFloat(raw) || 0, raw);
                   }}
                   disabled={!treinoIniciado}
                   aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
@@ -318,8 +322,8 @@ interface BiSetGroupPreviewCardProps {
   isDesktop?: boolean;
   onPesoChangeA: (ordem: number, peso: number, rawStr?: string) => void;
   onPesoChangeB: (ordem: number, peso: number, rawStr?: string) => void;
-  onRepsChangeA: (ordem: number, reps: number | string) => void;
-  onRepsChangeB: (ordem: number, reps: number | string) => void;
+  onRepsChangeA: (ordem: number, reps: number | string, rawStr?: string) => void;
+  onRepsChangeB: (ordem: number, reps: number | string, rawStr?: string) => void;
   onTempoChangeA: (ordem: number, seconds: number, rawStr?: string) => void;
   onTempoChangeB: (ordem: number, seconds: number, rawStr?: string) => void;
   onCheckA: (ordem: number) => void;

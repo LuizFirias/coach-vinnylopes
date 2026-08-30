@@ -111,6 +111,9 @@ interface SerieState {
   peso_historico?: boolean;
   reps: number | string;
   reps_executadas?: number | string;
+  /** Texto exatamente como o aluno digitou — evita reformatar/perder dígito
+   *  enquanto ele digita (mesmo padrão do peso_input_str). */
+  reps_input_str?: string;
   /** true assim que o aluno edita as reps desta série (inclusive reconfirmando o valor pré-preenchido). */
   reps_manual?: boolean;
   tecnica?: string;
@@ -367,7 +370,7 @@ interface SetRowProps {
   /** Primeira série não concluída do exercício — destaque roxo, igual ao modal. */
   isAtual?: boolean;
   onPesoChange: (peso: number, rawStr?: string) => void;
-  onRepsChange: (reps: number | string) => void;
+  onRepsChange: (reps: number | string, rawStr?: string) => void;
   onTempoChange: (seconds: number, rawStr?: string) => void;
   onCheck: () => void;
 }
@@ -495,14 +498,15 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
             type="number"
             inputMode="numeric"
             value={
-              serie.reps_executadas !== undefined && serie.reps_executadas !== ''
+              serie.reps_input_str ??
+              (serie.reps_executadas !== undefined && serie.reps_executadas !== ''
                 ? serie.reps_executadas
-                : ''
+                : '')
             }
             placeholder={String(serie.reps)}
             onChange={(e) => {
               const raw = e.target.value;
-              onRepsChange(raw === '' ? '' : parseFloat(raw) || 0);
+              onRepsChange(raw === '' ? '' : parseFloat(raw) || 0, raw);
             }}
             disabled={!treinoIniciado}
             aria-label={`Reps da série ${serie.ordem}. Prescrito: ${serie.reps}`}
@@ -571,7 +575,7 @@ interface ExercicioCardProps {
   currentExercicioId?: string;
   currentOrdem?: number;
   onPesoChange: (ordem: number, peso: number, rawStr?: string) => void;
-  onRepsChange: (ordem: number, reps: number | string) => void;
+  onRepsChange: (ordem: number, reps: number | string, rawStr?: string) => void;
   onTempoChange: (ordem: number, seconds: number, rawStr?: string) => void;
   onCheck: (ordem: number) => void;
   onVideoOpen: (url: string) => void;
@@ -712,7 +716,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
               gridCols={gridCols}
               isDesktop={isDesktop}
               onPesoChange={(peso, raw) => onPesoChange(serie.ordem, peso, raw)}
-              onRepsChange={(reps) => onRepsChange(serie.ordem, reps)}
+              onRepsChange={(reps, raw) => onRepsChange(serie.ordem, reps, raw)}
               onTempoChange={(seconds, raw) => onTempoChange(serie.ordem, seconds, raw)}
               onCheck={() => onCheck(serie.ordem)}
             />
@@ -1400,12 +1404,13 @@ export default function ExecucaoTreinoPage() {
       ordem: number;
       reps: number | string;
       reps_executadas?: number | string;
+      reps_input_str?: string;
       reps_manual?: boolean;
       completado: boolean;
       tecnica?: string;
       tecnica_extra?: string;
     }
-  >(series: T[], serieOrdem: number, reps: number | string): T[] {
+  >(series: T[], serieOrdem: number, reps: number | string, rawStr?: string): T[] {
     let cascata = false;
     // Cluster Set e reps em texto livre ("12 a 15") não participam da cascata
     // em nenhuma das pontas — o valor não é um número simples pra propagar
@@ -1415,11 +1420,11 @@ export default function ExecucaoTreinoPage() {
     return series.map((s) => {
       if (s.ordem === serieOrdem) {
         cascata = true;
-        return { ...s, reps_executadas: reps, reps_manual: true };
+        return { ...s, reps_executadas: reps, reps_input_str: rawStr ?? String(reps), reps_manual: true };
       }
       const vazia = s.reps_executadas === undefined || s.reps_executadas === '';
       if (cascata && podeCascatear && !isClusterSetSerie(s) && !isFreeTextReps(s) && !s.completado && !s.reps_manual && vazia) {
-        return { ...s, reps_executadas: reps };
+        return { ...s, reps_executadas: reps, reps_input_str: String(reps) };
       }
       return s;
     });
@@ -1456,7 +1461,7 @@ export default function ExecucaoTreinoPage() {
   }, []);
 
   const handleRepsChange = useCallback(
-    (exercicioId: string, serieOrdem: number, reps: number | string) => {
+    (exercicioId: string, serieOrdem: number, reps: number | string, rawStr?: string) => {
       setBlocks((prev) =>
         prev.map((block) => {
           if (block.kind === 'simples') {
@@ -1465,7 +1470,7 @@ export default function ExecucaoTreinoPage() {
               ...block,
               exercise: {
                 ...block.exercise,
-                series: cascadeReps(block.exercise.series, serieOrdem, reps),
+                series: cascadeReps(block.exercise.series, serieOrdem, reps, rawStr),
               },
             };
           }
@@ -1475,7 +1480,7 @@ export default function ExecucaoTreinoPage() {
               ...block,
               [half]: {
                 ...block[half],
-                series: cascadeReps(block[half].series, serieOrdem, reps),
+                series: cascadeReps(block[half].series, serieOrdem, reps, rawStr),
               },
             };
           };
@@ -2293,7 +2298,7 @@ export default function ExecucaoTreinoPage() {
                       currentExercicioId={current?.exercicioId}
                       currentOrdem={current?.ordem}
                       onPesoChange={(ordem, peso, raw) => handlePesoChange(block.exercise.id, ordem, peso, raw)}
-                      onRepsChange={(ordem, reps) => handleRepsChange(block.exercise.id, ordem, reps)}
+                      onRepsChange={(ordem, reps, raw) => handleRepsChange(block.exercise.id, ordem, reps, raw)}
                       onTempoChange={(ordem, seconds, raw) => handleTempoChange(block.exercise.id, ordem, seconds, raw)}
                       onCheck={(ordem) => handleCheck(block.exercise.id, ordem)}
                       onVideoOpen={setVideoUrl}
@@ -2309,8 +2314,8 @@ export default function ExecucaoTreinoPage() {
                       isDesktop={isDesktop}
                       onPesoChangeA={(ordem, peso, raw) => handlePesoChange(block.exercicioA.id, ordem, peso, raw)}
                       onPesoChangeB={(ordem, peso, raw) => handlePesoChange(block.exercicioB.id, ordem, peso, raw)}
-                      onRepsChangeA={(ordem, reps) => handleRepsChange(block.exercicioA.id, ordem, reps)}
-                      onRepsChangeB={(ordem, reps) => handleRepsChange(block.exercicioB.id, ordem, reps)}
+                      onRepsChangeA={(ordem, reps, raw) => handleRepsChange(block.exercicioA.id, ordem, reps, raw)}
+                      onRepsChangeB={(ordem, reps, raw) => handleRepsChange(block.exercicioB.id, ordem, reps, raw)}
                       onTempoChangeA={(ordem, seconds, raw) => handleTempoChange(block.exercicioA.id, ordem, seconds, raw)}
                       onTempoChangeB={(ordem, seconds, raw) => handleTempoChange(block.exercicioB.id, ordem, seconds, raw)}
                       onCheckA={(ordem) => handleCheck(block.exercicioA.id, ordem)}
@@ -3220,9 +3225,10 @@ export default function ExecucaoTreinoPage() {
                                         value={
                                           isAtualRow
                                             ? modalRepsStr
-                                            : s.reps_executadas !== undefined && s.reps_executadas !== ''
-                                              ? s.reps_executadas
-                                              : ''
+                                            : s.reps_input_str ??
+                                              (s.reps_executadas !== undefined && s.reps_executadas !== ''
+                                                ? s.reps_executadas
+                                                : '')
                                         }
                                         placeholder={String(s.reps)}
                                         onChange={(e) => {
@@ -3232,7 +3238,7 @@ export default function ExecucaoTreinoPage() {
                                             setModalReps(typeof val === 'number' ? val : 0);
                                             setModalRepsStr(raw);
                                           }
-                                          handleRepsChange(exId, s.ordem, val);
+                                          handleRepsChange(exId, s.ordem, val, raw);
                                         }}
                                         aria-label={`Reps — ${nome}, rodada ${rodadaIdx + 1}. Prescrito: ${s.reps}`}
                                         className={cn(
@@ -3493,9 +3499,10 @@ export default function ExecucaoTreinoPage() {
                                   value={
                                     isAtual
                                       ? modalRepsStr
-                                      : s.reps_executadas !== undefined && s.reps_executadas !== ''
-                                        ? s.reps_executadas
-                                        : ''
+                                      : s.reps_input_str ??
+                                        (s.reps_executadas !== undefined && s.reps_executadas !== ''
+                                          ? s.reps_executadas
+                                          : '')
                                   }
                                   placeholder={String(s.reps)}
                                   onChange={(e) => {
@@ -3505,7 +3512,7 @@ export default function ExecucaoTreinoPage() {
                                       setModalReps(typeof val === 'number' ? val : 0);
                                       setModalRepsStr(raw);
                                     }
-                                    handleRepsChange(modalEx.id, s.ordem, val);
+                                    handleRepsChange(modalEx.id, s.ordem, val, raw);
                                   }}
                                   onFocus={(e) => e.currentTarget.select()}
                                   aria-label={`Reps da série ${idx + 1}. Prescrito: ${s.reps}`}

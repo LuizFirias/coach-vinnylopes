@@ -331,6 +331,9 @@ export interface ExercicioExecucao {
     peso_historico?: boolean;
     reps: number | string;
     reps_executadas?: number | string;
+    /** Texto exatamente como o aluno digitou — evita reformatar/perder dígito
+     *  enquanto ele digita (mesmo padrão do peso_input_str). */
+    reps_input_str?: string;
     /** true assim que o aluno edita as reps desta série (inclusive reconfirmando o valor pré-preenchido). */
     reps_manual?: boolean;
     tecnica?: string;
