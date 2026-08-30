@@ -9,6 +9,7 @@ import { FileText, MagnifyingGlass } from '@phosphor-icons/react';
 import PDFViewer from '@/app/components/PDFViewer';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { RoutineCard } from '@/app/components/treinos/RoutineCard';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
 
 interface TreinoPDF {
   id: string;
@@ -28,11 +29,17 @@ interface FichaTreino {
   }>;
 }
 
+type TreinosLista = { fichas: FichaTreino[]; treinos_pdf: TreinoPDF[] };
+// Evita mostrar "Carregando treinos…" de novo toda vez que o aluno volta
+// pra essa aba — a lista raramente muda entre uma visita e outra.
+const treinosListaCache = createKeyedCache<TreinosLista>(60_000);
+
 export default function AlunoTreinosPage() {
+  const cached = treinosListaCache.peek('atual');
   const [userId, setUserId] = useState<string | null>(null);
-  const [fichas, setFichas] = useState<FichaTreino[]>([]);
-  const [treinosPdf, setTreinosPdf] = useState<TreinoPDF[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [fichas, setFichas] = useState<FichaTreino[]>(cached?.fichas ?? []);
+  const [treinosPdf, setTreinosPdf] = useState<TreinoPDF[]>(cached?.treinos_pdf ?? []);
+  const [loading, setLoading] = useState(cached === undefined);
   const [error, setError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<TreinoPDF | null>(null);
   const [openingPdfId, setOpeningPdfId] = useState<string | null>(null);
@@ -65,20 +72,23 @@ export default function AlunoTreinosPage() {
         if (!user) { setError('Sessão expirada. Faça login novamente.'); setLoading(false); return; }
 
         const uid = user.id;
+        setUserId(uid);
 
         // Antes eram 2 requisições, e a de fichas trazia a configuração inteira
         // (todas as séries/técnicas) só pra montar o resuminho de exercícios do
         // card. Agora é 1 RPC só, que já devolve só {nome, grupo_muscular} por
         // exercício — bem mais leve em fichas com muitos exercícios.
-        const { data: listaData, error: listaError } = await supabaseClient
-          .rpc('get_treinos_lista_aluno', { p_aluno_id: uid });
-        if (listaError) throw listaError;
-        const lista = (listaData ?? {}) as Record<string, any>;
+        const lista = await treinosListaCache.get('atual', async () => {
+          const { data: listaData, error: listaError } = await supabaseClient
+            .rpc('get_treinos_lista_aluno', { p_aluno_id: uid });
+          if (listaError) throw listaError;
+          const raw = (listaData ?? {}) as Record<string, any>;
+          return { fichas: raw.fichas ?? [], treinos_pdf: raw.treinos_pdf ?? [] };
+        });
 
-        setUserId(uid);
-        setFichas(lista.fichas ?? []);
+        setFichas(lista.fichas);
         // URL assinada só quando o aluno abre o PDF — evita 1 request por PDF no boot
-        setTreinosPdf(lista.treinos_pdf ?? []);
+        setTreinosPdf(lista.treinos_pdf);
       } catch {
         setError('Erro ao conectar com o servidor');
       } finally {

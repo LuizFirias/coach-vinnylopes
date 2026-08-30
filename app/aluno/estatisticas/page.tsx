@@ -35,6 +35,11 @@ import { buildIntensityHighlightData } from '@/lib/utils/muscleBody';
 import type { BodyGender } from '@/lib/utils/bodyGender';
 import { cn } from '@/lib/utils/cn';
 import { resolveMuscleGroup } from '@/lib/constants/muscle-groups';
+import { peekHistoricoTreinosFull } from '@/lib/queries/historicoTreinosCache';
+
+// exercicios_biblioteca é uma tabela global (não muda por aluno) — cache
+// simples em memória evita reconsultar a cada vez que a tela é montada.
+let bibCache: Record<string, string> | null = null;
 
 // ─── Muscle mapping ──────────────────────────────────────────────────────────
 const MUSCLE_MAP: Record<string, string[]> = {
@@ -198,7 +203,7 @@ export default function EstatisticasPage() {
 
   // Data
   const [historico, setHistorico] = useState<any[]>([]);
-  const [exerciciosBiblioteca, setExerciciosBiblioteca] = useState<Record<string, string>>({});
+  const [exerciciosBiblioteca, setExerciciosBiblioteca] = useState<Record<string, string>>(bibCache ?? {});
 
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -211,22 +216,32 @@ export default function EstatisticasPage() {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
       try {
         const session = await getSafeSession();
         if (!session?.user) return;
         const uid = session.user.id;
 
-        const { data: bibData } = await supabaseClient
-          .from('exercicios_biblioteca')
-          .select('id, grupo_muscular');
-        const bibMap: Record<string, string> = {};
-        bibData?.forEach((item) => {
-          if (item.grupo_muscular) {
-            bibMap[item.id] = resolveMuscleGroup(item.grupo_muscular);
-          }
-        });
-        setExerciciosBiblioteca(bibMap);
+        // Se já tem histórico salvo (memória ou aparelho) e a biblioteca já
+        // foi buscada nesta sessão, pinta a tela na hora — sem "Carregando..."
+        // de novo toda vez que o aluno volta pra essa aba.
+        const cachedHistorico = peekHistoricoTreinosFull(uid);
+        if (cachedHistorico) setHistorico(cachedHistorico);
+        if (bibCache) setExerciciosBiblioteca(bibCache);
+        if (cachedHistorico && bibCache) setLoading(false);
+
+        if (!bibCache) {
+          const { data: bibData } = await supabaseClient
+            .from('exercicios_biblioteca')
+            .select('id, grupo_muscular');
+          const bibMap: Record<string, string> = {};
+          bibData?.forEach((item) => {
+            if (item.grupo_muscular) {
+              bibMap[item.id] = resolveMuscleGroup(item.grupo_muscular);
+            }
+          });
+          bibCache = bibMap;
+          setExerciciosBiblioteca(bibMap);
+        }
 
         const { getHistoricoTreinosFull } = await import('@/lib/queries/historicoTreinosCache');
         const histData = await getHistoricoTreinosFull(uid);

@@ -108,6 +108,19 @@ function fetchFresh(
   return inflight;
 }
 
+/**
+ * Versão síncrona: devolve na hora o que já está em memória ou salvo no
+ * aparelho (sem esperar nenhum await), pra telas iniciarem o estado já
+ * preenchido em vez de nascer em "Carregando...". Não dispara fetch —
+ * quem chamar continua chamando getHistoricoTreinosFull normalmente depois.
+ */
+export function peekHistoricoTreinosFull(userId: string): HistoricoTreinoRow[] | undefined {
+  if (cache && cache.userId === userId) return cache.rows;
+  const stored = readLocalStorage(userId);
+  if (stored && Date.now() - stored.fetchedAt < LOCAL_STORAGE_STALE_MS) return stored.rows;
+  return undefined;
+}
+
 export async function getHistoricoTreinosFull(
   userId: string,
   client = supabaseClient,

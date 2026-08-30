@@ -17,6 +17,7 @@ import { MacrosCard } from '@/app/components/nutrition/MacrosCard';
 import { MealCard, type MealFoodItem } from '@/app/components/nutrition/MealCard';
 import { HydrationSection } from '@/app/components/nutrition/HydrationSection';
 import DumbbellLoader from '@/app/components/DumbbellLoader';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -99,26 +100,45 @@ function mapLegacyMealFoods(ingredientes: Array<{ nome?: string; quantidade?: st
   }));
 }
 
+// ─── Cache ───────────────────────────────────────────────────────────────────
+// Guarda o resultado do último carregamento (30s) só pra pintar a tela na hora
+// quando o aluno volta pra essa aba — o fetchData continua rodando por trás
+// pra trazer o dado mais recente (checkins, água, plano do dia).
+
+interface NutricaoSnapshot {
+  digitalPlan: any | null;
+  digitalCheckins: Record<string, string>;
+  expandedMeals: Record<string, boolean>;
+  planoPDF: PlanoPDF | null;
+  historicoPDFs: PlanoPDF[];
+  legacyRefeicoes: any[];
+  legacyConsumidos: string[];
+  agua: RegistroAgua;
+}
+
+const nutricaoCache = createKeyedCache<NutricaoSnapshot>(30_000);
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function PlanoAlimentarPage() {
-  const [loading, setLoading] = useState(true);
+  const cachedSnapshot = nutricaoCache.peek('atual');
+  const [loading, setLoading] = useState(cachedSnapshot === undefined);
   const [userId, setUserId] = useState<string | null>(null);
 
   // Digital Plan states
-  const [digitalPlan, setDigitalPlan] = useState<any | null>(null);
-  const [digitalCheckins, setDigitalCheckins] = useState<Record<string, string>>({}); // meal_id -> status ('done', etc)
-  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({});
+  const [digitalPlan, setDigitalPlan] = useState<any | null>(cachedSnapshot?.digitalPlan ?? null);
+  const [digitalCheckins, setDigitalCheckins] = useState<Record<string, string>>(cachedSnapshot?.digitalCheckins ?? {}); // meal_id -> status ('done', etc)
+  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>(cachedSnapshot?.expandedMeals ?? {});
   const [togglingMealId, setTogglingMealId] = useState<string | null>(null);
 
   // PDF Plan states
-  const [planoPDF, setPlanoPDF] = useState<PlanoPDF | null>(null);
-  const [historicoPDFs, setHistoricoPDFs] = useState<PlanoPDF[]>([]);
-  const [legacyRefeicoes, setLegacyRefeicoes] = useState<any[]>([]);
-  const [legacyConsumidos, setLegacyConsumidos] = useState<Set<string>>(new Set());
+  const [planoPDF, setPlanoPDF] = useState<PlanoPDF | null>(cachedSnapshot?.planoPDF ?? null);
+  const [historicoPDFs, setHistoricoPDFs] = useState<PlanoPDF[]>(cachedSnapshot?.historicoPDFs ?? []);
+  const [legacyRefeicoes, setLegacyRefeicoes] = useState<any[]>(cachedSnapshot?.legacyRefeicoes ?? []);
+  const [legacyConsumidos, setLegacyConsumidos] = useState<Set<string>>(new Set(cachedSnapshot?.legacyConsumidos ?? []));
 
   // Common features
-  const [agua, setAgua] = useState<RegistroAgua>({ id: null, copos: 0, ml_por_copo: 250 });
+  const [agua, setAgua] = useState<RegistroAgua>(cachedSnapshot?.agua ?? { id: null, copos: 0, ml_por_copo: 250 });
   const [metaCopos] = useState(8);
   const [savingAgua, setSavingAgua] = useState(false);
 
@@ -210,6 +230,15 @@ export default function PlanoAlimentarPage() {
       const { digitalPlan: digitalPlanData, plansPDF: plansPDFData, agua: aguaData, checkins } =
         await loadStudentNutritionPageData(uid, today, supabaseClient);
 
+      // Acumula o que foi carregado pra guardar no cache no final (evita
+      // reconsultar o estado do React, que só atualiza no próximo render)
+      let checkinsMapForCache: Record<string, string> = {};
+      let expandedMapForCache: Record<string, boolean> = {};
+      let planoPDFForCache: PlanoPDF | null = null;
+      let historicoPDFsForCache: PlanoPDF[] = [];
+      let legacyRefeicoesForCache: any[] = [];
+      let legacyConsumidosForCache: Set<string> = new Set();
+
       if (digitalPlanData) {
         setDigitalPlan(digitalPlanData);
 
@@ -218,6 +247,7 @@ export default function PlanoAlimentarPage() {
           checkinsMap[c.meal_id] = c.status;
         });
         setDigitalCheckins(checkinsMap);
+        checkinsMapForCache = checkinsMap;
 
         const day1 = digitalPlanData.days?.[0];
         let expandedIds: string[] = [];
@@ -231,6 +261,7 @@ export default function PlanoAlimentarPage() {
             (id) => checkinsMap[id] === 'done',
           );
           setExpandedMeals(expandedMap);
+          expandedMapForCache = expandedMap;
           expandedIds = Object.keys(expandedMap).filter((id) => expandedMap[id]);
         }
 
@@ -250,6 +281,8 @@ export default function PlanoAlimentarPage() {
         if (!digitalPlanData) {
           setPlanoPDF(plansPDFData[0]);
           setHistoricoPDFs(plansPDFData.slice(1));
+          planoPDFForCache = plansPDFData[0];
+          historicoPDFsForCache = plansPDFData.slice(1);
 
           // Em paralelo: consumos do dia sem .in() — ids extras são ignorados pelo Set.has
           const [{ data: refeicaoData }, { data: consumos }] = await Promise.all([
@@ -269,25 +302,43 @@ export default function PlanoAlimentarPage() {
           const consumidos = new Set((consumos || []).map((c: any) => c.refeicao_id as string));
           setLegacyRefeicoes(legacyMeals);
           setLegacyConsumidos(consumidos);
+          legacyRefeicoesForCache = legacyMeals;
+          legacyConsumidosForCache = consumidos;
           if (legacyMeals.length > 0) {
-            setExpandedMeals(
-              buildAutoExpandedMap(
-                legacyMeals.map((r: { id: string; horario_sugerido?: string | null }) => ({
-                  id: r.id,
-                  time: r.horario_sugerido,
-                })),
-                (id) => consumidos.has(id),
-              ),
+            const legacyExpandedMap = buildAutoExpandedMap(
+              legacyMeals.map((r: { id: string; horario_sugerido?: string | null }) => ({
+                id: r.id,
+                time: r.horario_sugerido,
+              })),
+              (id) => consumidos.has(id),
             );
+            setExpandedMeals(legacyExpandedMap);
+            expandedMapForCache = legacyExpandedMap;
           }
         } else {
           setHistoricoPDFs(plansPDFData);
+          historicoPDFsForCache = plansPDFData;
         }
       }
 
+      let aguaSnapshot: RegistroAgua = { id: null, copos: 0, ml_por_copo: 250 };
       if (aguaData) {
-        setAgua({ id: aguaData.id, copos: aguaData.copos, ml_por_copo: aguaData.ml_por_copo });
+        aguaSnapshot = { id: aguaData.id, copos: aguaData.copos, ml_por_copo: aguaData.ml_por_copo };
+        setAgua(aguaSnapshot);
       }
+
+      // Guarda o snapshot pra próxima visita renderizar na hora
+      nutricaoCache.invalidate('atual');
+      void nutricaoCache.get('atual', async () => ({
+        digitalPlan: digitalPlanData ?? null,
+        digitalCheckins: checkinsMapForCache,
+        expandedMeals: expandedMapForCache,
+        planoPDF: planoPDFForCache,
+        historicoPDFs: historicoPDFsForCache,
+        legacyRefeicoes: legacyRefeicoesForCache,
+        legacyConsumidos: Array.from(legacyConsumidosForCache),
+        agua: aguaSnapshot,
+      }));
     } catch (err) {
       console.error('[PlanoAlimentar] Erro geral ao buscar dados:', err);
     } finally {
@@ -356,6 +407,7 @@ export default function PlanoAlimentarPage() {
         setAgua(a => ({ ...a, id: data?.id ?? null }));
       }
       setAgua(a => ({ ...a, copos: next }));
+      nutricaoCache.invalidate('atual');
     } catch (err) {
       console.error('[Água] Erro:', err);
     } finally {
@@ -421,6 +473,7 @@ export default function PlanoAlimentarPage() {
 
         if (error) throw error;
       }
+      nutricaoCache.invalidate('atual');
     } catch (err: any) {
       console.error('[Digital Checkin] Erro:', err);
       // Desfaz o otimismo — a rede não confirmou, volta pro estado real.
@@ -497,6 +550,7 @@ export default function PlanoAlimentarPage() {
           .insert({ aluno_id: userId, refeicao_id: refeicaoId, data_consumo: today });
         if (error) throw error;
       }
+      nutricaoCache.invalidate('atual');
     } catch (err) {
       console.error('[Consumo Legado] Erro:', err);
       // Desfaz o otimismo.

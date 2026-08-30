@@ -1,90 +1,63 @@
-﻿"use client";
+"use client";
 
-import React, { useEffect, useState } from"react";
-import { supabaseClient } from"@/lib/supabaseClient";
-import Link from"next/link";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  getBootstrapProfile,
+  peekBootstrapProfile,
+  type BootstrapProfile,
+} from "@/lib/auth/bootstrapProfile";
 
 interface Props {
   children: React.ReactNode;
 }
 
+function parseDateSafe(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+  }
+  return new Date(value);
+}
+
+function resolveAllowed(profile: BootstrapProfile | null): boolean {
+  if (!profile) return false;
+  if (profile.arquivado) return false;
+  const exp = profile.data_expiracao ? parseDateSafe(profile.data_expiracao) : null;
+  const now = new Date();
+  return !!(exp && exp >= now && profile.status_pagamento === "pago");
+}
+
+/**
+ * Bloqueia conteúdo do aluno com pagamento atrasado/vencido.
+ *
+ * Antes fazia sua própria consulta (auth.getUser + profiles) do zero toda
+ * vez que a tela montava — um round-trip de rede a mais, com spinner
+ * próprio, em cima do que o MustChangePasswordGuard/AlunoBodyGenderProvider
+ * já buscam (e cacheiam) no layout. Reaproveita esse mesmo bootstrap —
+ * zero query extra, sem spinner bloqueando a navegação.
+ */
 export default function SubscriptionGuard({ children }: Props) {
-  const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [profile, setProfile] = useState<BootstrapProfile | null>(() => peekBootstrapProfile());
+  const [ready, setReady] = useState(() => peekBootstrapProfile() !== null);
 
   useEffect(() => {
-    const parseDateSafe = (value: string) => {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        const [y, m, d] = value.split('-').map(Number);
-        return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+    let cancelled = false;
+    void getBootstrapProfile().then((p) => {
+      if (!cancelled) {
+        setProfile(p);
+        setReady(true);
       }
-      return new Date(value);
+    });
+    return () => {
+      cancelled = true;
     };
-
-    const check = async () => {
-      setLoading(true);
-      try {
-        const { data: authData } = await supabaseClient.auth.getUser();
-        const user = authData?.user;
-        if (!user) {
-          setAllowed(false);
-          setStatus(null);
-          setLoading(false);
-          return;
-        }
-
-        const { data: profile, error } = await supabaseClient
-          .from("profiles")
-          .select("status_pagamento, data_expiracao, arquivado")
-          .eq("id", user.id)
-          .single();
-
-        if (error || !profile) {
-          setAllowed(false);
-          setStatus(null);
-        } else if (profile.arquivado) {
-          // Se estiver arquivado, ignore o resto e bloqueie
-          setAllowed(false);
-          setStatus("arquivado");
-        } else {
-          const exp = profile.data_expiracao ? parseDateSafe(profile.data_expiracao) : null;
-          const now = new Date();
-          if (exp && exp >= now && profile.status_pagamento === 'pago') {
-            // active
-            const diff = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            setDaysLeft(diff);
-            setAllowed(true);
-            setStatus('pago');
-          } else {
-            // expired or not paid
-            if (exp && exp < now) {
-              // auto mark as atrasado
-              await supabaseClient.from('profiles').update({ status_pagamento: 'atrasado' }).eq('id', user.id);
-              setStatus('atrasado');
-            } else {
-              setStatus(profile.status_pagamento ?? null);
-            }
-            setAllowed(false);
-            setDaysLeft(exp ? Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null);
-          }
-        }
-      } catch (err) {
-        setAllowed(false);
-        setStatus(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    check();
   }, []);
 
-  const WHATSAPP_NUMBER ="556781232717"; // international format without '+'
+  const WHATSAPP_NUMBER = "556781232717"; // international format without '+'
   const waMessage = encodeURIComponent("Olá Coach Vinny, preciso renovar minha assinatura.");
 
-  if (loading) {
+  if (!ready) {
     return (
       <div className="min-h-50 flex items-center justify-center">
         <div className="text-gray-400">Carregando...</div>
@@ -92,7 +65,7 @@ export default function SubscriptionGuard({ children }: Props) {
     );
   }
 
-  if (allowed) return <>{children}</>;
+  if (resolveAllowed(profile)) return <>{children}</>;
 
   // Blocked view
   return (
