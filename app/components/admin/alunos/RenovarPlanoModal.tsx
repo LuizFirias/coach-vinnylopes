@@ -39,7 +39,8 @@ type Props = {
 
 const fieldLabelClass = '[&_label]:text-white/70';
 const dateInputClass =
-  'w-full h-11 px-3.5 rounded-[10px] text-[13px] font-medium text-text-primary bg-surface-2 border-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/30';
+  'w-full h-9 px-3 rounded-[10px] text-[13px] font-medium text-text-primary bg-surface-2 border-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/30';
+const fieldLabelTextClass = 'text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70';
 
 export function RenovarPlanoModal({
   open,
@@ -193,18 +194,18 @@ export function RenovarPlanoModal({
             'animate-sheet-up max-h-[min(90vh,720px)] flex flex-col overflow-hidden',
           )}
         >
-          <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-white/15 shrink-0">
+          <div className="flex items-start justify-between gap-3 px-4 pt-3 pb-2.5 border-b border-white/15 shrink-0">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-white/75">
                 Cobrança
               </p>
               <p
                 id="renovar-plano-title"
-                className="text-[16px] font-bold text-white mt-1 truncate"
+                className="text-[15px] font-bold text-white mt-0.5 truncate"
               >
                 Renovar plano
               </p>
-              <p className="text-[12px] text-white/70 mt-0.5 truncate">
+              <p className="text-[11px] text-white/70 truncate">
                 {alunoNome}
               </p>
             </div>
@@ -212,13 +213,13 @@ export function RenovarPlanoModal({
               type="button"
               onClick={onClose}
               aria-label="Fechar"
-              className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:text-white hover:bg-white/10 active:scale-95 border-0 bg-transparent cursor-pointer"
+              className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition-colors hover:text-white hover:bg-white/10 active:scale-95 border-0 bg-transparent cursor-pointer"
             >
               <X size={16} weight="bold" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 flex flex-col gap-4">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 flex flex-col gap-2.5">
             <Select
               label="Situação"
               value={status}
@@ -231,8 +232,8 @@ export function RenovarPlanoModal({
               className={fieldLabelClass}
             />
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/70">
+            <div className="flex flex-col gap-1">
+              <label className={fieldLabelTextClass}>
                 Data do pagamento
               </label>
               <input
@@ -247,8 +248,8 @@ export function RenovarPlanoModal({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/70">
+              <div className="flex flex-col gap-1">
+                <label className={fieldLabelTextClass}>
                   Início do plano
                 </label>
                 <input
@@ -289,8 +290,8 @@ export function RenovarPlanoModal({
             </p>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/70">
+              <div className="flex flex-col gap-1">
+                <label className={fieldLabelTextClass}>
                   Valor (R$)
                 </label>
                 <input
@@ -314,8 +315,8 @@ export function RenovarPlanoModal({
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/70">
+            <div className="flex flex-col gap-1">
+              <label className={fieldLabelTextClass}>
                 Observação (opcional)
               </label>
               <input
@@ -337,7 +338,7 @@ export function RenovarPlanoModal({
               type="button"
               disabled={saving}
               onClick={() => void persist({ registrarPagamento: true })}
-              className="mt-1 w-full rounded-xl bg-white text-brand py-3 text-xs font-bold uppercase tracking-wider hover:bg-white/95 transition-colors disabled:opacity-60 border-0 cursor-pointer"
+              className="mt-0.5 w-full rounded-xl bg-white text-brand py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-white/95 transition-colors disabled:opacity-60 border-0 cursor-pointer"
             >
               {saving ? 'Salvando…' : 'Registrar pagamento'}
             </button>
@@ -346,7 +347,7 @@ export function RenovarPlanoModal({
               type="button"
               disabled={saving}
               onClick={() => void persist({ registrarPagamento: false })}
-              className="w-full bg-transparent border-0 py-2 text-[11px] font-semibold text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-60"
+              className="w-full bg-transparent border-0 py-1.5 text-[11px] font-semibold text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-60"
             >
               Salvar vínculo sem registrar pagamento
             </button>
