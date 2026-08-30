@@ -21,7 +21,7 @@ export function ProgressPhotosOverviewCard({ fotos, onViewAll, onCompare }: Prog
 
   return (
     <OverviewPanel
-      title="Progress Photo"
+      title="Fotos de Evolução"
       action={
         <div className="flex items-center gap-3">
           <button

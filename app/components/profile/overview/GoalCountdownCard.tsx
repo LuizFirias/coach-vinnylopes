@@ -83,7 +83,7 @@ export function GoalCountdownCard({ alunoId, coachId }: GoalCountdownCardProps) 
 
   return (
     <OverviewPanel
-      title="Goal & Countdown"
+      title="Objetivo e contagem regressiva"
       action={
         !editing && (
           <button

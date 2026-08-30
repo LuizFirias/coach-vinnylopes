@@ -134,7 +134,7 @@ export function UpdatesFeedCard({
 
   return (
     <OverviewPanel
-      title="Updates"
+      title="Atualizações"
       action={
         <Select
           value={filtro}

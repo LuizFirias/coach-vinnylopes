@@ -53,7 +53,7 @@ function WeightMiniChart({ medidas }: { medidas: { data_medicao: string; peso: n
   const ultimo = data[data.length - 1]?.peso;
 
   return (
-    <MiniPanel title="Weight" value={ultimo != null ? `${ultimo.toLocaleString('pt-BR')} kg` : undefined}>
+    <MiniPanel title="Peso" value={ultimo != null ? `${ultimo.toLocaleString('pt-BR')} kg` : undefined}>
       {data.length >= 2 ? (
         <div style={{ height: MINI_CHART_H }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -79,7 +79,7 @@ function WeightMiniChart({ medidas }: { medidas: { data_medicao: string; peso: n
 // ── Sono (placeholder — sem fonte de dado ainda) ────────────────────────────
 function SleepMiniCard() {
   return (
-    <MiniPanel title="Sleep">
+    <MiniPanel title="Sono">
       <div className="flex flex-1 flex-col items-center justify-center gap-1.5 py-4 text-center">
         <Moon size={18} className="text-text-disabled" />
         <p className="text-[11px] text-text-tertiary">Nenhum registro ainda</p>
@@ -252,14 +252,14 @@ export function BodyMetricsOverviewCard({
 }: BodyMetricsOverviewCardProps) {
   return (
     <OverviewPanel
-      title="Body Metrics Overview"
+      title="Métricas Corporais"
       action={
         <button
           type="button"
           onClick={onUpdateAll}
           className="text-[11px] font-semibold text-brand hover:text-brand-hover bg-transparent border-0"
         >
-          Update all
+          Atualizar tudo
         </button>
       }
       bodyClassName="grid grid-cols-2 gap-3"

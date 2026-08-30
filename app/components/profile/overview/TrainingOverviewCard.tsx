@@ -50,7 +50,7 @@ export function TrainingOverviewCard({
 
   return (
     <OverviewPanel
-      title="Training"
+      title="Treinos"
       action={
         <button
           type="button"
