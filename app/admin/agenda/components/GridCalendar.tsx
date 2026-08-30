@@ -124,7 +124,7 @@ export function GridCalendar({ days, items, onSlotClick, onItemClick }: GridCale
                     height: ROW_H * HOURS.length,
                     // Mesmo tom da série atual na execução de treino — destaca
                     // a coluna do dia de hoje na visão semana.
-                    background: isSameDay(day, today) ? "rgba(117, 27, 180, 0.06)" : undefined,
+                    background: isSameDay(day, today) ? "rgba(212, 168, 67, 0.06)" : undefined,
                   }}
                 >
                   {HOURS.map((h, i) => (

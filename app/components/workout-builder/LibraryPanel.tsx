@@ -91,7 +91,7 @@ export function LibraryPanel({
     <div
       className={cn(
         "flex flex-col h-full bg-surface-1 transition-shadow",
-        pickMode && "ring-2 ring-brand shadow-[0_0_48px_rgba(117, 27, 180,0.35)]",
+        pickMode && "ring-2 ring-brand shadow-[0_0_48px_rgba(212, 168, 67,0.35)]",
       )}
     >
       <div className="relative z-30 shrink-0 px-4 pt-4 pb-3 flex flex-col gap-2 overflow-visible">

@@ -827,7 +827,7 @@ function FichaContent() {
                   <div className="flex-1 min-w-0">
                     <h3
                       className="font-semibold leading-tight mb-1"
-                      style={{ fontSize: 15, color: '#751BB4' }}
+                      style={{ fontSize: 15, color: '#D4A843' }}
                     >
                       {toTitleCase(exercicio.nome)}
                     </h3>
@@ -851,7 +851,7 @@ function FichaContent() {
                       style={{
                         background: 'var(--btn-primary-bg)',
                         color: '#fff',
-                        boxShadow: '0 2px 6px rgba(117, 27, 180,0.3)',
+                        boxShadow: '0 2px 6px rgba(212, 168, 67,0.3)',
                       }}
                     >
                       Executar
@@ -987,7 +987,7 @@ function FichaContent() {
                                   background: serie.completado
                                     ? '#39c75a'
                                     : serie.tecnica
-                                      ? 'rgba(117, 27, 180,0.12)'
+                                      ? 'rgba(212, 168, 67,0.12)'
                                       : 'var(--filter-bg)',
                                   color: serie.completado
                                     ? '#fff'
@@ -1067,12 +1067,12 @@ function FichaContent() {
                                     onClick={() => setTecnicaInfoModal(serie.tecnica_extra!)}
                                     style={{
                                       padding: '2px 4px',
-                                      background: 'rgba(117, 27, 180,0.06)',
-                                      border: '1px solid rgba(117, 27, 180,0.15)',
+                                      background: 'rgba(212, 168, 67,0.06)',
+                                      border: '1px solid rgba(212, 168, 67,0.15)',
                                       borderRadius: 4,
                                       fontSize: 8,
                                       fontWeight: 700,
-                                      color: '#751BB4',
+                                      color: '#D4A843',
                                       textTransform: 'uppercase',
                                     }}
                                   >

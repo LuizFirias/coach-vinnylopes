@@ -73,7 +73,7 @@ export function StudentHealthTable({
       : `/admin/aluno/${id}`;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+    <div className="rounded-xl border border-white/10 bg-[rgba(212, 168, 67,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
       <div className="flex items-center justify-between gap-3 mb-2">
         <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary">
           Saúde dos alunos

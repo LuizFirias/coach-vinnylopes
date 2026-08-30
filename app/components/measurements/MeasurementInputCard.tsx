@@ -70,7 +70,7 @@ export function MeasurementInputCard({
           disabled={submitting || !raw}
           aria-label="Adicionar registro"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border-[1.5px] text-brand transition-colors touch-manipulation disabled:cursor-default disabled:opacity-40"
-          style={{ borderColor: '#751BB4', background: 'transparent' }}
+          style={{ borderColor: '#D4A843', background: 'transparent' }}
         >
           {submitting ? (
             <CircleNotch className="h-4 w-4 animate-spin" />

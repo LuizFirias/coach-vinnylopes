@@ -130,7 +130,7 @@ export function ChatList({
                       height: 18,
                       padding: '0 5px',
                       borderRadius: 9,
-                      background: 'var(--brand-primary, #9333ea)',
+                      background: 'var(--brand-primary, #D4A843)',
                       color: '#fff',
                       fontSize: 11,
                       fontWeight: 700,

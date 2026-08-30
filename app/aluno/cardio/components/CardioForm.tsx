@@ -218,7 +218,7 @@ export function CardioForm({
               'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 transition-transform',
               pickerOpen && 'rotate-180',
             )}
-            style={{ color: '#751BB4' }}
+            style={{ color: '#D4A843' }}
             aria-hidden
           />
         </button>
@@ -237,11 +237,11 @@ export function CardioForm({
             {MODALIDADES_CARDIO.map((grupo, gi) => (
               <div key={grupo.grupo}>
                 {gi > 0 && (
-                  <div className="mx-3 my-1.5" style={{ height: 1, background: 'rgba(117,27,180,0.15)' }} aria-hidden />
+                  <div className="mx-3 my-1.5" style={{ height: 1, background: 'rgba(212, 168, 67,0.15)' }} aria-hidden />
                 )}
                 <p
                   className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
-                  style={{ color: '#751BB4' }}
+                  style={{ color: '#D4A843' }}
                 >
                   {grupo.grupo}
                 </p>
@@ -260,13 +260,13 @@ export function CardioForm({
                       className="flex w-full items-center justify-between gap-2 border-0 px-3 py-2 text-left touch-manipulation"
                       style={{
                         background: 'transparent',
-                        color: selected ? '#751BB4' : '#1a1a1a',
+                        color: selected ? '#D4A843' : '#1a1a1a',
                         fontSize: 13,
                         fontWeight: selected ? 600 : 400,
                       }}
                     >
                       <span className="truncate">{item}</span>
-                      {selected && <Check size={13} weight="bold" style={{ color: '#751BB4' }} />}
+                      {selected && <Check size={13} weight="bold" style={{ color: '#D4A843' }} />}
                     </button>
                   );
                 })}
@@ -492,7 +492,7 @@ export function CardioForm({
           borderRadius: 12,
           border: 'none',
           background: 'var(--btn-primary-bg)',
-          boxShadow: '0 4px 16px rgba(117, 27, 180,0.35)',
+          boxShadow: '0 4px 16px rgba(212, 168, 67,0.35)',
           color: '#fff',
           fontSize: 15,
           fontWeight: 600,

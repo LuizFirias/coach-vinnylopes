@@ -248,7 +248,7 @@ export function StudentWorkoutsModal({
 }
 
 const floatingIconBtn =
-  "inline-flex items-center justify-center border-0 bg-transparent p-0 text-brand hover:text-brand-hover transition-colors shrink-0 drop-shadow-[0_2px_6px_rgba(117, 27, 180,0.45)]";
+  "inline-flex items-center justify-center border-0 bg-transparent p-0 text-brand hover:text-brand-hover transition-colors shrink-0 drop-shadow-[0_2px_6px_rgba(212, 168, 67,0.45)]";
 
 /** Botão que abre o modal das fichas do aluno. */
 export function StudentWorkoutsEyeButton({

@@ -184,8 +184,8 @@ export function NutritionCard({
                             onClick={() => onMarcarRefeicao(r.id)}
                             className="mt-1 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white touch-manipulation"
                             style={{
-                              background: 'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
-                              boxShadow: '0 3px 10px rgba(117, 27, 180,0.30)',
+                              background: 'linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)',
+                              boxShadow: '0 3px 10px rgba(212, 168, 67,0.30)',
                               border: 'none',
                             }}
                           >

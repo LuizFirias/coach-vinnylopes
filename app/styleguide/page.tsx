@@ -52,9 +52,9 @@ const SURFACES_LIGHT: Swatch[] = [
 ];
 
 const BRAND: Swatch[] = [
-  { name: 'Brand / Accent', token: '--brand-primary', value: '#751BB4', note: '≤10% — sidebar, CTAs, foco' },
-  { name: 'Hover', token: '--brand-hover', value: '#8B2FD4' },
-  { name: 'Pressed', token: '--brand-pressed', value: '#5E158F' },
+  { name: 'Brand / Accent', token: '--brand-primary', value: '#D4A843', note: '≤10% — sidebar, CTAs, foco' },
+  { name: 'Hover', token: '--brand-hover', value: '#B8902F' },
+  { name: 'Pressed', token: '--brand-pressed', value: '#B8902F' },
 ];
 
 const SEMANTIC: Swatch[] = [
@@ -81,7 +81,7 @@ const TEXT_LIGHT: Swatch[] = [
 const AURON_CAL: Swatch[] = [
   { name: 'Done', token: '--cal-done', value: '#39c75a', note: 'Treino feito' },
   { name: 'Missed', token: '--cal-missed', value: '#e05555', note: 'Não realizado' },
-  { name: 'Today', token: '--cal-today', value: '#751BB4', note: 'Dia atual' },
+  { name: 'Today', token: '--cal-today', value: '#D4A843', note: 'Dia atual' },
   { name: 'Upcoming', token: '--cal-upcoming', value: '#7a8aab', note: 'Futuro' },
   { name: 'Rest / muted', token: '--cal-rest', value: '#444444', note: 'Descanso' },
 ];
@@ -228,7 +228,7 @@ export default function StyleguidePage() {
                 className="absolute inset-0 opacity-40 pointer-events-none"
                 style={{
                   background:
-                    'radial-gradient(80% 60% at 10% 0%, rgba(117, 27, 180,0.25), transparent 60%)',
+                    'radial-gradient(80% 60% at 10% 0%, rgba(212, 168, 67,0.25), transparent 60%)',
                 }}
               />
               <div className="relative">
@@ -461,7 +461,7 @@ export default function StyleguidePage() {
             </div>
             <div
               className="mt-4 rounded-xl bg-surface-1 border border-brand-border p-5"
-              style={{ boxShadow: '0 0 24px rgba(117, 27, 180, 0.22)' }}
+              style={{ boxShadow: '0 0 24px rgba(212, 168, 67, 0.22)' }}
             >
               <p className="text-sm font-semibold text-brand">glow-brand</p>
               <p className="text-[10px] font-mono text-text-tertiary mt-1">
@@ -704,7 +704,7 @@ export default function StyleguidePage() {
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
               {[
-                { label: 'Volume', value: '12.4k', unit: 'kg', color: '#751BB4' },
+                { label: 'Volume', value: '12.4k', unit: 'kg', color: '#D4A843' },
                 { label: 'Peso', value: '83.0', unit: 'kg', color: '#39c75a' },
                 { label: 'Treinos', value: '14', unit: '', color: '#F59E0B' },
                 { label: 'Streak', value: '5', unit: 'sem', color: '#F97316' },
@@ -767,7 +767,7 @@ export default function StyleguidePage() {
               {[
                 { c: '#39c75a', label: 'done' },
                 { c: '#e05555', label: 'missed' },
-                { c: '#751BB4', label: 'today' },
+                { c: '#D4A843', label: 'today' },
                 { c: '#7a8aab', label: 'upcoming' },
               ].map((i) => (
                 <div key={i.label} className="flex flex-col items-center gap-1">

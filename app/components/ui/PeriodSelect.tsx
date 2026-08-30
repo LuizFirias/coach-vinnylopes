@@ -70,7 +70,7 @@ export function PeriodSelect({
         style={{
           fontSize: isTitle ? 14 : 10,
           fontWeight: isTitle ? 700 : 400,
-          color: isTitle ? '#1a1a1a' : '#751BB4',
+          color: isTitle ? '#1a1a1a' : '#D4A843',
           background: 'none',
           border: 'none',
           padding: 0,
@@ -86,7 +86,7 @@ export function PeriodSelect({
         <CaretDown
           size={isTitle ? 11 : 9}
           weight="bold"
-          style={{ color: '#751BB4' }}
+          style={{ color: '#D4A843' }}
           aria-hidden
         />
       </button>
@@ -122,8 +122,8 @@ export function PeriodSelect({
                   style={{
                     fontSize: isTitle ? 13 : 11,
                     fontWeight: active ? 600 : 400,
-                    color: active ? '#751BB4' : '#555',
-                    background: active ? 'rgba(117, 27, 180,0.06)' : 'transparent',
+                    color: active ? '#D4A843' : '#555',
+                    background: active ? 'rgba(212, 168, 67,0.06)' : 'transparent',
                     border: 'none',
                     cursor: 'pointer',
                   }}

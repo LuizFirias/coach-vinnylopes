@@ -308,8 +308,8 @@ export function DayConfigPicker({
             className="h-10 flex-1 rounded-[10px] text-[13px] font-semibold text-white disabled:opacity-50"
             style={{
               background:
-                'linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)',
-              boxShadow: '0 3px 10px rgba(117, 27, 180,0.30)',
+                'linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)',
+              boxShadow: '0 3px 10px rgba(212, 168, 67,0.30)',
               border: 'none',
               touchAction: 'manipulation',
             }}

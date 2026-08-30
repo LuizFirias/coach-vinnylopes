@@ -708,7 +708,7 @@ export default function PlanoAlimentarPage() {
                     <div
                       className="w-1 shrink-0"
                       style={{
-                        background: 'linear-gradient(180deg, #c084fc, #751BB4)',
+                        background: 'linear-gradient(180deg, #F5D061, #D4A843)',
                       }}
                       aria-hidden
                     />

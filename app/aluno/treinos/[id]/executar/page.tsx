@@ -171,9 +171,9 @@ function GradientPlayIcon({ size = 22 }: { size?: number }) {
     >
       <defs>
         <linearGradient id={gradId} x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#9B4DD4" />
-          <stop offset="55%" stopColor="#751BB4" />
-          <stop offset="100%" stopColor="#5E158F" />
+          <stop offset="0%" stopColor="#F5D061" />
+          <stop offset="55%" stopColor="#D4A843" />
+          <stop offset="100%" stopColor="#B8902F" />
         </linearGradient>
       </defs>
       <path d="M8.2 5.1a1 1 0 0 1 1.55-.83l9.1 5.9a1 1 0 0 1 0 1.66l-9.1 5.9A1 1 0 0 1 8 16.9V7.1a1 1 0 0 1 .2-.99Z" fill={`url(#${gradId})`} />
@@ -386,7 +386,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
         background: serie.completado
           ? 'rgba(57,199,90,0.06)'
           : isAtual
-            ? 'rgba(117, 27, 180, 0.14)'
+            ? 'rgba(212, 168, 67, 0.14)'
             : idx % 2 === 0
               ? 'var(--surface-1)'
               : 'var(--surface-3)',
@@ -441,7 +441,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
               borderBottom: '1.5px solid transparent',
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderBottomColor = 'rgba(117, 27, 180,0.45)';
+              e.currentTarget.style.borderBottomColor = 'rgba(212, 168, 67,0.45)';
               e.currentTarget.select();
             }}
             onBlur={(e) => {
@@ -483,7 +483,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
               borderBottom: '1.5px solid transparent',
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+              e.currentTarget.style.borderBottomColor = 'rgba(212, 168, 67,0.45)';
               e.currentTarget.select();
             }}
             onBlur={(e) => {
@@ -521,7 +521,7 @@ function SetRow({ serie, idx, treinoIniciado, showAnteriorCol, showPeso = true, 
               borderBottom: '1.5px solid transparent',
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+              e.currentTarget.style.borderBottomColor = 'rgba(212, 168, 67,0.45)';
               e.currentTarget.select();
             }}
             onBlur={(e) => {
@@ -617,7 +617,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
                 type="button"
                 onClick={onOpenCard}
                 className="font-semibold leading-tight truncate min-w-0 text-left bg-transparent border-0 p-0"
-                style={{ fontSize: 15, color: '#751BB4' }}
+                style={{ fontSize: 15, color: '#D4A843' }}
                 aria-label={`Abrir ${exercicio.nome} no card de execução`}
               >
                 {toTitleCase(exercicio.nome)}
@@ -625,7 +625,7 @@ function ExercicioCard({ exercicio, treinoIniciado, showAnteriorCol, isDesktop =
             ) : (
               <h3
                 className="font-semibold leading-tight truncate min-w-0"
-                style={{ fontSize: 15, color: '#751BB4' }}
+                style={{ fontSize: 15, color: '#D4A843' }}
               >
                 {toTitleCase(exercicio.nome)}
               </h3>
@@ -2146,7 +2146,7 @@ export default function ExecucaoTreinoPage() {
               <div className="text-right">
                 <p
                   className="font-sans tabular-nums lining-nums text-sm font-bold leading-none"
-                  style={{ color: '#751BB4' }}
+                  style={{ color: '#D4A843' }}
                 >
                   {formatDuration(elapsed)}
                 </p>
@@ -2211,7 +2211,7 @@ export default function ExecucaoTreinoPage() {
                   className="w-full min-h-14 mt-5 rounded-xl font-bold text-[15px] text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
                   style={{
                     background: 'var(--btn-primary-bg)',
-                    boxShadow: '0 4px 16px rgba(117, 27, 180,0.40)',
+                    boxShadow: '0 4px 16px rgba(212, 168, 67,0.40)',
                   }}
                 >
                   <Lightning size={18} weight="fill" />
@@ -2232,7 +2232,7 @@ export default function ExecucaoTreinoPage() {
                   className="w-full min-h-12 rounded-xl font-bold text-[15px] text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2 px-5 py-3.5"
                   style={{
                     background: 'var(--btn-primary-bg)',
-                    boxShadow: '0 4px 16px rgba(117, 27, 180,0.40)',
+                    boxShadow: '0 4px 16px rgba(212, 168, 67,0.40)',
                   }}
                 >
                   <Lightning size={18} weight="fill" />
@@ -3025,7 +3025,7 @@ export default function ExecucaoTreinoPage() {
                                     background: s.completado
                                       ? 'rgba(57,199,90,0.06)'
                                       : isAtualRow
-                                        ? 'rgba(117, 27, 180, 0.14)'
+                                        ? 'rgba(212, 168, 67, 0.14)'
                                         : 'transparent',
                                   }}
                                 >
@@ -3120,7 +3120,7 @@ export default function ExecucaoTreinoPage() {
                                             borderBottom: '1.5px solid transparent',
                                           }}
                                           onFocus={(e) => {
-                                            e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                            e.currentTarget.style.borderBottomColor = 'rgba(212, 168, 67,0.45)';
                                             e.currentTarget.select();
                                           }}
                                           onBlur={(e) => {
@@ -3207,7 +3207,7 @@ export default function ExecucaoTreinoPage() {
                                             borderBottom: '1.5px solid transparent',
                                           }}
                                           onFocus={(e) => {
-                                            e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                            e.currentTarget.style.borderBottomColor = 'rgba(212, 168, 67,0.45)';
                                             e.currentTarget.select();
                                           }}
                                         />
@@ -3245,7 +3245,7 @@ export default function ExecucaoTreinoPage() {
                                           borderBottom: '1.5px solid transparent',
                                         }}
                                         onFocus={(e) => {
-                                          e.currentTarget.style.borderBottomColor = 'rgba(117,27,180,0.45)';
+                                          e.currentTarget.style.borderBottomColor = 'rgba(212, 168, 67,0.45)';
                                           e.currentTarget.select();
                                         }}
                                         onBlur={(e) => {
@@ -3299,7 +3299,7 @@ export default function ExecucaoTreinoPage() {
                               background: s.completado
                                 ? 'rgba(57,199,90,0.06)'
                                 : isAtual
-                                  ? 'rgba(117, 27, 180, 0.14)'
+                                  ? 'rgba(212, 168, 67, 0.14)'
                                   : 'transparent',
                             }}
                           >

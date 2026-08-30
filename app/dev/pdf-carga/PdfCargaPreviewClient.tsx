@@ -42,8 +42,8 @@ const MOCK_GRUPOS = [
   { grupo: 'Peito Médio', series: 36, pct: 14, color: '#e05555' },
   { grupo: 'Dorsais', series: 32, pct: 12, color: '#39c75a' },
   { grupo: 'Glúteos', series: 28, pct: 11, color: '#f97316' },
-  { grupo: 'Tríceps', series: 28, pct: 11, color: '#751BB4' },
-  { grupo: 'Bíceps', series: 20, pct: 8, color: '#9333ea' },
+  { grupo: 'Tríceps', series: 28, pct: 11, color: '#D4A843' },
+  { grupo: 'Bíceps', series: 20, pct: 8, color: '#D4A843' },
   { grupo: 'Ombro Lateral', series: 16, pct: 6, color: '#f59e0b' },
   { grupo: 'Panturrilha', series: 12, pct: 5, color: '#14b8a6' },
 ];
@@ -84,7 +84,7 @@ function PdfHeader({ subtitle }: { subtitle: string }) {
   return (
     <div
       className="relative flex flex-col items-center justify-center px-9.5"
-      style={{ background: '#9333ea', height: 76 }}
+      style={{ background: '#D4A843', height: 76 }}
     >
       {/* Logo centered */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -133,7 +133,7 @@ function PdfTable({
           {colWidths?.map((w, i) => <col key={i} style={{ width: w }} />)}
         </colgroup>
         <thead>
-          <tr style={{ background: '#9333ea' }}>
+          <tr style={{ background: '#D4A843' }}>
             {headers.map((h, i) => (
               <th
                 key={i}
@@ -211,8 +211,8 @@ function VolumeBarChart() {
 
           return (
             <g key={i}>
-              <rect x={x} y={y} width={barW} height={barH} fill="#9333ea" rx={2} />
-              <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={9} fill="#9333ea" fontWeight="bold">
+              <rect x={x} y={y} width={barW} height={barH} fill="#D4A843" rx={2} />
+              <text x={x + barW / 2} y={y - 3} textAnchor="middle" fontSize={9} fill="#D4A843" fontWeight="bold">
                 {volLabel}
               </text>
               <text x={x + barW / 2} y={totalH - 4} textAnchor="middle" fontSize={9} fill="#888">
@@ -326,12 +326,12 @@ function ProgressionLineChart() {
         })}
 
         {/* Line */}
-        <polyline points={polyPoints} fill="none" stroke="#9333ea" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={polyPoints} fill="none" stroke="#D4A843" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
 
         {/* Dots + X labels */}
         {data.map((d, i) => (
           <g key={i}>
-            <circle cx={toX(i)} cy={toY(d.value)} r={3} fill="#9333ea" />
+            <circle cx={toX(i)} cy={toY(d.value)} r={3} fill="#D4A843" />
             <text x={toX(i)} y={totalH - 4} textAnchor="middle" fontSize={8} fill="#999">
               {d.date}
             </text>
@@ -345,7 +345,7 @@ function ProgressionLineChart() {
           textAnchor="middle"
           fontSize={10}
           fontWeight="bold"
-          fill="#9333ea"
+          fill="#D4A843"
         >
           {data[data.length - 1].value} kg
         </text>

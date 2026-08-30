@@ -210,7 +210,7 @@ export default function CardioPage() {
               className="inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2 text-[13px] font-semibold text-white touch-manipulation"
               style={{
                 background: 'var(--btn-primary-bg)',
-                boxShadow: '0 3px 10px rgba(117, 27, 180,0.30)',
+                boxShadow: '0 3px 10px rgba(212, 168, 67,0.30)',
               }}
             >
               <Plus size={12} weight="bold" /> Nova sessão

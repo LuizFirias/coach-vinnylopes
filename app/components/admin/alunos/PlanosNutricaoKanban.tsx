@@ -677,7 +677,7 @@ export function PlanosNutricaoKanban({ planos, alunoId, checkins, onRefresh }: P
           type="button"
           onClick={() => void createQuickPlan()}
           disabled={creating}
-          className="hidden md:flex shrink-0 min-h-44 rounded-xl border border-dashed border-[#9333ea]/35 bg-transparent text-[11px] font-medium text-[#9333ea] hover:border-[#9333ea]/60 hover:bg-[#9333ea]/5 transition-colors flex-col items-center justify-center gap-2 disabled:opacity-50"
+          className="hidden md:flex shrink-0 min-h-44 rounded-xl border border-dashed border-[#D4A843]/35 bg-transparent text-[11px] font-medium text-[#D4A843] hover:border-[#D4A843]/60 hover:bg-[#D4A843]/5 transition-colors flex-col items-center justify-center gap-2 disabled:opacity-50"
         >
           {creating ? (
             <FloppyDisk size={18} className="animate-pulse" />
@@ -693,7 +693,7 @@ export function PlanosNutricaoKanban({ planos, alunoId, checkins, onRefresh }: P
         type="button"
         onClick={() => void createQuickPlan()}
         disabled={creating}
-        className="md:hidden w-full min-h-18 rounded-xl border border-dashed border-[#9333ea]/35 bg-transparent text-[11px] font-medium text-[#9333ea] hover:border-[#9333ea]/60 hover:bg-[#9333ea]/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+        className="md:hidden w-full min-h-18 rounded-xl border border-dashed border-[#D4A843]/35 bg-transparent text-[11px] font-medium text-[#D4A843] hover:border-[#D4A843]/60 hover:bg-[#D4A843]/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
       >
         <AppleLogo size={18} weight="fill" />
         {creating ? 'Criando…' : 'novo plano'}

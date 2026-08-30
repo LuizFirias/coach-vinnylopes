@@ -43,11 +43,11 @@ export function MuscleDistributionRadar({
             <Radar
               name="Atual"
               dataKey="value"
-              stroke={hasData ? "#751BB4" : "rgba(117, 27, 180, 0.2)"}
-              fill="#751BB4"
+              stroke={hasData ? "#D4A843" : "rgba(212, 168, 67, 0.2)"}
+              fill="#D4A843"
               fillOpacity={fillOpacity}
               strokeWidth={strokeWidth}
-              dot={hasData ? { r: 3, fill: "#751BB4" } : false}
+              dot={hasData ? { r: 3, fill: "#D4A843" } : false}
             />
           </RadarChart>
         </ResponsiveContainer>

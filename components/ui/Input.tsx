@@ -61,8 +61,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             'border border-[#e4e4e7] dark:border-[#2d3748]',
             'transition-all duration-150',
             'focus:outline-none',
-            'focus:border-brand dark:focus:border-[#9333ea]',
-            'focus:shadow-[0_0_0_3px_rgba(147,51,234,0.15)]',
+            'focus:border-brand dark:focus:border-[#D4A843]',
+            'focus:shadow-[0_0_0_3px_rgba(212, 168, 67,0.15)]',
             error && 'ring-1 ring-danger/40 focus:ring-danger/40',
             className
           )}

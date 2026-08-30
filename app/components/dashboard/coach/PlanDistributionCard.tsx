@@ -34,7 +34,7 @@ const LEGEND_OFFSET_X_PX = -60;
    filtrar planos zerados não repinta os que sobram. Tons médio-claros para
    o número preto dentro da fatia ter contraste nos dois temas. */
 const SLICE_COLORS = [
-  "#c084fc", // roxo (brand light)
+  "#F5D061", // roxo (brand light)
   "#38bdf8", // azul
   "#39c75a", // verde
   "#f59e0b", // âmbar

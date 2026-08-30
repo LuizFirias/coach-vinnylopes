@@ -70,7 +70,7 @@ export function NovoChatSheet({ alunos, onClose, onSelect }: NovoChatSheetProps)
         </div>
 
         <div className="px-4 py-2.5 shrink-0 flex items-center gap-2">
-          <MagnifyingGlass size={16} weight="bold" style={{ color: '#751BB4', flexShrink: 0 }} />
+          <MagnifyingGlass size={16} weight="bold" style={{ color: '#D4A843', flexShrink: 0 }} />
           <input
             type="search"
             value={q}
@@ -80,7 +80,7 @@ export function NovoChatSheet({ alunos, onClose, onSelect }: NovoChatSheetProps)
             style={{
               color: 'var(--text-primary)',
               background: 'transparent',
-              border: '1px solid #751BB4',
+              border: '1px solid #D4A843',
             }}
             autoFocus
           />

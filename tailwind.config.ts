@@ -27,12 +27,12 @@ const config: Config = {
           'on-brand': '#FAFAFA',
         },
         brand: {
-          DEFAULT: '#9333ea',
-          primary: '#9333ea',
-          hover: '#a855f7',
-          pressed: '#7e22ce',
-          subtle: 'rgba(147, 51, 234, 0.10)',
-          border: 'rgba(147, 51, 234, 0.20)',
+          DEFAULT: '#D4A843',
+          primary: '#D4A843',
+          hover: '#E8B339',
+          pressed: '#B8902F',
+          subtle: 'rgba(212, 168, 67, 0.10)',
+          border: 'rgba(212, 168, 67, 0.20)',
         },
         success: {
           DEFAULT: '#39c75a',

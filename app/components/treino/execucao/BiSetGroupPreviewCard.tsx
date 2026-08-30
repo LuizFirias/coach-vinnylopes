@@ -42,9 +42,9 @@ function GradientPlayIcon({ size = 22 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <defs>
         <linearGradient id={gradId} x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#9B4DD4" />
-          <stop offset="55%" stopColor="#751BB4" />
-          <stop offset="100%" stopColor="#7e22ce" />
+          <stop offset="0%" stopColor="#F5D061" />
+          <stop offset="55%" stopColor="#D4A843" />
+          <stop offset="100%" stopColor="#B8902F" />
         </linearGradient>
       </defs>
       <path
@@ -201,7 +201,7 @@ function HalfPreview({
                   borderBottom: "1.5px solid transparent",
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderBottomColor = "rgba(117, 27, 180,0.45)";
+                  e.currentTarget.style.borderBottomColor = "rgba(212, 168, 67,0.45)";
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderBottomColor = "transparent";
@@ -242,7 +242,7 @@ function HalfPreview({
                       borderBottom: "1.5px solid transparent",
                     }}
                     onFocus={(e) => {
-                      e.currentTarget.style.borderBottomColor = "rgba(117,27,180,0.45)";
+                      e.currentTarget.style.borderBottomColor = "rgba(212, 168, 67,0.45)";
                     }}
                     onBlur={(e) => {
                       e.currentTarget.style.borderBottomColor = "transparent";
@@ -281,7 +281,7 @@ function HalfPreview({
                     borderBottom: "1.5px solid transparent",
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderBottomColor = "rgba(117,27,180,0.45)";
+                    e.currentTarget.style.borderBottomColor = "rgba(212, 168, 67,0.45)";
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderBottomColor = "transparent";

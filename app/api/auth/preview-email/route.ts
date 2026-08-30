@@ -43,7 +43,7 @@ export async function GET(req: Request) {
               </ul>
               <p style="margin-top:28px;font-size:13px;color:#666;">
                 Também disponível:
-                <a href="/dev/share-cards" style="color:#751BB4;">Cards compartilháveis pós-treino</a>
+                <a href="/dev/share-cards" style="color:#D4A843;">Cards compartilháveis pós-treino</a>
               </p>
             </div>
           </body>

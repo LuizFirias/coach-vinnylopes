@@ -8,9 +8,9 @@ export const dashboardColors = {
   bgHero: '#141414',
   bgCard: '#141414',
   bgCardHover: '#222222',
-  accent: '#751BB4', // var(--brand-primary)
-  accentLight: '#8B2FD4', // var(--brand-hover)
-  accentGlow: '#751BB433',
+  accent: '#D4A843', // var(--brand-primary)
+  accentLight: '#B8902F', // var(--brand-hover)
+  accentGlow: '#D4A84333',
   success: '#39c75a',
   warning: '#F59E0B',
   danger: '#e05555',
@@ -23,7 +23,7 @@ export const dashboardColors = {
   /** var(--cal-missed) */
   calMissed: '#e05555',
   /** var(--cal-today) */
-  calToday: '#751BB4',
+  calToday: '#D4A843',
   /** var(--cal-upcoming) */
   calUpcoming: '#7a8aab',
   /** var(--cal-rest) */

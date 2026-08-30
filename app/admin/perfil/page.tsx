@@ -771,7 +771,7 @@ function CoachPerfilPageInner() {
               <button
                 type="button"
                 onClick={() => setChangePasswordModalOpen(true)}
-                className="perfil-senha-btn flex w-full touch-manipulation items-center justify-center gap-2 rounded-[10px] border border-border-subtle bg-transparent px-4 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-2/40 dark:border-[#2d3748] dark:text-[#D8DCE6] dark:hover:border-[#9333ea] dark:hover:bg-[rgba(147,51,234,0.06)]"
+                className="perfil-senha-btn flex w-full touch-manipulation items-center justify-center gap-2 rounded-[10px] border border-border-subtle bg-transparent px-4 py-3 text-sm font-medium text-text-primary transition-colors hover:bg-surface-2/40 dark:border-[#2d3748] dark:text-[#D8DCE6] dark:hover:border-[#D4A843] dark:hover:bg-[rgba(212, 168, 67,0.06)]"
               >
                 <Lock size={16} className="text-text-tertiary" />
                 Alterar senha

@@ -1104,7 +1104,7 @@ export function FichasKanban({
         <button
           type="button"
           onClick={() => void addPendingFicha()}
-          className="hidden md:flex shrink-0 min-h-36 rounded-xl border border-dashed border-[#9333ea]/35 bg-transparent text-[11px] font-medium text-[#9333ea] hover:border-[#9333ea]/60 hover:bg-[#9333ea]/5 transition-colors flex-col items-center justify-center gap-2"
+          className="hidden md:flex shrink-0 min-h-36 rounded-xl border border-dashed border-[#D4A843]/35 bg-transparent text-[11px] font-medium text-[#D4A843] hover:border-[#D4A843]/60 hover:bg-[#D4A843]/5 transition-colors flex-col items-center justify-center gap-2"
         >
           <Lightning size={18} weight="fill" />
           montagem rápida
@@ -1115,7 +1115,7 @@ export function FichasKanban({
       <button
         type="button"
         onClick={() => void addPendingFicha()}
-        className="md:hidden w-full min-h-18 rounded-xl border border-dashed border-[#9333ea]/35 bg-transparent text-[11px] font-medium text-[#9333ea] hover:border-[#9333ea]/60 hover:bg-[#9333ea]/5 transition-colors flex items-center justify-center gap-2"
+        className="md:hidden w-full min-h-18 rounded-xl border border-dashed border-[#D4A843]/35 bg-transparent text-[11px] font-medium text-[#D4A843] hover:border-[#D4A843]/60 hover:bg-[#D4A843]/5 transition-colors flex items-center justify-center gap-2"
       >
         <Lightning size={18} weight="fill" />
         montagem rápida

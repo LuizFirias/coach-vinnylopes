@@ -140,7 +140,7 @@ export function PwaUpdateModal({ onUpdate }: { onUpdate: () => void }) {
       >
         <span
           className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
-          style={{ background: "rgba(117, 27, 180, 0.12)" }}
+          style={{ background: "rgba(212, 168, 67, 0.12)" }}
           aria-hidden
         >
           <Sparkle size={22} weight="fill" className="text-brand" />
@@ -156,8 +156,8 @@ export function PwaUpdateModal({ onUpdate }: { onUpdate: () => void }) {
           onClick={onUpdate}
           className="mt-4 h-11 w-full touch-manipulation rounded-[10px] text-sm font-bold text-white"
           style={{
-            background: "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
-            boxShadow: "0 4px 20px rgba(117, 27, 180, 0.45)",
+            background: "linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)",
+            boxShadow: "0 4px 20px rgba(212, 168, 67, 0.45)",
             border: "none",
           }}
         >

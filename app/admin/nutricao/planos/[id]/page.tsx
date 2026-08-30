@@ -509,7 +509,7 @@ export default function VerPlanoPage({ params }: VerPlanoPageProps) {
   };
 
   const editCard = editMode
-    ? 'ring-1 ring-brand/35 bg-brand/[0.03] shadow-[0_0_0_1px_rgba(117,27,180,0.12)]'
+    ? 'ring-1 ring-brand/35 bg-brand/[0.03] shadow-[0_0_0_1px_rgba(212, 168, 67,0.12)]'
     : '';
 
   return (

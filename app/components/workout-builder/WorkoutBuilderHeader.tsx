@@ -24,7 +24,7 @@ export function WorkoutBuilderHeader({
 }: WorkoutBuilderHeaderProps) {
   const cardStyle =
     rotinaNumero != null
-      ? { background: "linear-gradient(135deg, rgba(192,132,252,0.16) 0%, rgba(117,27,180,0.10) 100%)" }
+      ? { background: "linear-gradient(135deg, rgba(245, 208, 97,0.16) 0%, rgba(212, 168, 67,0.10) 100%)" }
       : undefined;
 
   if (isMobile) {

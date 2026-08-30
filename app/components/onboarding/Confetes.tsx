@@ -10,7 +10,7 @@ export function Confetes() {
       particleCount: 120,
       spread: 70,
       origin: { y: 0.6 },
-      colors: ["#9333ea", "#a855f7", "#D8DCE6", "#7e22ce", "#ffffff"],
+      colors: ["#D4A843", "#E8B339", "#D8DCE6", "#B8902F", "#ffffff"],
     });
 
     const t = window.setTimeout(() => {
@@ -19,14 +19,14 @@ export function Confetes() {
         angle: 60,
         spread: 55,
         origin: { x: 0, y: 0.65 },
-        colors: ["#9333ea", "#D8DCE6"],
+        colors: ["#D4A843", "#D8DCE6"],
       });
       confetti({
         particleCount: 60,
         angle: 120,
         spread: 55,
         origin: { x: 1, y: 0.65 },
-        colors: ["#9333ea", "#D8DCE6"],
+        colors: ["#D4A843", "#D8DCE6"],
       });
     }, 250);
 

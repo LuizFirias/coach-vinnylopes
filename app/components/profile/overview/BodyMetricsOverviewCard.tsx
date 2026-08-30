@@ -65,7 +65,7 @@ function WeightMiniChart({ medidas }: { medidas: { data_medicao: string; peso: n
                 labelFormatter={(l) => new Date(l).toLocaleDateString('pt-BR')}
                 contentStyle={{ fontSize: 11, borderRadius: 8 }}
               />
-              <Line type="monotone" dataKey="peso" stroke="#9333ea" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="peso" stroke="#D4A843" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

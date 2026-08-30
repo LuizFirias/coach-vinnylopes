@@ -19,7 +19,7 @@ interface MeasurementLineChartProps {
   emptyMessage?: string;
 }
 
-const BRAND = '#751BB4';
+const BRAND = '#D4A843';
 
 function MeasurementTooltip({
   active,

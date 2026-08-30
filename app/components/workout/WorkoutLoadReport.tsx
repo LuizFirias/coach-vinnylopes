@@ -147,8 +147,8 @@ const GRUPO_COLORS: Record<string, string> = {
   'Ombro Anterior': '#f59e0b',
   'Ombro Lateral': '#f59e0b',
   'Ombro Posterior': '#f59e0b',
-  'Bíceps': '#9333ea',
-  'Tríceps': '#751BB4',
+  'Bíceps': '#D4A843',
+  'Tríceps': '#D4A843',
   'Panturrilha': '#14b8a6',
   'Abdômen': '#06b6d4',
   'Oblíquos': '#06b6d4',
@@ -266,10 +266,10 @@ function DatePickerPopover({ value, onChange, placeholder = 'Selecionar', maxDat
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-1.5 rounded-lg border border-border-input bg-transparent px-3 py-1.5 transition-colors hover:border-brand focus:outline-none focus:border-brand"
       >
-        <CalendarBlank size={12} style={{ color: '#9333ea' }} />
+        <CalendarBlank size={12} style={{ color: '#D4A843' }} />
         <span
           className="text-[12px] font-medium tabular-nums lining-nums"
-          style={{ color: value ? '#9333ea' : '#7a8aab' }}
+          style={{ color: value ? '#D4A843' : '#7a8aab' }}
         >
           {value ? fmtPtBR(value) : placeholder}
         </span>
@@ -561,7 +561,7 @@ function ProgressionChart({
   if (data.length === 1) {
     return (
       <div className="flex flex-col items-center justify-center py-4 gap-1">
-        <span className="text-[28px] font-black tabular-nums lining-nums" style={{ color: '#9333ea' }}>
+        <span className="text-[28px] font-black tabular-nums lining-nums" style={{ color: '#D4A843' }}>
           {data[0].value} {unit}
         </span>
         <span className="text-[11px] text-text-secondary">{data[0].date}</span>
@@ -595,7 +595,7 @@ function ProgressionChart({
         <polyline
           points={points}
           fill="none"
-          stroke="#9333ea"
+          stroke="#D4A843"
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -606,7 +606,7 @@ function ProgressionChart({
             cx={toX(data.length - 1)}
             cy={toY(lastPt.value)}
             r={3.5}
-            fill="#9333ea"
+            fill="#D4A843"
           />
         )}
       </svg>
@@ -1360,7 +1360,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
             <KpiCard
               label="Volume Total"
               value={fmtVol(kpis.volume)}
-              color="#9333ea"
+              color="#D4A843"
               icon={Lightning}
             />
             <KpiCard
@@ -1381,7 +1381,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
               label="Freq. Semanal"
               value={kpis.perWeek > 0 ? `${kpis.perWeek}×` : '—'}
               sub="treinos/semana"
-              color="#751BB4"
+              color="#D4A843"
               icon={Repeat}
             />
           </div>
@@ -1406,7 +1406,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
                       nome={ex.nome}
                       count={ex.count}
                       pct={Math.round((ex.count / topExercicios[0].count) * 100)}
-                      color={i === 0 ? '#9333ea' : i === 1 ? '#751BB4' : '#7a8aab'}
+                      color={i === 0 ? '#D4A843' : i === 1 ? '#D4A843' : '#7a8aab'}
                     />
                   ))}
                 </div>
@@ -1488,7 +1488,7 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
                     <div className="flex items-end gap-1">
                       <span
                         className="tabular-nums lining-nums font-black leading-none"
-                        style={{ fontSize: 40, color: '#9333ea', letterSpacing: '-0.02em' }}
+                        style={{ fontSize: 40, color: '#D4A843', letterSpacing: '-0.02em' }}
                       >
                         {displayValue}
                       </span>

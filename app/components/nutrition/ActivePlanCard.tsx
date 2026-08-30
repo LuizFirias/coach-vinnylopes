@@ -26,8 +26,8 @@ const CARD_STYLE = {
 
 const COR_MACRO: Record<string, string> = {
   kcal: "#e05555",
-  proteina: "#751BB4",
-  proteína: "#751BB4",
+  proteina: "#D4A843",
+  proteína: "#D4A843",
   carbo: "#f59e0b",
   gordura: "#39c75a",
 };
@@ -38,7 +38,7 @@ function corDoMacro(label: string): string {
     .replace(/\p{M}/gu, "")
     .toLowerCase()
     .trim();
-  return COR_MACRO[key] ?? "#751BB4";
+  return COR_MACRO[key] ?? "#D4A843";
 }
 
 export function ActivePlanCard({

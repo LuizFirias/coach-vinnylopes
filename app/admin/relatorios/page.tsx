@@ -43,7 +43,7 @@ function ChartActiveBar(props: any) {
   return (
     <Rectangle
       {...props}
-      fill="#a855f7"
+      fill="#E8B339"
       stroke="none"
       strokeWidth={0}
     />
@@ -570,7 +570,7 @@ export default function RelatoriosPage() {
               {/* Mobile: cards de receita arrastáveis */}
               <div className="md:hidden -mx-1 overflow-x-auto overflow-y-visible px-1 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="flex gap-3 min-w-max">
-                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(212, 168, 67,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                     <div>
                       <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -591,7 +591,7 @@ export default function RelatoriosPage() {
                     </p>
                   </div>
 
-                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                  <div className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(212, 168, 67,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                     <div>
                       <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -621,7 +621,7 @@ export default function RelatoriosPage() {
 
                   <div
                     ref={receitaAcumuladaCardRef}
-                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
+                    className="snap-start w-[88vw] max-w-[420px] rounded-xl border border-white/10 bg-[rgba(212, 168, 67,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-visible flex flex-col justify-between min-h-[140px]"
                   >
                     <div className="absolute top-0 right-0 w-24 h-24 bg-success/10 rounded-bl-[80px]" />
                     {receitaAcumuladaInfoOpen && (
@@ -673,7 +673,7 @@ export default function RelatoriosPage() {
 
               {/* Desktop: stack Receita Mensal → Bruta */}
               <div className="hidden md:flex flex-col gap-4">
-                <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                <div className="rounded-xl border border-white/10 bg-[rgba(212, 168, 67,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                   <div>
                     <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -694,7 +694,7 @@ export default function RelatoriosPage() {
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-[rgba(117, 27, 180,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                <div className="rounded-xl border border-white/10 bg-[rgba(212, 168, 67,0.12)] px-4 pb-4 pt-3 backdrop-blur-xl backdrop-saturate-125 shadow-[0_4px_12px_rgba(0,0,0,0.12)] relative overflow-hidden flex flex-col justify-between min-h-[140px]">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-bl-[80px]" />
                   <div>
                     <p className="coach-kpi-label text-[10px] font-semibold uppercase tracking-wider mb-1">
@@ -762,7 +762,7 @@ export default function RelatoriosPage() {
                     <XAxis dataKey="mes" stroke="#8e8e93" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} dy={8} />
                     <YAxis stroke="#8e8e93" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} width={44} />
                     <Tooltip
-                      cursor={{ stroke: 'rgba(117, 27, 180,0.25)', strokeWidth: 1 }}
+                      cursor={{ stroke: 'rgba(212, 168, 67,0.25)', strokeWidth: 1 }}
                       contentStyle={tooltipStyle}
                       itemStyle={{ color: '#a0a0a0', fontWeight: 'bold', fontSize: 10 }}
                       labelStyle={{ color: '#ffffff', marginBottom: 2, fontSize: 10 }}
@@ -774,20 +774,20 @@ export default function RelatoriosPage() {
                     <Line
                       type="monotone"
                       dataKey="realizado"
-                      stroke="#751BB4"
+                      stroke="#D4A843"
                       strokeWidth={2}
-                      dot={{ r: 3, fill: '#751BB4', strokeWidth: 0 }}
-                      activeDot={{ r: 4, fill: '#a855f7', strokeWidth: 0 }}
+                      dot={{ r: 3, fill: '#D4A843', strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: '#E8B339', strokeWidth: 0 }}
                       connectNulls={false}
                     />
                     <Line
                       type="monotone"
                       dataKey="projecao"
-                      stroke="rgba(117, 27, 180,0.45)"
+                      stroke="rgba(212, 168, 67,0.45)"
                       strokeWidth={2}
                       strokeDasharray="5 4"
-                      dot={{ r: 3, fill: 'rgba(117, 27, 180,0.45)', strokeWidth: 0 }}
-                      activeDot={{ r: 4, fill: 'rgba(117, 27, 180,0.7)', strokeWidth: 0 }}
+                      dot={{ r: 3, fill: 'rgba(212, 168, 67,0.45)', strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: 'rgba(212, 168, 67,0.7)', strokeWidth: 0 }}
                       connectNulls={false}
                     />
                   </LineChart>
@@ -847,8 +847,8 @@ export default function RelatoriosPage() {
                           key={`cell-${index}`}
                           fill={
                             index === 0
-                              ? '#751BB4'
-                              : `rgba(117, 27, 180,${Math.max(0.25, 1 - index * 0.15)})`
+                              ? '#D4A843'
+                              : `rgba(212, 168, 67,${Math.max(0.25, 1 - index * 0.15)})`
                           }
                         />
                       ))}
@@ -955,7 +955,7 @@ export default function RelatoriosPage() {
                   onClick={(e) => e.stopPropagation()}
                   className={cn(
                     'pointer-events-auto relative w-full max-w-md rounded-2xl',
-                    'bg-brand shadow-[0_20px_60px_rgba(147,51,234,0.45)]',
+                    'bg-brand shadow-[0_20px_60px_rgba(212, 168, 67,0.45)]',
                     'animate-sheet-up max-h-[min(85vh,520px)] flex flex-col overflow-hidden',
                   )}
                 >

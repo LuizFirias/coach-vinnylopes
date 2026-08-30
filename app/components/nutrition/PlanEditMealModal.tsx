@@ -496,7 +496,7 @@ export function PlanEditMealModal({
                                 {Math.round(macros.calories)} kcal
                               </span>
                               <span className="inline-flex items-center gap-1">
-                                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#751BB4' }} />
+                                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#D4A843' }} />
                                 P {macros.protein}g
                               </span>
                               <span className="inline-flex items-center gap-1">

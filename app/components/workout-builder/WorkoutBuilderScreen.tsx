@@ -1344,7 +1344,7 @@ export function WorkoutBuilderScreen({
                     className="h-11 w-11 shrink-0 rounded-xl flex items-center justify-center text-text-on-brand transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       background:
-                        "linear-gradient(135deg, #c084fc 0%, #751BB4 55%, #7e22ce 100%)",
+                        "linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%)",
                       boxShadow: "0 4px 16px rgba(117,27,234,0.35)",
                     }}
                   >
@@ -1535,7 +1535,7 @@ export function WorkoutBuilderScreen({
               role="dialog"
               aria-modal="true"
               aria-label="Selecionar exercício B do Bi-Set"
-              className="coach-app-typography fixed z-[110] rounded-2xl overflow-hidden bg-surface-1 ring-2 ring-brand shadow-[0_0_60px_rgba(117, 27, 180,0.45)]"
+              className="coach-app-typography fixed z-[110] rounded-2xl overflow-hidden bg-surface-1 ring-2 ring-brand shadow-[0_0_60px_rgba(212, 168, 67,0.45)]"
               style={{
                 top: libraryFloatRect.top,
                 left: libraryFloatRect.left,

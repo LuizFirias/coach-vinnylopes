@@ -71,10 +71,10 @@ export const selectTriggerClassName = (opts?: {
           opts?.size === "sm" ? "px-2.5 rounded-lg" : "px-3.5 rounded-[10px]",
           "bg-white text-text-primary border border-[#e4e4e7]",
           "dark:bg-[#0d1117] dark:text-[#D8DCE6] dark:border-[#2d3748]",
-          "focus-visible:border-brand dark:focus-visible:border-[#9333ea]",
-          "focus-visible:shadow-[0_0_0_3px_rgba(147,51,234,0.15)]",
+          "focus-visible:border-brand dark:focus-visible:border-[#D4A843]",
+          "focus-visible:shadow-[0_0_0_3px_rgba(212, 168, 67,0.15)]",
           opts?.open &&
-            "border-brand dark:border-[#9333ea] shadow-[0_0_0_3px_rgba(147,51,234,0.15)]",
+            "border-brand dark:border-[#D4A843] shadow-[0_0_0_3px_rgba(212, 168, 67,0.15)]",
           opts?.error && "border-danger ring-1 ring-danger/40",
         ),
   );

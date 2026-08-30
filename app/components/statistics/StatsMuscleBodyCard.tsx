@@ -20,7 +20,7 @@ function buildVolumeHighlightData(countSets: Record<string, number>) {
     if (totalSets > 0) {
       list.push({
         slug,
-        color: `rgba(117, 27, 180, ${setsToOpacity(totalSets)})`,
+        color: `rgba(212, 168, 67, ${setsToOpacity(totalSets)})`,
       });
     }
   });
