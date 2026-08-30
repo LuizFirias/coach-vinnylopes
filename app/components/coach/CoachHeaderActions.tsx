@@ -225,7 +225,7 @@ export function CoachHeaderActions({
         />
       </div>
 
-      <div className="relative min-w-0 max-w-[min(100%,18rem)]">
+      <div className="relative min-w-0 max-w-[min(100%,20rem)]">
         <button
           ref={menuBtnRef}
           type="button"
@@ -236,7 +236,7 @@ export function CoachHeaderActions({
           className={cn(
             "flex min-w-0 max-w-full cursor-pointer items-center gap-2 px-0 py-0 text-left",
             "rounded-xl border border-border-subtle bg-surface-1 shadow-sm",
-            "sm:px-1.5 sm:py-1 sm:hover:bg-surface-2/50",
+            "sm:px-3 sm:py-1 sm:hover:bg-surface-2/50",
           )}
         >
           <StudentAvatar

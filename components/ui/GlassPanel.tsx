@@ -6,11 +6,11 @@ export type GlassLevel = 1 | 2 | 3 | 4 | 5;
 
 export type GlassPanelVariant = `${GlassFamily}-${GlassLevel}`;
 
-/** Roxo brand (#751BB4) — KPIs e faturamento da dashboard coach */
+/** Dourado brand (#D4A843) — KPIs e faturamento da dashboard coach */
 export const DASHBOARD_KPI_GLASS: GlassPanelVariant = 'brand-1';
 
 const GLASS_RGB: Record<GlassFamily, { r: number; g: number; b: number }> = {
-  brand: { r: 147, g: 51, b: 234 },
+  brand: { r: 212, g: 168, b: 67 },
   success: { r: 57, g: 199, b: 90 },
   warning: { r: 245, g: 158, b: 11 },
   danger: { r: 224, g: 85, b: 85 },
@@ -128,7 +128,7 @@ export const GLASS_VARIANT_META: {
   label: string;
   note: string;
 }[] = [
-  { variant: 'brand-1', label: 'Brand 1', note: 'Base #751BB4 · KPI info / ações' },
+  { variant: 'brand-1', label: 'Brand 1', note: 'Base #D4A843 · KPI info / ações' },
   { variant: 'brand-2', label: 'Brand 2', note: '−15% luminosidade' },
   { variant: 'brand-3', label: 'Brand 3', note: '−30% luminosidade' },
   { variant: 'brand-4', label: 'Brand 4', note: '−45% luminosidade' },

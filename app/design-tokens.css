@@ -112,9 +112,9 @@
   --focus-ring:       0 0 0 2px rgba(212, 168, 67, 0.50);
 
   /* Botão primário — gradiente + glow */
-  --btn-primary-bg: linear-gradient(135deg, #9B4DD4 0%, #751BB4 55%, #5E158F 100%);
-  --btn-primary-shadow: 0 4px 20px rgba(117, 27, 180, 0.45);
-  --btn-primary-shadow-hover: 0 6px 28px rgba(117, 27, 180, 0.60);
+  --btn-primary-bg: linear-gradient(135deg, #F5D061 0%, #D4A843 55%, #B8902F 100%);
+  --btn-primary-shadow: 0 4px 20px rgba(212, 168, 67, 0.45);
+  --btn-primary-shadow-hover: 0 6px 28px rgba(212, 168, 67, 0.60);
 
   /* Card Nível 3 — macros da dieta (dark) */
   --card-macros-bg:           #111827;

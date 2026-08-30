@@ -29,14 +29,6 @@ import {
   buildPlanDurationMap,
   type CoachPlan,
 } from "@/lib/coachPlans";
-import {
-  concluirPasso,
-  concluirPassos,
-  sincronizarProgressoOnboarding,
-  type PassoProgresso,
-} from "@/lib/onboarding/concluirPasso";
-import { GuiaConfiguracaoCard } from "@/app/components/onboarding/GuiaConfiguracaoCard";
-import { PASSOS_ONBOARDING } from "@/lib/onboarding/passos";
 import { withReturnUrl } from "@/lib/utils/adminNav";
 
 const FROM_DASHBOARD = "/admin/dashboard";
@@ -104,8 +96,6 @@ export default function AdminDashboard() {
   const [coachStudentLimit, setCoachStudentLimit] = useState<number | null>(null);
   const [linkedStudentCount, setLinkedStudentCount] = useState(0);
   const [coachName, setCoachName] = useState("");
-  const [onboardingPassos, setOnboardingPassos] = useState<PassoProgresso[]>([]);
-  const [guiaPronto, setGuiaPronto] = useState(false);
   const [proximaAula, setProximaAula] = useState<AulaAgenda | null>(null);
 
   const activeStudentsSubtitle = useMemo(() => {
@@ -131,7 +121,7 @@ export default function AdminDashboard() {
       }
 
       const accessToken = session?.access_token;
-      const [statusResult, coachAlunosResult, coachProfileResult, customPlans, passos, proximaAulaResult] =
+      const [statusResult, coachAlunosResult, coachProfileResult, customPlans, proximaAulaResult] =
         await Promise.all([
         accessToken
           ? fetchSubscriptionStatusCached(accessToken)
@@ -146,12 +136,9 @@ export default function AdminDashboard() {
           .eq('id', coachId)
           .maybeSingle(),
         fetchCoachCustomPlans(coachId).catch(() => [] as CoachPlan[]),
-        sincronizarProgressoOnboarding(coachId),
         fetchProximaAula(coachId).catch(() => null),
       ]);
 
-      setOnboardingPassos(passos);
-      setGuiaPronto(true);
       setProximaAula(proximaAulaResult);
 
       if (coachProfileResult.data?.onboarding_visto === false) {
@@ -738,39 +725,6 @@ export default function AdminDashboard() {
           linkedStudentCount={linkedStudentCount}
           coachAccountType={coachAccountType}
         />
-
-        {guiaPronto && (
-          <GuiaConfiguracaoCard
-            passos={onboardingPassos}
-            onConcluirPasso={async (passoId) => {
-              const { data: { session } } = await supabaseClient.auth.getSession();
-              const coachId = session?.user?.id ?? user?.id;
-              if (!coachId) return;
-              await concluirPasso(coachId, passoId);
-              setOnboardingPassos((prev) =>
-                prev.map((p) =>
-                  p.id === passoId ? { ...p, concluido: true } : p,
-                ),
-              );
-            }}
-            onConcluirRestantes={async () => {
-              const { data: { session } } = await supabaseClient.auth.getSession();
-              const coachId = session?.user?.id ?? user?.id;
-              if (!coachId) return;
-              const pendentes = onboardingPassos
-                .filter((p) => !p.concluido)
-                .map((p) => p.id);
-              const ids =
-                pendentes.length > 0
-                  ? pendentes
-                  : PASSOS_ONBOARDING.map((p) => p.id);
-              await concluirPassos(coachId, ids);
-              setOnboardingPassos(
-                PASSOS_ONBOARDING.map((p) => ({ id: p.id, concluido: true })),
-              );
-            }}
-          />
-        )}
 
         {totalAlunos === 0 ? (
           <div className="bg-surface-1 border-0 rounded-xl p-12 text-center max-w-lg mx-auto mt-12 shadow-sm">

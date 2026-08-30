@@ -111,7 +111,7 @@ const alunoMenuItems: MenuItem[] = [
 const coachItemConfig: Record<string, MenuItem> = {
   dashboard: { id: 'dashboard', name: 'Dashboard', href: '/admin/dashboard', icon: SquaresFour },
   agenda: { id: 'agenda', name: 'Agenda', href: '/admin/agenda', icon: CalendarBlank },
-  alunos: { id: 'alunos', name: 'Atletas', href: '/admin/alunos', icon: Users },
+  alunos: { id: 'alunos', name: 'Alunos', href: '/admin/alunos', icon: Users },
   treinos: { id: 'treinos', name: 'Treinos', href: '/admin/treinos', icon: Barbell },
   nutricao: { id: 'nutricao', name: 'Nutrição', href: '/admin/nutricao', icon: AppleLogo },
   biblioteca: { id: 'biblioteca', name: 'Biblioteca', href: '/admin/biblioteca-exercicios', icon: BookOpen },
@@ -336,42 +336,23 @@ export default function Sidebar() {
         {/* Aba “ponta de papel” — fora do fluxo, não empurra logo/nome */}
         {collapseTab}
 
-        {/* Logo + nome centralizados no sidebar */}
+        {/* Logo centralizada no sidebar (sem nome ao lado) */}
         <div
           className="mb-3.5 flex shrink-0 flex-col items-center px-1"
           style={{ paddingTop: LOGO_TOP_OFFSET_PX }}
         >
           <div
-            className="mb-1.5 flex h-7 items-center justify-center transition-transform duration-300"
-            style={{
-              // Fechado: desce e ocupa o espaço (reservado) onde fica o nome "COACH VINNY".
-              transform: `translate(${ELO_OFFSET_X_PX}px, ${isExpanded ? 0 : 23}px)`,
-            }}
+            className="flex h-9 items-center justify-center"
+            style={{ transform: `translateX(${ELO_OFFSET_X_PX}px)` }}
           >
             <Link href={homeHref} className="group cursor-pointer">
               <Image
-                src="/logo.png"
+                src="/logo-preto.png"
                 alt="Coach Vinny"
-                width={isExpanded ? 28 : 22}
-                height={isExpanded ? 28 : 22}
-                className="sidebar-logo-icon shrink-0 rounded-md object-contain transition-opacity group-hover:opacity-90"
+                width={isExpanded ? 36 : 28}
+                height={isExpanded ? 36 : 28}
+                className="sidebar-logo-icon shrink-0 object-contain transition-opacity group-hover:opacity-90"
               />
-            </Link>
-          </div>
-
-          <div
-            className={cn(
-              // max-h fixo (não colapsa pra 0) — o espaço do nome fica reservado
-              // mesmo escondido, assim os itens do menu não sobem ao recolher.
-              'max-h-10 overflow-hidden transition-opacity duration-300 ease-out',
-              isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none',
-            )}
-            aria-hidden={!isExpanded}
-          >
-            <Link href={homeHref} className="flex justify-center">
-              <span className="font-black text-[11px] uppercase tracking-caps text-text-primary whitespace-nowrap">
-                COACH VINNY
-              </span>
             </Link>
           </div>
         </div>
@@ -479,17 +460,14 @@ export default function Sidebar() {
           className="flex shrink-0 items-center px-4 pb-4"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}
         >
-          <Link href={homeHref} className="flex min-w-0 items-center gap-2" onClick={() => setOpen(false)}>
+          <Link href={homeHref} className="flex min-w-0 items-center" onClick={() => setOpen(false)}>
             <Image
-              src="/logo.png"
+              src="/logo-preto.png"
               alt="Coach Vinny"
-              width={28}
-              height={28}
-              className="shrink-0 rounded-md object-contain"
+              width={36}
+              height={36}
+              className="shrink-0 object-contain"
             />
-            <span className="truncate font-black text-[11px] uppercase tracking-caps text-white">
-              COACH VINNY
-            </span>
           </Link>
         </div>
 
