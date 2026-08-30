@@ -10,6 +10,7 @@ import { exercicioMostraPeso } from '@/app/components/workout-builder/exerciseCo
 import { CANONICAL_MUSCLE_GROUPS } from '@/lib/constants/muscle-groups';
 import { formatRestTime } from '@/lib/utils/restTime';
 import { toBrazilDateString } from '@/lib/dateUtils';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,12 @@ export interface WorkoutLoadReportProps {
   alunoId: string;
   profileName: string;
 }
+
+type LoadReportData = { rows: HistoricoRow[]; exerciciosMap: Map<string, ExercicioInfo> };
+
+// Evita recarregar (e mostrar loading de novo) toda vez que o relatório
+// remonta ao trocar de aba e voltar pra Treinos.
+const loadReportCache = createKeyedCache<LoadReportData>(60_000);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -624,9 +631,12 @@ function ProgressionChart({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportProps) {
-  const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<HistoricoRow[]>([]);
-  const [exerciciosMap, setExerciciosMap] = useState<Map<string, ExercicioInfo>>(new Map());
+  const cached = loadReportCache.peek(alunoId);
+  const [loading, setLoading] = useState(cached === undefined);
+  const [rows, setRows] = useState<HistoricoRow[]>(cached?.rows ?? []);
+  const [exerciciosMap, setExerciciosMap] = useState<Map<string, ExercicioInfo>>(
+    cached?.exerciciosMap ?? new Map(),
+  );
   const [preset, setPreset] = useState<PeriodPreset>('this_month');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -636,37 +646,37 @@ export function WorkoutLoadReport({ alunoId, profileName }: WorkoutLoadReportPro
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
+    void (async () => {
       try {
-        const { data: histData } = await supabaseClient
-          .from('historico_treinos')
-          .select('id, data_conclusao, dados_sessao, exercicio_id')
-          .eq('aluno_id', alunoId)
-          .order('data_conclusao', { ascending: false });
+        const result = await loadReportCache.get(alunoId, async () => {
+          const { data: histData } = await supabaseClient
+            .from('historico_treinos')
+            .select('id, data_conclusao, dados_sessao, exercicio_id')
+            .eq('aluno_id', alunoId)
+            .order('data_conclusao', { ascending: false });
 
-        if (cancelled) return;
-        const allRows = (histData ?? []) as HistoricoRow[];
-        setRows(allRows);
+          const allRows = (histData ?? []) as HistoricoRow[];
 
-        const ids = [
-          ...new Set(allRows.map(r => r.exercicio_id).filter(Boolean) as string[]),
-        ];
-        if (ids.length > 0) {
-          const { data: exData } = await supabaseClient
-            .from('exercicios_biblioteca')
-            .select('id, nome, grupo_muscular')
-            .in('id', ids);
-          if (cancelled) return;
+          const ids = [
+            ...new Set(allRows.map(r => r.exercicio_id).filter(Boolean) as string[]),
+          ];
           const map = new Map<string, ExercicioInfo>();
-          (exData ?? []).forEach((e: ExercicioInfo) => map.set(e.id, e));
-          setExerciciosMap(map);
-        }
+          if (ids.length > 0) {
+            const { data: exData } = await supabaseClient
+              .from('exercicios_biblioteca')
+              .select('id, nome, grupo_muscular')
+              .in('id', ids);
+            (exData ?? []).forEach((e: ExercicioInfo) => map.set(e.id, e));
+          }
+          return { rows: allRows, exerciciosMap: map };
+        });
+        if (cancelled) return;
+        setRows(result.rows);
+        setExerciciosMap(result.exerciciosMap);
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-    void load();
+    })();
     return () => { cancelled = true; };
   }, [alunoId]);
 

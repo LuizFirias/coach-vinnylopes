@@ -5,8 +5,15 @@ import { supabaseClient } from '@/lib/supabaseClient';
 import { Select } from '@/components/ui/Select';
 import { StudentAvatar } from '@/app/components/profile/StudentAvatar';
 import { OverviewPanel } from './OverviewPanel';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
 
 type UpdateTipo = 'treino' | 'nutricao' | 'medida' | 'foto' | 'pagamento';
+
+type Checkin = { id: string; checkin_date: string };
+
+// Evita recarregar (e o feed "piscar" incompleto) toda vez que o card
+// remonta ao trocar de aba e voltar pra Visão Geral.
+const checkinsCache = createKeyedCache<Checkin[]>(60_000);
 
 interface UpdateEvent {
   id: string;
@@ -67,20 +74,24 @@ export function UpdatesFeedCard({
   fotos,
   historicoFinanceiro,
 }: UpdatesFeedCardProps) {
-  const [checkins, setCheckins] = useState<{ id: string; checkin_date: string }[]>([]);
+  const [checkins, setCheckins] = useState<Checkin[]>(checkinsCache.peek(alunoId) ?? []);
   const [filtro, setFiltro] = useState<'todos' | UpdateTipo>('todos');
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const { data, error } = await supabaseClient
-        .from('nutrition_meal_checkins')
-        .select('id, checkin_date')
-        .eq('student_id', alunoId)
-        .in('status', ['done', 'substituted'])
-        .order('checkin_date', { ascending: false })
-        .limit(30);
-      if (!cancelled && !error) setCheckins((data || []) as { id: string; checkin_date: string }[]);
+      const data = await checkinsCache.get(alunoId, async () => {
+        const { data, error } = await supabaseClient
+          .from('nutrition_meal_checkins')
+          .select('id, checkin_date')
+          .eq('student_id', alunoId)
+          .in('status', ['done', 'substituted'])
+          .order('checkin_date', { ascending: false })
+          .limit(30);
+        if (error) throw error;
+        return (data || []) as Checkin[];
+      }).catch(() => []);
+      if (!cancelled) setCheckins(data);
     })();
     return () => {
       cancelled = true;

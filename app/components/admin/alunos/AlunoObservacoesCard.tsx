@@ -11,6 +11,14 @@ import {
   type ObservacaoTipo,
 } from '@/lib/observacoes/queries';
 import { ObservacoesModal } from './ObservacoesModal';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
+
+// Evita recarregar (e mostrar "Carregando…" de novo) toda vez que o card
+// remonta ao trocar de aba e voltar pra Visão Geral.
+const observacoesCache = createKeyedCache<AlunoObservacao[]>(60_000);
+function cacheKey(alunoId: string, tipo: ObservacaoTipo) {
+  return `${alunoId}:${tipo}`;
+}
 
 type Props = {
   alunoId: string;
@@ -53,8 +61,9 @@ export function AlunoObservacoesCard({
     (tipo === 'lesao'
       ? 'Registre lesões ou limitações do aluno…'
       : 'Escreva uma nota para o aluno…');
-  const [itens, setItens] = useState<AlunoObservacao[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = observacoesCache.peek(cacheKey(alunoId, tipo));
+  const [itens, setItens] = useState<AlunoObservacao[]>(cached ?? []);
+  const [loading, setLoading] = useState(cached === undefined);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -65,22 +74,24 @@ export function AlunoObservacoesCard({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      setLoading(true);
       try {
-        let list = await listObservacoesAluno(alunoId, tipo);
-        if (
-          list.length === 0 &&
-          tipo === 'nota' &&
-          legacyOrientacoes?.trim() &&
-          coachId
-        ) {
-          try {
-            const seeded = await criarObservacao(alunoId, coachId, legacyOrientacoes.trim(), tipo);
-            if (seeded) list = [seeded];
-          } catch {
-            // ignora seed se migration ainda não rodou
+        const list = await observacoesCache.get(cacheKey(alunoId, tipo), async () => {
+          let list = await listObservacoesAluno(alunoId, tipo);
+          if (
+            list.length === 0 &&
+            tipo === 'nota' &&
+            legacyOrientacoes?.trim() &&
+            coachId
+          ) {
+            try {
+              const seeded = await criarObservacao(alunoId, coachId, legacyOrientacoes.trim(), tipo);
+              if (seeded) list = [seeded];
+            } catch {
+              // ignora seed se migration ainda não rodou
+            }
           }
-        }
+          return list;
+        });
         if (!cancelled) setItens(list);
       } finally {
         if (!cancelled) setLoading(false);
@@ -98,6 +109,7 @@ export function AlunoObservacoesCard({
     try {
       const created = await criarObservacao(alunoId, coachId, draft, tipo);
       if (created) {
+        observacoesCache.invalidate(cacheKey(alunoId, tipo));
         setItens((prev) => [created, ...prev]);
         setDraft('');
         setEditing(false);
@@ -113,6 +125,7 @@ export function AlunoObservacoesCard({
     if (!window.confirm('Excluir esta observação?')) return;
     try {
       await excluirObservacao(id);
+      observacoesCache.invalidate(cacheKey(alunoId, tipo));
       setItens((prev) => prev.filter((o) => o.id !== id));
       if (expandedId === id) setExpandedId(null);
     } catch (err: any) {
@@ -216,7 +229,10 @@ export function AlunoObservacoesCard({
             title={resolvedTitle}
             itens={itens}
             onClose={() => setModalOpen(false)}
-            onItensChange={setItens}
+            onItensChange={(next) => {
+              observacoesCache.invalidate(cacheKey(alunoId, tipo));
+              setItens(next);
+            }}
           />
         )}
       </div>

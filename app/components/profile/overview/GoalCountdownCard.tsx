@@ -9,6 +9,11 @@ import {
   type AlunoObjetivo,
 } from '@/lib/objetivos/queries';
 import { OverviewPanel } from './OverviewPanel';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
+
+// Evita recarregar (e mostrar "Carregando…" de novo) toda vez que o card
+// remonta ao trocar de aba e voltar pra Visão Geral.
+const objetivoCache = createKeyedCache<AlunoObjetivo | null>(60_000);
 
 interface GoalCountdownCardProps {
   alunoId: string;
@@ -23,8 +28,9 @@ function diasRestantes(dataAlvo: string): number {
 }
 
 export function GoalCountdownCard({ alunoId, coachId }: GoalCountdownCardProps) {
-  const [objetivo, setObjetivo] = useState<AlunoObjetivo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = objetivoCache.peek(alunoId);
+  const [objetivo, setObjetivo] = useState<AlunoObjetivo | null>(cached ?? null);
+  const [loading, setLoading] = useState(cached === undefined);
   const [editing, setEditing] = useState(false);
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -35,8 +41,7 @@ export function GoalCountdownCard({ alunoId, coachId }: GoalCountdownCardProps) 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      setLoading(true);
-      const atual = await fetchObjetivoAtual(alunoId);
+      const atual = await objetivoCache.get(alunoId, () => fetchObjetivoAtual(alunoId));
       if (!cancelled) {
         setObjetivo(atual);
         setLoading(false);
@@ -69,6 +74,7 @@ export function GoalCountdownCard({ alunoId, coachId }: GoalCountdownCardProps) 
         dataAlvo: dataAlvo || null,
       });
       if (salvo) {
+        objetivoCache.invalidate(alunoId);
         setObjetivo(salvo);
         setEditing(false);
       }

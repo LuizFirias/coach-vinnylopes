@@ -6,6 +6,7 @@ import { Moon, ChartLineUp } from '@phosphor-icons/react';
 import { supabaseClient } from '@/lib/supabaseClient';
 import { Select } from '@/components/ui/Select';
 import { OverviewPanel } from './OverviewPanel';
+import { createKeyedCache } from '@/lib/utils/keyedCache';
 
 const MINI_CHART_H = 96;
 
@@ -152,25 +153,34 @@ function VolumeByExerciseMiniCard({ historicoTreinos }: { historicoTreinos: Hist
 
 // ── Cardio (horas, 7/14/30 dias) ────────────────────────────────────────────
 type CardioPeriodo = 7 | 14 | 30;
+type CardioSessao = { data: string; duracao_min: number };
+
+// Evita recarregar (e mostrar "Carregando…" de novo) toda vez que o card
+// remonta ao trocar de aba e voltar pra Visão Geral.
+const cardioSessoesCache = createKeyedCache<CardioSessao[]>(60_000);
 
 function CardioHoursMiniCard({ alunoId }: { alunoId: string }) {
+  const cached = cardioSessoesCache.peek(alunoId);
   const [periodo, setPeriodo] = useState<CardioPeriodo>(7);
-  const [sessoes, setSessoes] = useState<{ data: string; duracao_min: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sessoes, setSessoes] = useState<CardioSessao[]>(cached ?? []);
+  const [loading, setLoading] = useState(cached === undefined);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      setLoading(true);
-      const desde = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-      const { data, error } = await supabaseClient
-        .from('cardio_sessoes')
-        .select('data, duracao_min')
-        .eq('aluno_id', alunoId)
-        .gte('data', desde)
-        .order('data', { ascending: true });
+      const data = await cardioSessoesCache.get(alunoId, async () => {
+        const desde = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+        const { data, error } = await supabaseClient
+          .from('cardio_sessoes')
+          .select('data, duracao_min')
+          .eq('aluno_id', alunoId)
+          .gte('data', desde)
+          .order('data', { ascending: true });
+        if (error) throw error;
+        return (data || []) as CardioSessao[];
+      }).catch(() => sessoes);
       if (!cancelled) {
-        if (!error) setSessoes((data || []) as { data: string; duracao_min: number }[]);
+        setSessoes(data);
         setLoading(false);
       }
     })();
