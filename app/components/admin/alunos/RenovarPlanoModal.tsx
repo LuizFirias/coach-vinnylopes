@@ -39,7 +39,7 @@ type Props = {
 
 const fieldLabelClass = '[&_label]:text-white/70';
 const dateInputClass =
-  'w-full h-9 px-3 rounded-[10px] text-[13px] font-medium text-text-primary bg-surface-2 border-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/30';
+  'w-full h-7 px-2.5 rounded-lg text-[12px] font-medium text-text-primary bg-surface-2 border-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/30';
 const fieldLabelTextClass = 'text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70';
 
 export function RenovarPlanoModal({
@@ -230,6 +230,7 @@ export function RenovarPlanoModal({
                 { value: 'atrasado', label: 'Em atraso (Bloqueado)' },
               ]}
               className={fieldLabelClass}
+              size="sm"
             />
 
             <div className="flex flex-col gap-1">
@@ -281,6 +282,7 @@ export function RenovarPlanoModal({
                     : []),
                 ]}
                 className={fieldLabelClass}
+              size="sm"
               />
             </div>
 
@@ -312,6 +314,7 @@ export function RenovarPlanoModal({
                   label: f.label,
                 }))}
                 className={fieldLabelClass}
+              size="sm"
               />
             </div>
 
