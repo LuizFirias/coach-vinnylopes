@@ -56,34 +56,20 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
         return null;
       }
 
-      let { data: profile, error } = await supabaseClient
+      // subscription_active/account_type/trial_pendente_cartao são do
+      // controle de assinatura do AURON — essas colunas não existem neste
+      // banco (Coach Vinny não tem plano pago). Removidas do SELECT pra não
+      // derrubar a query inteira com 400 (é isso que causava o loop
+      // login <-> dashboard: a query falhava, o guard achava que não tinha
+      // perfil e mandava pro /login de novo). Ficam sempre com valor fixo
+      // "liberado" abaixo, pros componentes que ainda leem esses campos.
+      const { data: profile, error } = await supabaseClient
         .from('profiles')
         .select(
-          'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo, trial_pendente_cartao, onboarding_visto',
+          'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, status_pagamento, data_expiracao, arquivado, coach_id, sexo, onboarding_visto',
         )
         .eq('id', user.id)
         .maybeSingle();
-
-      if (
-        error?.message?.includes('trial_pendente_cartao') ||
-        error?.message?.includes('onboarding_visto')
-      ) {
-        const fallback = await supabaseClient
-          .from('profiles')
-          .select(
-            'full_name, avatar_url, role, must_change_password, first_access_completed, date_of_birth, subscription_active, account_type, status_pagamento, data_expiracao, arquivado, coach_id, sexo',
-          )
-          .eq('id', user.id)
-          .maybeSingle();
-        profile = fallback.data
-          ? ({
-              ...fallback.data,
-              trial_pendente_cartao: false,
-              onboarding_visto: true,
-            } as typeof profile)
-          : null;
-        error = fallback.error;
-      }
 
       if (error || !profile) {
         cache = null;
@@ -98,15 +84,14 @@ export async function getBootstrapProfile(): Promise<BootstrapProfile | null> {
         must_change_password: profile.must_change_password ?? null,
         first_access_completed: profile.first_access_completed ?? null,
         date_of_birth: profile.date_of_birth ?? null,
-        subscription_active: profile.subscription_active ?? null,
-        account_type: profile.account_type ?? null,
+        subscription_active: true,
+        account_type: 'padrao',
         status_pagamento: profile.status_pagamento ?? null,
         data_expiracao: profile.data_expiracao ?? null,
         arquivado: profile.arquivado ?? null,
         coach_id: profile.coach_id ?? null,
         sexo: profile.sexo ?? null,
-        trial_pendente_cartao:
-          (profile as { trial_pendente_cartao?: boolean | null }).trial_pendente_cartao ?? null,
+        trial_pendente_cartao: false,
         onboarding_visto:
           (profile as { onboarding_visto?: boolean | null }).onboarding_visto ?? true,
         fetchedAt: Date.now(),

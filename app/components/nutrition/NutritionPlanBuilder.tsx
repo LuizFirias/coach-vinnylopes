@@ -28,7 +28,6 @@ import { useBreakpoint } from '@/lib/hooks/useBreakpoint';
 import { concluirPasso } from '@/lib/onboarding/concluirPasso';
 import { TimeRollerPicker } from '@/app/components/ui/TimeRollerPicker';
 import { AiDietUpgradeBanner } from '@/app/components/nutrition/AiDietUpgradeBanner';
-import { planHasAiDiet } from '@/lib/subscriptions/plans';
 
 interface NutritionPlanBuilderProps {
   initialPlanData?: any;
@@ -92,14 +91,8 @@ export default function NutritionPlanBuilder({ initialPlanData }: NutritionPlanB
         const coachId = authData?.user?.id;
         if (!coachId) return;
 
-        const { data: coachProfile } = await supabaseClient
-          .from('profiles')
-          .select('plan_tier, role')
-          .eq('id', coachId)
-          .maybeSingle();
-        setShowAiUpgrade(
-          coachProfile?.role !== 'super_admin' && !planHasAiDiet(coachProfile?.plan_tier),
-        );
+        // Coach Vinny não tem planos/tiers — recurso de IA sempre liberado.
+        setShowAiUpgrade(false);
 
         // Check local storage cache for foods (24h cache)
         const cacheKey = 'auron_food_library_v2';

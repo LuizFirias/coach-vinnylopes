@@ -14,7 +14,6 @@ import DumbbellLoader from '@/app/components/DumbbellLoader';
 import { cn } from '@/lib/utils/cn';
 import { withReturnUrl } from '@/lib/utils/adminNav';
 import { AiDietUpgradeBanner } from '@/app/components/nutrition/AiDietUpgradeBanner';
-import { planHasAiDiet } from '@/lib/subscriptions/plans';
 
 interface Aluno {
   id: string;
@@ -161,14 +160,8 @@ export default function NutricaoPage() {
         return;
       }
 
-      const { data: coachProfile } = await supabaseClient
-        .from('profiles')
-        .select('plan_tier, role')
-        .eq('id', coachId)
-        .maybeSingle();
-      setShowAiUpgrade(
-        coachProfile?.role !== 'super_admin' && !planHasAiDiet(coachProfile?.plan_tier),
-      );
+      // Coach Vinny não tem planos/tiers — recurso de IA sempre liberado.
+      setShowAiUpgrade(false);
 
       // EstÃ¡gio 1 em paralelo: vÃ­nculos + planos digitais
       const [

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { hasActiveAccess } from "@/lib/access/hasActiveAccess";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -58,16 +57,9 @@ export async function GET(req: NextRequest) {
 
     const { data: coachProfile } = await adminClient
       .from("profiles")
-      .select("subscription_active, account_type, role, whatsapp")
+      .select("role, whatsapp")
       .eq("id", coachId)
       .maybeSingle();
-
-    const coachCanContact =
-      coachProfile?.role === "super_admin" || hasActiveAccess(coachProfile ?? {});
-
-    if (!coachCanContact) {
-      return NextResponse.json({ error: "indisponível" }, { status: 403 });
-    }
 
     let phone = (coachProfile?.whatsapp || "").replace(/\D/g, "");
 

@@ -56,7 +56,6 @@ import {
   PRICE_PRESETS,
   COACH_MODALITIES,
   formatCrefInput,
-  formToRow,
   isValidCref,
   isValidHandle,
   isValidInstagramUrl,
@@ -319,11 +318,11 @@ function CoachPerfilPageInner() {
       const userId = session.user.id;
       setProfileId(userId);
 
-      const [profileResult, publicResult, statusJson] = await Promise.all([
+      const [profileResult, publicResult] = await Promise.all([
         supabaseClient
           .from("profiles")
           .select(
-            "id, full_name, email, avatar_url, telefone, sexo, role, subscription_active, plan_tier, student_limit, account_type, created_at",
+            "id, full_name, email, avatar_url, telefone, sexo, role, created_at",
           )
           .eq("id", userId)
           .single(),
@@ -332,9 +331,6 @@ function CoachPerfilPageInner() {
           .select("*")
           .eq("coach_id", userId)
           .maybeSingle(),
-        session.access_token
-          ? fetchSubscriptionStatusCached(session.access_token)
-          : Promise.resolve(null),
       ]);
 
       if (profileResult.error) throw profileResult.error;
@@ -358,55 +354,15 @@ function CoachPerfilPageInner() {
         setCoachSinceYear(new Date(profileData.created_at).getFullYear());
       }
 
-      if (profileData?.role === "super_admin") {
-        setSubscriptionActive(true);
-        setPlanName("Super Admin");
-        setStudentUsage(null);
-        setStudentLimit(null);
-        setActiveStudents(statusJson?.activeStudentCount ?? null);
-      } else if (statusJson) {
-        setSubscriptionActive(statusJson.isActive);
-        setPlanName(
-          statusJson.currentPlan?.label ??
-            (statusJson.planTier ? getPlanLabel(statusJson.planTier) : "Coach Vinny"),
-        );
-        setActiveStudents(statusJson.activeStudentCount ?? null);
-        const limit = statusJson.studentLimit ?? null;
-        const accountType = statusJson.accountType as string | undefined;
-        const hidePlan =
-          statusJson.isSuperAdmin ||
-          accountType === "teste" ||
-          accountType === "parceiro" ||
-          limit == null;
-        setStudentLimit(hidePlan ? null : limit);
-        if (limit != null) {
-          setStudentUsage(
-            formatStudentUsage(
-              statusJson.activeStudentCount,
-              limit,
-            ),
-          );
-        } else {
-          setStudentUsage(null);
-        }
-      } else {
-        const { data: subData } = await supabaseClient
-          .from("subscriptions")
-          .select("status, current_period_end, grace_period_end")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        const active = subData
-          ? isAccessGranted(
-              subData.status,
-              subData.current_period_end,
-              subData.grace_period_end,
-            )
-          : hasActiveAccess(profileData ?? {});
-        setSubscriptionActive(active);
-      }
+      // Coach Vinny não tem assinatura/plano/limite de alunos (treinador
+      // único) — os campos abaixo existem só porque o card "Meu plano" da
+      // tela ainda os lê; sempre "liberado", sem consultar tabelas de
+      // assinatura que não existem neste banco.
+      setSubscriptionActive(true);
+      setPlanName("Coach Vinny");
+      setStudentUsage(null);
+      setStudentLimit(null);
+      setActiveStudents(null);
     } catch (err: any) {
       setError(err.message || "Erro ao carregar perfil");
     } finally {
@@ -603,16 +559,9 @@ function CoachPerfilPageInner() {
 
       invalidateBootstrapProfile();
 
-      const row = formToRow(publicForm, profileId);
-      const { error: publicError } = await supabaseClient
-        .from("coach_public_profiles")
-        .upsert(row, { onConflict: "coach_id" });
-      if (publicError) {
-        if (publicError.code === "23505") {
-          throw new Error("Este handle já está em uso. Escolha outro.");
-        }
-        throw publicError;
-      }
+      // Coach Vinny não tem o diretório público de coaches do AURON
+      // (tabela coach_public_profiles não existe aqui) — os campos de
+      // perfil público (handle/instagram/bio) não são persistidos.
 
       baselineRef.current = snapshot(
         fullName.trim(),
